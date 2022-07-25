@@ -12,13 +12,17 @@ import (
 // Resource is a kubernetes resource.
 type Resource = metav1.Object
 
+// Diff computes steps needed to bring a current state equal to a new state.
+//
+// With some methods there may be several O(N) or O(2N) operations where N = number of resources.
+// However, we expect N to be small.
 type Diff[T Resource] struct {
 	ordinalLabel  string
 	current, want map[string]ordinalResource[T]
 }
 
-//
-// There is notably O(N) or O(2N) operations. However, we expect N (number of resources) to be small.
+// NewDiff creates a valid Diff.
+// It computes differences between the "current" state needed to reconcile to the "want" state.
 func NewDiff[T Resource](ordinalLabel string, current, want []T) *Diff[T] {
 	d := &Diff[T]{ordinalLabel: ordinalLabel}
 
@@ -35,6 +39,7 @@ func NewDiff[T Resource](ordinalLabel string, current, want []T) *Diff[T] {
 	return d
 }
 
+// Creates returns a list of resources that should be created anew.
 func (diff *Diff[T]) Creates() []T {
 	var creates []ordinalResource[T]
 	for name, resource := range diff.want {
@@ -46,6 +51,7 @@ func (diff *Diff[T]) Creates() []T {
 	return diff.sortByOrdinal(creates)
 }
 
+// Deletes returns a list of resources that should be deleted.
 func (diff *Diff[T]) Deletes() []T {
 	var deletes []ordinalResource[T]
 	for name, resource := range diff.current {
@@ -57,6 +63,7 @@ func (diff *Diff[T]) Deletes() []T {
 	return diff.sortByOrdinal(deletes)
 }
 
+// Updates returns a list of resources that should be updated or patched.
 func (diff *Diff[T]) Updates() []T {
 	// TODO (nix - 7/25/22) To be implemented
 	return nil
