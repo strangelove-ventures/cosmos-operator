@@ -1,0 +1,16 @@
+domain: strange.love
+layout:
+- go.kubebuilder.io/v3
+projectName: cosmos-operator
+repo: github.com/strangelove-ventures/cosmos-operator
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: strange.love
+  group: cosmos
+  kind: CosmosFullNode
+  path: github.com/strangelove-ventures/cosmos-operator/api/v1
+  version: v1
+version: "3"
