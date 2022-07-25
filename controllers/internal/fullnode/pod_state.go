@@ -12,12 +12,7 @@ func PodState(crd *cosmosv1.CosmosFullNode) []*corev1.Pod {
 		pods    = make([]*corev1.Pod, crd.Spec.Replicas)
 	)
 	for i := int32(0); i < crd.Spec.Replicas; i++ {
-		pod, err := builder.WithOrdinal(i).Build()
-		if err != nil {
-			// In this instance, there's nothing the builder should do to cause an error.
-			panic(err)
-		}
-		pods[i] = pod
+		pods[i] = builder.WithOrdinal(i).Build()
 	}
 	return pods
 }

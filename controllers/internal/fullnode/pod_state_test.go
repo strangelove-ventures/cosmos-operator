@@ -29,6 +29,6 @@ func TestPodState(t *testing.T) {
 	got := lo.Map(pods, func(pod *corev1.Pod, _ int) string { return pod.Name })
 	require.Equal(t, want, got)
 
-	pod, _ := NewPodBuilder(crd).WithOrdinal(0).Build()
+	pod := NewPodBuilder(crd).WithOrdinal(0).Build()
 	require.Equal(t, pod, pods[0])
 }

@@ -94,6 +94,7 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	for _, pod := range diff.Creates() {
 		logger.Info("Creating pod", "podName", pod.Name)
+		// TODO (nix - 7/25/22) This step is easy to forget. Perhaps abstract it somewhere.
 		if err := ctrl.SetControllerReference(&crd, pod, r.Scheme); err != nil {
 			return emptyResult, fmt.Errorf("set controller reference on pod %q: %w", pod.Name, err)
 		}

@@ -8,15 +8,12 @@ import (
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 // PodBuilder builds corev1.Pods
 type PodBuilder struct {
 	crd *cosmosv1.CosmosFullNode
 	pod *corev1.Pod
-	err error
 }
 
 // NewPodBuilder returns a valid PodBuilder.
@@ -70,8 +67,8 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 }
 
 // Build assigns the CosmosFullNode crd as the owner and returns a fully constructed pod.
-func (b PodBuilder) Build() (*corev1.Pod, error) {
-	return b.pod, b.err
+func (b PodBuilder) Build() *corev1.Pod {
+	return b.pod
 }
 
 // WithOrdinal updates adds name and other metadata to the pod using "ordinal" which is the pod's
@@ -80,19 +77,6 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 	pod := b.pod.DeepCopy()
 	pod.Labels = b.labels(ordinal)
 	pod.Name = b.name(ordinal)
-	b.pod = pod
-	return b
-}
-
-// WithOwner sets the controller reference on the pod using the scheme.
-//
-// On any error, this method panics. Proper ownership is required for the controller
-// to function properly.
-func (b PodBuilder) WithOwner(scheme *runtime.Scheme) PodBuilder {
-	pod := b.pod.DeepCopy()
-	if err := ctrl.SetControllerReference(b.crd, pod, scheme); err != nil {
-		b.err = fmt.Errorf("set controller reference: %w", err)
-	}
 	b.pod = pod
 	return b
 }
