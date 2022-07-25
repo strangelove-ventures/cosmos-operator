@@ -100,7 +100,7 @@ func (b PodBuilder) WithOwner(scheme *runtime.Scheme) PodBuilder {
 func (b PodBuilder) labels(ordinal int32) map[string]string {
 	return map[string]string{
 		chainLabel:   b.crd.Name,
-		ordinalLabel: strconv.FormatInt(int64(ordinal), 10),
+		OrdinalLabel: strconv.FormatInt(int64(ordinal), 10),
 	}
 }
 

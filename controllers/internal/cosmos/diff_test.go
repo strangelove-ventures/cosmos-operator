@@ -48,6 +48,24 @@ func TestDiff(t *testing.T) {
 		require.Equal(t, diff.Creates()[1].Name, "hub-110")
 	})
 
+	t.Run("only create", func(t *testing.T) {
+		want := []*corev1.Pod{
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "hub-0", Labels: labels(0)},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "hub-1", Labels: labels(1)},
+			},
+		}
+
+		diff := NewDiff(ordinalLabel, nil, want)
+
+		require.Empty(t, diff.Deletes())
+		require.Empty(t, diff.Updates())
+
+		require.Len(t, diff.Creates(), 2)
+	})
+
 	t.Run("simple delete", func(t *testing.T) {
 		// Purposefully unordered.
 		current := []*corev1.Pod{
