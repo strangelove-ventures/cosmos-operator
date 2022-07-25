@@ -57,7 +57,7 @@ endif
 
 .PHONY: test
 test: manifests generate ## Run unit tests.
-	@go test -short -timeout=60s ./...
+	@go test -short -cover -timeout=60s ./...
 
 .PHONY: tools
 tools: ## Install dev tools.
