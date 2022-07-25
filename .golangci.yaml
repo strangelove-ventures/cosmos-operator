@@ -1,0 +1,68 @@
+# See https://github.com/golangci/golangci-lint/blob/master/.golangci.yml for an updated example.
+
+run:
+  # If set we pass it to "go list -mod={option}". From "go help modules":
+  # If invoked with -mod=readonly, the go command is disallowed from the implicit
+  # automatic updating of go.mod described above. Instead, it fails when any changes
+  # to go.mod are needed. This setting is most useful to check that go.mod does
+  # not need updates, such as in a continuous integration and testing system.
+  # If invoked with -mod=vendor, the go command assumes that the vendor
+  # directory holds the correct copies of dependencies and ignores
+  # the dependency descriptions in go.mod.
+  #
+  # Allowed values: readonly|vendor|mod
+  modules-download-mode: readonly
+
+linters-settings:
+  depguard:
+    list-type: denylist
+    packages:
+      - github.com/stretchr/testify/assert
+      - github.com/onsi/gomega
+      - github.com/onsi/ginkgo/v2
+      - github.com/onsi/ginkgo
+    packages-with-error-message:
+      - github.com/stretchr/testify/assert: "Use github.com/stretchr/testify/require instead of assert"
+      - github.com/onsi/gomega: "Although Ginkgo is used in kubebuilder, use testify instead. Ginkgo is bloated providing little value."
+      - github.com/onsi/ginkgo/v2: "Although Ginkgo is used in kubebuilder, use testify instead. Ginkgo is bloated providing little value."
+  govet:
+    check-shadowing: true
+  gofmt:
+    # simplify code: gofmt with `-s` option, true by default
+    simplify: true
+  misspell:
+    locale: US
+  nakedret:
+    # make an issue if func has more lines of code than this setting and it has naked returns; default is 30
+    max-func-lines: 0 # completely disallow naked returns
+  nolintlint:
+    allow-leading-space: true # don't require machine-readable nolint directives (i.e. with no leading space)
+    allow-unused: false # report any unused nolint directives
+    require-explanation: false # don't require an explanation for nolint directives
+    require-specific: false # don't require nolint directives to be specific about which linter is being skipped
+
+linters:
+  disable-all: true
+  enable:
+    - bodyclose
+    - deadcode
+    - depguard
+    - errcheck
+    - exportloopref
+    - gofmt
+    - goimports
+    - goprintffuncname
+    - gosimple
+    - govet
+    - ineffassign
+    - misspell
+    - nakedret
+    - noctx
+    - nolintlint
+    - staticcheck
+    - structcheck
+    - stylecheck # replacement for golint
+    - unconvert
+    - unused
+    - varcheck
+    - whitespace

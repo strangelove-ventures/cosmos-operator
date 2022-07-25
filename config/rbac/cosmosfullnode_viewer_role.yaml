@@ -1,0 +1,20 @@
+# permissions for end users to view cosmosfullnodes.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cosmosfullnode-viewer-role
+rules:
+- apiGroups:
+  - cosmos.strange.love
+  resources:
+  - cosmosfullnodes
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - cosmos.strange.love
+  resources:
+  - cosmosfullnodes/status
+  verbs:
+  - get
