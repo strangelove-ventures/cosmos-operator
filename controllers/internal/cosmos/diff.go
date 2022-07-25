@@ -1,6 +1,7 @@
 package cosmos
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"strconv"
@@ -20,9 +21,17 @@ type Diff[T Resource] struct {
 // There is notably O(N) or O(2N) operations. However, we expect N (number of resources) to be small.
 func NewDiff[T Resource](ordinalLabel string, current, want []T) *Diff[T] {
 	d := &Diff[T]{ordinalLabel: ordinalLabel}
-	// TODO: panic if lengths don't match
+
 	d.current = d.toMap(current)
+	if len(d.current) != len(current) {
+		panic(errors.New("each resource in current must have unique .metadata.name"))
+	}
+
 	d.want = d.toMap(want)
+	if len(d.want) != len(want) {
+		panic(errors.New("each resource in want must have unique .metadata.name"))
+	}
+
 	return d
 }
 

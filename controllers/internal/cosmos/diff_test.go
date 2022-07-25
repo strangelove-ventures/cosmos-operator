@@ -108,7 +108,31 @@ func TestDiff(t *testing.T) {
 		require.Len(t, diff.Deletes(), 2)
 	})
 
-	t.Run("malformed resources", func(t *testing.T) {
+	t.Run("non-unique names", func(t *testing.T) {
+		dupeNames := []*corev1.Pod{
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "hub-0", Labels: labels(0)},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "hub-0", Labels: labels(0)},
+			},
+		}
+		resources := []*corev1.Pod{
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "hub-2", Labels: labels(2)},
+			},
+		}
+
+		require.Panics(t, func() {
+			NewDiff(ordinalLabel, dupeNames, resources)
+		})
+
+		require.Panics(t, func() {
+			NewDiff(ordinalLabel, resources, dupeNames)
+		})
+	})
+
+	t.Run("missing labels", func(t *testing.T) {
 		current := []*corev1.Pod{
 			{
 				ObjectMeta: metav1.ObjectMeta{Name: "hub-0"}, // missing label
