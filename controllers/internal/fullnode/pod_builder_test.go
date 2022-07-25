@@ -15,6 +15,8 @@ func TestPodBuilder(t *testing.T) {
 		panic(err)
 	}
 
+	t.Parallel()
+
 	crd := cosmosv1.CosmosFullNode{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "osmosis",
