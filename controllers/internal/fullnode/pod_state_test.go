@@ -12,6 +12,8 @@ import (
 )
 
 func TestPodState(t *testing.T) {
+	t.Parallel()
+
 	crd := &cosmosv1.CosmosFullNode{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "agoric",
