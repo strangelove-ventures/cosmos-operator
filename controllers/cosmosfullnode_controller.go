@@ -21,8 +21,8 @@ import (
 	"fmt"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
-	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/cosmos"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/fullnode"
+	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -89,7 +89,7 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	var (
 		wantPods = fullnode.PodState(&crd)
-		diff     = cosmos.NewDiff(fullnode.OrdinalLabel, ptrSlice(pods.Items), wantPods)
+		diff     = kube.NewDiff(fullnode.OrdinalLabel, ptrSlice(pods.Items), wantPods)
 	)
 
 	for _, pod := range diff.Creates() {
@@ -119,7 +119,7 @@ func (r *CosmosFullNodeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		context.Background(),
 		&corev1.Pod{},
 		controllerOwnerField,
-		cosmos.IndexOwner[*corev1.Pod]("CosmosFullNode"),
+		kube.IndexOwner[*corev1.Pod]("CosmosFullNode"),
 	)
 	if err != nil {
 		return fmt.Errorf("index field %s: %w", controllerOwnerField, err)

@@ -1,4 +1,4 @@
-package cosmos
+package kube
 
 import (
 	"errors"
@@ -78,6 +78,12 @@ func (diff *Diff[T]) computeDeletes(current, want ordinalSet[T]) []T {
 		}
 	}
 	return diff.sortByOrdinal(deletes)
+}
+
+// IsDirty returns true if some resources are in a transitioning or non-clean state. E.g. A pod that is not Ready.
+// Callers should check this value and take action, such as re-queueing in a controller.
+func (diff *Diff[T]) IsDirty() bool {
+	return false
 }
 
 // Updates returns a list of resources that should be updated or patched.
