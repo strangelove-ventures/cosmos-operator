@@ -19,7 +19,9 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/fullnode"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
@@ -42,7 +44,8 @@ type CosmosFullNodeReconciler struct {
 }
 
 var (
-	emptyResult ctrl.Result
+	emptyResult   ctrl.Result
+	requeueResult = ctrl.Result{RequeueAfter: 5 * time.Second}
 )
 
 //+kubebuilder:rbac:groups=cosmos.strange.love,resources=cosmosfullnodes,verbs=get;list;watch;create;update;patch;delete
@@ -82,6 +85,7 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	if len(pods.Items) > 0 {
+		spew.Dump(pods.Items)
 		logger.Info("Found existing pods", "numPods", len(pods.Items))
 	} else {
 		logger.Info("Did not find any existing pods")
@@ -89,10 +93,10 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	var (
 		wantPods = fullnode.PodState(&crd)
-		diff     = kube.NewDiff(fullnode.OrdinalLabel, ptrSlice(pods.Items), wantPods)
+		podDiff  = kube.NewDiff(fullnode.OrdinalLabel, ptrSlice(pods.Items), wantPods, kube.PodIsReady)
 	)
 
-	for _, pod := range diff.Creates() {
+	for _, pod := range podDiff.Creates() {
 		logger.Info("Creating pod", "podName", pod.Name)
 		// TODO (nix - 7/25/22) This step is easy to forget. Perhaps abstract it somewhere.
 		if err := ctrl.SetControllerReference(&crd, pod, r.Scheme); err != nil {
@@ -103,11 +107,16 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		}
 	}
 
-	for _, pod := range diff.Deletes() {
+	for _, pod := range podDiff.Deletes() {
 		logger.Info("Deleting pod", "podName", pod.Name)
 		if err := r.Delete(ctx, pod, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
 			return emptyResult, fmt.Errorf("delete pod %q: %w", pod.Name, err)
 		}
+	}
+
+	if podDiff.IsDirty() {
+		logger.Info("Pod state is dirty, re-queuing")
+		return requeueResult, nil
 	}
 
 	return emptyResult, nil
