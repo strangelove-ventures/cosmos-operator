@@ -14,17 +14,10 @@ type Resource = metav1.Object
 
 type ordinalSet[T Resource] map[string]ordinalResource[T]
 
-// CheckReady yields the resource to determine if the resource is in a Ready state.
-type CheckReady[T Resource] func(resource T) bool
-
 // Diff computes steps needed to bring a current state equal to a new state.
 type Diff[T Resource] struct {
-	ordinalLabel string
-	checkReady   CheckReady[T]
-
+	ordinalLabel     string
 	creates, deletes []T
-
-	dirty bool
 }
 
 // NewDiff creates a valid Diff.
@@ -37,13 +30,9 @@ type Diff[T Resource] struct {
 //
 // There are several O(N) or O(2N) operations where N = number of resources.
 // However, we expect N to be small.
-func NewDiff[T Resource](ordinalLabel string, current, want []T, checkReady CheckReady[T]) *Diff[T] {
-	if checkReady == nil {
-		panic(errors.New("checkReady function is required"))
-	}
+func NewDiff[T Resource](ordinalLabel string, current, want []T) *Diff[T] {
 	d := &Diff[T]{
 		ordinalLabel: ordinalLabel,
-		checkReady:   checkReady,
 	}
 
 	currentSet := d.toMap(current)
@@ -58,8 +47,6 @@ func NewDiff[T Resource](ordinalLabel string, current, want []T, checkReady Chec
 
 	d.creates = d.computeCreates(currentSet, wantSet)
 	d.deletes = d.computeDeletes(currentSet, wantSet)
-	d.dirty = d.computeDirty(currentSet)
-
 	return d
 }
 
@@ -93,21 +80,6 @@ func (diff *Diff[T]) computeDeletes(current, want ordinalSet[T]) []T {
 		}
 	}
 	return diff.sortByOrdinal(deletes)
-}
-
-// IsDirty returns true if some resources are in a transitioning or non-clean state. E.g. A pod that is not Ready.
-// Callers should check this value and take action, such as re-queueing in a controller.
-func (diff *Diff[T]) IsDirty() bool {
-	return diff.dirty
-}
-
-func (diff *Diff[T]) computeDirty(current ordinalSet[T]) bool {
-	for _, item := range current {
-		if !diff.checkReady(item.Resource) {
-			return true
-		}
-	}
-	return false
 }
 
 // Updates returns a list of resources that should be updated or patched.
