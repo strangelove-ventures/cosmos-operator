@@ -15,6 +15,8 @@ func ordinalLabels(n int) map[string]string {
 	return map[string]string{testOrdinalLabel: strconv.Itoa(n)}
 }
 
+func stubCheckReady(_ *corev1.Pod) bool { return true }
+
 func TestNewDiff(t *testing.T) {
 	t.Parallel()
 
@@ -34,11 +36,11 @@ func TestNewDiff(t *testing.T) {
 		}
 
 		require.Panics(t, func() {
-			NewDiff(testOrdinalLabel, dupeNames, resources)
+			NewDiff(testOrdinalLabel, dupeNames, resources, stubCheckReady)
 		})
 
 		require.Panics(t, func() {
-			NewDiff(testOrdinalLabel, resources, dupeNames)
+			NewDiff(testOrdinalLabel, resources, dupeNames, stubCheckReady)
 		})
 	})
 
@@ -55,7 +57,13 @@ func TestNewDiff(t *testing.T) {
 		}
 
 		require.Panics(t, func() {
-			NewDiff(testOrdinalLabel, current, want)
+			NewDiff(testOrdinalLabel, current, want, stubCheckReady)
+		})
+	})
+
+	t.Run("missing check ready", func(t *testing.T) {
+		require.Panics(t, func() {
+			NewDiff(testOrdinalLabel, []*corev1.Pod{}, []*corev1.Pod{}, nil)
 		})
 	})
 }
@@ -83,7 +91,7 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 			},
 		}
 
-		diff := NewDiff(testOrdinalLabel, current, want)
+		diff := NewDiff(testOrdinalLabel, current, want, stubCheckReady)
 
 		require.Empty(t, diff.Deletes())
 		require.Empty(t, diff.Updates())
@@ -103,7 +111,7 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 			},
 		}
 
-		diff := NewDiff(testOrdinalLabel, nil, want)
+		diff := NewDiff(testOrdinalLabel, nil, want, stubCheckReady)
 
 		require.Empty(t, diff.Deletes())
 		require.Empty(t, diff.Updates())
@@ -131,7 +139,7 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 			},
 		}
 
-		diff := NewDiff(testOrdinalLabel, current, want)
+		diff := NewDiff(testOrdinalLabel, current, want, stubCheckReady)
 
 		require.Empty(t, diff.Updates())
 		require.Empty(t, diff.Creates())
@@ -163,7 +171,7 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 			},
 		}
 
-		diff := NewDiff(testOrdinalLabel, current, want)
+		diff := NewDiff(testOrdinalLabel, current, want, stubCheckReady)
 
 		require.Empty(t, diff.Updates())
 
@@ -175,34 +183,28 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 func TestDiff_IsDirty(t *testing.T) {
 	t.Parallel()
 
-	t.Fatal("TODO")
+	t.Run("clean state", func(t *testing.T) {
+		pods := []*corev1.Pod{
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "hub-0", Labels: ordinalLabels(0)},
+			},
+		}
+		diff := NewDiff(testOrdinalLabel, pods, pods, stubCheckReady)
 
-	//t.Run("clean state", func(t *testing.T) {
-	//	current := []*corev1.Pod{
-	//		{
-	//			ObjectMeta: metav1.ObjectMeta{Name: "hub-0", Labels: ordinalLabels(0)},
-	//			Status: metav1.Status{
-	//				Status:  "",
-	//				Message: "",
-	//				Reason:  "",
-	//				Details: nil,
-	//				Code:    0,
-	//			},
-	//		},
-	//	}
-	//
-	//	// Purposefully unordered
-	//	want := []*corev1.Pod{
-	//		{
-	//			ObjectMeta: metav1.ObjectMeta{Name: "hub-0", Labels: ordinalLabels(0)},
-	//		},
-	//		{
-	//			ObjectMeta: metav1.ObjectMeta{Name: "hub-1", Labels: ordinalLabels(0)},
-	//		},
-	//	}
-	//})
-	//
-	//t.Run("dirty", func(t *testing.T) {
-	//
-	//})
+		require.False(t, diff.IsDirty())
+	})
+
+	t.Run("dirty", func(t *testing.T) {
+		pods := []*corev1.Pod{
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "hub-0", Labels: ordinalLabels(0)},
+			},
+		}
+		diff := NewDiff(testOrdinalLabel, pods, pods, func(pod *corev1.Pod) bool {
+			require.Equal(t, pod, pods[0])
+			return false
+		})
+
+		require.True(t, diff.IsDirty())
+	})
 }
