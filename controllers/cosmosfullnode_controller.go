@@ -82,9 +82,9 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	if len(pods.Items) > 0 {
-		logger.Info("Did not find any existing pods")
-	} else {
 		logger.Info("Found existing pods", "numPods", len(pods.Items))
+	} else {
+		logger.Info("Did not find any existing pods")
 	}
 
 	var (
