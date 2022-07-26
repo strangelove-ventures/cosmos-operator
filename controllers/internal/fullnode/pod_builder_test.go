@@ -15,6 +15,8 @@ func TestPodBuilder(t *testing.T) {
 		panic(err)
 	}
 
+	t.Parallel()
+
 	crd := cosmosv1.CosmosFullNode{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "osmosis",
@@ -27,8 +29,7 @@ func TestPodBuilder(t *testing.T) {
 
 	t.Run("happy path", func(t *testing.T) {
 		builder := NewPodBuilder(&crd)
-		pod, err := builder.WithOrdinal(5).Build()
-		require.NoError(t, err)
+		pod := builder.WithOrdinal(5).Build()
 
 		require.Equal(t, "Pod", pod.Kind)
 		require.Equal(t, "v1", pod.APIVersion)
@@ -37,8 +38,8 @@ func TestPodBuilder(t *testing.T) {
 		require.Equal(t, "osmosis-5", pod.Name)
 		require.Empty(t, pod.Annotations) // TODO: expose prom metrics
 		wantLabels := map[string]string{
-			"cosmosfullnode.cosmos.strange.love/chain-name":  "osmosis",
-			"cosmosfullnode.cosmos.strange.love/pod-ordinal": "5",
+			"cosmosfullnode.cosmos.strange.love/chain-name": "osmosis",
+			"cosmosfullnode.cosmos.strange.love/ordinal":    "5",
 		}
 		require.Equal(t, wantLabels, pod.Labels)
 		require.EqualValues(t, 30, *pod.Spec.TerminationGracePeriodSeconds)
@@ -49,32 +50,11 @@ func TestPodBuilder(t *testing.T) {
 		require.Equal(t, "busybox:latest", c.Image)
 		require.Empty(t, c.ImagePullPolicy)
 
-		pod, err = builder.WithOwner(scheme).Build()
-		require.NoError(t, err)
-
-		require.Len(t, pod.OwnerReferences, 1)
-		owner := pod.OwnerReferences[0]
-		require.True(t, *owner.Controller)
-		require.Equal(t, "CosmosFullNode", owner.Kind)
-		require.Equal(t, "cosmos.strange.love/v1", owner.APIVersion)
-
 		// Test we don't share or leak data per invocation.
-		pod, err = builder.Build()
-		require.NoError(t, err)
+		pod = builder.Build()
 		require.Empty(t, pod.Name)
 
-		pod, err = builder.WithOrdinal(123).Build()
-		require.NoError(t, err)
+		pod = builder.WithOrdinal(123).Build()
 		require.Equal(t, "osmosis-123", pod.Name)
-	})
-
-	t.Run("errors", func(t *testing.T) {
-		invalidScheme := &runtime.Scheme{}
-		builder := NewPodBuilder(&crd)
-		_, err := builder.WithOwner(invalidScheme).Build()
-		require.Error(t, err)
-
-		_, err = builder.Build()
-		require.NoError(t, err)
 	})
 }

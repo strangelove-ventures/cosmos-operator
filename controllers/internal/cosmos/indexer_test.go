@@ -17,6 +17,8 @@ func TestIndexOwner(t *testing.T) {
 		panic(err)
 	}
 
+	t.Parallel()
+
 	t.Run("happy path", func(t *testing.T) {
 		resource := &corev1.Pod{}
 		crd := &cosmosv1.CosmosFullNode{}

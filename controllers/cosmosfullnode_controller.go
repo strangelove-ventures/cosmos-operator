@@ -24,6 +24,7 @@ import (
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/cosmos"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/fullnode"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -80,19 +81,32 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return emptyResult, fmt.Errorf("list existing pods: %w", err)
 	}
 
-	// TODO: do something important besides just log here
-	logger.Info("Found existing pods for CRD", "numPods", len(pods.Items))
+	if len(pods.Items) > 0 {
+		logger.Info("Did not find any existing pods")
+	} else {
+		logger.Info("Found existing pods", "numPods", len(pods.Items))
+	}
 
-	builder := fullnode.NewPodBuilder(&crd)
-	// TODO: not idempotent
-	for i := int32(0); i < crd.Spec.Replicas; i++ {
-		pod, err := builder.WithOrdinal(i).WithOwner(r.Scheme).Build()
-		if err != nil {
-			return emptyResult, err
+	var (
+		wantPods = fullnode.PodState(&crd)
+		diff     = cosmos.NewDiff(fullnode.OrdinalLabel, ptrSlice(pods.Items), wantPods)
+	)
+
+	for _, pod := range diff.Creates() {
+		logger.Info("Creating pod", "podName", pod.Name)
+		// TODO (nix - 7/25/22) This step is easy to forget. Perhaps abstract it somewhere.
+		if err := ctrl.SetControllerReference(&crd, pod, r.Scheme); err != nil {
+			return emptyResult, fmt.Errorf("set controller reference on pod %q: %w", pod.Name, err)
 		}
-		err = r.Create(ctx, pod)
-		if err != nil {
-			return emptyResult, fmt.Errorf("create for %s: pod %s: %w", req.NamespacedName, pod.Name, err)
+		if err := r.Create(ctx, pod); err != nil {
+			return emptyResult, fmt.Errorf("create pod %q: %w", pod.Name, err)
+		}
+	}
+
+	for _, pod := range diff.Deletes() {
+		logger.Info("Deleting pod", "podName", pod.Name)
+		if err := r.Delete(ctx, pod, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
+			return emptyResult, fmt.Errorf("delete pod %q: %w", pod.Name, err)
 		}
 	}
 

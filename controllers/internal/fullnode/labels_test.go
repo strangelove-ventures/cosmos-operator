@@ -9,6 +9,8 @@ import (
 )
 
 func TestSelectorLabels(t *testing.T) {
+	t.Parallel()
+
 	crd := &cosmosv1.CosmosFullNode{}
 	crd.Name = "cool-chain"
 
