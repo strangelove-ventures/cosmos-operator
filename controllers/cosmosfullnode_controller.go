@@ -19,7 +19,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"time"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/fullnode"
@@ -48,8 +47,7 @@ type CosmosFullNodeReconciler struct {
 }
 
 var (
-	emptyResult   ctrl.Result
-	requeueResult = ctrl.Result{RequeueAfter: 5 * time.Second}
+	emptyResult ctrl.Result
 )
 
 //+kubebuilder:rbac:groups=cosmos.strange.love,resources=cosmosfullnodes,verbs=get;list;watch;create;update;patch;delete
