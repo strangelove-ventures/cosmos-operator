@@ -23,6 +23,10 @@ type Diff[T Resource] struct {
 
 // NewDiff creates a valid Diff.
 // It computes differences between the "current" state needed to reconcile to the "want" state.
+//
+// The "ordinalLabel" is a well-known label common to all resources. It's value must be a string which can be
+// converted to an integer.
+// Each resource name and ordinalLabel value must be unique.
 func NewDiff[T Resource](ordinalLabel string, current, want []T) *Diff[T] {
 	d := &Diff[T]{ordinalLabel: ordinalLabel}
 
