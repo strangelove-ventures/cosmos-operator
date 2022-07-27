@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -30,7 +31,13 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   crd.Namespace,
+			Namespace: crd.Namespace,
+			Labels: map[string]string{
+				chainLabel:           kube.ToLabelValue(crd.Name),
+				kube.ControllerLabel: kube.ToLabelValue("CosmosFullNode"),
+				kube.NameLabel:       kube.ToLabelValue(fmt.Sprintf("%s-fullnode", crd.Name)),
+				kube.VersionLabel:    kube.ParseImageVersion(crd.Spec.Image),
+			},
 			Annotations: nil, // TODO: expose prom metrics
 		},
 		Spec: corev1.PodSpec{
@@ -75,19 +82,17 @@ func (b PodBuilder) Build() *corev1.Pod {
 // ordered sequence. Pods have deterministic, consistent names similar to a StatefulSet instead of generated names.
 func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 	pod := b.pod.DeepCopy()
-	pod.Labels = b.labels(ordinal)
-	pod.Name = b.name(ordinal)
+	name := b.name(ordinal)
+
+	pod.Labels[OrdinalLabel] = strconv.FormatInt(int64(ordinal), 10)
+	pod.Labels[kube.InstanceLabel] = kube.ToLabelValue(name)
+
+	pod.Name = kube.ToName(name)
+
 	b.pod = pod
 	return b
 }
 
-func (b PodBuilder) labels(ordinal int32) map[string]string {
-	return map[string]string{
-		chainLabel:   b.crd.Name,
-		OrdinalLabel: strconv.FormatInt(int64(ordinal), 10),
-	}
-}
-
 func (b PodBuilder) name(ordinal int32) string {
-	return fmt.Sprintf("%s-%d", b.crd.Name, ordinal)
+	return fmt.Sprintf("%s-fullnode-%d", b.crd.Name, ordinal)
 }
