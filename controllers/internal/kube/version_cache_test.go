@@ -12,8 +12,9 @@ func TestVersionCache(t *testing.T) {
 
 	cache := NewVersionCache()
 	crd := &cosmosv1.CosmosFullNode{}
-	crd.Name = "foo"
 	crd.ResourceVersion = "1"
+	crd.UID = "foo"
+	crd.GetNamespace()
 
 	require.True(t, cache.HasChanged(crd))
 
@@ -26,6 +27,9 @@ func TestVersionCache(t *testing.T) {
 	cache.Update(crd)
 	require.False(t, cache.HasChanged(crd))
 
-	crd.Name = "bar"
+	crd.UID = "bar"
 	require.True(t, cache.HasChanged(crd))
+
+	cache.Update(crd)
+	require.False(t, cache.HasChanged(crd))
 }
