@@ -1,4 +1,4 @@
-package cosmos
+package kube
 
 import (
 	"errors"
@@ -12,38 +12,53 @@ import (
 // Resource is a kubernetes resource.
 type Resource = metav1.Object
 
+type ordinalSet[T Resource] map[string]ordinalResource[T]
+
 // Diff computes steps needed to bring a current state equal to a new state.
-//
-// With some methods there may be several O(N) or O(2N) operations where N = number of resources.
-// However, we expect N to be small.
 type Diff[T Resource] struct {
-	ordinalLabel  string
-	current, want map[string]ordinalResource[T]
+	ordinalLabel     string
+	creates, deletes []T
 }
 
 // NewDiff creates a valid Diff.
 // It computes differences between the "current" state needed to reconcile to the "want" state.
+// "checkReady" determines if the resource is in a ready state. E.g. a pod that is Ready and not initializing or terminating.
+//
+// The "ordinalLabel" is a well-known label common to all resources. It's value must be a string which can be
+// converted to an integer. It's used for proper sorting.
+// Each resource name and ordinalLabel value must be unique.
+//
+// There are several O(N) or O(2N) operations where N = number of resources.
+// However, we expect N to be small.
 func NewDiff[T Resource](ordinalLabel string, current, want []T) *Diff[T] {
-	d := &Diff[T]{ordinalLabel: ordinalLabel}
+	d := &Diff[T]{
+		ordinalLabel: ordinalLabel,
+	}
 
-	d.current = d.toMap(current)
-	if len(d.current) != len(current) {
+	currentSet := d.toMap(current)
+	if len(currentSet) != len(current) {
 		panic(errors.New("each resource in current must have unique .metadata.name"))
 	}
 
-	d.want = d.toMap(want)
-	if len(d.want) != len(want) {
+	wantSet := d.toMap(want)
+	if len(wantSet) != len(want) {
 		panic(errors.New("each resource in want must have unique .metadata.name"))
 	}
 
+	d.creates = d.computeCreates(currentSet, wantSet)
+	d.deletes = d.computeDeletes(currentSet, wantSet)
 	return d
 }
 
-// Creates returns a list of resources that should be created anew.
+// Creates returns a list of resources that should be created from scratch.
 func (diff *Diff[T]) Creates() []T {
+	return diff.creates
+}
+
+func (diff *Diff[T]) computeCreates(current, want ordinalSet[T]) []T {
 	var creates []ordinalResource[T]
-	for name, resource := range diff.want {
-		_, ok := diff.current[name]
+	for name, resource := range want {
+		_, ok := current[name]
 		if !ok {
 			creates = append(creates, resource)
 		}
@@ -53,9 +68,13 @@ func (diff *Diff[T]) Creates() []T {
 
 // Deletes returns a list of resources that should be deleted.
 func (diff *Diff[T]) Deletes() []T {
+	return diff.deletes
+}
+
+func (diff *Diff[T]) computeDeletes(current, want ordinalSet[T]) []T {
 	var deletes []ordinalResource[T]
-	for name, resource := range diff.current {
-		_, ok := diff.want[name]
+	for name, resource := range current {
+		_, ok := want[name]
 		if !ok {
 			deletes = append(deletes, resource)
 		}

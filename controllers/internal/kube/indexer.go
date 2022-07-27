@@ -1,4 +1,4 @@
-package cosmos
+package kube
 
 import (
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"

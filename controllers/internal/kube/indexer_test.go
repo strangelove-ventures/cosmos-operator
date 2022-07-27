@@ -1,4 +1,4 @@
-package cosmos
+package kube
 
 import (
 	"testing"

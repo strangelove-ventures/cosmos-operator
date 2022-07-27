@@ -21,14 +21,19 @@ import (
 	"fmt"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
-	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/cosmos"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/fullnode"
+	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 const (
@@ -48,13 +53,11 @@ var (
 //+kubebuilder:rbac:groups=cosmos.strange.love,resources=cosmosfullnodes,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=cosmos.strange.love,resources=cosmosfullnodes/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=cosmos.strange.love,resources=cosmosfullnodes/finalizers,verbs=update
+// Generate RBAC roles to watch and update Pods
+//+kubebuilder:rbac:groups="",resources=pods,verbs=get;watch;list
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
-// the CosmosFullNode object against the actual cluster state, and then
-// perform operations to make the cluster state reflect the state specified by
-// the user.
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.12.1/pkg/reconcile
@@ -82,17 +85,17 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	if len(pods.Items) > 0 {
-		logger.Info("Did not find any existing pods")
+		logger.V(2).Info("Found existing pods", "numPods", len(pods.Items))
 	} else {
-		logger.Info("Found existing pods", "numPods", len(pods.Items))
+		logger.V(2).Info("Did not find any existing pods")
 	}
 
 	var (
 		wantPods = fullnode.PodState(&crd)
-		diff     = cosmos.NewDiff(fullnode.OrdinalLabel, ptrSlice(pods.Items), wantPods)
+		podDiff  = kube.NewDiff(fullnode.OrdinalLabel, ptrSlice(pods.Items), wantPods)
 	)
 
-	for _, pod := range diff.Creates() {
+	for _, pod := range podDiff.Creates() {
 		logger.Info("Creating pod", "podName", pod.Name)
 		// TODO (nix - 7/25/22) This step is easy to forget. Perhaps abstract it somewhere.
 		if err := ctrl.SetControllerReference(&crd, pod, r.Scheme); err != nil {
@@ -103,7 +106,7 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		}
 	}
 
-	for _, pod := range diff.Deletes() {
+	for _, pod := range podDiff.Deletes() {
 		logger.Info("Deleting pod", "podName", pod.Name)
 		if err := r.Delete(ctx, pod, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
 			return emptyResult, fmt.Errorf("delete pod %q: %w", pod.Name, err)
@@ -119,12 +122,21 @@ func (r *CosmosFullNodeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		context.Background(),
 		&corev1.Pod{},
 		controllerOwnerField,
-		cosmos.IndexOwner[*corev1.Pod]("CosmosFullNode"),
+		kube.IndexOwner[*corev1.Pod]("CosmosFullNode"),
 	)
 	if err != nil {
 		return fmt.Errorf("index field %s: %w", controllerOwnerField, err)
 	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&cosmosv1.CosmosFullNode{}).
+		// Watch all pod delete events to queue controller requests for pods owned by CosmosFullNode controller.
+		Watches(
+			&source.Kind{Type: &corev1.Pod{}},
+			&handler.EnqueueRequestForOwner{OwnerType: &cosmosv1.CosmosFullNode{}, IsController: true},
+			builder.WithPredicates(&predicate.Funcs{DeleteFunc: func(_ event.DeleteEvent) bool {
+				return true
+			}},
+			),
+		).
 		Complete(r)
 }
