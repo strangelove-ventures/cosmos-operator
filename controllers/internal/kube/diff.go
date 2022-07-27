@@ -3,6 +3,7 @@ package kube
 import (
 	"errors"
 	"fmt"
+	"reflect"
 	"sort"
 	"strconv"
 
@@ -16,8 +17,9 @@ type ordinalSet[T Resource] map[string]ordinalResource[T]
 
 // Diff computes steps needed to bring a current state equal to a new state.
 type Diff[T Resource] struct {
-	ordinalLabel     string
-	creates, deletes []T
+	ordinalLabel string
+
+	creates, deletes, updates []T
 }
 
 // NewDiff creates a valid Diff.
@@ -47,6 +49,7 @@ func NewDiff[T Resource](ordinalLabel string, current, want []T) *Diff[T] {
 
 	d.creates = d.computeCreates(currentSet, wantSet)
 	d.deletes = d.computeDeletes(currentSet, wantSet)
+	d.updates = d.computeUpdates(currentSet, wantSet)
 	return d
 }
 
@@ -82,10 +85,23 @@ func (diff *Diff[T]) computeDeletes(current, want ordinalSet[T]) []T {
 	return diff.sortByOrdinal(deletes)
 }
 
-// Updates returns a list of resources that should be updated or patched.
+// Updates returns a list of resources that should be updated.
 func (diff *Diff[T]) Updates() []T {
-	// TODO (nix - 7/25/22) To be implemented
-	return nil
+	return diff.updates
+}
+
+func (diff *Diff[T]) computeUpdates(current, want ordinalSet[T]) []T {
+	var updates []ordinalResource[T]
+	for name, wantResource := range want {
+		currentResource, ok := current[name]
+		if !ok {
+			continue
+		}
+		if !reflect.DeepEqual(currentResource, wantResource) {
+			updates = append(updates, wantResource)
+		}
+	}
+	return diff.sortByOrdinal(updates)
 }
 
 type ordinalResource[T Resource] struct {
