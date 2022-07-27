@@ -7,6 +7,7 @@ import (
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -26,6 +27,10 @@ func TestPodBuilder(t *testing.T) {
 		},
 		Spec: cosmosv1.CosmosFullNodeSpec{
 			Image: "busybox:v1.2.3",
+			Resources: corev1.ResourceRequirements{
+				Limits:   corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("2Gi")},
+				Requests: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("1Gi")},
+			},
 		},
 	}
 
@@ -55,6 +60,7 @@ func TestPodBuilder(t *testing.T) {
 		require.Equal(t, "osmosis", c.Name)
 		require.Equal(t, "busybox:v1.2.3", c.Image)
 		require.Empty(t, c.ImagePullPolicy)
+		require.Equal(t, crd.Spec.Resources, c.Resources)
 
 		// Test we don't share or leak data per invocation.
 		pod = builder.Build()

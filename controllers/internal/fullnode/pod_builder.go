@@ -59,6 +59,9 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 					ReadinessProbe: nil,
 					StartupProbe:   nil,
 
+					// TODO (nix - 7/27/22) May need a convention to override resources per pod
+					Resources: crd.Spec.Resources,
+
 					// Purposefully blank. Defaults to Always if :latest tag is specified, or IfNotPresent otherwise.
 					ImagePullPolicy: "",
 				},
