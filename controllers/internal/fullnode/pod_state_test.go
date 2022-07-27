@@ -1,7 +1,7 @@
 package fullnode
 
 import (
-	"strings"
+	"fmt"
 	"testing"
 
 	"github.com/samber/lo"
@@ -27,7 +27,9 @@ func TestPodState(t *testing.T) {
 	pods := PodState(crd)
 	require.Len(t, pods, 5)
 
-	want := strings.Split("agoric-0 agoric-1 agoric-2 agoric-3 agoric-4", " ")
+	want := lo.Map([]int{0, 1, 2, 3, 4}, func(_ int, i int) string {
+		return fmt.Sprintf("agoric-fullnode-%d", i)
+	})
 	got := lo.Map(pods, func(pod *corev1.Pod, _ int) string { return pod.Name })
 	require.Equal(t, want, got)
 

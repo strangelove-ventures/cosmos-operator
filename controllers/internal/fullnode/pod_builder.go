@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -30,7 +31,13 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   crd.Namespace,
+			Namespace: crd.Namespace,
+			Labels: map[string]string{
+				chainLabel:           kube.ToLabelValue(crd.Name),
+				kube.ControllerLabel: kube.ToLabelValue("CosmosFullNode"),
+				kube.NameLabel:       kube.ToLabelValue(fmt.Sprintf("%s-fullnode", crd.Name)),
+				kube.VersionLabel:    kube.ParseImageVersion(crd.Spec.Image),
+			},
 			Annotations: nil, // TODO: expose prom metrics
 		},
 		Spec: corev1.PodSpec{
@@ -44,10 +51,8 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 					// TODO need binary name
 					Command: []string{"sleep"},
 					Args:    []string{"infinity"},
-					// TODO probably need the below
-					Ports:          nil,
-					EnvFrom:        nil,
-					Env:            nil,
+					Ports:   fullNodePorts,
+					// TODO (nix - 7/27/22) - Set these values.
 					Resources:      corev1.ResourceRequirements{},
 					VolumeMounts:   nil,
 					LivenessProbe:  nil,
@@ -75,19 +80,62 @@ func (b PodBuilder) Build() *corev1.Pod {
 // ordered sequence. Pods have deterministic, consistent names similar to a StatefulSet instead of generated names.
 func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 	pod := b.pod.DeepCopy()
-	pod.Labels = b.labels(ordinal)
-	pod.Name = b.name(ordinal)
+	name := b.name(ordinal)
+
+	pod.Labels[OrdinalLabel] = strconv.FormatInt(int64(ordinal), 10)
+	pod.Labels[kube.InstanceLabel] = kube.ToLabelValue(name)
+
+	pod.Name = kube.ToName(name)
+
 	b.pod = pod
 	return b
 }
 
-func (b PodBuilder) labels(ordinal int32) map[string]string {
-	return map[string]string{
-		chainLabel:   b.crd.Name,
-		OrdinalLabel: strconv.FormatInt(int64(ordinal), 10),
-	}
+func (b PodBuilder) name(ordinal int32) string {
+	return fmt.Sprintf("%s-fullnode-%d", b.crd.Name, ordinal)
 }
 
-func (b PodBuilder) name(ordinal int32) string {
-	return fmt.Sprintf("%s-%d", b.crd.Name, ordinal)
+var fullNodePorts = []corev1.ContainerPort{
+	{
+		Name:          "api",
+		Protocol:      corev1.ProtocolTCP,
+		HostPort:      1317,
+		ContainerPort: 1317,
+	},
+	{
+		Name:          "rosetta",
+		Protocol:      corev1.ProtocolTCP,
+		HostPort:      8080,
+		ContainerPort: 8080,
+	},
+	{
+		Name:          "grpc",
+		Protocol:      corev1.ProtocolTCP,
+		HostPort:      9090,
+		ContainerPort: 9090,
+	},
+	{
+		Name:          "prometheus",
+		Protocol:      corev1.ProtocolTCP,
+		HostPort:      26660,
+		ContainerPort: 26660,
+	},
+	{
+		Name:          "p2p",
+		Protocol:      corev1.ProtocolTCP,
+		HostPort:      26656,
+		ContainerPort: 26656,
+	},
+	{
+		Name:          "rpc",
+		Protocol:      corev1.ProtocolTCP,
+		HostPort:      26657,
+		ContainerPort: 26657,
+	},
+	{
+		Name:          "web",
+		Protocol:      corev1.ProtocolTCP,
+		HostPort:      9091,
+		ContainerPort: 9091,
+	},
 }
