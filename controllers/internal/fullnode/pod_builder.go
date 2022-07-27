@@ -53,7 +53,6 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 					Args:    []string{"infinity"},
 					Ports:   fullNodePorts,
 					// TODO (nix - 7/27/22) - Set these values.
-					Resources:      corev1.ResourceRequirements{},
 					VolumeMounts:   nil,
 					LivenessProbe:  nil,
 					ReadinessProbe: nil,
