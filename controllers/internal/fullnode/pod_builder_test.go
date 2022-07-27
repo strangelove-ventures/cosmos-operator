@@ -6,6 +6,7 @@ import (
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -61,6 +62,33 @@ func TestPodBuilder(t *testing.T) {
 
 		pod = builder.WithOrdinal(123).Build()
 		require.Equal(t, "osmosis-fullnode-123", pod.Name)
+	})
+
+	t.Run("happy path - ports", func(t *testing.T) {
+		pod := NewPodBuilder(&crd).Build()
+		ports := pod.Spec.Containers[len(pod.Spec.Containers)-1].Ports
+
+		require.Len(t, ports, 7)
+
+		for i, tt := range []struct {
+			Name string
+			Port int32
+		}{
+			{"api", 1317},
+			{"rosetta", 8080},
+			{"grpc", 9090},
+			{"prometheus", 26660},
+			{"p2p", 26656},
+			{"rpc", 26657},
+			{"web", 9091},
+		} {
+
+			port := ports[i]
+			require.Equal(t, tt.Name, port.Name, tt)
+			require.Equal(t, corev1.ProtocolTCP, port.Protocol)
+			require.Equal(t, tt.Port, port.ContainerPort)
+			require.Equal(t, tt.Port, port.HostPort)
+		}
 	})
 
 	t.Run("long name", func(t *testing.T) {

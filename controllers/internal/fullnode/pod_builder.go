@@ -52,7 +52,7 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 					Command: []string{"sleep"},
 					Args:    []string{"infinity"},
 					// TODO probably need the below
-					Ports:          nil,
+					Ports:          fullNodePorts,
 					EnvFrom:        nil,
 					Env:            nil,
 					Resources:      corev1.ResourceRequirements{},
@@ -95,4 +95,49 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 
 func (b PodBuilder) name(ordinal int32) string {
 	return fmt.Sprintf("%s-fullnode-%d", b.crd.Name, ordinal)
+}
+
+var fullNodePorts = []corev1.ContainerPort{
+	{
+		Name:          "api",
+		Protocol:      corev1.ProtocolTCP,
+		HostPort:      1317,
+		ContainerPort: 1317,
+	},
+	{
+		Name:          "rosetta",
+		Protocol:      corev1.ProtocolTCP,
+		HostPort:      8080,
+		ContainerPort: 8080,
+	},
+	{
+		Name:          "grpc",
+		Protocol:      corev1.ProtocolTCP,
+		HostPort:      9090,
+		ContainerPort: 9090,
+	},
+	{
+		Name:          "prometheus",
+		Protocol:      corev1.ProtocolTCP,
+		HostPort:      26660,
+		ContainerPort: 26660,
+	},
+	{
+		Name:          "p2p",
+		Protocol:      corev1.ProtocolTCP,
+		HostPort:      26656,
+		ContainerPort: 26656,
+	},
+	{
+		Name:          "rpc",
+		Protocol:      corev1.ProtocolTCP,
+		HostPort:      26657,
+		ContainerPort: 26657,
+	},
+	{
+		Name:          "web",
+		Protocol:      corev1.ProtocolTCP,
+		HostPort:      9091,
+		ContainerPort: 9091,
+	},
 }
