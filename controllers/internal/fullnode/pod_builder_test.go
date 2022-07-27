@@ -82,7 +82,6 @@ func TestPodBuilder(t *testing.T) {
 			{"rpc", 26657},
 			{"web", 9091},
 		} {
-
 			port := ports[i]
 			require.Equal(t, tt.Name, port.Name, tt)
 			require.Equal(t, corev1.ProtocolTCP, port.Protocol)

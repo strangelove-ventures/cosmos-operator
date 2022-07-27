@@ -21,7 +21,6 @@ func TestToLabelValue(t *testing.T) {
 		// Must start and end with alphanumeric character.
 		{"#..abc1-_@!", "abc1"},
 	} {
-
 		got := ToLabelValue(tt.Input)
 
 		require.LessOrEqual(t, len(got), 63)
@@ -43,7 +42,6 @@ func TestToName(t *testing.T) {
 		// Must start and end with alphanumeric character.
 		{"#..abc2-_@!", "abc2"},
 	} {
-
 		got := ToName(tt.Input)
 
 		require.LessOrEqual(t, len(got), 253)
