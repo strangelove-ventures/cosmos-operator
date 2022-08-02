@@ -9,10 +9,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const testOrdinalLabel = "ordinal"
-
 func ordinalLabels(n int) map[string]string {
-	return map[string]string{testOrdinalLabel: strconv.Itoa(n)}
+	return map[string]string{OrdinalAnnotation: strconv.Itoa(n)}
 }
 
 func TestNewDiff(t *testing.T) {
@@ -34,11 +32,11 @@ func TestNewDiff(t *testing.T) {
 		}
 
 		require.Panics(t, func() {
-			NewDiff(testOrdinalLabel, dupeNames, resources)
+			NewDiff(dupeNames, resources)
 		})
 
 		require.Panics(t, func() {
-			NewDiff(testOrdinalLabel, resources, dupeNames)
+			NewDiff(resources, dupeNames)
 		})
 	})
 
@@ -50,12 +48,12 @@ func TestNewDiff(t *testing.T) {
 		}
 		want := []*corev1.Pod{
 			{
-				ObjectMeta: metav1.ObjectMeta{Name: "hub-2", Labels: map[string]string{testOrdinalLabel: "value should be a number"}},
+				ObjectMeta: metav1.ObjectMeta{Name: "hub-2", Labels: map[string]string{OrdinalAnnotation: "value should be a number"}},
 			},
 		}
 
 		require.Panics(t, func() {
-			NewDiff(testOrdinalLabel, current, want)
+			NewDiff(current, want)
 		})
 	})
 }
@@ -83,7 +81,7 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 			},
 		}
 
-		diff := NewDiff(testOrdinalLabel, current, want)
+		diff := NewDiff(current, want)
 
 		require.Empty(t, diff.Deletes())
 		require.Empty(t, diff.Updates())
@@ -103,7 +101,7 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 			},
 		}
 
-		diff := NewDiff(testOrdinalLabel, nil, want)
+		diff := NewDiff(nil, want)
 
 		require.Empty(t, diff.Deletes())
 		require.Empty(t, diff.Updates())
@@ -131,7 +129,7 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 			},
 		}
 
-		diff := NewDiff(testOrdinalLabel, current, want)
+		diff := NewDiff(current, want)
 
 		require.Empty(t, diff.Updates())
 		require.Empty(t, diff.Creates())
@@ -163,7 +161,7 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 			},
 		}
 
-		diff := NewDiff(testOrdinalLabel, current, want)
+		diff := NewDiff(current, want)
 
 		require.Empty(t, diff.Updates())
 

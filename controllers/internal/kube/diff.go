@@ -2,7 +2,6 @@ package kube
 
 import (
 	"errors"
-	"fmt"
 	"sort"
 	"strconv"
 
@@ -16,24 +15,22 @@ type ordinalSet[T Resource] map[string]ordinalResource[T]
 
 // Diff computes steps needed to bring a current state equal to a new state.
 type Diff[T Resource] struct {
-	ordinalLabel     string
 	creates, deletes []T
 }
 
 // NewDiff creates a valid Diff.
 // It computes differences between the "current" state needed to reconcile to the "want" state.
-// "checkReady" determines if the resource is in a ready state. E.g. a pod that is Ready and not initializing or terminating.
 //
-// The "ordinalLabel" is a well-known label common to all resources. It's value must be a string which can be
-// converted to an integer. It's used for proper sorting.
-// Each resource name and ordinalLabel value must be unique.
+// Diff expects resources with annotations denoting ordinal positioning similar to a StatefulSet. E.g. pod-0, pod-1, pod-2.
+// The OrdinalAnnotation allows Diff to sort resources deterministically.
+// Therefore, resources must have OrdinalAnnotation set appropriately, otherwise this function panics.
+//
+// For Updates, resources must have ControllerGenerationAnnotation set appropriately or else this function panics.
 //
 // There are several O(N) or O(2N) operations where N = number of resources.
 // However, we expect N to be small.
-func NewDiff[T Resource](ordinalLabel string, current, want []T) *Diff[T] {
-	d := &Diff[T]{
-		ordinalLabel: ordinalLabel,
-	}
+func NewDiff[T Resource](current, want []T) *Diff[T] {
+	d := &Diff[T]{}
 
 	currentSet := d.toMap(current)
 	if len(currentSet) != len(current) {
@@ -97,11 +94,12 @@ func (diff *Diff[T]) toMap(list []T) map[string]ordinalResource[T] {
 	m := make(map[string]ordinalResource[T])
 	for i := range list {
 		r := list[i]
-		v := r.GetLabels()[diff.ordinalLabel]
-		n, err := strconv.ParseInt(v, 10, 64)
-		if err != nil {
-			panic(fmt.Errorf("invalid ordinal label %q=%q: %w", diff.ordinalLabel, v, err))
-		}
+		v := r.GetAnnotations()[OrdinalAnnotation]
+		n, _ := strconv.ParseInt(v, 10, 64)
+		panic("TODO")
+		//if err != nil {
+		//	panic(fmt.Errorf("invalid ordinal label %q=%q: %w", diff.ordinalLabel, v, err))
+		//}
 		m[r.GetName()] = ordinalResource[T]{
 			Resource: r,
 			Ordinal:  n,

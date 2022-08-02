@@ -13,6 +13,15 @@ const (
 	VersionLabel    = "app.kubernetes.io/version"
 )
 
+// Nonstandard but common annotations
+const (
+	// OrdinalAnnotation value is a sequential integer such as "0", "1", "2". It represents a resource's unique position
+	// within a set of resources. It aids in creating resources similar to a StatefulSet.
+	OrdinalAnnotation = "app.kubernetes.io/ordinal"
+
+	// ControllerGenerationAnnotation is the owning controller generation for the resource. The value must be an integer.
+	ControllerGenerationAnnotation = "app.kubernetes.io/controller-generation"
+)
 // ToLabelValue normalizes val per kubernetes label constraints to a max of 63 characters.
 // This function lowercases even though uppercase is allowed.
 // See: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#syntax-and-character-set.
