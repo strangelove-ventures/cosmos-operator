@@ -9,7 +9,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func ordinalLabels(n int) map[string]string {
+func ordinalAnnotations(n int) map[string]string {
 	return map[string]string{OrdinalAnnotation: strconv.Itoa(n)}
 }
 
@@ -19,15 +19,15 @@ func TestNewDiff(t *testing.T) {
 	t.Run("non-unique names", func(t *testing.T) {
 		dupeNames := []*corev1.Pod{
 			{
-				ObjectMeta: metav1.ObjectMeta{Name: "hub-0", Labels: ordinalLabels(0)},
+				ObjectMeta: metav1.ObjectMeta{Name: "hub-0", Annotations: ordinalAnnotations(0)},
 			},
 			{
-				ObjectMeta: metav1.ObjectMeta{Name: "hub-0", Labels: ordinalLabels(0)},
+				ObjectMeta: metav1.ObjectMeta{Name: "hub-0", Annotations: ordinalAnnotations(0)},
 			},
 		}
 		resources := []*corev1.Pod{
 			{
-				ObjectMeta: metav1.ObjectMeta{Name: "hub-2", Labels: ordinalLabels(2)},
+				ObjectMeta: metav1.ObjectMeta{Name: "hub-2", Annotations: ordinalAnnotations(2)},
 			},
 		}
 
@@ -48,7 +48,7 @@ func TestNewDiff(t *testing.T) {
 		}
 		want := []*corev1.Pod{
 			{
-				ObjectMeta: metav1.ObjectMeta{Name: "hub-2", Labels: map[string]string{OrdinalAnnotation: "value should be a number"}},
+				ObjectMeta: metav1.ObjectMeta{Name: "hub-2", Annotations: map[string]string{OrdinalAnnotation: "value should be a number"}},
 			},
 		}
 
@@ -64,20 +64,20 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 	t.Run("simple create", func(t *testing.T) {
 		current := []*corev1.Pod{
 			{
-				ObjectMeta: metav1.ObjectMeta{Name: "hub-0", Labels: ordinalLabels(0)},
+				ObjectMeta: metav1.ObjectMeta{Name: "hub-0", Annotations: ordinalAnnotations(0)},
 			},
 		}
 
 		// Purposefully unordered
 		want := []*corev1.Pod{
 			{
-				ObjectMeta: metav1.ObjectMeta{Name: "hub-2", Labels: ordinalLabels(2)},
+				ObjectMeta: metav1.ObjectMeta{Name: "hub-2", Annotations: ordinalAnnotations(2)},
 			},
 			{
-				ObjectMeta: metav1.ObjectMeta{Name: "hub-0", Labels: ordinalLabels(0)},
+				ObjectMeta: metav1.ObjectMeta{Name: "hub-0", Annotations: ordinalAnnotations(0)},
 			},
 			{
-				ObjectMeta: metav1.ObjectMeta{Name: "hub-110", Labels: ordinalLabels(110)}, // tests for numeric (not lexical) sorting
+				ObjectMeta: metav1.ObjectMeta{Name: "hub-110", Annotations: ordinalAnnotations(110)}, // tests for numeric (not lexical) sorting
 			},
 		}
 
@@ -94,10 +94,10 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 	t.Run("only create", func(t *testing.T) {
 		want := []*corev1.Pod{
 			{
-				ObjectMeta: metav1.ObjectMeta{Name: "hub-0", Labels: ordinalLabels(0)},
+				ObjectMeta: metav1.ObjectMeta{Name: "hub-0", Annotations: ordinalAnnotations(0)},
 			},
 			{
-				ObjectMeta: metav1.ObjectMeta{Name: "hub-1", Labels: ordinalLabels(1)},
+				ObjectMeta: metav1.ObjectMeta{Name: "hub-1", Annotations: ordinalAnnotations(1)},
 			},
 		}
 
@@ -113,19 +113,19 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 		// Purposefully unordered.
 		current := []*corev1.Pod{
 			{
-				ObjectMeta: metav1.ObjectMeta{Name: "hub-0", Labels: ordinalLabels(0)},
+				ObjectMeta: metav1.ObjectMeta{Name: "hub-0", Annotations: ordinalAnnotations(0)},
 			},
 			{
-				ObjectMeta: metav1.ObjectMeta{Name: "hub-11", Labels: ordinalLabels(11)}, // tests for numeric (not lexical) sorting
+				ObjectMeta: metav1.ObjectMeta{Name: "hub-11", Annotations: ordinalAnnotations(11)}, // tests for numeric (not lexical) sorting
 			},
 			{
-				ObjectMeta: metav1.ObjectMeta{Name: "hub-2", Labels: ordinalLabels(2)},
+				ObjectMeta: metav1.ObjectMeta{Name: "hub-2", Annotations: ordinalAnnotations(2)},
 			},
 		}
 
 		want := []*corev1.Pod{
 			{
-				ObjectMeta: metav1.ObjectMeta{Name: "hub-0", Labels: ordinalLabels(0)},
+				ObjectMeta: metav1.ObjectMeta{Name: "hub-0", Annotations: ordinalAnnotations(0)},
 			},
 		}
 
@@ -142,22 +142,22 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 	t.Run("combination", func(t *testing.T) {
 		current := []*corev1.Pod{
 			{
-				ObjectMeta: metav1.ObjectMeta{Name: "hub-0", Labels: ordinalLabels(0)},
+				ObjectMeta: metav1.ObjectMeta{Name: "hub-0", Annotations: ordinalAnnotations(0)},
 			},
 			{
-				ObjectMeta: metav1.ObjectMeta{Name: "hub-3", Labels: ordinalLabels(3)},
+				ObjectMeta: metav1.ObjectMeta{Name: "hub-3", Annotations: ordinalAnnotations(3)},
 			},
 			{
-				ObjectMeta: metav1.ObjectMeta{Name: "hub-4", Labels: ordinalLabels(4)},
+				ObjectMeta: metav1.ObjectMeta{Name: "hub-4", Annotations: ordinalAnnotations(4)},
 			},
 		}
 
 		want := []*corev1.Pod{
 			{
-				ObjectMeta: metav1.ObjectMeta{Name: "hub-0", Labels: ordinalLabels(0)},
+				ObjectMeta: metav1.ObjectMeta{Name: "hub-0", Annotations: ordinalAnnotations(0)},
 			},
 			{
-				ObjectMeta: metav1.ObjectMeta{Name: "hub-1", Labels: ordinalLabels(1)},
+				ObjectMeta: metav1.ObjectMeta{Name: "hub-1", Annotations: ordinalAnnotations(1)},
 			},
 		}
 

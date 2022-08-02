@@ -92,7 +92,7 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	var (
 		wantPods = fullnode.PodState(&crd)
-		podDiff  = kube.NewDiff(fullnode.OrdinalLabel, ptrSlice(pods.Items), wantPods)
+		podDiff  = kube.NewDiff(ptrSlice(pods.Items), wantPods)
 	)
 
 	for _, pod := range podDiff.Creates() {
