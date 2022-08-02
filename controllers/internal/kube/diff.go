@@ -2,6 +2,7 @@ package kube
 
 import (
 	"errors"
+	"fmt"
 	"sort"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -10,11 +11,20 @@ import (
 // Resource is a kubernetes resource.
 type Resource = metav1.Object
 
+// key is the resource name which must be unique per k8s conventions.
 type ordinalSet[T Resource] map[string]ordinalResource[T]
+
+func (set ordinalSet[T]) clone() ordinalSet[T] {
+	c := make(ordinalSet[T])
+	for k, v := range set {
+		c[k] = v
+	}
+	return c
+}
 
 // Diff computes steps needed to bring a current state equal to a new state.
 type Diff[T Resource] struct {
-	creates, deletes []T
+	creates, deletes, updates []T
 }
 
 // NewDiff creates a valid Diff.
@@ -24,25 +34,28 @@ type Diff[T Resource] struct {
 // The OrdinalAnnotation allows Diff to sort resources deterministically.
 // Therefore, resources must have OrdinalAnnotation set appropriately, otherwise this function panics.
 //
-// For Updates, resources must have ControllerRevisionAnnotation set appropriately or else this function panics.
+// For Updates, resources must have ControllerVersionAnnotation set appropriately or else this function panics.
 //
 // There are several O(N) or O(2N) operations where N = number of resources.
 // However, we expect N to be small.
 func NewDiff[T Resource](current, want []T) *Diff[T] {
 	d := &Diff[T]{}
 
-	currentSet := d.toMap(current)
+	currentSet := d.toSet(current)
 	if len(currentSet) != len(current) {
 		panic(errors.New("each resource in current must have unique .metadata.name"))
 	}
 
-	wantSet := d.toMap(want)
+	wantSet := d.toSet(want)
 	if len(wantSet) != len(want) {
 		panic(errors.New("each resource in want must have unique .metadata.name"))
 	}
 
 	d.creates = d.computeCreates(currentSet, wantSet)
 	d.deletes = d.computeDeletes(currentSet, wantSet)
+
+	// updates must come last
+	d.updates = d.computeUpdates(currentSet, wantSet)
 	return d
 }
 
@@ -80,8 +93,38 @@ func (diff *Diff[T]) computeDeletes(current, want ordinalSet[T]) []T {
 
 // Updates returns a list of resources that should be updated or patched.
 func (diff *Diff[T]) Updates() []T {
-	// TODO (nix - 7/25/22) To be implemented
-	return nil
+	return diff.updates
+}
+
+// creates and deletes must be calculated first.
+func (diff *Diff[T]) computeUpdates(current, want ordinalSet[T]) []T {
+	candidates := current.clone()
+	// Remove deletes; don't need to update resources that will be gone.
+	for _, deleted := range diff.deletes {
+		if _, ok := current[deleted.GetName()]; ok {
+			delete(candidates, deleted.GetName())
+		}
+	}
+
+	var updates []ordinalResource[T]
+	for _, candidate := range candidates {
+		currentVersion := candidate.Resource.GetAnnotations()[ControllerVersionAnnotation]
+		if currentVersion == "" {
+			panic(fmt.Errorf("current resource %s missing value for required annotation %s", candidate.Resource.GetName(), ControllerVersionAnnotation))
+		}
+
+		wantResource := want[candidate.Resource.GetName()].Resource
+		wantVersion := wantResource.GetAnnotations()[ControllerVersionAnnotation]
+		if wantVersion == "" {
+			panic(fmt.Errorf("want resource %s missing value for required annotation %s", wantResource.GetName(), ControllerVersionAnnotation))
+		}
+
+		if currentVersion != wantVersion {
+			updates = append(updates, want[candidate.Resource.GetName()])
+		}
+	}
+
+	return diff.sortByOrdinal(updates)
 }
 
 type ordinalResource[T Resource] struct {
@@ -89,7 +132,7 @@ type ordinalResource[T Resource] struct {
 	Ordinal  int64
 }
 
-func (diff *Diff[T]) toMap(list []T) map[string]ordinalResource[T] {
+func (diff *Diff[T]) toSet(list []T) ordinalSet[T] {
 	m := make(map[string]ordinalResource[T])
 	for i := range list {
 		r := list[i]

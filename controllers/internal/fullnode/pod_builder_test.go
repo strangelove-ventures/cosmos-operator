@@ -21,9 +21,9 @@ func TestPodBuilder(t *testing.T) {
 
 	crd := cosmosv1.CosmosFullNode{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:       "osmosis",
-			Namespace:  "test",
-			Generation: 33,
+			Name:            "osmosis",
+			Namespace:       "test",
+			ResourceVersion: "_resource_version_",
 		},
 		Spec: cosmosv1.CosmosFullNodeSpec{
 			Image: "busybox:v1.2.3",
@@ -50,8 +50,8 @@ func TestPodBuilder(t *testing.T) {
 		require.EqualValues(t, 30, *pod.Spec.TerminationGracePeriodSeconds)
 
 		wantAnnotations := map[string]string{
-			"app.kubernetes.io/ordinal":               "5",
-			"app.kubernetes.io/controller-generation": "33",
+			"app.kubernetes.io/ordinal":                 "5",
+			"controller.kubernetes.io/resource-version": "_resource_version_",
 			// TODO (nix - 8/2/22) Prom metrics here
 		}
 		require.Equal(t, wantAnnotations, pod.Annotations)

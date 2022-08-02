@@ -9,12 +9,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func diffablePod(ordinal, generation int) *corev1.Pod {
+func diffablePod(ordinal int, resourceVersion string) *corev1.Pod {
 	p := new(corev1.Pod)
 	p.Name = fmt.Sprintf("pod-%d", ordinal)
 	p.Annotations = map[string]string{
-		OrdinalAnnotation:            ToIntegerValue(ordinal),
-		ControllerRevisionAnnotation: ToIntegerValue(generation),
+		OrdinalAnnotation:           ToIntegerValue(ordinal),
+		ControllerVersionAnnotation: resourceVersion,
 	}
 	return p
 }
@@ -22,15 +22,15 @@ func diffablePod(ordinal, generation int) *corev1.Pod {
 func TestNewDiff(t *testing.T) {
 	t.Parallel()
 
-	const generation = 123
+	const resourceVersion = "_controller_version_"
 
 	t.Run("non-unique names", func(t *testing.T) {
 		dupeNames := []*corev1.Pod{
-			diffablePod(0, generation),
-			diffablePod(0, generation),
+			diffablePod(0, resourceVersion),
+			diffablePod(0, resourceVersion),
 		}
 		resources := []*corev1.Pod{
-			diffablePod(0, generation),
+			diffablePod(0, resourceVersion),
 		}
 
 		require.Panics(t, func() {
@@ -48,12 +48,12 @@ func TestNewDiff(t *testing.T) {
 		}{
 			{nil},
 			{map[string]string{
-				OrdinalAnnotation:            "value should be a number",
-				ControllerRevisionAnnotation: "1",
+				OrdinalAnnotation:           "value should be a number",
+				ControllerVersionAnnotation: "abc123",
 			}},
 			{map[string]string{
-				OrdinalAnnotation:            "2",
-				ControllerRevisionAnnotation: "value should be a number",
+				OrdinalAnnotation:           "2",
+				ControllerVersionAnnotation: "",
 			}},
 		} {
 			current := []*corev1.Pod{
@@ -61,8 +61,11 @@ func TestNewDiff(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{Name: "pod-0", Annotations: tt.Annotations},
 				},
 			}
+			want := []*corev1.Pod{
+				diffablePod(0, "_new_resource_"),
+			}
 			require.Panics(t, func() {
-				NewDiff(current, nil)
+				NewDiff(current, want)
 			}, tt)
 		}
 	})
@@ -71,18 +74,18 @@ func TestNewDiff(t *testing.T) {
 func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 	t.Parallel()
 
-	const generation = 123
+	const resourceVersion = "_controller_version_"
 
 	t.Run("simple create", func(t *testing.T) {
 		current := []*corev1.Pod{
-			diffablePod(0, generation),
+			diffablePod(0, resourceVersion),
 		}
 
 		// Purposefully unordered
 		want := []*corev1.Pod{
-			diffablePod(2, generation),
-			diffablePod(0, generation),
-			diffablePod(110, generation), // tests for numeric (not lexical) sorting
+			diffablePod(2, resourceVersion),
+			diffablePod(0, resourceVersion),
+			diffablePod(110, resourceVersion), // tests for numeric (not lexical) sorting
 		}
 
 		diff := NewDiff(current, want)
@@ -97,8 +100,8 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 
 	t.Run("only create", func(t *testing.T) {
 		want := []*corev1.Pod{
-			diffablePod(0, generation),
-			diffablePod(1, generation),
+			diffablePod(0, resourceVersion),
+			diffablePod(1, resourceVersion),
 		}
 
 		diff := NewDiff(nil, want)
@@ -112,13 +115,13 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 	t.Run("simple delete", func(t *testing.T) {
 		// Purposefully unordered.
 		current := []*corev1.Pod{
-			diffablePod(0, generation),
-			diffablePod(11, generation), // tests for numeric (not lexical) sorting
-			diffablePod(2, generation),
+			diffablePod(0, resourceVersion),
+			diffablePod(11, resourceVersion), // tests for numeric (not lexical) sorting
+			diffablePod(2, resourceVersion),
 		}
 
 		want := []*corev1.Pod{
-			diffablePod(0, generation),
+			diffablePod(0, resourceVersion),
 		}
 
 		diff := NewDiff(current, want)
@@ -132,26 +135,49 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 	})
 
 	t.Run("simple update", func(t *testing.T) {
-		t.Fail()
-	})
-
-	t.Run("combination", func(t *testing.T) {
+		// Purposefully unordered.
 		current := []*corev1.Pod{
-			diffablePod(0, generation),
-			diffablePod(3, generation),
-			diffablePod(4, generation),
+			diffablePod(22, resourceVersion), // tests for numeric (not lexical) sorting
+			diffablePod(2, resourceVersion),
 		}
 
 		want := []*corev1.Pod{
-			diffablePod(0, generation),
-			diffablePod(1, generation),
+			diffablePod(22, "_new_version_"),
+			diffablePod(2, "_new_version_"),
 		}
 
 		diff := NewDiff(current, want)
 
-		require.Empty(t, diff.Updates())
+		require.Empty(t, diff.Creates())
+		require.Empty(t, diff.Deletes())
+
+		require.Len(t, diff.Updates(), 2)
+		require.Equal(t, diff.Updates()[0].Name, "pod-2")
+		require.Equal(t, diff.Updates()[1].Name, "pod-22")
+	})
+
+	t.Run("combination", func(t *testing.T) {
+		current := []*corev1.Pod{
+			diffablePod(0, resourceVersion),
+			diffablePod(3, resourceVersion),
+			diffablePod(4, resourceVersion),
+		}
+
+		want := []*corev1.Pod{
+			diffablePod(0, "_new_version_"),
+			diffablePod(1, resourceVersion),
+		}
+
+		diff := NewDiff(current, want)
+
+		require.Len(t, diff.Updates(), 1)
+		require.Equal(t, "pod-0", diff.Updates()[0].Name)
 
 		require.Len(t, diff.Creates(), 1)
+		require.Equal(t, "pod-1", diff.Creates()[0].Name)
+
 		require.Len(t, diff.Deletes(), 2)
+		require.Equal(t, diff.Deletes()[0].Name, "pod-3")
+		require.Equal(t, diff.Deletes()[1].Name, "pod-4")
 	})
 }

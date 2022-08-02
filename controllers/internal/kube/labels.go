@@ -22,8 +22,8 @@ const (
 	// within a set of resources. It aids in creating resources similar to a StatefulSet.
 	OrdinalAnnotation = "app.kubernetes.io/ordinal"
 
-	// ControllerRevisionAnnotation is the owning controller .metadata.resourceVersion.
-	ControllerRevisionAnnotation = "app.kubernetes.io/controller-revision"
+	// ControllerVersionAnnotation is the owning controller .metadata.resourceVersion.
+	ControllerVersionAnnotation = "controller.kubernetes.io/resource-version"
 )
 
 // ToIntegerValue converts n to an integer string.
