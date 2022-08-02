@@ -3,7 +3,6 @@ package fullnode
 import (
 	"errors"
 	"fmt"
-	"strconv"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
@@ -38,7 +37,7 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 				kube.NameLabel:       kube.ToLabelValue(fmt.Sprintf("%s-fullnode", crd.Name)),
 				kube.VersionLabel:    kube.ParseImageVersion(crd.Spec.Image),
 			},
-			Annotations: nil, // TODO: expose prom metrics
+			Annotations: make(map[string]string), // Values inserted later in methods such as WithOrdinal.
 		},
 		Spec: corev1.PodSpec{
 			Volumes:                       nil, // TODO: must create volumes before this step
@@ -82,7 +81,8 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 	pod := b.pod.DeepCopy()
 	name := b.name(ordinal)
 
-	pod.Labels[OrdinalLabel] = strconv.FormatInt(int64(ordinal), 10)
+	pod.Annotations[kube.OrdinalAnnotation] = kube.ToIntegerValue(ordinal)
+	pod.Annotations[kube.ControllerGenerationAnnotation] = kube.ToIntegerValue(b.crd.Generation)
 	pod.Labels[kube.InstanceLabel] = kube.ToLabelValue(name)
 
 	pod.Name = kube.ToName(name)
