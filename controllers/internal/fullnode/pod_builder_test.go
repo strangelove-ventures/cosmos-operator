@@ -106,10 +106,8 @@ func TestPodBuilder(t *testing.T) {
 		require.Len(t, pod.Name, 253)
 		require.Regexp(t, `a.*-fullnode-125`, pod.Name)
 
-		require.Empty(t, pod.Annotations) // TODO: expose prom metrics
 		wantLabels := map[string]string{
 			"cosmosfullnode.cosmos.strange.love/chain-name": strings.Repeat("a", 63),
-			"cosmosfullnode.cosmos.strange.love/ordinal":    "125",
 			"app.kubernetes.io/instance":                    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-fullnode-125",
 			"app.kubernetes.io/created-by":                  "cosmosfullnode",
 			"app.kubernetes.io/name":                        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-fullnode",
