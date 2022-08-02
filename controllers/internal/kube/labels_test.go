@@ -1,8 +1,11 @@
 package kube
 
 import (
+	"fmt"
+	"math/rand"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -46,5 +49,28 @@ func TestToName(t *testing.T) {
 
 		require.LessOrEqual(t, len(got), 253)
 		require.Equal(t, tt.Want, got, tt)
+	}
+}
+
+func TestToIntegerValue(t *testing.T) {
+	t.Parallel()
+
+	require.Equal(t, "123", ToIntegerValue(123))
+	require.Equal(t, "-1", ToIntegerValue(-1))
+}
+
+func TestMustValueToInt(t *testing.T) {
+	t.Parallel()
+
+	require.EqualValues(t, 123, MustValueToInt(ToIntegerValue(123)))
+
+	rand.Seed(time.Now().UnixNano())
+	n := rand.Intn(1000)
+	require.EqualValues(t, n, MustValueToInt(fmt.Sprintf("%d", n)))
+
+	for _, badValue := range []string{"", "1.2", "1-2"} {
+		require.Panics(t, func() {
+			MustValueToInt(badValue)
+		})
 	}
 }

@@ -3,7 +3,6 @@ package kube
 import (
 	"errors"
 	"sort"
-	"strconv"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -94,12 +93,7 @@ func (diff *Diff[T]) toMap(list []T) map[string]ordinalResource[T] {
 	m := make(map[string]ordinalResource[T])
 	for i := range list {
 		r := list[i]
-		v := r.GetAnnotations()[OrdinalAnnotation]
-		n, _ := strconv.ParseInt(v, 10, 64)
-		panic("TODO")
-		//if err != nil {
-		//	panic(fmt.Errorf("invalid ordinal label %q=%q: %w", diff.ordinalLabel, v, err))
-		//}
+		n := MustValueToInt(r.GetAnnotations()[OrdinalAnnotation])
 		m[r.GetName()] = ordinalResource[T]{
 			Resource: r,
 			Ordinal:  n,

@@ -2,7 +2,10 @@ package kube
 
 import (
 	"bytes"
+	"strconv"
 	"strings"
+
+	"golang.org/x/exp/constraints"
 )
 
 // Recommended labels. See: https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/
@@ -22,6 +25,21 @@ const (
 	// ControllerGenerationAnnotation is the owning controller generation for the resource. The value must be an integer.
 	ControllerGenerationAnnotation = "app.kubernetes.io/controller-generation"
 )
+
+// ToIntegerValue converts n to an integer string.
+func ToIntegerValue[T constraints.Signed](n T) string {
+	return strconv.FormatInt(int64(n), 10)
+}
+
+// MustValueToInt converts s to int64 or panics on failure.
+func MustValueToInt(s string) int64 {
+	n, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		panic(err)
+	}
+	return n
+}
+
 // ToLabelValue normalizes val per kubernetes label constraints to a max of 63 characters.
 // This function lowercases even though uppercase is allowed.
 // See: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#syntax-and-character-set.
