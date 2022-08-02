@@ -82,7 +82,7 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 	name := b.name(ordinal)
 
 	pod.Annotations[kube.OrdinalAnnotation] = kube.ToIntegerValue(ordinal)
-	pod.Annotations[kube.ControllerGenerationAnnotation] = kube.ToIntegerValue(b.crd.Generation)
+	pod.Annotations[kube.ControllerRevisionAnnotation] = kube.ToIntegerValue(b.crd.Generation)
 	pod.Labels[kube.InstanceLabel] = kube.ToLabelValue(name)
 
 	pod.Name = kube.ToName(name)

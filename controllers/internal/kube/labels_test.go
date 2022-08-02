@@ -11,6 +11,8 @@ import (
 )
 
 func TestToLabelValue(t *testing.T) {
+	t.Parallel()
+
 	for _, tt := range []struct {
 		Input string
 		Want  string
@@ -32,6 +34,8 @@ func TestToLabelValue(t *testing.T) {
 }
 
 func TestToName(t *testing.T) {
+	t.Parallel()
+
 	for _, tt := range []struct {
 		Input string
 		Want  string
@@ -59,18 +63,18 @@ func TestToIntegerValue(t *testing.T) {
 	require.Equal(t, "-1", ToIntegerValue(-1))
 }
 
-func TestMustValueToInt(t *testing.T) {
+func TestMustToInt(t *testing.T) {
 	t.Parallel()
 
-	require.EqualValues(t, 123, MustValueToInt(ToIntegerValue(123)))
+	require.EqualValues(t, 123, MustToInt(ToIntegerValue(123)))
 
 	rand.Seed(time.Now().UnixNano())
 	n := rand.Intn(1000)
-	require.EqualValues(t, n, MustValueToInt(fmt.Sprintf("%d", n)))
+	require.EqualValues(t, n, MustToInt(fmt.Sprintf("%d", n)))
 
 	for _, badValue := range []string{"", "1.2", "1-2"} {
 		require.Panics(t, func() {
-			MustValueToInt(badValue)
+			MustToInt(badValue)
 		})
 	}
 }

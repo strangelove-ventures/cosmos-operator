@@ -129,7 +129,7 @@ func (r *CosmosFullNodeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&cosmosv1.CosmosFullNode{}).
-		// Watch all pod delete events to queue controller requests for pods owned by CosmosFullNode controller.
+		// Watch all pod delete events to queue requests for pods owned by CosmosFullNode controller.
 		Watches(
 			&source.Kind{Type: &corev1.Pod{}},
 			&handler.EnqueueRequestForOwner{OwnerType: &cosmosv1.CosmosFullNode{}, IsController: true},

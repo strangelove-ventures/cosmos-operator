@@ -22,8 +22,8 @@ const (
 	// within a set of resources. It aids in creating resources similar to a StatefulSet.
 	OrdinalAnnotation = "app.kubernetes.io/ordinal"
 
-	// ControllerGenerationAnnotation is the owning controller generation for the resource. The value must be an integer.
-	ControllerGenerationAnnotation = "app.kubernetes.io/controller-generation"
+	// ControllerRevisionAnnotation is the owning controller .metadata.resourceVersion.
+	ControllerRevisionAnnotation = "app.kubernetes.io/controller-revision"
 )
 
 // ToIntegerValue converts n to an integer string.
@@ -31,8 +31,8 @@ func ToIntegerValue[T constraints.Signed](n T) string {
 	return strconv.FormatInt(int64(n), 10)
 }
 
-// MustValueToInt converts s to int64 or panics on failure.
-func MustValueToInt(s string) int64 {
+// MustToInt converts s to int64 or panics on failure.
+func MustToInt(s string) int64 {
 	n, err := strconv.ParseInt(s, 10, 64)
 	if err != nil {
 		panic(err)

@@ -1,7 +1,7 @@
 package kube
 
 import (
-	"strconv"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -9,26 +9,28 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func ordinalAnnotations(n int) map[string]string {
-	return map[string]string{OrdinalAnnotation: strconv.Itoa(n)}
+func diffablePod(ordinal, generation int) *corev1.Pod {
+	p := new(corev1.Pod)
+	p.Name = fmt.Sprintf("pod-%d", ordinal)
+	p.Annotations = map[string]string{
+		OrdinalAnnotation:            ToIntegerValue(ordinal),
+		ControllerRevisionAnnotation: ToIntegerValue(generation),
+	}
+	return p
 }
 
 func TestNewDiff(t *testing.T) {
 	t.Parallel()
 
+	const generation = 123
+
 	t.Run("non-unique names", func(t *testing.T) {
 		dupeNames := []*corev1.Pod{
-			{
-				ObjectMeta: metav1.ObjectMeta{Name: "hub-0", Annotations: ordinalAnnotations(0)},
-			},
-			{
-				ObjectMeta: metav1.ObjectMeta{Name: "hub-0", Annotations: ordinalAnnotations(0)},
-			},
+			diffablePod(0, generation),
+			diffablePod(0, generation),
 		}
 		resources := []*corev1.Pod{
-			{
-				ObjectMeta: metav1.ObjectMeta{Name: "hub-2", Annotations: ordinalAnnotations(2)},
-			},
+			diffablePod(0, generation),
 		}
 
 		require.Panics(t, func() {
@@ -40,45 +42,47 @@ func TestNewDiff(t *testing.T) {
 		})
 	})
 
-	t.Run("missing required labels", func(t *testing.T) {
-		current := []*corev1.Pod{
-			{
-				ObjectMeta: metav1.ObjectMeta{Name: "hub-0"}, // missing label
-			},
+	t.Run("missing required annotations", func(t *testing.T) {
+		for _, tt := range []struct {
+			Annotations map[string]string
+		}{
+			{nil},
+			{map[string]string{
+				OrdinalAnnotation:            "value should be a number",
+				ControllerRevisionAnnotation: "1",
+			}},
+			{map[string]string{
+				OrdinalAnnotation:            "2",
+				ControllerRevisionAnnotation: "value should be a number",
+			}},
+		} {
+			current := []*corev1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "pod-0", Annotations: tt.Annotations},
+				},
+			}
+			require.Panics(t, func() {
+				NewDiff(current, nil)
+			}, tt)
 		}
-		want := []*corev1.Pod{
-			{
-				ObjectMeta: metav1.ObjectMeta{Name: "hub-2", Annotations: map[string]string{OrdinalAnnotation: "value should be a number"}},
-			},
-		}
-
-		require.Panics(t, func() {
-			NewDiff(current, want)
-		})
 	})
 }
 
 func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 	t.Parallel()
 
+	const generation = 123
+
 	t.Run("simple create", func(t *testing.T) {
 		current := []*corev1.Pod{
-			{
-				ObjectMeta: metav1.ObjectMeta{Name: "hub-0", Annotations: ordinalAnnotations(0)},
-			},
+			diffablePod(0, generation),
 		}
 
 		// Purposefully unordered
 		want := []*corev1.Pod{
-			{
-				ObjectMeta: metav1.ObjectMeta{Name: "hub-2", Annotations: ordinalAnnotations(2)},
-			},
-			{
-				ObjectMeta: metav1.ObjectMeta{Name: "hub-0", Annotations: ordinalAnnotations(0)},
-			},
-			{
-				ObjectMeta: metav1.ObjectMeta{Name: "hub-110", Annotations: ordinalAnnotations(110)}, // tests for numeric (not lexical) sorting
-			},
+			diffablePod(2, generation),
+			diffablePod(0, generation),
+			diffablePod(110, generation), // tests for numeric (not lexical) sorting
 		}
 
 		diff := NewDiff(current, want)
@@ -87,18 +91,14 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 		require.Empty(t, diff.Updates())
 
 		require.Len(t, diff.Creates(), 2)
-		require.Equal(t, diff.Creates()[0].Name, "hub-2")
-		require.Equal(t, diff.Creates()[1].Name, "hub-110")
+		require.Equal(t, diff.Creates()[0].Name, "pod-2")
+		require.Equal(t, diff.Creates()[1].Name, "pod-110")
 	})
 
 	t.Run("only create", func(t *testing.T) {
 		want := []*corev1.Pod{
-			{
-				ObjectMeta: metav1.ObjectMeta{Name: "hub-0", Annotations: ordinalAnnotations(0)},
-			},
-			{
-				ObjectMeta: metav1.ObjectMeta{Name: "hub-1", Annotations: ordinalAnnotations(1)},
-			},
+			diffablePod(0, generation),
+			diffablePod(1, generation),
 		}
 
 		diff := NewDiff(nil, want)
@@ -112,21 +112,13 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 	t.Run("simple delete", func(t *testing.T) {
 		// Purposefully unordered.
 		current := []*corev1.Pod{
-			{
-				ObjectMeta: metav1.ObjectMeta{Name: "hub-0", Annotations: ordinalAnnotations(0)},
-			},
-			{
-				ObjectMeta: metav1.ObjectMeta{Name: "hub-11", Annotations: ordinalAnnotations(11)}, // tests for numeric (not lexical) sorting
-			},
-			{
-				ObjectMeta: metav1.ObjectMeta{Name: "hub-2", Annotations: ordinalAnnotations(2)},
-			},
+			diffablePod(0, generation),
+			diffablePod(11, generation), // tests for numeric (not lexical) sorting
+			diffablePod(2, generation),
 		}
 
 		want := []*corev1.Pod{
-			{
-				ObjectMeta: metav1.ObjectMeta{Name: "hub-0", Annotations: ordinalAnnotations(0)},
-			},
+			diffablePod(0, generation),
 		}
 
 		diff := NewDiff(current, want)
@@ -135,30 +127,24 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 		require.Empty(t, diff.Creates())
 
 		require.Len(t, diff.Deletes(), 2)
-		require.Equal(t, diff.Deletes()[0].Name, "hub-2")
-		require.Equal(t, diff.Deletes()[1].Name, "hub-11")
+		require.Equal(t, diff.Deletes()[0].Name, "pod-2")
+		require.Equal(t, diff.Deletes()[1].Name, "pod-11")
+	})
+
+	t.Run("simple update", func(t *testing.T) {
+		t.Fail()
 	})
 
 	t.Run("combination", func(t *testing.T) {
 		current := []*corev1.Pod{
-			{
-				ObjectMeta: metav1.ObjectMeta{Name: "hub-0", Annotations: ordinalAnnotations(0)},
-			},
-			{
-				ObjectMeta: metav1.ObjectMeta{Name: "hub-3", Annotations: ordinalAnnotations(3)},
-			},
-			{
-				ObjectMeta: metav1.ObjectMeta{Name: "hub-4", Annotations: ordinalAnnotations(4)},
-			},
+			diffablePod(0, generation),
+			diffablePod(3, generation),
+			diffablePod(4, generation),
 		}
 
 		want := []*corev1.Pod{
-			{
-				ObjectMeta: metav1.ObjectMeta{Name: "hub-0", Annotations: ordinalAnnotations(0)},
-			},
-			{
-				ObjectMeta: metav1.ObjectMeta{Name: "hub-1", Annotations: ordinalAnnotations(1)},
-			},
+			diffablePod(0, generation),
+			diffablePod(1, generation),
 		}
 
 		diff := NewDiff(current, want)

@@ -24,7 +24,7 @@ type Diff[T Resource] struct {
 // The OrdinalAnnotation allows Diff to sort resources deterministically.
 // Therefore, resources must have OrdinalAnnotation set appropriately, otherwise this function panics.
 //
-// For Updates, resources must have ControllerGenerationAnnotation set appropriately or else this function panics.
+// For Updates, resources must have ControllerRevisionAnnotation set appropriately or else this function panics.
 //
 // There are several O(N) or O(2N) operations where N = number of resources.
 // However, we expect N to be small.
@@ -93,7 +93,7 @@ func (diff *Diff[T]) toMap(list []T) map[string]ordinalResource[T] {
 	m := make(map[string]ordinalResource[T])
 	for i := range list {
 		r := list[i]
-		n := MustValueToInt(r.GetAnnotations()[OrdinalAnnotation])
+		n := MustToInt(r.GetAnnotations()[OrdinalAnnotation])
 		m[r.GetName()] = ordinalResource[T]{
 			Resource: r,
 			Ordinal:  n,
