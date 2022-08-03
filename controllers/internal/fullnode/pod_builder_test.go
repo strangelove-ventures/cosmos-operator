@@ -86,7 +86,7 @@ func TestPodBuilder(t *testing.T) {
 			require.Equal(t, tt.Name, port.Name, tt)
 			require.Equal(t, corev1.ProtocolTCP, port.Protocol)
 			require.Equal(t, tt.Port, port.ContainerPort)
-			require.Equal(t, tt.Port, port.HostPort)
+			require.Zero(t, port.HostPort)
 		}
 	})
 

@@ -99,43 +99,36 @@ var fullNodePorts = []corev1.ContainerPort{
 	{
 		Name:          "api",
 		Protocol:      corev1.ProtocolTCP,
-		HostPort:      1317,
 		ContainerPort: 1317,
 	},
 	{
 		Name:          "rosetta",
 		Protocol:      corev1.ProtocolTCP,
-		HostPort:      8080,
 		ContainerPort: 8080,
 	},
 	{
 		Name:          "grpc",
 		Protocol:      corev1.ProtocolTCP,
-		HostPort:      9090,
 		ContainerPort: 9090,
 	},
 	{
 		Name:          "prometheus",
 		Protocol:      corev1.ProtocolTCP,
-		HostPort:      26660,
 		ContainerPort: 26660,
 	},
 	{
 		Name:          "p2p",
 		Protocol:      corev1.ProtocolTCP,
-		HostPort:      26656,
 		ContainerPort: 26656,
 	},
 	{
 		Name:          "rpc",
 		Protocol:      corev1.ProtocolTCP,
-		HostPort:      26657,
 		ContainerPort: 26657,
 	},
 	{
 		Name:          "web",
 		Protocol:      corev1.ProtocolTCP,
-		HostPort:      9091,
 		ContainerPort: 9091,
 	},
 }
