@@ -5,10 +5,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// FinalPodState creates the final state of pods given the crd.
-func FinalPodState(crd *cosmosv1.CosmosFullNode, current []*corev1.Pod) []*corev1.Pod {
+// PodState creates the final state of pods given the crd.
+func PodState(crd *cosmosv1.CosmosFullNode) []*corev1.Pod {
 	var (
-		builder = NewPodBuilder(crd, current)
+		builder = NewPodBuilder(crd)
 		pods    = make([]*corev1.Pod, crd.Spec.Replicas)
 	)
 	for i := int32(0); i < crd.Spec.Replicas; i++ {
