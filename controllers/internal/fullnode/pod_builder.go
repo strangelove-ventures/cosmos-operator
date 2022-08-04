@@ -10,6 +10,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// OrdinalAnnotation denotes the pod's ordinal position.
+const OrdinalAnnotation = "cosmosfullnode.cosmos.strange.love/ordinal"
+
 // PodBuilder builds corev1.Pods
 type PodBuilder struct {
 	crd *cosmosv1.CosmosFullNode
@@ -81,7 +84,7 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 	pod := b.pod.DeepCopy()
 	name := b.name(ordinal)
 
-	pod.Annotations[kube.OrdinalAnnotation] = kube.ToIntegerValue(ordinal)
+	pod.Annotations[OrdinalAnnotation] = kube.ToIntegerValue(ordinal)
 	pod.Labels[kube.InstanceLabel] = kube.ToLabelValue(name)
 
 	pod.Name = kube.ToName(name)
