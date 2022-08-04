@@ -16,17 +16,7 @@ const (
 	VersionLabel    = "app.kubernetes.io/version"
 )
 
-// Nonstandard but common annotations
-const (
-	// OrdinalAnnotation value is a sequential integer such as "0", "1", "2". It represents a resource's unique position
-	// within a set of resources. It aids in creating resources similar to a StatefulSet.
-	OrdinalAnnotation = "app.kubernetes.io/ordinal"
-
-	// ControllerVersionAnnotation is the owning controller .metadata.resourceVersion.
-	ControllerVersionAnnotation = "controller.kubernetes.io/resource-version"
-)
-
-// ToIntegerValue converts n to an integer string.
+// ToIntegerValue converts n to a base 10 integer string.
 func ToIntegerValue[T constraints.Signed](n T) string {
 	return strconv.FormatInt(int64(n), 10)
 }
