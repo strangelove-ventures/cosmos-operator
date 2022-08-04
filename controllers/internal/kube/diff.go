@@ -4,11 +4,11 @@ import (
 	"errors"
 	"sort"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Resource is a kubernetes resource.
-type Resource = metav1.Object
+type Resource = client.Object
 
 // key is the resource name which must be unique per k8s conventions.
 type ordinalSet[T Resource] map[string]ordinalResource[T]
@@ -22,6 +22,7 @@ type Diff[T Resource] struct {
 }
 
 // HasChanges returns true if lhs is different than rhs.
+// Diff already checks for object identity, so you typically only need to compare specs.
 type HasChanges[T Resource] func(lhs, rhs T) bool
 
 // NewDiff creates a valid Diff.
@@ -92,7 +93,7 @@ func (diff *Diff[T]) computeDeletes(current, want ordinalSet[T]) []T {
 	return diff.sortByOrdinal(deletes)
 }
 
-// Updates returns a list of resources that should be updated or patched.
+// Updates returns a list of resources that should be updated.
 func (diff *Diff[T]) Updates() []T {
 	return diff.updates
 }
@@ -105,7 +106,8 @@ func (diff *Diff[T]) computeUpdates(current, want ordinalSet[T]) []T {
 		if !ok {
 			continue
 		}
-		if diff.hashChanges(existing.Resource, target.Resource) {
+		lhs, rhs := existing.Resource, target.Resource
+		if ObjectHasChanges(lhs, rhs) || diff.hashChanges(lhs, rhs) {
 			updates = append(updates, target)
 		}
 	}

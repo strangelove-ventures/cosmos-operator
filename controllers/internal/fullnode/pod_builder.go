@@ -61,8 +61,7 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 					ReadinessProbe: nil,
 					StartupProbe:   nil,
 
-					// Purposefully blank. Defaults to Always if :latest tag is specified, or IfNotPresent otherwise.
-					ImagePullPolicy: "",
+					ImagePullPolicy: "IfNotPresent",
 				},
 			},
 		},
