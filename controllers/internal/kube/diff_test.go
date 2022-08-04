@@ -34,11 +34,11 @@ func TestNewDiff(t *testing.T) {
 		}
 
 		require.Panics(t, func() {
-			NewDiff(dupeNames, resources)
+			NewOrdinalDiff(dupeNames, resources)
 		})
 
 		require.Panics(t, func() {
-			NewDiff(resources, dupeNames)
+			NewOrdinalDiff(resources, dupeNames)
 		})
 	})
 
@@ -65,7 +65,7 @@ func TestNewDiff(t *testing.T) {
 				diffablePod(0, "_new_resource_"),
 			}
 			require.Panics(t, func() {
-				NewDiff(current, want)
+				NewOrdinalDiff(current, want)
 			}, tt)
 		}
 	})
@@ -88,7 +88,7 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 			diffablePod(110, resourceVersion), // tests for numeric (not lexical) sorting
 		}
 
-		diff := NewDiff(current, want)
+		diff := NewOrdinalDiff(current, want)
 
 		require.Empty(t, diff.Deletes())
 		require.Empty(t, diff.Updates())
@@ -104,7 +104,7 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 			diffablePod(1, resourceVersion),
 		}
 
-		diff := NewDiff(nil, want)
+		diff := NewOrdinalDiff(nil, want)
 
 		require.Empty(t, diff.Deletes())
 		require.Empty(t, diff.Updates())
@@ -124,7 +124,7 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 			diffablePod(0, resourceVersion),
 		}
 
-		diff := NewDiff(current, want)
+		diff := NewOrdinalDiff(current, want)
 
 		require.Empty(t, diff.Updates())
 		require.Empty(t, diff.Creates())
@@ -146,7 +146,7 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 			diffablePod(2, "_new_version_"),
 		}
 
-		diff := NewDiff(current, want)
+		diff := NewOrdinalDiff(current, want)
 
 		require.Empty(t, diff.Creates())
 		require.Empty(t, diff.Deletes())
@@ -168,7 +168,7 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 			diffablePod(1, resourceVersion),
 		}
 
-		diff := NewDiff(current, want)
+		diff := NewOrdinalDiff(current, want)
 
 		require.Len(t, diff.Updates(), 1)
 		require.Equal(t, "pod-0", diff.Updates()[0].Name)

@@ -11,7 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func TestPodState(t *testing.T) {
+func TestFinalPodState(t *testing.T) {
 	t.Parallel()
 
 	crd := &cosmosv1.CosmosFullNode{
@@ -24,7 +24,7 @@ func TestPodState(t *testing.T) {
 		},
 	}
 
-	pods := PodState(crd)
+	pods := FinalPodState(crd)
 	require.Len(t, pods, 5)
 
 	want := lo.Map([]int{0, 1, 2, 3, 4}, func(_ int, i int) string {

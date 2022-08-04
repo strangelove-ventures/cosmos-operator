@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/fullnode"
@@ -91,8 +92,14 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	var (
-		wantPods = fullnode.PodState(&crd)
-		podDiff  = kube.NewDiff(ptrSlice(pods.Items), wantPods)
+		currentPods = ptrSlice(pods.Items)
+		wantPods    = fullnode.FinalPodState(&crd, currentPods)
+		podDiff     = kube.NewOrdinalDiff(kube.OrdinalAnnotation, currentPods, wantPods, func(current, want *corev1.Pod) bool {
+			// TODO: deleteme
+			changes := !reflect.DeepEqual(current.Spec, want.Spec)
+			fmt.Println("*********HasCHANGES", changes)
+			return changes
+		})
 	)
 
 	for _, pod := range podDiff.Creates() {
@@ -108,6 +115,15 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	for _, pod := range podDiff.Deletes() {
 		logger.Info("Deleting pod", "podName", pod.Name)
+		if err := r.Delete(ctx, pod, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
+			return emptyResult, fmt.Errorf("delete pod %q: %w", pod.Name, err)
+		}
+	}
+
+	// TODO (nix - 8/2/22) Rollout strategy to protect uptime
+	for _, pod := range podDiff.Updates() {
+		logger.Info("Updating pod", "podName", pod.Name)
+		// Delete because a watcher will re-enqueue the delete event. OrdinalDiff detects missing pod and recreates it.
 		if err := r.Delete(ctx, pod, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
 			return emptyResult, fmt.Errorf("delete pod %q: %w", pod.Name, err)
 		}
