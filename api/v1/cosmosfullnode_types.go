@@ -35,10 +35,10 @@ type CosmosFullNodeSpec struct {
 	Replicas int32 `json:"replicas"`
 
 	// Template applied to all pods.
-	PodTemplate CosmosFullNodePodTemplateSpec `json:"template"`
+	PodTemplate CosmosFullNodePodSpec `json:"template"`
 }
 
-type CosmosFullNodePodTemplateSpec struct {
+type CosmosFullNodePodSpec struct {
 	// Image is the docker reference in "repository:tag" format. E.g. busybox:latest
 	// +kubebuilder:validation:MinLength:=1
 	Image string `json:"image"`
