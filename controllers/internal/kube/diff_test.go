@@ -9,12 +9,17 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func diffablePod(ordinal int, resourceVersion string) *corev1.Pod {
+const (
+	testOrdinalAnnotation  = "ordinal"
+	testRevisionAnnotation = "revision"
+)
+
+func diffablePod(ordinal int, revision string) *corev1.Pod {
 	p := new(corev1.Pod)
 	p.Name = fmt.Sprintf("pod-%d", ordinal)
 	p.Annotations = map[string]string{
-		OrdinalAnnotation:           ToIntegerValue(ordinal),
-		ControllerVersionAnnotation: resourceVersion,
+		testOrdinalAnnotation:  ToIntegerValue(ordinal),
+		testRevisionAnnotation: revision,
 	}
 	return p
 }
@@ -22,23 +27,23 @@ func diffablePod(ordinal int, resourceVersion string) *corev1.Pod {
 func TestNewDiff(t *testing.T) {
 	t.Parallel()
 
-	const resourceVersion = "_controller_version_"
+	const revision = "_revision_"
 
 	t.Run("non-unique names", func(t *testing.T) {
 		dupeNames := []*corev1.Pod{
-			diffablePod(0, resourceVersion),
-			diffablePod(0, resourceVersion),
+			diffablePod(0, revision),
+			diffablePod(0, revision),
 		}
 		resources := []*corev1.Pod{
-			diffablePod(0, resourceVersion),
+			diffablePod(0, revision),
 		}
 
 		require.Panics(t, func() {
-			NewDiff(dupeNames, resources)
+			NewDiff(testOrdinalAnnotation, dupeNames, resources)
 		})
 
 		require.Panics(t, func() {
-			NewDiff(resources, dupeNames)
+			NewDiff(testOrdinalAnnotation, resources, dupeNames)
 		})
 	})
 
@@ -48,12 +53,10 @@ func TestNewDiff(t *testing.T) {
 		}{
 			{nil},
 			{map[string]string{
-				OrdinalAnnotation:           "value should be a number",
-				ControllerVersionAnnotation: "abc123",
+				testOrdinalAnnotation: "value should be a number",
 			}},
 			{map[string]string{
-				OrdinalAnnotation:           "2",
-				ControllerVersionAnnotation: "",
+				testOrdinalAnnotation: "",
 			}},
 		} {
 			current := []*corev1.Pod{
@@ -65,13 +68,9 @@ func TestNewDiff(t *testing.T) {
 				diffablePod(0, "_new_resource_"),
 			}
 			require.Panics(t, func() {
-				NewDiff(current, want)
+				NewDiff(testOrdinalAnnotation, current, want)
 			}, tt)
 		}
-	})
-
-	t.Run("different namspaces", func(t *testing.T) {
-		t.Fatal("TODO")
 	})
 }
 
@@ -92,7 +91,7 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 			diffablePod(110, resourceVersion), // tests for numeric (not lexical) sorting
 		}
 
-		diff := NewDiff(current, want)
+		diff := NewDiff(testOrdinalAnnotation, current, want)
 
 		require.Empty(t, diff.Deletes())
 		require.Empty(t, diff.Updates())
@@ -108,7 +107,7 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 			diffablePod(1, resourceVersion),
 		}
 
-		diff := NewDiff(nil, want)
+		diff := NewDiff(testOrdinalAnnotation, nil, want)
 
 		require.Empty(t, diff.Deletes())
 		require.Empty(t, diff.Updates())
@@ -128,7 +127,7 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 			diffablePod(0, resourceVersion),
 		}
 
-		diff := NewDiff(current, want)
+		diff := NewDiff(testOrdinalAnnotation, current, want)
 
 		require.Empty(t, diff.Updates())
 		require.Empty(t, diff.Creates())
@@ -150,7 +149,7 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 			diffablePod(2, "_new_version_"),
 		}
 
-		diff := NewDiff(current, want)
+		diff := NewDiff(testOrdinalAnnotation, current, want)
 
 		require.Empty(t, diff.Creates())
 		require.Empty(t, diff.Deletes())
@@ -172,7 +171,7 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 			diffablePod(1, resourceVersion),
 		}
 
-		diff := NewDiff(current, want)
+		diff := NewDiff(testOrdinalAnnotation, current, want)
 
 		require.Len(t, diff.Updates(), 1)
 		require.Equal(t, "pod-0", diff.Updates()[0].Name)

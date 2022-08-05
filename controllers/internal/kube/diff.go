@@ -20,10 +20,6 @@ type Diff[T Resource] struct {
 	creates, deletes, updates []T
 }
 
-// HasChanges returns true if lhs is different than rhs.
-// Diff already checks for object identity, so you typically only need to compare specs.
-type HasChanges[T Resource] func(lhs, rhs T) bool
-
 // NewDiff creates a valid Diff.
 // It computes differences between the "current" state needed to reconcile to the "want" state.
 //
@@ -32,7 +28,8 @@ type HasChanges[T Resource] func(lhs, rhs T) bool
 // Therefore, resources must have ordinalAnnotationKey set to an integer value such as "0", "1", "2"
 // otherwise this function panics.
 //
-// For Updates to work properly,
+// For Updates to work properly, Diff uses ObjectHasChanges. Concretely, to detect updates the recommended path
+// is changing annotations or labels.
 //
 // There are several O(N) or O(2N) operations where N = number of resources.
 // However, we expect N to be small.
