@@ -7,6 +7,7 @@ import (
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -20,8 +21,17 @@ func defaultCRD() cosmosv1.CosmosFullNode {
 		},
 		Spec: cosmosv1.CosmosFullNodeSpec{
 			PodTemplate: cosmosv1.CosmosFullNodePodSpec{
-				Image:     "busybox:v1.2.3",
-				Resources: corev1.ResourceRequirements{},
+				Image: "busybox:v1.2.3",
+				Resources: corev1.ResourceRequirements{
+					Limits: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceCPU:    resource.MustParse("5"),
+						corev1.ResourceMemory: resource.MustParse("5Gi"),
+					},
+					Requests: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceCPU:    resource.MustParse("1"),
+						corev1.ResourceMemory: resource.MustParse("500M"),
+					},
+				},
 			},
 		},
 	}
@@ -56,18 +66,23 @@ func TestPodBuilder(t *testing.T) {
 		require.Equal(t, wantLabels, pod.Labels)
 		require.EqualValues(t, 30, *pod.Spec.TerminationGracePeriodSeconds)
 
+		require.NotEmpty(t, pod.Annotations["cosmosfullnode.cosmos.strange.love/resource-revision"])
+		// The fuzz test below tests this property.
+		delete(pod.Annotations, revisionAnnotation)
+
 		wantAnnotations := map[string]string{
-			"cosmosfullnode.cosmos.strange.love/ordinal":           "5",
-			"cosmosfullnode.cosmos.strange.love/resource-revision": "33c23c8d",
+			"cosmosfullnode.cosmos.strange.love/ordinal": "5",
 			// TODO (nix - 8/2/22) Prom metrics here
 		}
 		require.Equal(t, wantAnnotations, pod.Annotations)
 
 		require.Len(t, pod.Spec.Containers, 1)
-		c := pod.Spec.Containers[0]
-		require.Equal(t, "osmosis", c.Name)
-		require.Equal(t, "busybox:v1.2.3", c.Image)
-		require.Equal(t, corev1.PullIfNotPresent, c.ImagePullPolicy)
+
+		lastContainer := pod.Spec.Containers[len(pod.Spec.Containers)-1]
+		require.Equal(t, "osmosis", lastContainer.Name)
+		require.Equal(t, "busybox:v1.2.3", lastContainer.Image)
+		require.Equal(t, corev1.PullIfNotPresent, lastContainer.ImagePullPolicy)
+		require.Equal(t, crd.Spec.PodTemplate.Resources, lastContainer.Resources)
 
 		// Test we don't share or leak data per invocation.
 		pod = builder.Build()
@@ -132,9 +147,9 @@ func FuzzPodBuilder_Build(f *testing.F) {
 		pod1 := NewPodBuilder(&crd).Build()
 		pod2 := NewPodBuilder(&crd).Build()
 
-		require.NotEmpty(t, pod1.Annotations[revisionAnnotation])
-		require.NotEmpty(t, pod2.Annotations[revisionAnnotation])
+		require.NotEmpty(t, pod1.Annotations[revisionAnnotation], image)
+		require.NotEmpty(t, pod2.Annotations[revisionAnnotation], image)
 
-		require.Equal(t, pod1.Annotations[revisionAnnotation], pod2.Annotations[revisionAnnotation])
+		require.Equal(t, pod1.Annotations[revisionAnnotation], pod2.Annotations[revisionAnnotation], image)
 	})
 }
