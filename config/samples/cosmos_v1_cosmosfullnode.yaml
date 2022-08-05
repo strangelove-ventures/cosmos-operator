@@ -4,5 +4,7 @@ metadata:
   # name should be the chain name
   name: cosmoshub
 spec:
-   replicas: 1
-   image: "busybox:stable"
+  replicas: 2
+  template:
+    image: "busybox:latest"
+  
