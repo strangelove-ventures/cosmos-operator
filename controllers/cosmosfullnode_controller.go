@@ -92,7 +92,7 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	var (
 		wantPods = fullnode.PodState(&crd)
-		podDiff  = kube.NewDiff(ptrSlice(pods.Items), wantPods)
+		podDiff  = kube.NewDiff(fullnode.OrdinalAnnotation, ptrSlice(pods.Items), wantPods, fullnode.PodHasChanges)
 	)
 
 	for _, pod := range podDiff.Creates() {
@@ -110,6 +110,13 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		logger.Info("Deleting pod", "podName", pod.Name)
 		if err := r.Delete(ctx, pod, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
 			return emptyResult, fmt.Errorf("delete pod %q: %w", pod.Name, err)
+		}
+	}
+
+	for _, pod := range podDiff.Updates() {
+		logger.Info("Updating pod", "podName", pod.Name)
+		if err := r.Delete(ctx, pod, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
+			return emptyResult, fmt.Errorf("update pod %q: %w", pod.Name, err)
 		}
 	}
 

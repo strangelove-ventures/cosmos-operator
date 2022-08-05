@@ -2,6 +2,7 @@ package kube
 
 import (
 	"errors"
+	"fmt"
 	"sort"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -16,7 +17,7 @@ type ordinalSet[T Resource] map[string]ordinalResource[T]
 // Diff computes steps needed to bring a current state equal to a new state.
 type Diff[T Resource] struct {
 	ordinalAnnotationKey string
-	hashChanges          HasChanges[T]
+	hasChanges           HasChanges[T]
 
 	creates, deletes, updates []T
 }
@@ -40,7 +41,7 @@ type HasChanges[T Resource] func(lhs, rhs T) bool
 func NewDiff[T Resource](ordinalAnnotationKey string, current, want []T, hasChanges HasChanges[T]) *Diff[T] {
 	d := &Diff[T]{
 		ordinalAnnotationKey: ordinalAnnotationKey,
-		hashChanges:          hasChanges,
+		hasChanges:           hasChanges,
 	}
 
 	currentSet := d.toSet(current)
@@ -107,7 +108,12 @@ func (diff *Diff[T]) computeUpdates(current, want ordinalSet[T]) []T {
 			continue
 		}
 		lhs, rhs := existing.Resource, target.Resource
-		if ObjectHasChanges(lhs, rhs) || diff.hashChanges(lhs, rhs) {
+		if ObjectHasChanges(lhs, rhs) {
+			fmt.Println("CHANGED BECAUSE OF OBJECT")
+			updates = append(updates, target)
+		}
+		if diff.hasChanges(lhs, rhs) {
+			fmt.Println("CHANGED BECAUSE OF HASCHANGES")
 			updates = append(updates, target)
 		}
 	}

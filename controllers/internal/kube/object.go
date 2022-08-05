@@ -1,15 +1,16 @@
 package kube
 
 import (
-	"github.com/google/go-cmp/cmp"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	"reflect"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // ObjectHasChanges returns true if lhs is different from rhs.
-func ObjectHasChanges(lhs, rhs client.Object) bool {
-	return lhs.GetName() != rhs.GetName() ||
-		lhs.GetNamespace() != rhs.GetNamespace() ||
-		lhs.GetObjectKind() != rhs.GetObjectKind() ||
-		!cmp.Equal(lhs.GetLabels(), rhs.GetLabels()) ||
-		!cmp.Equal(lhs.GetAnnotations(), rhs.GetAnnotations())
+func ObjectHasChanges(lhs, rhs metav1.Object) bool {
+	equal := lhs.GetName() == rhs.GetName() &&
+		lhs.GetNamespace() == rhs.GetNamespace() &&
+		reflect.DeepEqual(lhs.GetLabels(), rhs.GetLabels()) &&
+		reflect.DeepEqual(lhs.GetAnnotations(), rhs.GetAnnotations())
+	return !equal
 }
