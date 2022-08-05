@@ -1,8 +1,13 @@
 package fullnode
 
 import (
+	"bytes"
+	"encoding/gob"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"hash/fnv"
+	"sync"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
@@ -10,8 +15,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// OrdinalAnnotation denotes the pod's ordinal position.
-const OrdinalAnnotation = "cosmosfullnode.cosmos.strange.love/ordinal"
+var bufPool = sync.Pool{New: func() any { return new(bytes.Buffer) }}
+
+func init() {
+	gob.Register(cosmosv1.CosmosFullNodePodSpec{})
+}
 
 // PodBuilder builds corev1.Pods
 type PodBuilder struct {
@@ -38,9 +46,12 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 				chainLabel:           kube.ToLabelValue(crd.Name),
 				kube.ControllerLabel: kube.ToLabelValue("CosmosFullNode"),
 				kube.NameLabel:       kube.ToLabelValue(fmt.Sprintf("%s-fullnode", crd.Name)),
-				kube.VersionLabel:    kube.ParseImageVersion(crd.Spec.Image),
+				kube.VersionLabel:    kube.ParseImageVersion(crd.Spec.PodTemplate.Image),
 			},
-			Annotations: make(map[string]string), // initialized because other methods use this map
+			// TODO: prom metrics
+			Annotations: map[string]string{
+				revisionAnnotation: podRevisionHash(crd),
+			},
 		},
 		Spec: corev1.PodSpec{
 			Volumes:                       nil, // TODO: must create volumes before this step
@@ -49,7 +60,7 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 			Containers: []corev1.Container{
 				{
 					Name:  crd.Name,
-					Image: crd.Spec.Image,
+					Image: crd.Spec.PodTemplate.Image,
 					// TODO need binary name
 					Command: []string{"sleep"},
 					Args:    []string{"infinity"},
@@ -61,7 +72,7 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 					ReadinessProbe: nil,
 					StartupProbe:   nil,
 
-					ImagePullPolicy: "IfNotPresent",
+					ImagePullPolicy: corev1.PullIfNotPresent, // TODO: allow configuring this
 				},
 			},
 		},
@@ -70,6 +81,33 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 		crd: crd,
 		pod: &pod,
 	}
+}
+
+// Produces a deterministic hash based on the pod template
+// Determinism experimentally works via a stress test:
+//   $ go test -c ./controllers/internal/fullnode && stress ./fullnode.test
+//   5s: 2375 runs so far, 0 failures
+//   10s: 4785 runs so far, 0 failures
+//   15s: 7159 runs so far, 0 failures
+//   20s: 9557 runs so far, 0 failures
+//   25s: 11919 runs so far, 0 failures
+//   30s: 14271 runs so far, 0 failures
+//   35s: 16614 runs so far, 0 failures
+func podRevisionHash(crd *cosmosv1.CosmosFullNode) string {
+	buf := bufPool.Get().(*bytes.Buffer)
+	defer buf.Reset()
+	defer bufPool.Put(buf)
+
+	enc := gob.NewEncoder(buf)
+	if err := enc.Encode(crd.Spec.PodTemplate); err != nil {
+		panic(err)
+	}
+	h := fnv.New32()
+	_, err := h.Write(buf.Bytes())
+	if err != nil {
+		panic(err)
+	}
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 // Build assigns the CosmosFullNode crd as the owner and returns a fully constructed pod.

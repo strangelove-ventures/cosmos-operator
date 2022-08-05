@@ -11,6 +11,22 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
+func defaultCRD() cosmosv1.CosmosFullNode {
+	return cosmosv1.CosmosFullNode{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            "osmosis",
+			Namespace:       "test",
+			ResourceVersion: "_resource_version_",
+		},
+		Spec: cosmosv1.CosmosFullNodeSpec{
+			PodTemplate: cosmosv1.CosmosFullNodePodSpec{
+				Image:     "busybox:v1.2.3",
+				Resources: corev1.ResourceRequirements{},
+			},
+		},
+	}
+}
+
 func TestPodBuilder(t *testing.T) {
 	scheme := runtime.NewScheme()
 	if err := cosmosv1.AddToScheme(scheme); err != nil {
@@ -19,16 +35,7 @@ func TestPodBuilder(t *testing.T) {
 
 	t.Parallel()
 
-	crd := cosmosv1.CosmosFullNode{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            "osmosis",
-			Namespace:       "test",
-			ResourceVersion: "_resource_version_",
-		},
-		Spec: cosmosv1.CosmosFullNodeSpec{
-			Image: "busybox:v1.2.3",
-		},
-	}
+	crd := defaultCRD()
 
 	t.Run("happy path", func(t *testing.T) {
 		builder := NewPodBuilder(&crd)
@@ -50,8 +57,8 @@ func TestPodBuilder(t *testing.T) {
 		require.EqualValues(t, 30, *pod.Spec.TerminationGracePeriodSeconds)
 
 		wantAnnotations := map[string]string{
-			"app.kubernetes.io/ordinal":                 "5",
-			"controller.kubernetes.io/resource-version": "_resource_version_",
+			"cosmosfullnode.cosmos.strange.love/ordinal":           "5",
+			"cosmosfullnode.cosmos.strange.love/resource-revision": "33c23c8d",
 			// TODO (nix - 8/2/22) Prom metrics here
 		}
 		require.Equal(t, wantAnnotations, pod.Annotations)
@@ -60,7 +67,7 @@ func TestPodBuilder(t *testing.T) {
 		c := pod.Spec.Containers[0]
 		require.Equal(t, "osmosis", c.Name)
 		require.Equal(t, "busybox:v1.2.3", c.Image)
-		require.Empty(t, c.ImagePullPolicy)
+		require.Equal(t, corev1.PullIfNotPresent, c.ImagePullPolicy)
 
 		// Test we don't share or leak data per invocation.
 		pod = builder.Build()
@@ -114,5 +121,20 @@ func TestPodBuilder(t *testing.T) {
 			"app.kubernetes.io/version":                     "v1.2.3",
 		}
 		require.Equal(t, wantLabels, pod.Labels)
+	})
+}
+
+func FuzzPodBuilder_Build(f *testing.F) {
+	crd := defaultCRD()
+	f.Add("busybox:latest")
+	f.Fuzz(func(t *testing.T, image string) {
+		crd.Spec.PodTemplate.Image = image
+		pod1 := NewPodBuilder(&crd).Build()
+		pod2 := NewPodBuilder(&crd).Build()
+
+		require.NotEmpty(t, pod1.Annotations[revisionAnnotation])
+		require.NotEmpty(t, pod2.Annotations[revisionAnnotation])
+
+		require.Equal(t, pod1.Annotations[revisionAnnotation], pod2.Annotations[revisionAnnotation])
 	})
 }
