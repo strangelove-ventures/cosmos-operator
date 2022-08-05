@@ -77,18 +77,18 @@ func TestNewDiff(t *testing.T) {
 func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 	t.Parallel()
 
-	const resourceVersion = "_controller_version_"
+	const revision = "_revision_"
 
 	t.Run("simple create", func(t *testing.T) {
 		current := []*corev1.Pod{
-			diffablePod(0, resourceVersion),
+			diffablePod(0, revision),
 		}
 
 		// Purposefully unordered
 		want := []*corev1.Pod{
-			diffablePod(2, resourceVersion),
-			diffablePod(0, resourceVersion),
-			diffablePod(110, resourceVersion), // tests for numeric (not lexical) sorting
+			diffablePod(2, revision),
+			diffablePod(0, revision),
+			diffablePod(110, revision), // tests for numeric (not lexical) sorting
 		}
 
 		diff := NewDiff(testOrdinalAnnotation, current, want)
@@ -103,8 +103,8 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 
 	t.Run("only create", func(t *testing.T) {
 		want := []*corev1.Pod{
-			diffablePod(0, resourceVersion),
-			diffablePod(1, resourceVersion),
+			diffablePod(0, revision),
+			diffablePod(1, revision),
 		}
 
 		diff := NewDiff(testOrdinalAnnotation, nil, want)
@@ -118,13 +118,13 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 	t.Run("simple delete", func(t *testing.T) {
 		// Purposefully unordered.
 		current := []*corev1.Pod{
-			diffablePod(0, resourceVersion),
-			diffablePod(11, resourceVersion), // tests for numeric (not lexical) sorting
-			diffablePod(2, resourceVersion),
+			diffablePod(0, revision),
+			diffablePod(11, revision), // tests for numeric (not lexical) sorting
+			diffablePod(2, revision),
 		}
 
 		want := []*corev1.Pod{
-			diffablePod(0, resourceVersion),
+			diffablePod(0, revision),
 		}
 
 		diff := NewDiff(testOrdinalAnnotation, current, want)
@@ -140,8 +140,8 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 	t.Run("simple update", func(t *testing.T) {
 		// Purposefully unordered.
 		current := []*corev1.Pod{
-			diffablePod(22, resourceVersion), // tests for numeric (not lexical) sorting
-			diffablePod(2, resourceVersion),
+			diffablePod(22, revision), // tests for numeric (not lexical) sorting
+			diffablePod(2, revision),
 		}
 
 		want := []*corev1.Pod{
@@ -161,14 +161,14 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 
 	t.Run("combination", func(t *testing.T) {
 		current := []*corev1.Pod{
-			diffablePod(0, resourceVersion),
-			diffablePod(3, resourceVersion),
-			diffablePod(4, resourceVersion),
+			diffablePod(0, revision),
+			diffablePod(3, revision),
+			diffablePod(4, revision),
 		}
 
 		want := []*corev1.Pod{
 			diffablePod(0, "_new_version_"),
-			diffablePod(1, resourceVersion),
+			diffablePod(1, revision),
 		}
 
 		diff := NewDiff(testOrdinalAnnotation, current, want)
