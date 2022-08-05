@@ -114,6 +114,8 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	for _, pod := range podDiff.Updates() {
+		// Because we watch for deletes, we get a re-queued request, detect pod is missing, and re-create it.
+		// TODO (nix - 8/5/22) Rollout strategy. Do not delete all pods at once.
 		logger.Info("Updating pod", "podName", pod.Name)
 		if err := r.Delete(ctx, pod, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
 			return emptyResult, fmt.Errorf("update pod %q: %w", pod.Name, err)
