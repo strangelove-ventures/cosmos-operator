@@ -139,6 +139,7 @@ func TestPodBuilder(t *testing.T) {
 	})
 }
 
+//nolint:stylecheck // Underscore in func name is acceptable for tests.
 func FuzzPodBuilder_Build(f *testing.F) {
 	crd := defaultCRD()
 	f.Add("busybox:latest")
