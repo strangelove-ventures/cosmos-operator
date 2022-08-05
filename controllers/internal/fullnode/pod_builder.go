@@ -2,8 +2,8 @@ package fullnode
 
 import (
 	"bytes"
-	"encoding/gob"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"hash/fnv"
@@ -16,10 +16,6 @@ import (
 )
 
 var bufPool = sync.Pool{New: func() any { return new(bytes.Buffer) }}
-
-func init() {
-	gob.Register(cosmosv1.CosmosFullNodePodSpec{})
-}
 
 // PodBuilder builds corev1.Pods
 type PodBuilder struct {
@@ -83,22 +79,16 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 	}
 }
 
-// Produces a deterministic hash based on the pod template
-// Determinism experimentally works via a stress test:
-//   $ go test -c ./controllers/internal/fullnode && stress ./fullnode.test
-//   5s: 2375 runs so far, 0 failures
-//   10s: 4785 runs so far, 0 failures
-//   15s: 7159 runs so far, 0 failures
-//   20s: 9557 runs so far, 0 failures
-//   25s: 11919 runs so far, 0 failures
-//   30s: 14271 runs so far, 0 failures
-//   35s: 16614 runs so far, 0 failures
+// Attempts to produce a deterministic hash based on the pod template, so we can detect updates.
+// encoding/gob was used at first but proved non-deterministic. JSON by nature is unordered, however thousands
+// of fuzz tests showed encoding/json to be deterministic. There are other json packages like jsoniter that sort keys
+// if stdlib encoding/json ever becomes a problem.
 func podRevisionHash(crd *cosmosv1.CosmosFullNode) string {
 	buf := bufPool.Get().(*bytes.Buffer)
 	defer buf.Reset()
 	defer bufPool.Put(buf)
 
-	enc := gob.NewEncoder(buf)
+	enc := json.NewEncoder(buf)
 	if err := enc.Encode(crd.Spec.PodTemplate); err != nil {
 		panic(err)
 	}
