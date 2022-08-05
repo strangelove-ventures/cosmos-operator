@@ -17,6 +17,7 @@ limitations under the License.
 package v1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -33,9 +34,18 @@ type CosmosFullNodeSpec struct {
 	// Individual replicas have a consistent identity.
 	Replicas int32 `json:"replicas"`
 
+	// Template applied to all pods.
+	PodTemplate CosmosFullNodePodTemplateSpec `json:"template"`
+}
+
+type CosmosFullNodePodTemplateSpec struct {
 	// Image is the docker reference in "repository:tag" format. E.g. busybox:latest
 	// +kubebuilder:validation:MinLength:=1
 	Image string `json:"image"`
+
+	// Resources describes the compute resource requirements.
+	// +optional
+	Resources corev1.ResourceRequirements `json:"resources"`
 }
 
 // CosmosFullNodeStatus defines the observed state of CosmosFullNode
