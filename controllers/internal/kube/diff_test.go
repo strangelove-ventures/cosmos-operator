@@ -69,6 +69,10 @@ func TestNewDiff(t *testing.T) {
 			}, tt)
 		}
 	})
+
+	t.Run("different namspaces", func(t *testing.T) {
+		t.Fatal("TODO")
+	})
 }
 
 func TestDiff_CreatesDeletesUpdates(t *testing.T) {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/samber/lo"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -17,7 +18,6 @@ type ordinalSet[T Resource] map[string]ordinalResource[T]
 // Diff computes steps needed to bring a current state equal to a new state.
 type Diff[T Resource] struct {
 	ordinalAnnotationKey string
-	hasChanges           HasChanges[T]
 
 	creates, deletes, updates []T
 }
@@ -38,10 +38,14 @@ type HasChanges[T Resource] func(lhs, rhs T) bool
 //
 // There are several O(N) or O(2N) operations where N = number of resources.
 // However, we expect N to be small.
-func NewDiff[T Resource](ordinalAnnotationKey string, current, want []T, hasChanges HasChanges[T]) *Diff[T] {
+func NewDiff[T Resource](ordinalAnnotationKey string, current, want []T) *Diff[T] {
 	d := &Diff[T]{
 		ordinalAnnotationKey: ordinalAnnotationKey,
-		hasChanges:           hasChanges,
+	}
+
+	currentNS, wantNS := d.namespace(current), d.namespace(want)
+	if currentNS != wantNS {
+		panic(fmt.Errorf("namespaces must match, got %s and %s", currentNS, wantNS))
 	}
 
 	currentSet := d.toSet(current)
@@ -107,13 +111,7 @@ func (diff *Diff[T]) computeUpdates(current, want ordinalSet[T]) []T {
 		if !ok {
 			continue
 		}
-		lhs, rhs := existing.Resource, target.Resource
-		if ObjectHasChanges(lhs, rhs) {
-			fmt.Println("CHANGED BECAUSE OF OBJECT")
-			updates = append(updates, target)
-		}
-		if diff.hasChanges(lhs, rhs) {
-			fmt.Println("CHANGED BECAUSE OF HASCHANGES")
+		if ObjectHasChanges(existing.Resource, target.Resource) {
 			updates = append(updates, target)
 		}
 	}
@@ -124,6 +122,14 @@ func (diff *Diff[T]) computeUpdates(current, want ordinalSet[T]) []T {
 type ordinalResource[T Resource] struct {
 	Resource T
 	Ordinal  int64
+}
+
+func (diff *Diff[T]) namespace(resources []T) string {
+	uniq := lo.Uniq(lo.Map(resources, func(res T, _ int) string { return res.GetNamespace() }))
+	if len(uniq) != 1 {
+		panic(fmt.Errorf("expected 1 namespace, got %v", uniq))
+	}
+	return uniq[0]
 }
 
 func (diff *Diff[T]) toSet(list []T) ordinalSet[T] {
