@@ -7,4 +7,9 @@ spec:
   replicas: 2
   template:
     image: "busybox:latest"
+    resources:
+      requests:
+        cpu: "0.5"
+      limits:
+        cpu: "0.75"
   
