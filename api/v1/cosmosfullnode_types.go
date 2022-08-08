@@ -19,6 +19,7 @@ package v1
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -46,6 +47,24 @@ type CosmosFullNodePodSpec struct {
 	// Resources describes the compute resource requirements.
 	// +optional
 	Resources corev1.ResourceRequirements `json:"resources"`
+
+	// How to scale pods when performing an update.
+	// +optional
+	RolloutStrategy CosmosFullNodeRolloutStrategy `json:"strategy"`
+}
+
+type CosmosFullNodeRolloutStrategy struct {
+	// The maximum number of pods that can be unavailable during an update.
+	// Value can be an absolute number (ex: 5) or a percentage of desired pods (ex: 10%).
+	// Absolute number is calculated from percentage by rounding down. The minimum max unavailable is 1.
+	// Defaults to 25%.
+	// Example: when this is set to 30%, pods are scaled down to 70% of desired pods
+	// immediately when the rolling update starts. Once new pods are ready, pods
+	// can be scaled down further, ensuring that the total number of pods available
+	// at all times during the update is at least 70% of desired pods.
+	// +kubebuilder:validation:XIntOrString
+	// +optional
+	MaxUnavailable *intstr.IntOrString `json:"maxUnavailable,omitempty" protobuf:"bytes,1,opt,name=maxUnavailable"`
 }
 
 // CosmosFullNodeStatus defines the observed state of CosmosFullNode
