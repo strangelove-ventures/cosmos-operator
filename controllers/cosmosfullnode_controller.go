@@ -92,7 +92,7 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	var (
 		wantPods = fullnode.PodState(&crd)
-		podDiff  = kube.NewDiff(fullnode.OrdinalLabel, ptrSlice(pods.Items), wantPods)
+		podDiff  = kube.NewDiff(fullnode.OrdinalAnnotation, ptrSlice(pods.Items), wantPods)
 	)
 
 	for _, pod := range podDiff.Creates() {
@@ -113,6 +113,15 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		}
 	}
 
+	for _, pod := range podDiff.Updates() {
+		// Because we watch for deletes, we get a re-queued request, detect pod is missing, and re-create it.
+		// TODO (nix - 8/5/22) Rollout strategy. Do not delete all pods at once.
+		logger.Info("Updating pod", "podName", pod.Name)
+		if err := r.Delete(ctx, pod, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
+			return emptyResult, fmt.Errorf("update pod %q: %w", pod.Name, err)
+		}
+	}
+
 	return emptyResult, nil
 }
 
@@ -129,7 +138,7 @@ func (r *CosmosFullNodeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&cosmosv1.CosmosFullNode{}).
-		// Watch all pod delete events to queue controller requests for pods owned by CosmosFullNode controller.
+		// Watch all pod delete events to queue requests for pods owned by CosmosFullNode controller.
 		Watches(
 			&source.Kind{Type: &corev1.Pod{}},
 			&handler.EnqueueRequestForOwner{OwnerType: &cosmosv1.CosmosFullNode{}, IsController: true},

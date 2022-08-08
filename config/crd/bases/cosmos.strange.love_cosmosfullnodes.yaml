@@ -35,20 +35,52 @@ spec:
           spec:
             description: CosmosFullNodeSpec defines the desired state of CosmosFullNode
             properties:
-              image:
-                description: Image is the docker reference in "repository:tag" format.
-                  E.g. busybox:latest
-                minLength: 1
-                type: string
               replicas:
                 description: Number of replicas to create. Individual replicas have
                   a consistent identity.
                 format: int32
                 minimum: 1
                 type: integer
+              template:
+                description: Template applied to all pods.
+                properties:
+                  image:
+                    description: Image is the docker reference in "repository:tag"
+                      format. E.g. busybox:latest
+                    minLength: 1
+                    type: string
+                  resources:
+                    description: Resources describes the compute resource requirements.
+                    properties:
+                      limits:
+                        additionalProperties:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                          x-kubernetes-int-or-string: true
+                        description: 'Limits describes the maximum amount of compute
+                          resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                        type: object
+                      requests:
+                        additionalProperties:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                          x-kubernetes-int-or-string: true
+                        description: 'Requests describes the minimum amount of compute
+                          resources required. If Requests is omitted for a container,
+                          it defaults to Limits if that is explicitly specified, otherwise
+                          to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                        type: object
+                    type: object
+                required:
+                - image
+                type: object
             required:
-            - image
             - replicas
+            - template
             type: object
           status:
             description: CosmosFullNodeStatus defines the observed state of CosmosFullNode

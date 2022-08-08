@@ -6,10 +6,6 @@ import (
 )
 
 const (
-	// OrdinalLabel denotes the resource's ordinal position. E.g. 0, 1, 2, 3
-	// The label value must only be an integer.
-	OrdinalLabel = "cosmosfullnode.cosmos.strange.love/ordinal"
-
 	chainLabel = "cosmosfullnode.cosmos.strange.love/chain-name"
 )
 

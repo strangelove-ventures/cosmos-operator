@@ -2,7 +2,10 @@ package kube
 
 import (
 	"bytes"
+	"strconv"
 	"strings"
+
+	"golang.org/x/exp/constraints"
 )
 
 // Recommended labels. See: https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/
@@ -12,6 +15,20 @@ const (
 	NameLabel       = "app.kubernetes.io/name"
 	VersionLabel    = "app.kubernetes.io/version"
 )
+
+// ToIntegerValue converts n to a base 10 integer string.
+func ToIntegerValue[T constraints.Signed](n T) string {
+	return strconv.FormatInt(int64(n), 10)
+}
+
+// MustToInt converts s to int64 or panics on failure.
+func MustToInt(s string) int64 {
+	n, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		panic(err)
+	}
+	return n
+}
 
 // ToLabelValue normalizes val per kubernetes label constraints to a max of 63 characters.
 // This function lowercases even though uppercase is allowed.
