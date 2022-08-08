@@ -37,6 +37,10 @@ type CosmosFullNodeSpec struct {
 
 	// Template applied to all pods.
 	PodTemplate CosmosFullNodePodSpec `json:"template"`
+
+	// How to scale pods when performing an update.
+	// +optional
+	RolloutStrategy CosmosRolloutStrategy `json:"strategy"`
 }
 
 type CosmosFullNodePodSpec struct {
@@ -47,13 +51,10 @@ type CosmosFullNodePodSpec struct {
 	// Resources describes the compute resource requirements.
 	// +optional
 	Resources corev1.ResourceRequirements `json:"resources"`
-
-	// How to scale pods when performing an update.
-	// +optional
-	RolloutStrategy CosmosFullNodeRolloutStrategy `json:"strategy"`
 }
 
-type CosmosFullNodeRolloutStrategy struct {
+// CosmosRolloutStrategy is an update strategy that can be shared between several Cosmos CRDs.
+type CosmosRolloutStrategy struct {
 	// The maximum number of pods that can be unavailable during an update.
 	// Value can be an absolute number (ex: 5) or a percentage of desired pods (ex: 10%).
 	// Absolute number is calculated from percentage by rounding down. The minimum max unavailable is 1.

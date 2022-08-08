@@ -4,7 +4,9 @@ metadata:
   # name should be the chain name
   name: cosmoshub
 spec:
-  replicas: 2
+  replicas: 5
+  strategy:
+    maxUnavailable: "50%"
   template:
     image: "busybox:latest"
     resources:
