@@ -43,11 +43,10 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 				kube.ControllerLabel: kube.ToLabelValue("CosmosFullNode"),
 				kube.NameLabel:       kube.ToLabelValue(fmt.Sprintf("%s-fullnode", crd.Name)),
 				kube.VersionLabel:    kube.ParseImageVersion(crd.Spec.PodTemplate.Image),
+				revisionLabel:        podRevisionHash(crd),
 			},
 			// TODO: prom metrics
-			Annotations: map[string]string{
-				revisionAnnotation: podRevisionHash(crd),
-			},
+			Annotations: make(map[string]string),
 		},
 		Spec: corev1.PodSpec{
 			Volumes:                       nil, // TODO: must create volumes before this step
