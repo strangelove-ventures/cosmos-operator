@@ -129,14 +129,14 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	logger.Info("Update pod stats", "replicas", crd.Spec.Replicas, "numReady", len(avail), "numUpdates", numUpdates)
 
 	for _, pod := range lo.Slice(podDiff.Updates(), 0, numUpdates) {
-		logger.Info("Updating pod", "podName", pod.Name)
+		logger.Info("Deleting pod for update", "podName", pod.Name)
 		// Because we watch for deletes, we get a re-queued request, detect pod is missing, and re-create it.
 		if err := r.Delete(ctx, pod, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
 			return finishResult, fmt.Errorf("update pod %q: %w", pod.Name, err)
 		}
 	}
 
-	logger.Info("Requeue for pod rollout")
+	logger.V(2).Info("Requeue for pods rollout")
 	return requeueResult, nil
 }
 
