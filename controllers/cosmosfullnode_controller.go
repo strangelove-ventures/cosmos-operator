@@ -117,6 +117,12 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		}
 	}
 
+	if len(podDiff.Creates())+len(podDiff.Deletes()) > 0 {
+		// TODO (nix - 8/8/22) Capture this subtlety in a test. Requeue for later for the best update accuracy; in case update and scaling happens together.
+		// Scaling happens first. Then rollout updates.
+		return requeueResult, nil
+	}
+
 	if len(podDiff.Updates()) == 0 {
 		return finishResult, nil
 	}
