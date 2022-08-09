@@ -52,7 +52,7 @@ type CosmosMetadata struct {
 type CosmosPodSpec struct {
 	// Metadata is a subset of metav1.ObjectMeta applied to all pods.
 	// +optional
-	Metadata metav1.ObjectMeta `json:"metadata"`
+	Metadata CosmosMetadata `json:"metadata"`
 
 	// Image is the docker reference in "repository:tag" format. E.g. busybox:latest.
 	// This is for the main container running the chain process.

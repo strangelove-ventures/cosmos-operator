@@ -934,6 +934,21 @@ spec:
                   metadata:
                     description: Metadata is a subset of metav1.ObjectMeta applied
                       to all pods.
+                    properties:
+                      annotations:
+                        additionalProperties:
+                          type: string
+                        description: Annotations are added to a resource. If there
+                          is a collision between annotations the Operator creates,
+                          the Operator annotations take precedence.
+                        type: object
+                      labels:
+                        additionalProperties:
+                          type: string
+                        description: Labels are added to a resource. If there is a
+                          collision between labels the Operator creates, the Operator
+                          labels take precedence.
+                        type: object
                     type: object
                   nodeSelector:
                     additionalProperties:
