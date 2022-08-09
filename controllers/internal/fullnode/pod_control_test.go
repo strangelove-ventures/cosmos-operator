@@ -66,7 +66,6 @@ func TestPodControl_Reconcile(t *testing.T) {
 		require.Zero(t, listOpt.Limit)
 		require.Equal(t, "cosmosfullnode.cosmos.strange.love/chain-name=hub", listOpt.LabelSelector.String())
 		require.Equal(t, ".metadata.controller=hub", listOpt.FieldSelector.String())
-
 	})
 
 	t.Run("scale phase", func(t *testing.T) {

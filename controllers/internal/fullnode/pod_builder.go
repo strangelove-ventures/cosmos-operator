@@ -65,9 +65,9 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 					Name:  crd.Name,
 					Image: tpl.Image,
 					// TODO need binary name
-					Command: []string{"/bin/sh"},
-					Args:    []string{"-c", `trap : TERM INT; sleep infinity & wait`},
-					Ports:   fullNodePorts,
+					Command:   []string{"/bin/sh"},
+					Args:      []string{"-c", `trap : TERM INT; sleep infinity & wait`},
+					Ports:     fullNodePorts,
 					Resources: tpl.Resources,
 					// TODO (nix - 7/27/22) - Set these values.
 					VolumeMounts:   nil,
