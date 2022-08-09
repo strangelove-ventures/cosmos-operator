@@ -19,7 +19,9 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"time"
 
+	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/fullnode"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
@@ -47,7 +49,8 @@ type CosmosFullNodeReconciler struct {
 }
 
 var (
-	emptyResult ctrl.Result
+	finishResult  ctrl.Result
+	requeueResult = ctrl.Result{RequeueAfter: 3 * time.Second}
 )
 
 //+kubebuilder:rbac:groups=cosmos.strange.love,resources=cosmosfullnodes,verbs=get;list;watch;create;update;patch;delete
@@ -71,7 +74,7 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		// Also, will get "not found" error if crd is deleted.
 		// No need to explicitly delete resources. Kube GC does so automatically because we set the controller reference
 		// for each resource.
-		return emptyResult, client.IgnoreNotFound(err)
+		return finishResult, client.IgnoreNotFound(err)
 	}
 
 	// Find any existing pods for this CRD.
@@ -81,7 +84,7 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		client.MatchingFields{controllerOwnerField: req.Name},
 		fullnode.SelectorLabels(&crd),
 	); err != nil {
-		return emptyResult, fmt.Errorf("list existing pods: %w", err)
+		return requeueResult, fmt.Errorf("list existing pods: %w", err)
 	}
 
 	if len(pods.Items) > 0 {
@@ -91,38 +94,56 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	var (
-		wantPods = fullnode.PodState(&crd)
-		podDiff  = kube.NewDiff(fullnode.OrdinalAnnotation, ptrSlice(pods.Items), wantPods)
+		currentPods = ptrSlice(pods.Items)
+		wantPods    = fullnode.PodState(&crd)
+		podDiff     = kube.NewDiff(fullnode.OrdinalAnnotation, currentPods, wantPods)
 	)
 
 	for _, pod := range podDiff.Creates() {
 		logger.Info("Creating pod", "podName", pod.Name)
 		// TODO (nix - 7/25/22) This step is easy to forget. Perhaps abstract it somewhere.
 		if err := ctrl.SetControllerReference(&crd, pod, r.Scheme); err != nil {
-			return emptyResult, fmt.Errorf("set controller reference on pod %q: %w", pod.Name, err)
+			return requeueResult, fmt.Errorf("set controller reference on pod %q: %w", pod.Name, err)
 		}
 		if err := r.Create(ctx, pod); err != nil {
-			return emptyResult, fmt.Errorf("create pod %q: %w", pod.Name, err)
+			return requeueResult, fmt.Errorf("create pod %q: %w", pod.Name, err)
 		}
 	}
 
 	for _, pod := range podDiff.Deletes() {
 		logger.Info("Deleting pod", "podName", pod.Name)
 		if err := r.Delete(ctx, pod, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
-			return emptyResult, fmt.Errorf("delete pod %q: %w", pod.Name, err)
+			return requeueResult, fmt.Errorf("delete pod %q: %w", pod.Name, err)
 		}
 	}
 
-	for _, pod := range podDiff.Updates() {
+	if len(podDiff.Creates())+len(podDiff.Deletes()) > 0 {
+		// TODO (nix - 8/8/22) Capture this subtlety in a test. Requeue for later for the best update accuracy; in case update and scaling happens together.
+		// Scaling happens first. Then rollout updates.
+		return requeueResult, nil
+	}
+
+	if len(podDiff.Updates()) == 0 {
+		return finishResult, nil
+	}
+
+	var (
+		avail      = kube.AvailablePods(currentPods, 3*time.Second, time.Now())
+		numUpdates = kube.ComputeRollout(crd.Spec.RolloutStrategy.MaxUnavailable, int(crd.Spec.Replicas), len(avail))
+	)
+
+	logger.Info("Update pod stats", "replicas", crd.Spec.Replicas, "numReady", len(avail), "numUpdates", numUpdates)
+
+	for _, pod := range lo.Slice(podDiff.Updates(), 0, numUpdates) {
+		logger.Info("Deleting pod for update", "podName", pod.Name)
 		// Because we watch for deletes, we get a re-queued request, detect pod is missing, and re-create it.
-		// TODO (nix - 8/5/22) Rollout strategy. Do not delete all pods at once.
-		logger.Info("Updating pod", "podName", pod.Name)
 		if err := r.Delete(ctx, pod, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
-			return emptyResult, fmt.Errorf("update pod %q: %w", pod.Name, err)
+			return finishResult, fmt.Errorf("update pod %q: %w", pod.Name, err)
 		}
 	}
 
-	return emptyResult, nil
+	logger.V(2).Info("Requeue for pods rollout")
+	return requeueResult, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -138,13 +159,13 @@ func (r *CosmosFullNodeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&cosmosv1.CosmosFullNode{}).
-		// Watch all pod delete events to queue requests for pods owned by CosmosFullNode controller.
+		// Watch some pod events to queue requests for pods owned by CosmosFullNode controller.
 		Watches(
 			&source.Kind{Type: &corev1.Pod{}},
 			&handler.EnqueueRequestForOwner{OwnerType: &cosmosv1.CosmosFullNode{}, IsController: true},
-			builder.WithPredicates(&predicate.Funcs{DeleteFunc: func(_ event.DeleteEvent) bool {
-				return true
-			}},
+			builder.WithPredicates(&predicate.Funcs{
+				DeleteFunc: func(_ event.DeleteEvent) bool { return true },
+			},
 			),
 		).
 		Complete(r)

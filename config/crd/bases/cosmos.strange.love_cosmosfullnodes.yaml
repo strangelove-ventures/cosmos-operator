@@ -41,6 +41,25 @@ spec:
                 format: int32
                 minimum: 1
                 type: integer
+              strategy:
+                description: How to scale pods when performing an update.
+                properties:
+                  maxUnavailable:
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    description: 'The maximum number of pods that can be unavailable
+                      during an update. Value can be an absolute number (ex: 5) or
+                      a percentage of desired pods (ex: 10%). Absolute number is calculated
+                      from percentage by rounding down. The minimum max unavailable
+                      is 1. Defaults to 25%. Example: when this is set to 30%, pods
+                      are scaled down to 70% of desired pods immediately when the
+                      rolling update starts. Once new pods are ready, pods can be
+                      scaled down further, ensuring that the total number of pods
+                      available at all times during the update is at least 70% of
+                      desired pods.'
+                    x-kubernetes-int-or-string: true
+                type: object
               template:
                 description: Template applied to all pods.
                 properties:

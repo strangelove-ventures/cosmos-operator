@@ -45,11 +45,10 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 				kube.ControllerLabel: kube.ToLabelValue("CosmosFullNode"),
 				kube.NameLabel:       kube.ToLabelValue(fmt.Sprintf("%s-fullnode", crd.Name)),
 				kube.VersionLabel:    kube.ParseImageVersion(tpl.Image),
+				revisionLabel:        podRevisionHash(crd),
 			},
 			// TODO: prom metrics
-			Annotations: map[string]string{
-				revisionAnnotation: podRevisionHash(crd),
-			},
+			Annotations: make(map[string]string),
 		},
 		Spec: corev1.PodSpec{
 			Volumes:                       nil, // TODO: must create volumes before this step
@@ -66,9 +65,9 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 					Name:  crd.Name,
 					Image: tpl.Image,
 					// TODO need binary name
-					Command:   []string{"sleep"},
-					Args:      []string{"infinity"},
-					Ports:     fullNodePorts,
+					Command: []string{"/bin/sh"},
+					Args:    []string{"-c", `trap : TERM INT; sleep infinity & wait`},
+					Ports:   fullNodePorts,
 					Resources: tpl.Resources,
 					// TODO (nix - 7/27/22) - Set these values.
 					VolumeMounts:   nil,
