@@ -84,8 +84,12 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	// Reconcile pods.
-	if err := r.podControl.Reconcile(ctx, logger, &crd); err != nil {
+	requeue, err := r.podControl.Reconcile(ctx, logger, &crd)
+	if err != nil {
 		return r.resultWithErr(err)
+	}
+	if requeue {
+		return requeueResult, nil
 	}
 
 	return finishResult, nil

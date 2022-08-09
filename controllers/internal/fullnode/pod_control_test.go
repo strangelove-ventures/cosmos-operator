@@ -46,7 +46,7 @@ func TestPodControl_Reconcile(t *testing.T) {
 		crd.Namespace = namespace
 		crd.Name = "hub"
 
-		control := NewPodControl(nopLogger, &mClient)
+		control := NewPodControl(&mClient)
 		control.diffFactory = func(ordinalAnnotationKey string, current, want []*corev1.Pod) differ {
 			require.Equal(t, "cosmosfullnode.cosmos.strange.love/ordinal", ordinalAnnotationKey)
 			require.Len(t, current, 1)
@@ -54,8 +54,9 @@ func TestPodControl_Reconcile(t *testing.T) {
 			require.Len(t, want, 3)
 			return mockDiffer{}
 		}
-		err := control.Reconcile(ctx, &crd)
+		requeue, err := control.Reconcile(ctx, nopLogger, &crd)
 		require.NoError(t, err)
+		require.False(t, requeue)
 
 		require.Len(t, mClient.GotListOpts, 3)
 		var listOpt client.ListOptions
@@ -77,17 +78,15 @@ func TestPodControl_Reconcile(t *testing.T) {
 			}
 			mClient mockClient
 			crd     = defaultCRD()
-			control = NewPodControl(nopLogger, &mClient)
+			control = NewPodControl(&mClient)
 		)
 		crd.Namespace = namespace
 		control.diffFactory = func(ordinalAnnotationKey string, current, want []*corev1.Pod) differ {
 			return mDiff
 		}
-		err := control.Reconcile(ctx, &crd)
-
-		require.Error(t, err)
-		require.EqualError(t, err, "scaling in progress")
-		require.True(t, err.IsTransient())
+		requeue, err := control.Reconcile(ctx, nopLogger, &crd)
+		require.NoError(t, err)
+		require.True(t, requeue)
 
 		require.Equal(t, 3, mClient.CreateCount)
 		require.Equal(t, 2, mClient.DeleteCount)
@@ -111,7 +110,7 @@ func TestPodControl_Reconcile(t *testing.T) {
 				StubUpdates: buildPods(10),
 			}
 			crd     = defaultCRD()
-			control = NewPodControl(nopLogger, &mClient)
+			control = NewPodControl(&mClient)
 		)
 
 		crd.Namespace = namespace
@@ -126,11 +125,9 @@ func TestPodControl_Reconcile(t *testing.T) {
 			return stubRollout
 		}
 
-		err := control.Reconcile(ctx, &crd)
-
-		require.Error(t, err)
-		require.EqualError(t, err, "rollout in progress")
-		require.True(t, err.IsTransient())
+		requeue, err := control.Reconcile(ctx, nopLogger, &crd)
+		require.NoError(t, err)
+		require.True(t, requeue)
 
 		require.Zero(t, mClient.CreateCount)
 		require.Equal(t, stubRollout, mClient.DeleteCount)

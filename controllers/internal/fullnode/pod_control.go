@@ -2,7 +2,6 @@ package fullnode
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -50,8 +49,9 @@ func NewPodControl(client Client) PodControl {
 	}
 }
 
-// Reconcile is the control loop for pods.
-func (pc PodControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmosv1.CosmosFullNode) kube.ReconcileError {
+// Reconcile is the control loop for pods. The bool return value, if true, indicates the controller should requeue
+// the request.
+func (pc PodControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmosv1.CosmosFullNode) (bool, kube.ReconcileError) {
 	// TODO (nix - 8/9/22) Update crd status.
 	// Find any existing pods for this CRD.
 	var pods corev1.PodList
@@ -60,7 +60,7 @@ func (pc PodControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmos
 		client.MatchingFields{kube.ControllerOwnerField: crd.Name},
 		SelectorLabels(crd),
 	); err != nil {
-		return kube.TransientError(fmt.Errorf("list existing pods: %w", err))
+		return false, kube.TransientError(fmt.Errorf("list existing pods: %w", err))
 	}
 
 	if len(pods.Items) > 0 {
@@ -78,23 +78,23 @@ func (pc PodControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmos
 	for _, pod := range diff.Creates() {
 		log.Info("Creating pod", "podName", pod.Name)
 		if err := ctrl.SetControllerReference(crd, pod, pc.client.Scheme()); err != nil {
-			return kube.TransientError(fmt.Errorf("set controller reference on pod %q: %w", pod.Name, err))
+			return true, kube.TransientError(fmt.Errorf("set controller reference on pod %q: %w", pod.Name, err))
 		}
 		if err := pc.client.Create(ctx, pod); err != nil {
-			return kube.TransientError(fmt.Errorf("create pod %q: %w", pod.Name, err))
+			return true, kube.TransientError(fmt.Errorf("create pod %q: %w", pod.Name, err))
 		}
 	}
 
 	for _, pod := range diff.Deletes() {
 		log.Info("Deleting pod", "podName", pod.Name)
 		if err := pc.client.Delete(ctx, pod, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
-			return kube.TransientError(fmt.Errorf("delete pod %q: %w", pod.Name, err))
+			return true, kube.TransientError(fmt.Errorf("delete pod %q: %w", pod.Name, err))
 		}
 	}
 
 	if len(diff.Creates())+len(diff.Deletes()) > 0 {
-		// Scaling happens first. Then updates.
-		return kube.TransientError(errors.New("scaling in progress"))
+		// Scaling happens first; then updates. So requeue to handle updates after scaling finished.
+		return true, nil
 	}
 
 	if len(diff.Updates()) > 0 {
@@ -107,13 +107,14 @@ func (pc PodControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmos
 			log.Info("Deleting pod for update", "podName", pod.Name)
 			// Because we should watch for deletes, we get a re-queued request, detect pod is missing, and re-create it.
 			if err := pc.client.Delete(ctx, pod, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
-				return kube.TransientError(fmt.Errorf("update pod %q: %w", pod.Name, err))
+				return true, kube.TransientError(fmt.Errorf("update pod %q: %w", pod.Name, err))
 			}
 		}
 
-		return kube.TransientError(errors.New("rollout in progress"))
+		// Signal requeue.
+		return true, nil
 	}
 
 	// Finished, pod state matches CRD.
-	return nil
+	return false, nil
 }
