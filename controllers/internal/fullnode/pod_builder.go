@@ -86,13 +86,13 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 	for k, v := range tpl.Metadata.Labels {
 		_, ok := pod.ObjectMeta.Labels[k]
 		if !ok {
-			pod.ObjectMeta.Labels[k] = v
+			pod.ObjectMeta.Labels[k] = kube.ToLabelValue(v)
 		}
 	}
 	for k, v := range tpl.Metadata.Annotations {
 		_, ok := pod.ObjectMeta.Annotations[k]
 		if !ok {
-			pod.ObjectMeta.Annotations[k] = v
+			pod.ObjectMeta.Annotations[k] = kube.ToLabelValue(v)
 		}
 	}
 
