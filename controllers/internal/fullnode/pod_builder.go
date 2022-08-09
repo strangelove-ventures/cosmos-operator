@@ -31,6 +31,8 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 		panic(errors.New("nil CosmosFullNode"))
 	}
 
+	tpl := crd.Spec.PodTemplate
+
 	pod := corev1.Pod{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Pod",
@@ -42,7 +44,7 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 				chainLabel:           kube.ToLabelValue(crd.Name),
 				kube.ControllerLabel: kube.ToLabelValue("CosmosFullNode"),
 				kube.NameLabel:       kube.ToLabelValue(fmt.Sprintf("%s-fullnode", crd.Name)),
-				kube.VersionLabel:    kube.ParseImageVersion(crd.Spec.PodTemplate.Image),
+				kube.VersionLabel:    kube.ParseImageVersion(tpl.Image),
 			},
 			// TODO: prom metrics
 			Annotations: map[string]string{
@@ -52,23 +54,29 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 		Spec: corev1.PodSpec{
 			Volumes:                       nil, // TODO: must create volumes before this step
 			InitContainers:                nil, // TODO: real chain will need init containers
-			TerminationGracePeriodSeconds: ptr(int64(30)),
+			TerminationGracePeriodSeconds: valOrDefault(tpl.TerminationGracePeriodSeconds, func() *int64 { return ptr(int64(30)) }),
+			Affinity:                      tpl.Affinity,
+			NodeSelector:                  tpl.NodeSelector,
+			Tolerations:                   tpl.Tolerations,
+			PriorityClassName:             tpl.PriorityClassName,
+			Priority:                      tpl.Priority,
+			ImagePullSecrets:              tpl.ImagePullSecrets,
 			Containers: []corev1.Container{
 				{
 					Name:  crd.Name,
-					Image: crd.Spec.PodTemplate.Image,
+					Image: tpl.Image,
 					// TODO need binary name
-					Command: []string{"sleep"},
-					Args:    []string{"infinity"},
-					Ports:   fullNodePorts,
+					Command:   []string{"sleep"},
+					Args:      []string{"infinity"},
+					Ports:     fullNodePorts,
+					Resources: tpl.Resources,
 					// TODO (nix - 7/27/22) - Set these values.
-					Resources:      crd.Spec.PodTemplate.Resources,
 					VolumeMounts:   nil,
 					LivenessProbe:  nil,
 					ReadinessProbe: nil,
 					StartupProbe:   nil,
 
-					ImagePullPolicy: corev1.PullIfNotPresent, // TODO: allow configuring this
+					ImagePullPolicy: tpl.ImagePullPolicy,
 				},
 			},
 		},

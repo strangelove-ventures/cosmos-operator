@@ -53,29 +53,13 @@ type CosmosFullNodePodSpec struct {
 	// +optional
 	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy"`
 
-	// Entrypoint array. Not executed within a shell.
-	// The chain binary is used if this is not provided.
-	// Variable references $(VAR_NAME) are expanded using the container's environment. If a variable
-	// cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced
-	// to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. "$$(VAR_NAME)" will
-	// produce the string literal "$(VAR_NAME)". Escaped references will never be expanded, regardless
-	// of whether the variable exists or not. Cannot be updated.
-	// More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell
-	// This command is for the main container running the chain process.
+	// ImagePullSecrets is a list of references to secrets in the same namespace to use for pulling any images
+	// in pods that reference this ServiceAccount. ImagePullSecrets are distinct from Secrets because Secrets
+	// can be mounted in the pod, but ImagePullSecrets are only accessed by the kubelet.
+	// More info: https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod
+	// This is for the main container running the chain process.
 	// +optional
-	Command []string `json:"command"`
-
-	// Arguments to the entrypoint.
-	// The chain binary start subcommand is used if this is not provided.
-	// Variable references $(VAR_NAME) are expanded using the container's environment. If a variable
-	// cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced
-	// to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. "$$(VAR_NAME)" will
-	// produce the string literal "$(VAR_NAME)". Escaped references will never be expanded, regardless
-	// of whether the variable exists or not. Cannot be updated.
-	// More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell
-	// These args are for the main container running the chain process.
-	// +optional
-	Args []string `json:"args,omitempty"`
+	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets"`
 
 	// NodeSelector is a selector which must be true for the pod to fit on a node.
 	// Selector which must match a node's labels for the pod to be scheduled on that node.
@@ -111,11 +95,6 @@ type CosmosFullNodePodSpec struct {
 	// Resources describes the compute resource requirements.
 	// +optional
 	Resources corev1.ResourceRequirements `json:"resources"`
-
-	// SecurityContext holds pod-level security attributes and common container settings.
-	// Optional: Defaults to empty.  See type description for default values of each field.
-	// +optional
-	SecurityContext *corev1.PodSecurityContext `json:"securityContext"`
 
 	// Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request.
 	// Value must be non-negative integer. The value zero indicates stop immediately via
