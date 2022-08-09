@@ -56,6 +56,10 @@ func TestPodBuilder(t *testing.T) {
 
 		require.Equal(t, "test", pod.Namespace)
 		require.Equal(t, "osmosis-fullnode-5", pod.Name)
+
+		require.NotEmpty(t, pod.Labels["cosmosfullnode.cosmos.strange.love/resource-revision"])
+		// The fuzz test below tests this property.
+		delete(pod.Labels, revisionLabel)
 		wantLabels := map[string]string{
 			"cosmosfullnode.cosmos.strange.love/chain-name": "osmosis",
 			"app.kubernetes.io/instance":                    "osmosis-fullnode-5",
@@ -64,11 +68,8 @@ func TestPodBuilder(t *testing.T) {
 			"app.kubernetes.io/version":                     "v1.2.3",
 		}
 		require.Equal(t, wantLabels, pod.Labels)
-		require.EqualValues(t, 30, *pod.Spec.TerminationGracePeriodSeconds)
 
-		require.NotEmpty(t, pod.Annotations["cosmosfullnode.cosmos.strange.love/resource-revision"])
-		// The fuzz test below tests this property.
-		delete(pod.Annotations, revisionAnnotation)
+		require.EqualValues(t, 30, *pod.Spec.TerminationGracePeriodSeconds)
 
 		wantAnnotations := map[string]string{
 			"cosmosfullnode.cosmos.strange.love/ordinal": "5",
@@ -135,6 +136,7 @@ func TestPodBuilder(t *testing.T) {
 			"app.kubernetes.io/name":                        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-fullnode",
 			"app.kubernetes.io/version":                     "v1.2.3",
 		}
+		delete(pod.Labels, revisionLabel)
 		require.Equal(t, wantLabels, pod.Labels)
 	})
 }
@@ -148,9 +150,9 @@ func FuzzPodBuilder_Build(f *testing.F) {
 		pod1 := NewPodBuilder(&crd).Build()
 		pod2 := NewPodBuilder(&crd).Build()
 
-		require.NotEmpty(t, pod1.Annotations[revisionAnnotation], image)
-		require.NotEmpty(t, pod2.Annotations[revisionAnnotation], image)
+		require.NotEmpty(t, pod1.Labels[revisionLabel], image)
+		require.NotEmpty(t, pod2.Labels[revisionLabel], image)
 
-		require.Equal(t, pod1.Annotations[revisionAnnotation], pod2.Annotations[revisionAnnotation], image)
+		require.Equal(t, pod1.Labels[revisionLabel], pod2.Labels[revisionLabel], image)
 	})
 }
