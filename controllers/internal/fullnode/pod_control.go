@@ -12,28 +12,45 @@ import (
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type PodControl struct {
-	log    logr.Logger
-	client client.Client
+type differ interface {
+	Creates() []*corev1.Pod
+	Updates() []*corev1.Pod
+	Deletes() []*corev1.Pod
 }
 
+// PodControl reconciles pods for a CosmosFullNode.
+type PodControl struct {
+	log            logr.Logger
+	client         client.Client
+	diffFactory    func(ordinalAnnotationKey string, current, want []*corev1.Pod) differ
+	computeRollout func(maxUnavail *intstr.IntOrString, desired, ready int) int
+}
+
+// NewPodControl returns a P
 func NewPodControl(logger logr.Logger, client client.Client) PodControl {
 	return PodControl{
 		log:    logger,
 		client: client,
+		diffFactory: func(ordinalAnnotationKey string, current, want []*corev1.Pod) differ {
+			return kube.NewDiff(ordinalAnnotationKey, current, want)
+		},
+		computeRollout: kube.ComputeRollout,
 	}
 }
 
-func (pc PodControl) Reconcile(ctx context.Context, req ctrl.Request, crd *cosmosv1.CosmosFullNode) kube.ReconcileError {
+// Reconcile is the control loop for pods.
+func (pc PodControl) Reconcile(ctx context.Context, crd *cosmosv1.CosmosFullNode) kube.ReconcileError {
+	// TODO (nix - 8/9/22) Update crd status.
 	// Find any existing pods for this CRD.
 	var pods corev1.PodList
 	if err := pc.client.List(ctx, &pods,
-		client.InNamespace(req.Namespace),
-		client.MatchingFields{kube.ControllerOwnerField: req.Name},
+		client.InNamespace(crd.Namespace),
+		client.MatchingFields{kube.ControllerOwnerField: crd.Name},
 		SelectorLabels(crd),
 	); err != nil {
 		return kube.TransientError(fmt.Errorf("list existing pods: %w", err))
@@ -48,7 +65,7 @@ func (pc PodControl) Reconcile(ctx context.Context, req ctrl.Request, crd *cosmo
 	var (
 		currentPods = ptrSlice(pods.Items)
 		wantPods    = PodState(crd)
-		diff        = kube.NewDiff(OrdinalAnnotation, currentPods, wantPods)
+		diff        = pc.diffFactory(OrdinalAnnotation, currentPods, wantPods)
 	)
 
 	for _, pod := range diff.Creates() {
@@ -76,7 +93,7 @@ func (pc PodControl) Reconcile(ctx context.Context, req ctrl.Request, crd *cosmo
 	if len(diff.Updates()) > 0 {
 		var (
 			avail      = kube.AvailablePods(currentPods, 3*time.Second, time.Now())
-			numUpdates = kube.ComputeRollout(crd.Spec.RolloutStrategy.MaxUnavailable, int(crd.Spec.Replicas), len(avail))
+			numUpdates = pc.computeRollout(crd.Spec.RolloutStrategy.MaxUnavailable, int(crd.Spec.Replicas), len(avail))
 		)
 
 		for _, pod := range lo.Slice(diff.Updates(), 0, numUpdates) {
@@ -90,5 +107,6 @@ func (pc PodControl) Reconcile(ctx context.Context, req ctrl.Request, crd *cosmo
 		return kube.TransientError(errors.New("rollout in progress"))
 	}
 
+	// Finished, pod state matches CRD.
 	return nil
 }
