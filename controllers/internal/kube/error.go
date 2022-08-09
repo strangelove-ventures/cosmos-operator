@@ -1,4 +1,4 @@
-package fullnode
+package kube
 
 // ReconcileError is a controller-specific error.
 type ReconcileError interface {
