@@ -10,7 +10,6 @@ import (
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -204,18 +203,10 @@ func (m *mockClient) DeleteAllOf(ctx context.Context, obj client.Object, opts ..
 	panic("implement me")
 }
 
-func (m *mockClient) Status() client.StatusWriter {
-	panic("implement me")
-}
-
 func (m *mockClient) Scheme() *runtime.Scheme {
 	scheme := runtime.NewScheme()
 	if err := cosmosv1.AddToScheme(scheme); err != nil {
 		panic(err)
 	}
 	return scheme
-}
-
-func (m *mockClient) RESTMapper() meta.RESTMapper {
-	panic("implement me")
 }

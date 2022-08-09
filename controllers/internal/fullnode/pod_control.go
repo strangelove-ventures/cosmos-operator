@@ -12,6 +12,7 @@ import (
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -23,16 +24,24 @@ type differ interface {
 	Deletes() []*corev1.Pod
 }
 
+// Client is a controller client. It is a subset of client.Client.
+type Client interface {
+	client.Reader
+	client.Writer
+
+	Scheme() *runtime.Scheme
+}
+
 // PodControl reconciles pods for a CosmosFullNode.
 type PodControl struct {
 	log            logr.Logger
-	client         client.Client
+	client         Client
 	diffFactory    func(ordinalAnnotationKey string, current, want []*corev1.Pod) differ
 	computeRollout func(maxUnavail *intstr.IntOrString, desired, ready int) int
 }
 
 // NewPodControl returns a P
-func NewPodControl(logger logr.Logger, client client.Client) PodControl {
+func NewPodControl(logger logr.Logger, client Client) PodControl {
 	return PodControl{
 		log:    logger,
 		client: client,
