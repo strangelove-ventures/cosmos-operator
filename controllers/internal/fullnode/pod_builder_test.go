@@ -120,6 +120,10 @@ func TestPodBuilder(t *testing.T) {
 
 	t.Run("happy path - optional fields", func(t *testing.T) {
 		optCrd := crd.DeepCopy()
+
+		optCrd.Spec.PodTemplate.Metadata.Labels = map[string]string{"custom": "label", chainLabel: "should not see me"}
+		optCrd.Spec.PodTemplate.Metadata.Annotations = map[string]string{"custom": "annotation", OrdinalAnnotation: "should not see me"}
+
 		optCrd.Spec.PodTemplate.Affinity = &corev1.Affinity{
 			PodAffinity: &corev1.PodAffinity{
 				RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{TopologyKey: "affinity1"}},
@@ -135,6 +139,14 @@ func TestPodBuilder(t *testing.T) {
 
 		builder := NewPodBuilder(optCrd)
 		pod := builder.WithOrdinal(9).Build()
+
+		require.Equal(t, "label", pod.Labels["custom"])
+		// Operator label takes precedence.
+		require.Equal(t, "osmosis", pod.Labels[chainLabel])
+
+		require.Equal(t, "annotation", pod.Annotations["custom"])
+		// Operator label takes precedence.
+		require.Equal(t, "9", pod.Annotations[OrdinalAnnotation])
 
 		require.Equal(t, optCrd.Spec.PodTemplate.Affinity, pod.Spec.Affinity)
 		require.Equal(t, optCrd.Spec.PodTemplate.Tolerations, pod.Spec.Tolerations)

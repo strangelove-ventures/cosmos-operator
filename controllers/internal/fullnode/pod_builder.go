@@ -81,6 +81,21 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 			},
 		},
 	}
+
+	// Conditionally add custom labels and annotations, preserving key/values already set.
+	for k, v := range tpl.Metadata.Labels {
+		_, ok := pod.ObjectMeta.Labels[k]
+		if !ok {
+			pod.ObjectMeta.Labels[k] = v
+		}
+	}
+	for k, v := range tpl.Metadata.Annotations {
+		_, ok := pod.ObjectMeta.Annotations[k]
+		if !ok {
+			pod.ObjectMeta.Annotations[k] = v
+		}
+	}
+
 	return PodBuilder{
 		crd: crd,
 		pod: &pod,
