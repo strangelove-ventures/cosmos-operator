@@ -21,13 +21,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/fullnode"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -45,7 +42,16 @@ const (
 // CosmosFullNodeReconciler reconciles a CosmosFullNode object
 type CosmosFullNodeReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+
+	podControl fullnode.PodControl
+}
+
+// NewFullNode returns a valid CosmosFullNode controller.
+func NewFullNode(client client.Client) *CosmosFullNodeReconciler {
+	return &CosmosFullNodeReconciler{
+		Client:     client,
+		podControl: fullnode.NewPodControl(client),
+	}
 }
 
 var (
@@ -77,73 +83,19 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return finishResult, client.IgnoreNotFound(err)
 	}
 
-	// Find any existing pods for this CRD.
-	var pods corev1.PodList
-	if err := r.List(ctx, &pods,
-		client.InNamespace(req.Namespace),
-		client.MatchingFields{controllerOwnerField: req.Name},
-		fullnode.SelectorLabels(&crd),
-	); err != nil {
-		return requeueResult, fmt.Errorf("list existing pods: %w", err)
+	// Reconcile pods.
+	if err := r.podControl.Reconcile(ctx, logger, &crd); err != nil {
+		return r.resultWithErr(err)
 	}
 
-	if len(pods.Items) > 0 {
-		logger.V(2).Info("Found existing pods", "numPods", len(pods.Items))
-	} else {
-		logger.V(2).Info("Did not find any existing pods")
+	return finishResult, nil
+}
+
+func (r *CosmosFullNodeReconciler) resultWithErr(err kube.ReconcileError) (ctrl.Result, kube.ReconcileError) {
+	if err.IsTransient() {
+		return requeueResult, err
 	}
-
-	var (
-		currentPods = ptrSlice(pods.Items)
-		wantPods    = fullnode.PodState(&crd)
-		podDiff     = kube.NewDiff(fullnode.OrdinalAnnotation, currentPods, wantPods)
-	)
-
-	for _, pod := range podDiff.Creates() {
-		logger.Info("Creating pod", "podName", pod.Name)
-		// TODO (nix - 7/25/22) This step is easy to forget. Perhaps abstract it somewhere.
-		if err := ctrl.SetControllerReference(&crd, pod, r.Scheme); err != nil {
-			return requeueResult, fmt.Errorf("set controller reference on pod %q: %w", pod.Name, err)
-		}
-		if err := r.Create(ctx, pod); err != nil {
-			return requeueResult, fmt.Errorf("create pod %q: %w", pod.Name, err)
-		}
-	}
-
-	for _, pod := range podDiff.Deletes() {
-		logger.Info("Deleting pod", "podName", pod.Name)
-		if err := r.Delete(ctx, pod, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
-			return requeueResult, fmt.Errorf("delete pod %q: %w", pod.Name, err)
-		}
-	}
-
-	if len(podDiff.Creates())+len(podDiff.Deletes()) > 0 {
-		// TODO (nix - 8/8/22) Capture this subtlety in a test. Requeue for later for the best update accuracy; in case update and scaling happens together.
-		// Scaling happens first. Then rollout updates.
-		return requeueResult, nil
-	}
-
-	if len(podDiff.Updates()) == 0 {
-		return finishResult, nil
-	}
-
-	var (
-		avail      = kube.AvailablePods(currentPods, 3*time.Second, time.Now())
-		numUpdates = kube.ComputeRollout(crd.Spec.RolloutStrategy.MaxUnavailable, int(crd.Spec.Replicas), len(avail))
-	)
-
-	logger.Info("Update pod stats", "replicas", crd.Spec.Replicas, "numReady", len(avail), "numUpdates", numUpdates)
-
-	for _, pod := range lo.Slice(podDiff.Updates(), 0, numUpdates) {
-		logger.Info("Deleting pod for update", "podName", pod.Name)
-		// Because we watch for deletes, we get a re-queued request, detect pod is missing, and re-create it.
-		if err := r.Delete(ctx, pod, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
-			return finishResult, fmt.Errorf("update pod %q: %w", pod.Name, err)
-		}
-	}
-
-	logger.V(2).Info("Requeue for pods rollout")
-	return requeueResult, nil
+	return finishResult, err
 }
 
 // SetupWithManager sets up the controller with the Manager.

@@ -34,16 +34,14 @@ type Client interface {
 
 // PodControl reconciles pods for a CosmosFullNode.
 type PodControl struct {
-	log            logr.Logger
 	client         Client
 	diffFactory    func(ordinalAnnotationKey string, current, want []*corev1.Pod) differ
 	computeRollout func(maxUnavail *intstr.IntOrString, desired, ready int) int
 }
 
 // NewPodControl returns a P
-func NewPodControl(logger logr.Logger, client Client) PodControl {
+func NewPodControl(client Client) PodControl {
 	return PodControl{
-		log:    logger,
 		client: client,
 		diffFactory: func(ordinalAnnotationKey string, current, want []*corev1.Pod) differ {
 			return kube.NewDiff(ordinalAnnotationKey, current, want)
@@ -53,7 +51,7 @@ func NewPodControl(logger logr.Logger, client Client) PodControl {
 }
 
 // Reconcile is the control loop for pods.
-func (pc PodControl) Reconcile(ctx context.Context, crd *cosmosv1.CosmosFullNode) kube.ReconcileError {
+func (pc PodControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmosv1.CosmosFullNode) kube.ReconcileError {
 	// TODO (nix - 8/9/22) Update crd status.
 	// Find any existing pods for this CRD.
 	var pods corev1.PodList
@@ -66,9 +64,9 @@ func (pc PodControl) Reconcile(ctx context.Context, crd *cosmosv1.CosmosFullNode
 	}
 
 	if len(pods.Items) > 0 {
-		pc.log.V(2).Info("Found existing pods", "numPods", len(pods.Items))
+		log.V(2).Info("Found existing pods", "numPods", len(pods.Items))
 	} else {
-		pc.log.V(2).Info("Did not find any existing pods")
+		log.V(2).Info("Did not find any existing pods")
 	}
 
 	var (
@@ -78,7 +76,7 @@ func (pc PodControl) Reconcile(ctx context.Context, crd *cosmosv1.CosmosFullNode
 	)
 
 	for _, pod := range diff.Creates() {
-		pc.log.Info("Creating pod", "podName", pod.Name)
+		log.Info("Creating pod", "podName", pod.Name)
 		if err := ctrl.SetControllerReference(crd, pod, pc.client.Scheme()); err != nil {
 			return kube.TransientError(fmt.Errorf("set controller reference on pod %q: %w", pod.Name, err))
 		}
@@ -88,7 +86,7 @@ func (pc PodControl) Reconcile(ctx context.Context, crd *cosmosv1.CosmosFullNode
 	}
 
 	for _, pod := range diff.Deletes() {
-		pc.log.Info("Deleting pod", "podName", pod.Name)
+		log.Info("Deleting pod", "podName", pod.Name)
 		if err := pc.client.Delete(ctx, pod, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
 			return kube.TransientError(fmt.Errorf("delete pod %q: %w", pod.Name, err))
 		}
@@ -106,7 +104,7 @@ func (pc PodControl) Reconcile(ctx context.Context, crd *cosmosv1.CosmosFullNode
 		)
 
 		for _, pod := range lo.Slice(diff.Updates(), 0, numUpdates) {
-			pc.log.Info("Deleting pod for update", "podName", pod.Name)
+			log.Info("Deleting pod for update", "podName", pod.Name)
 			// Because we should watch for deletes, we get a re-queued request, detect pod is missing, and re-create it.
 			if err := pc.client.Delete(ctx, pod, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
 				return kube.TransientError(fmt.Errorf("update pod %q: %w", pod.Name, err))
