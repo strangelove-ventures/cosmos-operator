@@ -35,10 +35,25 @@ type CosmosFullNodeSpec struct {
 	Replicas int32 `json:"replicas"`
 
 	// Template applied to all pods.
-	PodTemplate CosmosFullNodePodSpec `json:"template"`
+	PodTemplate CosmosPodSpec `json:"template"`
 }
 
-type CosmosFullNodePodSpec struct {
+type CosmosMetadata struct {
+	// Labels are added to a resource. If there is a collision between labels the Operator creates, the Operator
+	// labels take precedence.
+	// +optional
+	Labels map[string]string `json:"labels"`
+	// Annotations are added to a resource. If there is a collision between annotations the Operator creates, the Operator
+	// annotations take precedence.
+	// +optional
+	Annotations map[string]string `json:"annotations"`
+}
+
+type CosmosPodSpec struct {
+	// Metadata is a subset of metav1.ObjectMeta applied to all pods.
+	// +optional
+	Metadata metav1.ObjectMeta `json:"metadata"`
+
 	// Image is the docker reference in "repository:tag" format. E.g. busybox:latest.
 	// This is for the main container running the chain process.
 	// +kubebuilder:validation:MinLength:=1

@@ -931,6 +931,10 @@ spec:
                           type: string
                       type: object
                     type: array
+                  metadata:
+                    description: Metadata is a subset of metav1.ObjectMeta applied
+                      to all pods.
+                    type: object
                   nodeSelector:
                     additionalProperties:
                       type: string

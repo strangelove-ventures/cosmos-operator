@@ -20,7 +20,7 @@ func defaultCRD() cosmosv1.CosmosFullNode {
 			ResourceVersion: "_resource_version_",
 		},
 		Spec: cosmosv1.CosmosFullNodeSpec{
-			PodTemplate: cosmosv1.CosmosFullNodePodSpec{
+			PodTemplate: cosmosv1.CosmosPodSpec{
 				Image: "busybox:v1.2.3",
 				Resources: corev1.ResourceRequirements{
 					Limits: map[corev1.ResourceName]resource.Quantity{
