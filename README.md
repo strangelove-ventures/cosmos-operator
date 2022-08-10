@@ -48,6 +48,25 @@ UnDeploy the controller to the cluster:
 make undeploy
 ```
 
+## Best Practices
+
+### Volumes, PVCs and StorageClass
+
+Generally, Volumes are bound to a single Availability Zone (AZ). Therefore, use or define a [StorageClass](https://kubernetes.io/docs/concepts/storage/storage-classes/)
+which has `volumeBindingMode: WaitForFirstConsumer`. This way, kubernetes will not provision the volume until there is a pod bound to it.
+
+If you do not configure `volumeBindingMode` to wait, you risk the scheduler ignoring pod topology rules such as `Affinity`. 
+In GKE, for example, volumes will be provisioned [in random zones](https://cloud.google.com/kubernetes-engine/docs/concepts/persistent-volumes).
+
+The Operator cannot define a StorageClass for you. Instead, you must configure the CRD with a pre-existing StorageClass.
+
+Cloud providers generally provide default StorageClasses for you. Some of them set `volumeBindingMode: WaitForFirstConsumer`.
+```shell
+kubectl get storageclass
+```
+
+Additionally, Cosmos nodes require heavy disk IO. Therefore, choose a faster StorageClass such as GKE's `premium-rwo`.
+
 ## Contributing
 // TODO(user): Add detailed information on how you would like others to contribute to this project
 
