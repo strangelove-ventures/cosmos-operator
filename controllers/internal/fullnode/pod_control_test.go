@@ -7,11 +7,9 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/samber/lo"
-	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -19,6 +17,7 @@ import (
 var nopLogger = logr.Discard()
 
 func TestPodControl_Reconcile(t *testing.T) {
+	type podClient = mockClient[*corev1.Pod]
 	ctx := context.Background()
 	const namespace = "testns"
 
@@ -34,8 +33,8 @@ func TestPodControl_Reconcile(t *testing.T) {
 	}
 
 	t.Run("no changes", func(t *testing.T) {
-		var mClient mockClient
-		mClient.PodList = corev1.PodList{
+		var mClient podClient
+		mClient.ObjectList = corev1.PodList{
 			Items: []corev1.Pod{
 				{ObjectMeta: metav1.ObjectMeta{Name: "pod-1"}},
 			},
@@ -50,9 +49,9 @@ func TestPodControl_Reconcile(t *testing.T) {
 		control.diffFactory = func(ordinalAnnotationKey string, current, want []*corev1.Pod) podDiffer {
 			require.Equal(t, "cosmosfullnode.cosmos.strange.love/ordinal", ordinalAnnotationKey)
 			require.Len(t, current, 1)
-			require.Equal(t, "pod-1", mClient.PodList.Items[0].Name)
+			require.Equal(t, "pod-1", current[0].Name)
 			require.Len(t, want, 3)
-			return mockDiffer{}
+			return mockPodDiffer{}
 		}
 		requeue, err := control.Reconcile(ctx, nopLogger, &crd)
 		require.NoError(t, err)
@@ -71,12 +70,12 @@ func TestPodControl_Reconcile(t *testing.T) {
 
 	t.Run("scale phase", func(t *testing.T) {
 		var (
-			mDiff = mockDiffer{
+			mDiff = mockPodDiffer{
 				StubCreates: buildPods(3),
 				StubDeletes: buildPods(2),
 				StubUpdates: buildPods(10),
 			}
-			mClient mockClient
+			mClient podClient
 			crd     = defaultCRD()
 			control = NewPodControl(&mClient)
 		)
@@ -91,22 +90,22 @@ func TestPodControl_Reconcile(t *testing.T) {
 		require.Equal(t, 3, mClient.CreateCount)
 		require.Equal(t, 2, mClient.DeleteCount)
 
-		require.NotEmpty(t, mClient.LastCreatedPod.OwnerReferences)
-		require.Equal(t, crd.Name, mClient.LastCreatedPod.OwnerReferences[0].Name)
-		require.Equal(t, "CosmosFullNode", mClient.LastCreatedPod.OwnerReferences[0].Kind)
-		require.True(t, *mClient.LastCreatedPod.OwnerReferences[0].Controller)
+		require.NotEmpty(t, mClient.LastCreatedResource.OwnerReferences)
+		require.Equal(t, crd.Name, mClient.LastCreatedResource.OwnerReferences[0].Name)
+		require.Equal(t, "CosmosFullNode", mClient.LastCreatedResource.OwnerReferences[0].Kind)
+		require.True(t, *mClient.LastCreatedResource.OwnerReferences[0].Controller)
 	})
 
 	t.Run("rollout phase", func(t *testing.T) {
-		var mClient mockClient
-		mClient.PodList = corev1.PodList{
+		var mClient podClient
+		mClient.ObjectList = corev1.PodList{
 			Items: []corev1.Pod{
 				{ObjectMeta: metav1.ObjectMeta{Name: "pod-1"}},
 			},
 		}
 
 		var (
-			mDiff = mockDiffer{
+			mDiff = mockPodDiffer{
 				StubUpdates: buildPods(10),
 			}
 			crd     = defaultCRD()
@@ -134,75 +133,18 @@ func TestPodControl_Reconcile(t *testing.T) {
 	})
 }
 
-type mockDiffer struct {
+type mockPodDiffer struct {
 	StubCreates, StubUpdates, StubDeletes []*corev1.Pod
 }
 
-func (m mockDiffer) Creates() []*corev1.Pod {
+func (m mockPodDiffer) Creates() []*corev1.Pod {
 	return m.StubCreates
 }
 
-func (m mockDiffer) Updates() []*corev1.Pod {
+func (m mockPodDiffer) Updates() []*corev1.Pod {
 	return m.StubUpdates
 }
 
-func (m mockDiffer) Deletes() []*corev1.Pod {
+func (m mockPodDiffer) Deletes() []*corev1.Pod {
 	return m.StubDeletes
-}
-
-type mockClient struct {
-	PodList     corev1.PodList
-	GotListOpts []client.ListOption
-
-	CreateCount    int
-	LastCreatedPod *corev1.Pod
-	DeleteCount    int
-}
-
-func (m *mockClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object) error {
-	panic("implement me")
-}
-
-func (m *mockClient) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
-	if ctx == nil {
-		panic("nil context")
-	}
-	m.GotListOpts = opts
-	ref := list.(*corev1.PodList)
-	*ref = m.PodList
-	return nil
-}
-
-func (m *mockClient) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
-	if ctx == nil {
-		panic("nil context")
-	}
-	m.LastCreatedPod = obj.(*corev1.Pod)
-	m.CreateCount++
-	return nil
-}
-
-func (m *mockClient) Delete(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error {
-	m.DeleteCount++
-	return nil
-}
-
-func (m *mockClient) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
-	panic("implement me")
-}
-
-func (m *mockClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
-	panic("implement me")
-}
-
-func (m *mockClient) DeleteAllOf(ctx context.Context, obj client.Object, opts ...client.DeleteAllOfOption) error {
-	panic("implement me")
-}
-
-func (m *mockClient) Scheme() *runtime.Scheme {
-	scheme := runtime.NewScheme()
-	if err := cosmosv1.AddToScheme(scheme); err != nil {
-		panic(err)
-	}
-	return scheme
 }
