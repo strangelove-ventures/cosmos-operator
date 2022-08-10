@@ -41,6 +41,8 @@ type CosmosFullNodeSpec struct {
 	// How to scale pods when performing an update.
 	// +optional
 	RolloutStrategy CosmosRolloutStrategy `json:"strategy"`
+
+	VolumeClaimTemplate CosmosPersistentVolumeClaim `json:"volumeClaimTemplate"`
 }
 
 type CosmosMetadata struct {
@@ -84,14 +86,17 @@ type CosmosPodSpec struct {
 	// NodeSelector is a selector which must be true for the pod to fit on a node.
 	// Selector which must match a node's labels for the pod to be scheduled on that node.
 	// More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+	// This is an advanced configuration option.
 	// +optional
 	NodeSelector map[string]string `json:"nodeSelector"`
 
 	// If specified, the pod's scheduling constraints
+	// This is an advanced configuration option.
 	// +optional
 	Affinity *corev1.Affinity `json:"affinity"`
 
 	// If specified, the pod's tolerations.
+	// This is an advanced configuration option.
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations"`
 
@@ -101,6 +106,7 @@ type CosmosPodSpec struct {
 	// name must be defined by creating a PriorityClass object with that name.
 	// If not specified, the pod priority will be default or zero if there is no
 	// default.
+	// This is an advanced configuration option.
 	// +optional
 	PriorityClassName string `json:"priorityClassName"`
 
@@ -109,6 +115,7 @@ type CosmosPodSpec struct {
 	// prevents users from setting this field. The admission controller populates
 	// this field from PriorityClassName.
 	// The higher the value, the higher the priority.
+	// This is an advanced configuration option.
 	// +optional
 	Priority *int32 `json:"priority"`
 
@@ -123,9 +130,66 @@ type CosmosPodSpec struct {
 	// The grace period is the duration in seconds after the processes running in the pod are sent
 	// a termination signal and the time when the processes are forcibly halted with a kill signal.
 	// Set this value longer than the expected cleanup time for your process.
+	// This is an advanced configuration option.
 	// Defaults to 30 seconds.
 	// +optional
 	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty" protobuf:"varint,4,opt,name=terminationGracePeriodSeconds"`
+}
+
+// CosmosPersistentVolumeClaim describes the common attributes of storage devices
+// and allows a Source for provider-specific attributes
+type CosmosPersistentVolumeClaim struct {
+	// storageClassName is the name of the StorageClass required by the claim.
+	// For proper pod scheduling, it's highly recommended to set "volumeBindingMode: WaitForFirstConsumer".
+	// This field is required.
+	// More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1
+	StorageClassName *string `json:"storageClassName,omitempty" protobuf:"bytes,5,opt,name=storageClassName"`
+
+	// accessModes contains the desired access modes the volume should have.
+	// This field is required.
+	// More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1
+	AccessModes []corev1.PersistentVolumeAccessMode `json:"accessModes,omitempty" protobuf:"bytes,1,rep,name=accessModes,casttype=PersistentVolumeAccessMode"`
+
+	// resources represents the minimum resources the volume should have.
+	// This field is required.
+	// If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements
+	// that are lower than previous value but must still be higher than capacity recorded in the
+	// status field of the claim.
+	// More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
+	Resources corev1.ResourceRequirements `json:"resources,omitempty" protobuf:"bytes,2,opt,name=resources"`
+
+	// volumeMode defines what type of volume is required by the claim.
+	// Value of Filesystem is implied when not included in claim spec.
+	// +optional
+	VolumeMode *corev1.PersistentVolumeMode `json:"volumeMode,omitempty" protobuf:"bytes,6,opt,name=volumeMode,casttype=PersistentVolumeMode"`
+	// dataSource field can be used to specify either:
+	// * An existing VolumeSnapshot object (snapshot.storage.k8s.io/VolumeSnapshot)
+	// * An existing PVC (PersistentVolumeClaim)
+	// If the provisioner or an external controller can support the specified data source,
+	// it will create a new volume based on the contents of the specified data source.
+	// If the AnyVolumeDataSource feature gate is enabled, this field will always have
+	// the same contents as the DataSourceRef field.
+	// +optional
+	DataSource *corev1.TypedLocalObjectReference `json:"dataSource,omitempty" protobuf:"bytes,7,opt,name=dataSource"`
+	// dataSourceRef specifies the object from which to populate the volume with data, if a non-empty
+	// volume is desired. This may be any local object from a non-empty API group (non
+	// core object) or a PersistentVolumeClaim object.
+	// When this field is specified, volume binding will only succeed if the type of
+	// the specified object matches some installed volume populator or dynamic
+	// provisioner.
+	// This field will replace the functionality of the DataSource field and as such
+	// if both fields are non-empty, they must have the same value. For backwards
+	// compatibility, both fields (DataSource and DataSourceRef) will be set to the same
+	// value automatically if one of them is empty and the other is non-empty.
+	// There are two important differences between DataSource and DataSourceRef:
+	// * While DataSource only allows two specific types of objects, DataSourceRef
+	//   allows any non-core object, as well as PersistentVolumeClaim objects.
+	// * While DataSource ignores disallowed values (dropping them), DataSourceRef
+	//   preserves all values, and generates an error if a disallowed value is
+	//   specified.
+	// (Beta) Using this field requires the AnyVolumeDataSource feature gate to be enabled.
+	// +optional
+	DataSourceRef *corev1.TypedLocalObjectReference `json:"dataSourceRef,omitempty" protobuf:"bytes,8,opt,name=dataSourceRef"`
 }
 
 // CosmosRolloutStrategy is an update strategy that can be shared between several Cosmos CRDs.
