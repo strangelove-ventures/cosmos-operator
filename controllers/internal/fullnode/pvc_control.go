@@ -8,6 +8,8 @@ import (
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -34,7 +36,7 @@ func NewPVCControl(client Client) PVCControl {
 	}
 }
 
-// Reconcile is the control loop for pods. The bool return value, if true, indicates the controller should requeue
+// Reconcile is the control loop for PVCs. The bool return value, if true, indicates the controller should requeue
 // the request.
 func (vc PVCControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmosv1.CosmosFullNode) (bool, kube.ReconcileError) {
 	// TODO (nix - 8/10/22) Update crd status.
@@ -47,5 +49,29 @@ func (vc PVCControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmos
 	); err != nil {
 		return false, kube.TransientError(fmt.Errorf("list existing pvcs: %w", err))
 	}
+
+	var (
+		currentPVCs = ptrSlice(vols.Items)
+		wantPVCs    = BuildPVCs(crd)
+		diff        = vc.diffFactory(OrdinalAnnotation, currentPVCs, wantPVCs)
+	)
+
+	for _, pvc := range diff.Creates() {
+		log.Info("Creating pvc", "pvcName", pvc.Name)
+		if err := ctrl.SetControllerReference(crd, pvc, vc.client.Scheme()); err != nil {
+			return true, kube.TransientError(fmt.Errorf("set controller reference on pvc %q: %w", pvc.Name, err))
+		}
+		if err := vc.client.Create(ctx, pvc); err != nil {
+			return true, kube.TransientError(fmt.Errorf("create pvc %q: %w", pvc.Name, err))
+		}
+	}
+
+	for _, pvc := range diff.Deletes() {
+		log.Info("Deleting pvc", "pvcName", pvc.Name)
+		if err := vc.client.Delete(ctx, pvc, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
+			return true, kube.TransientError(fmt.Errorf("delete pvc %q: %w", pvc.Name, err))
+		}
+	}
+
 	return false, nil
 }

@@ -68,7 +68,6 @@ func pvcRevisionHash(crd *cosmosv1.CosmosFullNode) string {
 	if err := enc.Encode(crd.Spec.VolumeClaimTemplate); err != nil {
 		panic(err)
 	}
-	// We also update pods if volume config has chan
 	h := fnv.New32()
 	_, err := h.Write(buf.Bytes())
 	if err != nil {

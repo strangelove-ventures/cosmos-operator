@@ -44,6 +44,7 @@ type CosmosFullNodeReconciler struct {
 	client.Client
 
 	podControl fullnode.PodControl
+	pvcControl fullnode.PVCControl
 }
 
 // NewFullNode returns a valid CosmosFullNode controller.
@@ -51,6 +52,7 @@ func NewFullNode(client client.Client) *CosmosFullNodeReconciler {
 	return &CosmosFullNodeReconciler{
 		Client:     client,
 		podControl: fullnode.NewPodControl(client),
+		pvcControl: fullnode.NewPVCControl(client),
 	}
 }
 
@@ -83,8 +85,17 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return finishResult, client.IgnoreNotFound(err)
 	}
 
+	// Reconcile pvcs.
+	requeue, err := r.pvcControl.Reconcile(ctx, logger, &crd)
+	if err != nil {
+		return r.resultWithErr(err)
+	}
+	if requeue {
+		return requeueResult, nil
+	}
+
 	// Reconcile pods.
-	requeue, err := r.podControl.Reconcile(ctx, logger, &crd)
+	requeue, err = r.podControl.Reconcile(ctx, logger, &crd)
 	if err != nil {
 		return r.resultWithErr(err)
 	}

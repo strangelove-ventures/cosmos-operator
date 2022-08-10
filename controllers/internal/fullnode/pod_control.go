@@ -63,12 +63,6 @@ func (pc PodControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmos
 		return false, kube.TransientError(fmt.Errorf("list existing pods: %w", err))
 	}
 
-	if len(pods.Items) > 0 {
-		log.V(2).Info("Found existing pods", "numPods", len(pods.Items))
-	} else {
-		log.V(2).Info("Did not find any existing pods")
-	}
-
 	var (
 		currentPods = ptrSlice(pods.Items)
 		wantPods    = PodState(crd)
