@@ -53,7 +53,7 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 		Spec: corev1.PodSpec{
 			Volumes:                       nil, // TODO: must create volumes before this step
 			InitContainers:                nil, // TODO: real chain will need init containers
-			TerminationGracePeriodSeconds: valOrDefault(tpl.TerminationGracePeriodSeconds, func() *int64 { return ptr(int64(30)) }),
+			TerminationGracePeriodSeconds: valOrDefault(tpl.TerminationGracePeriodSeconds, ptr(int64(30))),
 			Affinity:                      tpl.Affinity,
 			NodeSelector:                  tpl.NodeSelector,
 			Tolerations:                   tpl.Tolerations,
