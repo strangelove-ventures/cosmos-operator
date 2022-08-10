@@ -47,7 +47,7 @@ func TestPodControl_Reconcile(t *testing.T) {
 		crd.Name = "hub"
 
 		control := NewPodControl(&mClient)
-		control.diffFactory = func(ordinalAnnotationKey string, current, want []*corev1.Pod) differ {
+		control.diffFactory = func(ordinalAnnotationKey string, current, want []*corev1.Pod) podDiffer {
 			require.Equal(t, "cosmosfullnode.cosmos.strange.love/ordinal", ordinalAnnotationKey)
 			require.Len(t, current, 1)
 			require.Equal(t, "pod-1", mClient.PodList.Items[0].Name)
@@ -81,7 +81,7 @@ func TestPodControl_Reconcile(t *testing.T) {
 			control = NewPodControl(&mClient)
 		)
 		crd.Namespace = namespace
-		control.diffFactory = func(ordinalAnnotationKey string, current, want []*corev1.Pod) differ {
+		control.diffFactory = func(ordinalAnnotationKey string, current, want []*corev1.Pod) podDiffer {
 			return mDiff
 		}
 		requeue, err := control.Reconcile(ctx, nopLogger, &crd)
@@ -115,7 +115,7 @@ func TestPodControl_Reconcile(t *testing.T) {
 
 		crd.Namespace = namespace
 		crd.Spec.Replicas = 10
-		control.diffFactory = func(ordinalAnnotationKey string, current, want []*corev1.Pod) differ {
+		control.diffFactory = func(ordinalAnnotationKey string, current, want []*corev1.Pod) podDiffer {
 			return mDiff
 		}
 
