@@ -115,6 +115,7 @@ func (r *CosmosFullNodeReconciler) resultWithErr(err kube.ReconcileError) (ctrl.
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *CosmosFullNodeReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	// Setup indexes.
 	err := mgr.GetFieldIndexer().IndexField(
 		context.Background(),
 		&corev1.Pod{},

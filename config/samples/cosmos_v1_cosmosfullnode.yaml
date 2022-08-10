@@ -4,7 +4,7 @@ metadata:
   # name should be the chain name
   name: cosmoshub
 spec:
-  replicas: 10
+  replicas: 5
   strategy:
     maxUnavailable: "70%"
   template:
@@ -14,4 +14,10 @@ spec:
         cpu: "0.5"
       limits:
         cpu: "0.75"
+  volumeClaimTemplate:
+    storageClassName: "standard" 
+    resources:
+      requests:
+        storage: 100Mi
+      
   
