@@ -61,10 +61,11 @@ spec:
                     x-kubernetes-int-or-string: true
                 type: object
               template:
-                description: Template applied to all pods.
+                description: Template applied to all pods. Creates 1 pod per replica.
                 properties:
                   affinity:
-                    description: If specified, the pod's scheduling constraints
+                    description: If specified, the pod's scheduling constraints This
+                      is an advanced configuration option.
                     properties:
                       nodeAffinity:
                         description: Describes node affinity scheduling rules for
@@ -975,14 +976,16 @@ spec:
                     description: 'NodeSelector is a selector which must be true for
                       the pod to fit on a node. Selector which must match a node''s
                       labels for the pod to be scheduled on that node. More info:
-                      https://kubernetes.io/docs/concepts/configuration/assign-pod-node/'
+                      https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+                      This is an advanced configuration option.'
                     type: object
                   priority:
                     description: The priority value. Various system components use
                       this field to find the priority of the pod. When Priority Admission
                       Controller is enabled, it prevents users from setting this field.
                       The admission controller populates this field from PriorityClassName.
-                      The higher the value, the higher the priority.
+                      The higher the value, the higher the priority. This is an advanced
+                      configuration option.
                     format: int32
                     type: integer
                   priorityClassName:
@@ -991,7 +994,8 @@ spec:
                       indicate the highest priorities with the former being the highest
                       priority. Any other name must be defined by creating a PriorityClass
                       object with that name. If not specified, the pod priority will
-                      be default or zero if there is no default.
+                      be default or zero if there is no default. This is an advanced
+                      configuration option.
                     type: string
                   resources:
                     description: Resources describes the compute resource requirements.
@@ -1028,12 +1032,13 @@ spec:
                       period is the duration in seconds after the processes running
                       in the pod are sent a termination signal and the time when the
                       processes are forcibly halted with a kill signal. Set this value
-                      longer than the expected cleanup time for your process. Defaults
-                      to 30 seconds.
+                      longer than the expected cleanup time for your process. This
+                      is an advanced configuration option. Defaults to 30 seconds.
                     format: int64
                     type: integer
                   tolerations:
-                    description: If specified, the pod's tolerations.
+                    description: If specified, the pod's tolerations. This is an advanced
+                      configuration option.
                     items:
                       description: The pod this Toleration is attached to tolerates
                         any taint that matches the triple <key,value,effect> using
@@ -1076,9 +1081,71 @@ spec:
                 required:
                 - image
                 type: object
+              volumeClaimTemplate:
+                description: Will be used to create a stand-alone PVC to provision
+                  the volume. One PVC per replica mapped and mounted to a corresponding
+                  pod.
+                properties:
+                  accessModes:
+                    description: 'accessModes contain the desired access modes the
+                      volume should have. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1
+                      If not specified, defaults to ReadWriteOnce.'
+                    items:
+                      type: string
+                    type: array
+                  resources:
+                    description: 'resources represents the minimum resources the volume
+                      should have. This field is required. If RecoverVolumeExpansionFailure
+                      feature is enabled users are allowed to specify resource requirements
+                      that are lower than previous value but must still be higher
+                      than capacity recorded in the status field of the claim. More
+                      info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
+                      This field is required.'
+                    properties:
+                      limits:
+                        additionalProperties:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                          x-kubernetes-int-or-string: true
+                        description: 'Limits describes the maximum amount of compute
+                          resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                        type: object
+                      requests:
+                        additionalProperties:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                          x-kubernetes-int-or-string: true
+                        description: 'Requests describes the minimum amount of compute
+                          resources required. If Requests is omitted for a container,
+                          it defaults to Limits if that is explicitly specified, otherwise
+                          to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                        type: object
+                    type: object
+                  storageClassName:
+                    description: 'storageClassName is the name of the StorageClass
+                      required by the claim. For proper pod scheduling, it''s highly
+                      recommended to set "volumeBindingMode: WaitForFirstConsumer"
+                      in the StorageClass. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1
+                      For GKE, recommended storage class is "premium-rwo". This field
+                      is required.'
+                    type: string
+                  volumeMode:
+                    description: volumeMode defines what type of volume is required
+                      by the claim. Value of Filesystem is implied when not included
+                      in claim spec.
+                    type: string
+                required:
+                - resources
+                - storageClassName
+                type: object
             required:
             - replicas
             - template
+            - volumeClaimTemplate
             type: object
           status:
             description: CosmosFullNodeStatus defines the observed state of CosmosFullNode
