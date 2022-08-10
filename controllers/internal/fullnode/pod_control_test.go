@@ -17,7 +17,10 @@ import (
 var nopLogger = logr.Discard()
 
 func TestPodControl_Reconcile(t *testing.T) {
-	type podClient = mockClient[*corev1.Pod]
+	type (
+		mockPodClient = mockClient[*corev1.Pod]
+		mockPodDiffer = mockDiffer[*corev1.Pod]
+	)
 	ctx := context.Background()
 	const namespace = "testns"
 
@@ -33,7 +36,7 @@ func TestPodControl_Reconcile(t *testing.T) {
 	}
 
 	t.Run("no changes", func(t *testing.T) {
-		var mClient podClient
+		var mClient mockPodClient
 		mClient.ObjectList = corev1.PodList{
 			Items: []corev1.Pod{
 				{ObjectMeta: metav1.ObjectMeta{Name: "pod-1"}},
@@ -75,7 +78,7 @@ func TestPodControl_Reconcile(t *testing.T) {
 				StubDeletes: buildPods(2),
 				StubUpdates: buildPods(10),
 			}
-			mClient podClient
+			mClient mockPodClient
 			crd     = defaultCRD()
 			control = NewPodControl(&mClient)
 		)
@@ -97,7 +100,7 @@ func TestPodControl_Reconcile(t *testing.T) {
 	})
 
 	t.Run("rollout phase", func(t *testing.T) {
-		var mClient podClient
+		var mClient mockPodClient
 		mClient.ObjectList = corev1.PodList{
 			Items: []corev1.Pod{
 				{ObjectMeta: metav1.ObjectMeta{Name: "pod-1"}},
@@ -131,20 +134,4 @@ func TestPodControl_Reconcile(t *testing.T) {
 		require.Zero(t, mClient.CreateCount)
 		require.Equal(t, stubRollout, mClient.DeleteCount)
 	})
-}
-
-type mockPodDiffer struct {
-	StubCreates, StubUpdates, StubDeletes []*corev1.Pod
-}
-
-func (m mockPodDiffer) Creates() []*corev1.Pod {
-	return m.StubCreates
-}
-
-func (m mockPodDiffer) Updates() []*corev1.Pod {
-	return m.StubUpdates
-}
-
-func (m mockPodDiffer) Deletes() []*corev1.Pod {
-	return m.StubDeletes
 }

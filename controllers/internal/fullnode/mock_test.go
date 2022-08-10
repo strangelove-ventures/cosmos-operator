@@ -2,6 +2,7 @@ package fullnode
 
 import (
 	"context"
+	"fmt"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -27,10 +28,20 @@ func (m *mockClient[T]) List(ctx context.Context, list client.ObjectList, opts .
 		panic("nil context")
 	}
 	m.GotListOpts = opts
+
+	if m.ObjectList == nil {
+		return nil
+	}
+
 	switch ref := list.(type) {
 	case *corev1.PodList:
 		*ref = m.ObjectList.(corev1.PodList)
+	case *corev1.PersistentVolumeClaimList:
+		*ref = m.ObjectList.(corev1.PersistentVolumeClaimList)
+	default:
+		panic(fmt.Errorf("unknown ObjectList type: %T", m.ObjectList))
 	}
+
 	return nil
 }
 
@@ -69,4 +80,20 @@ func (m *mockClient[T]) Scheme() *runtime.Scheme {
 		panic(err)
 	}
 	return scheme
+}
+
+type mockDiffer[T any] struct {
+	StubCreates, StubUpdates, StubDeletes []T
+}
+
+func (m mockDiffer[T]) Creates() []T {
+	return m.StubCreates
+}
+
+func (m mockDiffer[T]) Updates() []T {
+	return m.StubUpdates
+}
+
+func (m mockDiffer[T]) Deletes() []T {
+	return m.StubDeletes
 }
