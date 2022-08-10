@@ -59,7 +59,7 @@ func BuildPVCs(crd *cosmosv1.CosmosFullNode) []*corev1.PersistentVolumeClaim {
 
 func pvcName(crdName string, ordinal int32) string {
 	name := fmt.Sprintf("pvc-%s-fullnode-%d", crdName, ordinal)
-	return kube.ToName(name)
+	return kube.ToLabelValue(name)
 }
 
 // Attempts to produce a deterministic hash based on the pvc template, so we can detect updates.
