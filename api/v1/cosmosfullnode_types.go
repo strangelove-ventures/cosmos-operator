@@ -36,12 +36,15 @@ type CosmosFullNodeSpec struct {
 	Replicas int32 `json:"replicas"`
 
 	// Template applied to all pods.
+	// Creates 1 pod per replica.
 	PodTemplate CosmosPodSpec `json:"template"`
 
 	// How to scale pods when performing an update.
 	// +optional
 	RolloutStrategy CosmosRolloutStrategy `json:"strategy"`
 
+	// Will be used to create a stand-alone PVC to provision the volume.
+	// One PVC per replica mapped and mounted to a corresponding pod.
 	VolumeClaimTemplate CosmosPersistentVolumeClaim `json:"volumeClaimTemplate"`
 }
 
@@ -140,14 +143,15 @@ type CosmosPodSpec struct {
 // and allows a Source for provider-specific attributes
 type CosmosPersistentVolumeClaim struct {
 	// storageClassName is the name of the StorageClass required by the claim.
-	// For proper pod scheduling, it's highly recommended to set "volumeBindingMode: WaitForFirstConsumer".
-	// This field is required.
+	// For proper pod scheduling, it's highly recommended to set "volumeBindingMode: WaitForFirstConsumer" in the StorageClass.
 	// More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1
+	// For GKE, recommended storage class is "premium-rwo".
+	// This field is required.
 	StorageClassName *string `json:"storageClassName,omitempty" protobuf:"bytes,5,opt,name=storageClassName"`
 
 	// accessModes contains the desired access modes the volume should have.
-	// This field is required.
 	// More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1
+	// This field is required.
 	AccessModes []corev1.PersistentVolumeAccessMode `json:"accessModes,omitempty" protobuf:"bytes,1,rep,name=accessModes,casttype=PersistentVolumeAccessMode"`
 
 	// resources represents the minimum resources the volume should have.
@@ -156,12 +160,14 @@ type CosmosPersistentVolumeClaim struct {
 	// that are lower than previous value but must still be higher than capacity recorded in the
 	// status field of the claim.
 	// More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
+	// This field is required.
 	Resources corev1.ResourceRequirements `json:"resources,omitempty" protobuf:"bytes,2,opt,name=resources"`
 
 	// volumeMode defines what type of volume is required by the claim.
 	// Value of Filesystem is implied when not included in claim spec.
 	// +optional
 	VolumeMode *corev1.PersistentVolumeMode `json:"volumeMode,omitempty" protobuf:"bytes,6,opt,name=volumeMode,casttype=PersistentVolumeMode"`
+
 	// dataSource field can be used to specify either:
 	// * An existing VolumeSnapshot object (snapshot.storage.k8s.io/VolumeSnapshot)
 	// * An existing PVC (PersistentVolumeClaim)
@@ -171,6 +177,7 @@ type CosmosPersistentVolumeClaim struct {
 	// the same contents as the DataSourceRef field.
 	// +optional
 	DataSource *corev1.TypedLocalObjectReference `json:"dataSource,omitempty" protobuf:"bytes,7,opt,name=dataSource"`
+
 	// dataSourceRef specifies the object from which to populate the volume with data, if a non-empty
 	// volume is desired. This may be any local object from a non-empty API group (non
 	// core object) or a PersistentVolumeClaim object.

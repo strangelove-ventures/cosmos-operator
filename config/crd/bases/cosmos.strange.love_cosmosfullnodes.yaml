@@ -61,7 +61,7 @@ spec:
                     x-kubernetes-int-or-string: true
                 type: object
               template:
-                description: Template applied to all pods.
+                description: Template applied to all pods. Creates 1 pod per replica.
                 properties:
                   affinity:
                     description: If specified, the pod's scheduling constraints This
@@ -1082,12 +1082,14 @@ spec:
                 - image
                 type: object
               volumeClaimTemplate:
-                description: CosmosPersistentVolumeClaim describes the common attributes
-                  of storage devices and allows a Source for provider-specific attributes
+                description: Will be used to create a stand-alone PVC to provision
+                  the volume. One PVC per replica mapped and mounted to a corresponding
+                  pod.
                 properties:
                   accessModes:
                     description: 'accessModes contains the desired access modes the
-                      volume should have. This field is required. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1'
+                      volume should have. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1
+                      This field is required.'
                     items:
                       type: string
                     type: array
@@ -1160,7 +1162,8 @@ spec:
                       feature is enabled users are allowed to specify resource requirements
                       that are lower than previous value but must still be higher
                       than capacity recorded in the status field of the claim. More
-                      info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources'
+                      info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
+                      This field is required.'
                     properties:
                       limits:
                         additionalProperties:
@@ -1188,8 +1191,10 @@ spec:
                   storageClassName:
                     description: 'storageClassName is the name of the StorageClass
                       required by the claim. For proper pod scheduling, it''s highly
-                      recommended to set "volumeBindingMode: WaitForFirstConsumer".
-                      This field is required. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1'
+                      recommended to set "volumeBindingMode: WaitForFirstConsumer"
+                      in the StorageClass. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1
+                      For GKE, recommended storage class is "premium-rwo". This field
+                      is required.'
                     type: string
                   volumeMode:
                     description: volumeMode defines what type of volume is required
