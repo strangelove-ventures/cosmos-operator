@@ -16,6 +16,11 @@ const (
 	VersionLabel    = "app.kubernetes.io/version"
 )
 
+// Fields.
+const (
+	ControllerOwnerField = ".metadata.controller"
+)
+
 // ToIntegerValue converts n to a base 10 integer string.
 func ToIntegerValue[T constraints.Signed](n T) string {
 	return strconv.FormatInt(int64(n), 10)
