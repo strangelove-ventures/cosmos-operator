@@ -36,21 +36,96 @@ type CosmosFullNodeSpec struct {
 	Replicas int32 `json:"replicas"`
 
 	// Template applied to all pods.
-	PodTemplate CosmosFullNodePodSpec `json:"template"`
+	PodTemplate CosmosPodSpec `json:"template"`
 
 	// How to scale pods when performing an update.
 	// +optional
 	RolloutStrategy CosmosRolloutStrategy `json:"strategy"`
 }
 
-type CosmosFullNodePodSpec struct {
-	// Image is the docker reference in "repository:tag" format. E.g. busybox:latest
+type CosmosMetadata struct {
+	// Labels are added to a resource. If there is a collision between labels the Operator creates, the Operator
+	// labels take precedence.
+	// +optional
+	Labels map[string]string `json:"labels"`
+	// Annotations are added to a resource. If there is a collision between annotations the Operator creates, the Operator
+	// annotations take precedence.
+	// +optional
+	Annotations map[string]string `json:"annotations"`
+}
+
+type CosmosPodSpec struct {
+	// Metadata is a subset of metav1.ObjectMeta applied to all pods.
+	// +optional
+	Metadata CosmosMetadata `json:"metadata"`
+
+	// Image is the docker reference in "repository:tag" format. E.g. busybox:latest.
+	// This is for the main container running the chain process.
 	// +kubebuilder:validation:MinLength:=1
 	Image string `json:"image"`
+
+	// Image pull policy.
+	// One of Always, Never, IfNotPresent.
+	// Defaults to Always if :latest tag is specified, or IfNotPresent otherwise.
+	// Cannot be updated.
+	// More info: https://kubernetes.io/docs/concepts/containers/images#updating-images
+	// This is for the main container running the chain process.
+	// +optional
+	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy"`
+
+	// ImagePullSecrets is a list of references to secrets in the same namespace to use for pulling any images
+	// in pods that reference this ServiceAccount. ImagePullSecrets are distinct from Secrets because Secrets
+	// can be mounted in the pod, but ImagePullSecrets are only accessed by the kubelet.
+	// More info: https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod
+	// This is for the main container running the chain process.
+	// +optional
+	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets"`
+
+	// NodeSelector is a selector which must be true for the pod to fit on a node.
+	// Selector which must match a node's labels for the pod to be scheduled on that node.
+	// More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+	// +optional
+	NodeSelector map[string]string `json:"nodeSelector"`
+
+	// If specified, the pod's scheduling constraints
+	// +optional
+	Affinity *corev1.Affinity `json:"affinity"`
+
+	// If specified, the pod's tolerations.
+	// +optional
+	Tolerations []corev1.Toleration `json:"tolerations"`
+
+	// If specified, indicates the pod's priority. "system-node-critical" and
+	// "system-cluster-critical" are two special keywords which indicate the
+	// highest priorities with the former being the highest priority. Any other
+	// name must be defined by creating a PriorityClass object with that name.
+	// If not specified, the pod priority will be default or zero if there is no
+	// default.
+	// +optional
+	PriorityClassName string `json:"priorityClassName"`
+
+	// The priority value. Various system components use this field to find the
+	// priority of the pod. When Priority Admission Controller is enabled, it
+	// prevents users from setting this field. The admission controller populates
+	// this field from PriorityClassName.
+	// The higher the value, the higher the priority.
+	// +optional
+	Priority *int32 `json:"priority"`
 
 	// Resources describes the compute resource requirements.
 	// +optional
 	Resources corev1.ResourceRequirements `json:"resources"`
+
+	// Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request.
+	// Value must be non-negative integer. The value zero indicates stop immediately via
+	// the kill signal (no opportunity to shut down).
+	// If this value is nil, the default grace period will be used instead.
+	// The grace period is the duration in seconds after the processes running in the pod are sent
+	// a termination signal and the time when the processes are forcibly halted with a kill signal.
+	// Set this value longer than the expected cleanup time for your process.
+	// Defaults to 30 seconds.
+	// +optional
+	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty" protobuf:"varint,4,opt,name=terminationGracePeriodSeconds"`
 }
 
 // CosmosRolloutStrategy is an update strategy that can be shared between several Cosmos CRDs.

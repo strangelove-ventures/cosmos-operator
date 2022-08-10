@@ -20,7 +20,7 @@ func defaultCRD() cosmosv1.CosmosFullNode {
 			ResourceVersion: "_resource_version_",
 		},
 		Spec: cosmosv1.CosmosFullNodeSpec{
-			PodTemplate: cosmosv1.CosmosFullNodePodSpec{
+			PodTemplate: cosmosv1.CosmosPodSpec{
 				Image: "busybox:v1.2.3",
 				Resources: corev1.ResourceRequirements{
 					Limits: map[corev1.ResourceName]resource.Quantity{
@@ -47,7 +47,7 @@ func TestPodBuilder(t *testing.T) {
 
 	crd := defaultCRD()
 
-	t.Run("happy path", func(t *testing.T) {
+	t.Run("happy path - critical fields", func(t *testing.T) {
 		builder := NewPodBuilder(&crd)
 		pod := builder.WithOrdinal(5).Build()
 
@@ -82,7 +82,7 @@ func TestPodBuilder(t *testing.T) {
 		lastContainer := pod.Spec.Containers[len(pod.Spec.Containers)-1]
 		require.Equal(t, "osmosis", lastContainer.Name)
 		require.Equal(t, "busybox:v1.2.3", lastContainer.Image)
-		require.Equal(t, corev1.PullIfNotPresent, lastContainer.ImagePullPolicy)
+		require.Empty(t, lastContainer.ImagePullPolicy)
 		require.Equal(t, crd.Spec.PodTemplate.Resources, lastContainer.Resources)
 
 		// Test we don't share or leak data per invocation.
@@ -117,6 +117,48 @@ func TestPodBuilder(t *testing.T) {
 			require.Equal(t, tt.Port, port.ContainerPort)
 			require.Zero(t, port.HostPort)
 		}
+	})
+
+	t.Run("happy path - optional fields", func(t *testing.T) {
+		optCrd := crd.DeepCopy()
+
+		optCrd.Spec.PodTemplate.Metadata.Labels = map[string]string{"custom": "label", chainLabel: "should not see me"}
+		optCrd.Spec.PodTemplate.Metadata.Annotations = map[string]string{"custom": "annotation", OrdinalAnnotation: "should not see me"}
+
+		optCrd.Spec.PodTemplate.Affinity = &corev1.Affinity{
+			PodAffinity: &corev1.PodAffinity{
+				RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{TopologyKey: "affinity1"}},
+			},
+		}
+		optCrd.Spec.PodTemplate.ImagePullPolicy = corev1.PullAlways
+		optCrd.Spec.PodTemplate.ImagePullSecrets = []corev1.LocalObjectReference{{Name: "pullSecrets"}}
+		optCrd.Spec.PodTemplate.NodeSelector = map[string]string{"node": "test"}
+		optCrd.Spec.PodTemplate.Tolerations = []corev1.Toleration{{Key: "toleration1"}}
+		optCrd.Spec.PodTemplate.PriorityClassName = "priority1"
+		optCrd.Spec.PodTemplate.Priority = ptr(int32(55))
+		optCrd.Spec.PodTemplate.TerminationGracePeriodSeconds = ptr(int64(40))
+
+		builder := NewPodBuilder(optCrd)
+		pod := builder.WithOrdinal(9).Build()
+
+		require.Equal(t, "label", pod.Labels["custom"])
+		// Operator label takes precedence.
+		require.Equal(t, "osmosis", pod.Labels[chainLabel])
+
+		require.Equal(t, "annotation", pod.Annotations["custom"])
+		// Operator label takes precedence.
+		require.Equal(t, "9", pod.Annotations[OrdinalAnnotation])
+
+		require.Equal(t, optCrd.Spec.PodTemplate.Affinity, pod.Spec.Affinity)
+		require.Equal(t, optCrd.Spec.PodTemplate.Tolerations, pod.Spec.Tolerations)
+		require.EqualValues(t, 40, *optCrd.Spec.PodTemplate.TerminationGracePeriodSeconds)
+		require.Equal(t, optCrd.Spec.PodTemplate.NodeSelector, pod.Spec.NodeSelector)
+
+		require.Equal(t, "priority1", pod.Spec.PriorityClassName)
+		require.EqualValues(t, 55, *pod.Spec.Priority)
+		require.Equal(t, optCrd.Spec.PodTemplate.ImagePullSecrets, pod.Spec.ImagePullSecrets)
+
+		require.EqualValues(t, "Always", pod.Spec.Containers[0].ImagePullPolicy)
 	})
 
 	t.Run("long name", func(t *testing.T) {

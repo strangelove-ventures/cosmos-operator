@@ -31,6 +31,8 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 		panic(errors.New("nil CosmosFullNode"))
 	}
 
+	tpl := crd.Spec.PodTemplate
+
 	pod := corev1.Pod{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Pod",
@@ -42,7 +44,7 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 				chainLabel:           kube.ToLabelValue(crd.Name),
 				kube.ControllerLabel: kube.ToLabelValue("CosmosFullNode"),
 				kube.NameLabel:       kube.ToLabelValue(fmt.Sprintf("%s-fullnode", crd.Name)),
-				kube.VersionLabel:    kube.ParseImageVersion(crd.Spec.PodTemplate.Image),
+				kube.VersionLabel:    kube.ParseImageVersion(tpl.Image),
 				revisionLabel:        podRevisionHash(crd),
 			},
 			// TODO: prom metrics
@@ -51,27 +53,48 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 		Spec: corev1.PodSpec{
 			Volumes:                       nil, // TODO: must create volumes before this step
 			InitContainers:                nil, // TODO: real chain will need init containers
-			TerminationGracePeriodSeconds: ptr(int64(30)),
+			TerminationGracePeriodSeconds: valOrDefault(tpl.TerminationGracePeriodSeconds, func() *int64 { return ptr(int64(30)) }),
+			Affinity:                      tpl.Affinity,
+			NodeSelector:                  tpl.NodeSelector,
+			Tolerations:                   tpl.Tolerations,
+			PriorityClassName:             tpl.PriorityClassName,
+			Priority:                      tpl.Priority,
+			ImagePullSecrets:              tpl.ImagePullSecrets,
 			Containers: []corev1.Container{
 				{
 					Name:  crd.Name,
-					Image: crd.Spec.PodTemplate.Image,
+					Image: tpl.Image,
 					// TODO need binary name
 					Command: []string{"/bin/sh"},
 					Args:    []string{"-c", `trap : TERM INT; sleep infinity & wait`},
 					Ports:   fullNodePorts,
+					Resources: tpl.Resources,
 					// TODO (nix - 7/27/22) - Set these values.
-					Resources:      crd.Spec.PodTemplate.Resources,
 					VolumeMounts:   nil,
 					LivenessProbe:  nil,
 					ReadinessProbe: nil,
 					StartupProbe:   nil,
 
-					ImagePullPolicy: corev1.PullIfNotPresent, // TODO: allow configuring this
+					ImagePullPolicy: tpl.ImagePullPolicy,
 				},
 			},
 		},
 	}
+
+	// Conditionally add custom labels and annotations, preserving key/values already set.
+	for k, v := range tpl.Metadata.Labels {
+		_, ok := pod.ObjectMeta.Labels[k]
+		if !ok {
+			pod.ObjectMeta.Labels[k] = kube.ToLabelValue(v)
+		}
+	}
+	for k, v := range tpl.Metadata.Annotations {
+		_, ok := pod.ObjectMeta.Annotations[k]
+		if !ok {
+			pod.ObjectMeta.Annotations[k] = kube.ToLabelValue(v)
+		}
+	}
+
 	return PodBuilder{
 		crd: crd,
 		pod: &pod,

@@ -5,3 +5,10 @@ package fullnode
 func ptr[T any](v T) *T {
 	return &v
 }
+
+func valOrDefault[T any](v *T, defaultFn func() *T) *T {
+	if v == nil {
+		return defaultFn()
+	}
+	return v
+}

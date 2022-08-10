@@ -20,7 +20,7 @@ func TestPodState(t *testing.T) {
 		},
 		Spec: cosmosv1.CosmosFullNodeSpec{
 			Replicas: 5,
-			PodTemplate: cosmosv1.CosmosFullNodePodSpec{
+			PodTemplate: cosmosv1.CosmosPodSpec{
 				Image: "busybox:latest",
 			},
 		},

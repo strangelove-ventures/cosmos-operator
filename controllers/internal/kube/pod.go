@@ -51,9 +51,6 @@ func getPodCondition(status *corev1.PodStatus, conditionType corev1.PodCondition
 // getPodConditionFromList extracts the provided condition from the given list of condition and
 // returns the index of the condition and the condition. Returns -1 and nil if the condition is not present.
 func getPodConditionFromList(conditions []corev1.PodCondition, conditionType corev1.PodConditionType) (int, *corev1.PodCondition) {
-	if conditions == nil {
-		return -1, nil
-	}
 	for i := range conditions {
 		if conditions[i].Type == conditionType {
 			return i, &conditions[i]
