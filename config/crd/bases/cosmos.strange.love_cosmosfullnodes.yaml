@@ -1089,7 +1089,7 @@ spec:
                   accessModes:
                     description: 'accessModes contains the desired access modes the
                       volume should have. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1
-                      This field is required.'
+                      If not specified, defaults to ReadWriteOnce.'
                     items:
                       type: string
                     type: array

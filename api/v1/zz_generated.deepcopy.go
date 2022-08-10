@@ -156,12 +156,12 @@ func (in *CosmosPersistentVolumeClaim) DeepCopyInto(out *CosmosPersistentVolumeC
 		*out = new(string)
 		**out = **in
 	}
+	in.Resources.DeepCopyInto(&out.Resources)
 	if in.AccessModes != nil {
 		in, out := &in.AccessModes, &out.AccessModes
 		*out = make([]corev1.PersistentVolumeAccessMode, len(*in))
 		copy(*out, *in)
 	}
-	in.Resources.DeepCopyInto(&out.Resources)
 	if in.VolumeMode != nil {
 		in, out := &in.VolumeMode, &out.VolumeMode
 		*out = new(corev1.PersistentVolumeMode)

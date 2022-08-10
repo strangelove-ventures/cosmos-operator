@@ -149,11 +149,6 @@ type CosmosPersistentVolumeClaim struct {
 	// This field is required.
 	StorageClassName *string `json:"storageClassName,omitempty" protobuf:"bytes,5,opt,name=storageClassName"`
 
-	// accessModes contains the desired access modes the volume should have.
-	// More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1
-	// This field is required.
-	AccessModes []corev1.PersistentVolumeAccessMode `json:"accessModes,omitempty" protobuf:"bytes,1,rep,name=accessModes,casttype=PersistentVolumeAccessMode"`
-
 	// resources represents the minimum resources the volume should have.
 	// This field is required.
 	// If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements
@@ -162,6 +157,12 @@ type CosmosPersistentVolumeClaim struct {
 	// More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
 	// This field is required.
 	Resources corev1.ResourceRequirements `json:"resources,omitempty" protobuf:"bytes,2,opt,name=resources"`
+
+	// accessModes contains the desired access modes the volume should have.
+	// More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1
+	// If not specified, defaults to ReadWriteOnce.
+	// +optional
+	AccessModes []corev1.PersistentVolumeAccessMode `json:"accessModes,omitempty" protobuf:"bytes,1,rep,name=accessModes,casttype=PersistentVolumeAccessMode"`
 
 	// volumeMode defines what type of volume is required by the claim.
 	// Value of Filesystem is implied when not included in claim spec.
