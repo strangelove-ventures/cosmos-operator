@@ -91,6 +91,11 @@ func TestPodBuilder(t *testing.T) {
 
 		pod = builder.WithOrdinal(123).Build()
 		require.Equal(t, "osmosis-fullnode-123", pod.Name)
+
+		vols := pod.Spec.Volumes
+		require.Len(t, vols, 1)
+		require.Equal(t, "vol-osmosis-fullnode-123", vols[0].Name)
+		require.Equal(t, "pvc-osmosis-fullnode-123", vols[0].PersistentVolumeClaim.ClaimName)
 	})
 
 	t.Run("happy path - ports", func(t *testing.T) {

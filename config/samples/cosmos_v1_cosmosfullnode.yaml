@@ -4,7 +4,7 @@ metadata:
   # name should be the chain name
   name: cosmoshub
 spec:
-  replicas: 5
+  replicas: 3
   strategy:
     maxUnavailable: "70%"
   template:

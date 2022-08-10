@@ -143,6 +143,17 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 
 	pod.Name = kube.ToName(name)
 
+	volName := kube.ToName(fmt.Sprintf("vol-%s-fullnode-%d", b.crd.Name, ordinal))
+	// TODO (nix - 8/10/22) Container needs reference to volume also.
+	pod.Spec.Volumes = []corev1.Volume{
+		{
+			Name: volName,
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: pvcName(b.crd.Name, ordinal)},
+			},
+		},
+	}
+
 	b.pod = pod
 	return b
 }

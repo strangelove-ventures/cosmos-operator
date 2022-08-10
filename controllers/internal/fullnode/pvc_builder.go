@@ -47,14 +47,19 @@ func BuildPVCs(crd *cosmosv1.CosmosFullNode) []*corev1.PersistentVolumeClaim {
 	for i := int32(0); i < crd.Spec.Replicas; i++ {
 		pvc := template.DeepCopy()
 
-		name := fmt.Sprintf("pvc-%s-fullnode-%d", crd.Name, i)
-		pvc.Name = kube.ToName(name)
+		name := pvcName(crd.Name, i)
+		pvc.Name = name
+		pvc.Labels[kube.InstanceLabel] = name
 		pvc.Annotations[OrdinalAnnotation] = kube.ToIntegerValue(i)
-		pvc.Labels[kube.InstanceLabel] = kube.ToLabelValue(name)
 
 		vols[i] = pvc
 	}
 	return vols
+}
+
+func pvcName(crdName string, ordinal int32) string {
+	name := fmt.Sprintf("pvc-%s-fullnode-%d", crdName, ordinal)
+	return kube.ToName(name)
 }
 
 // Attempts to produce a deterministic hash based on the pvc template, so we can detect updates.
