@@ -18,7 +18,7 @@ func TestBuildPVCs(t *testing.T) {
 		crd.Name = "juno"
 		crd.Spec.Replicas = 3
 		crd.Spec.VolumeClaimTemplate = cosmosv1.CosmosPersistentVolumeClaim{
-			StorageClassName: ptr("test-storage-class"),
+			StorageClassName: "test-storage-class",
 			Resources: corev1.ResourceRequirements{
 				Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceStorage: resource.MustParse("100G")},
 			},
@@ -71,7 +71,7 @@ func TestBuildPVCs(t *testing.T) {
 		}
 
 		pvcs := BuildPVCs(&crd)
-		require.Len(t, pvcs, 1)
+		require.NotEmpty(t, pvcs)
 
 		got := pvcs[0]
 		require.Equal(t, []corev1.PersistentVolumeAccessMode{corev1.ReadWriteMany}, got.Spec.AccessModes)
@@ -95,5 +95,34 @@ func TestBuildPVCs(t *testing.T) {
 				require.LessOrEqual(t, len(v), 63)
 			}
 		}
+	})
+}
+
+func FuzzBuildPVCs(f *testing.F) {
+	crd := defaultCRD()
+	crd.Spec.Replicas = 1
+
+	f.Add("premium-rwo", "storage")
+	f.Fuzz(func(t *testing.T, storageClass, resourceKey string) {
+		crd.Spec.VolumeClaimTemplate.StorageClassName = storageClass
+		crd.Spec.VolumeClaimTemplate.Resources = corev1.ResourceRequirements{
+			Requests: map[corev1.ResourceName]resource.Quantity{
+				corev1.ResourceName(resourceKey): resource.MustParse("100G"),
+			},
+		}
+
+		pvc1 := BuildPVCs(&crd)[0]
+		pvc2 := BuildPVCs(&crd)[0]
+
+		require.NotEmpty(t, pvc1.Labels[revisionLabel])
+		require.NotEmpty(t, pvc2.Labels[revisionLabel])
+
+		require.Equal(t, pvc1.Labels[revisionLabel], pvc2.Labels[revisionLabel])
+
+		crd.Spec.VolumeClaimTemplate.StorageClassName = "different"
+
+		pvc3 := BuildPVCs(&crd)[0]
+		require.NotEmpty(t, pvc3.Labels[revisionLabel])
+		require.NotEqual(t, pvc3.Labels[revisionLabel], pvc1.Labels[revisionLabel])
 	})
 }

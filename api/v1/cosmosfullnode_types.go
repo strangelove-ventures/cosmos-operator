@@ -147,7 +147,7 @@ type CosmosPersistentVolumeClaim struct {
 	// More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1
 	// For GKE, recommended storage class is "premium-rwo".
 	// This field is required.
-	StorageClassName *string `json:"storageClassName"`
+	StorageClassName string `json:"storageClassName"`
 
 	// resources represents the minimum resources the volume should have.
 	// This field is required.

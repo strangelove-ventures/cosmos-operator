@@ -1,7 +1,11 @@
 package fullnode
 
 import (
+	"bytes"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"hash/fnv"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
@@ -27,14 +31,14 @@ func BuildPVCs(crd *cosmosv1.CosmosFullNode) []*corev1.PersistentVolumeClaim {
 				chainLabel:           kube.ToLabelValue(crd.Name),
 				kube.ControllerLabel: kube.ToLabelValue("CosmosFullNode"),
 				kube.NameLabel:       kube.ToLabelValue(fmt.Sprintf("%s-fullnode", crd.Name)),
-				revisionLabel:        "TODO",
+				revisionLabel:        pvcRevisionHash(crd),
 			},
 			Annotations: make(map[string]string),
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
 			AccessModes:      sliceOrDefault(tpl.AccessModes, defaultAccessModes),
 			Resources:        tpl.Resources,
-			StorageClassName: tpl.StorageClassName,
+			StorageClassName: ptr(tpl.StorageClassName),
 			VolumeMode:       valOrDefault(tpl.VolumeMode, ptr(corev1.PersistentVolumeFilesystem)),
 		},
 	}
@@ -51,4 +55,24 @@ func BuildPVCs(crd *cosmosv1.CosmosFullNode) []*corev1.PersistentVolumeClaim {
 		vols[i] = pvc
 	}
 	return vols
+}
+
+// Attempts to produce a deterministic hash based on the pvc template, so we can detect updates.
+// See podRevisionHash for more details.
+func pvcRevisionHash(crd *cosmosv1.CosmosFullNode) string {
+	buf := bufPool.Get().(*bytes.Buffer)
+	defer buf.Reset()
+	defer bufPool.Put(buf)
+
+	enc := json.NewEncoder(buf)
+	if err := enc.Encode(crd.Spec.VolumeClaimTemplate); err != nil {
+		panic(err)
+	}
+	// We also update pods if volume config has chan
+	h := fnv.New32()
+	_, err := h.Write(buf.Bytes())
+	if err != nil {
+		panic(err)
+	}
+	return hex.EncodeToString(h.Sum(nil))
 }

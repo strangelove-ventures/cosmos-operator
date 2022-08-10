@@ -189,7 +189,7 @@ func FuzzPodBuilder_Build(f *testing.F) {
 	f.Add("busybox:latest", "premium-rwo")
 	f.Fuzz(func(t *testing.T, image, storageClass string) {
 		crd.Spec.PodTemplate.Image = image
-		crd.Spec.VolumeClaimTemplate.StorageClassName = ptr("default")
+		crd.Spec.VolumeClaimTemplate.StorageClassName = "default"
 		pod1 := NewPodBuilder(&crd).Build()
 		pod2 := NewPodBuilder(&crd).Build()
 
@@ -198,7 +198,7 @@ func FuzzPodBuilder_Build(f *testing.F) {
 
 		require.Equal(t, pod1.Labels[revisionLabel], pod2.Labels[revisionLabel], image)
 
-		crd.Spec.VolumeClaimTemplate.StorageClassName = ptr(storageClass)
+		crd.Spec.VolumeClaimTemplate.StorageClassName = storageClass
 		pod3 := NewPodBuilder(&crd).Build()
 
 		require.NotEqual(t, pod1.Labels[revisionLabel], pod3.Labels[revisionLabel])
