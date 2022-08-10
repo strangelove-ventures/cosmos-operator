@@ -136,7 +136,7 @@ type CosmosPodSpec struct {
 	// This is an advanced configuration option.
 	// Defaults to 30 seconds.
 	// +optional
-	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty" protobuf:"varint,4,opt,name=terminationGracePeriodSeconds"`
+	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds"`
 }
 
 // CosmosPersistentVolumeClaim describes the common attributes of storage devices
@@ -147,7 +147,7 @@ type CosmosPersistentVolumeClaim struct {
 	// More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1
 	// For GKE, recommended storage class is "premium-rwo".
 	// This field is required.
-	StorageClassName *string `json:"storageClassName,omitempty" protobuf:"bytes,5,opt,name=storageClassName"`
+	StorageClassName *string `json:"storageClassName"`
 
 	// resources represents the minimum resources the volume should have.
 	// This field is required.
@@ -156,18 +156,18 @@ type CosmosPersistentVolumeClaim struct {
 	// status field of the claim.
 	// More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
 	// This field is required.
-	Resources corev1.ResourceRequirements `json:"resources,omitempty" protobuf:"bytes,2,opt,name=resources"`
+	Resources corev1.ResourceRequirements `json:"resources"`
 
-	// accessModes contains the desired access modes the volume should have.
+	// accessModes contain the desired access modes the volume should have.
 	// More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1
 	// If not specified, defaults to ReadWriteOnce.
 	// +optional
-	AccessModes []corev1.PersistentVolumeAccessMode `json:"accessModes,omitempty" protobuf:"bytes,1,rep,name=accessModes,casttype=PersistentVolumeAccessMode"`
+	AccessModes []corev1.PersistentVolumeAccessMode `json:"accessModes"`
 
 	// volumeMode defines what type of volume is required by the claim.
 	// Value of Filesystem is implied when not included in claim spec.
 	// +optional
-	VolumeMode *corev1.PersistentVolumeMode `json:"volumeMode,omitempty" protobuf:"bytes,6,opt,name=volumeMode,casttype=PersistentVolumeMode"`
+	VolumeMode *corev1.PersistentVolumeMode `json:"volumeMode"`
 }
 
 // CosmosRolloutStrategy is an update strategy that can be shared between several Cosmos CRDs.
@@ -182,7 +182,7 @@ type CosmosRolloutStrategy struct {
 	// at all times during the update is at least 70% of desired pods.
 	// +kubebuilder:validation:XIntOrString
 	// +optional
-	MaxUnavailable *intstr.IntOrString `json:"maxUnavailable,omitempty" protobuf:"bytes,1,opt,name=maxUnavailable"`
+	MaxUnavailable *intstr.IntOrString `json:"maxUnavailable"`
 }
 
 // CosmosFullNodeStatus defines the observed state of CosmosFullNode

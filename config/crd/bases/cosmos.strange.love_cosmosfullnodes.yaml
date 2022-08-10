@@ -1087,7 +1087,7 @@ spec:
                   pod.
                 properties:
                   accessModes:
-                    description: 'accessModes contains the desired access modes the
+                    description: 'accessModes contain the desired access modes the
                       volume should have. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1
                       If not specified, defaults to ReadWriteOnce.'
                     items:
@@ -1138,6 +1138,9 @@ spec:
                       by the claim. Value of Filesystem is implied when not included
                       in claim spec.
                     type: string
+                required:
+                - resources
+                - storageClassName
                 type: object
             required:
             - replicas
