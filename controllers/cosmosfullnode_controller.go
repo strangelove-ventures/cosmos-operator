@@ -115,7 +115,7 @@ func (r *CosmosFullNodeReconciler) resultWithErr(err kube.ReconcileError) (ctrl.
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *CosmosFullNodeReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	// Setup indexes.
+	// Index pods.
 	err := mgr.GetFieldIndexer().IndexField(
 		context.Background(),
 		&corev1.Pod{},
@@ -126,6 +126,7 @@ func (r *CosmosFullNodeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return fmt.Errorf("pod index field %s: %w", controllerOwnerField, err)
 	}
 
+	// Index PVCs.
 	err = mgr.GetFieldIndexer().IndexField(
 		context.Background(),
 		&corev1.PersistentVolumeClaim{},
