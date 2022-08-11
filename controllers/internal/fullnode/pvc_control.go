@@ -23,15 +23,15 @@ type pvcDiffer interface {
 // Unlike StatefulSet, PVCControl will update volumes by deleting and recreating volumes.
 type PVCControl struct {
 	client      Client
-	diffFactory func(ordinalAnnotationKey string, current, want []*corev1.PersistentVolumeClaim) pvcDiffer
+	diffFactory func(ordinalAnnotationKey, revisionLabelKey string, current, want []*corev1.PersistentVolumeClaim) pvcDiffer
 }
 
 // NewPVCControl returns a valid PVCControl
 func NewPVCControl(client Client) PVCControl {
 	return PVCControl{
 		client: client,
-		diffFactory: func(ordinalAnnotationKey string, current, want []*corev1.PersistentVolumeClaim) pvcDiffer {
-			return kube.NewDiff(ordinalAnnotationKey, current, want)
+		diffFactory: func(ordinalAnnotationKey, revisionLabelKey string, current, want []*corev1.PersistentVolumeClaim) pvcDiffer {
+			return kube.NewDiff(ordinalAnnotationKey, revisionLabelKey, current, want)
 		},
 	}
 }
@@ -53,7 +53,7 @@ func (vc PVCControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmos
 	var (
 		currentPVCs = ptrSlice(vols.Items)
 		wantPVCs    = BuildPVCs(crd)
-		diff        = vc.diffFactory(OrdinalAnnotation, currentPVCs, wantPVCs)
+		diff        = vc.diffFactory(OrdinalAnnotation, revisionLabel, currentPVCs, wantPVCs)
 	)
 
 	for _, pvc := range diff.Creates() {

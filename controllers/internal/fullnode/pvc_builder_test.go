@@ -13,6 +13,8 @@ import (
 )
 
 func TestBuildPVCs(t *testing.T) {
+	t.Parallel()
+
 	t.Run("happy path", func(t *testing.T) {
 		crd := defaultCRD()
 		crd.Name = "juno"
