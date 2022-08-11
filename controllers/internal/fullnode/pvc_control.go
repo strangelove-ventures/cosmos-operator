@@ -58,7 +58,7 @@ func (vc PVCControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmos
 
 	for _, pvc := range diff.Creates() {
 		log.Info("Creating pvc", "pvcName", pvc.Name)
-		if err := ctrl.SetControllerReference(crd, pvc, vc.client.Scheme()); err != nil {
+		if err := ctrl.SetControllerReference(crd, pvc, vc.client.Scheme()); kube.IgnoreAlreadyExists(err) != nil {
 			return true, kube.TransientError(fmt.Errorf("set controller reference on pvc %q: %w", pvc.Name, err))
 		}
 		if err := vc.client.Create(ctx, pvc); err != nil {
