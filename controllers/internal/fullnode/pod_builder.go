@@ -53,7 +53,7 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 		Spec: corev1.PodSpec{
 			Volumes:                       nil, // TODO: must create volumes before this step
 			InitContainers:                nil, // TODO: real chain will need init containers
-			TerminationGracePeriodSeconds: valOrDefault(tpl.TerminationGracePeriodSeconds, func() *int64 { return ptr(int64(30)) }),
+			TerminationGracePeriodSeconds: valOrDefault(tpl.TerminationGracePeriodSeconds, ptr(int64(30))),
 			Affinity:                      tpl.Affinity,
 			NodeSelector:                  tpl.NodeSelector,
 			Tolerations:                   tpl.Tolerations,
@@ -114,6 +114,11 @@ func podRevisionHash(crd *cosmosv1.CosmosFullNode) string {
 	if err := enc.Encode(crd.Spec.PodTemplate); err != nil {
 		panic(err)
 	}
+	// We also update pods if volume config has changed. The CRD supports updating PVCs which may result
+	// in a delete/create of the PVC.
+	if err := enc.Encode(crd.Spec.VolumeClaimTemplate); err != nil {
+		panic(err)
+	}
 	h := fnv.New32()
 	_, err := h.Write(buf.Bytes())
 	if err != nil {
@@ -137,6 +142,17 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 	pod.Labels[kube.InstanceLabel] = kube.ToLabelValue(name)
 
 	pod.Name = kube.ToName(name)
+
+	volName := kube.ToName(fmt.Sprintf("vol-%s-fullnode-%d", b.crd.Name, ordinal))
+	// TODO (nix - 8/10/22) Container needs reference to volume also.
+	pod.Spec.Volumes = []corev1.Volume{
+		{
+			Name: volName,
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: pvcName(b.crd.Name, ordinal)},
+			},
+		},
+	}
 
 	b.pod = pod
 	return b

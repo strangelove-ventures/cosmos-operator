@@ -36,11 +36,16 @@ type CosmosFullNodeSpec struct {
 	Replicas int32 `json:"replicas"`
 
 	// Template applied to all pods.
+	// Creates 1 pod per replica.
 	PodTemplate CosmosPodSpec `json:"template"`
 
 	// How to scale pods when performing an update.
 	// +optional
 	RolloutStrategy CosmosRolloutStrategy `json:"strategy"`
+
+	// Will be used to create a stand-alone PVC to provision the volume.
+	// One PVC per replica mapped and mounted to a corresponding pod.
+	VolumeClaimTemplate CosmosPersistentVolumeClaim `json:"volumeClaimTemplate"`
 }
 
 type CosmosMetadata struct {
@@ -84,14 +89,17 @@ type CosmosPodSpec struct {
 	// NodeSelector is a selector which must be true for the pod to fit on a node.
 	// Selector which must match a node's labels for the pod to be scheduled on that node.
 	// More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+	// This is an advanced configuration option.
 	// +optional
 	NodeSelector map[string]string `json:"nodeSelector"`
 
 	// If specified, the pod's scheduling constraints
+	// This is an advanced configuration option.
 	// +optional
 	Affinity *corev1.Affinity `json:"affinity"`
 
 	// If specified, the pod's tolerations.
+	// This is an advanced configuration option.
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations"`
 
@@ -101,6 +109,7 @@ type CosmosPodSpec struct {
 	// name must be defined by creating a PriorityClass object with that name.
 	// If not specified, the pod priority will be default or zero if there is no
 	// default.
+	// This is an advanced configuration option.
 	// +optional
 	PriorityClassName string `json:"priorityClassName"`
 
@@ -109,6 +118,7 @@ type CosmosPodSpec struct {
 	// prevents users from setting this field. The admission controller populates
 	// this field from PriorityClassName.
 	// The higher the value, the higher the priority.
+	// This is an advanced configuration option.
 	// +optional
 	Priority *int32 `json:"priority"`
 
@@ -123,9 +133,41 @@ type CosmosPodSpec struct {
 	// The grace period is the duration in seconds after the processes running in the pod are sent
 	// a termination signal and the time when the processes are forcibly halted with a kill signal.
 	// Set this value longer than the expected cleanup time for your process.
+	// This is an advanced configuration option.
 	// Defaults to 30 seconds.
 	// +optional
-	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty" protobuf:"varint,4,opt,name=terminationGracePeriodSeconds"`
+	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds"`
+}
+
+// CosmosPersistentVolumeClaim describes the common attributes of storage devices
+// and allows a Source for provider-specific attributes
+type CosmosPersistentVolumeClaim struct {
+	// storageClassName is the name of the StorageClass required by the claim.
+	// For proper pod scheduling, it's highly recommended to set "volumeBindingMode: WaitForFirstConsumer" in the StorageClass.
+	// More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1
+	// For GKE, recommended storage class is "premium-rwo".
+	// This field is required.
+	StorageClassName string `json:"storageClassName"`
+
+	// resources represents the minimum resources the volume should have.
+	// This field is required.
+	// If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements
+	// that are lower than previous value but must still be higher than capacity recorded in the
+	// status field of the claim.
+	// More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
+	// This field is required.
+	Resources corev1.ResourceRequirements `json:"resources"`
+
+	// accessModes contain the desired access modes the volume should have.
+	// More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1
+	// If not specified, defaults to ReadWriteOnce.
+	// +optional
+	AccessModes []corev1.PersistentVolumeAccessMode `json:"accessModes"`
+
+	// volumeMode defines what type of volume is required by the claim.
+	// Value of Filesystem is implied when not included in claim spec.
+	// +optional
+	VolumeMode *corev1.PersistentVolumeMode `json:"volumeMode"`
 }
 
 // CosmosRolloutStrategy is an update strategy that can be shared between several Cosmos CRDs.
@@ -140,7 +182,7 @@ type CosmosRolloutStrategy struct {
 	// at all times during the update is at least 70% of desired pods.
 	// +kubebuilder:validation:XIntOrString
 	// +optional
-	MaxUnavailable *intstr.IntOrString `json:"maxUnavailable,omitempty" protobuf:"bytes,1,opt,name=maxUnavailable"`
+	MaxUnavailable *intstr.IntOrString `json:"maxUnavailable"`
 }
 
 // CosmosFullNodeStatus defines the observed state of CosmosFullNode

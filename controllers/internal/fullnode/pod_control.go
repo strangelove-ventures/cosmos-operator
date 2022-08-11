@@ -17,7 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type differ interface {
+type podDiffer interface {
 	Creates() []*corev1.Pod
 	Updates() []*corev1.Pod
 	Deletes() []*corev1.Pod
@@ -34,15 +34,15 @@ type Client interface {
 // PodControl reconciles pods for a CosmosFullNode.
 type PodControl struct {
 	client         Client
-	diffFactory    func(ordinalAnnotationKey string, current, want []*corev1.Pod) differ
+	diffFactory    func(ordinalAnnotationKey string, current, want []*corev1.Pod) podDiffer
 	computeRollout func(maxUnavail *intstr.IntOrString, desired, ready int) int
 }
 
-// NewPodControl returns a P
+// NewPodControl returns a valid PodControl.
 func NewPodControl(client Client) PodControl {
 	return PodControl{
 		client: client,
-		diffFactory: func(ordinalAnnotationKey string, current, want []*corev1.Pod) differ {
+		diffFactory: func(ordinalAnnotationKey string, current, want []*corev1.Pod) podDiffer {
 			return kube.NewDiff(ordinalAnnotationKey, current, want)
 		},
 		computeRollout: kube.ComputeRollout,
@@ -61,12 +61,6 @@ func (pc PodControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmos
 		SelectorLabels(crd),
 	); err != nil {
 		return false, kube.TransientError(fmt.Errorf("list existing pods: %w", err))
-	}
-
-	if len(pods.Items) > 0 {
-		log.V(2).Info("Found existing pods", "numPods", len(pods.Items))
-	} else {
-		log.V(2).Info("Did not find any existing pods")
 	}
 
 	var (
