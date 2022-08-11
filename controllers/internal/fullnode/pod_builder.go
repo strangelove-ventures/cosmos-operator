@@ -114,11 +114,6 @@ func podRevisionHash(crd *cosmosv1.CosmosFullNode) string {
 	if err := enc.Encode(crd.Spec.PodTemplate); err != nil {
 		panic(err)
 	}
-	// We also update pods if volume config has changed. The CRD supports updating PVCs which may result
-	// in a delete/create of the PVC.
-	if err := enc.Encode(crd.Spec.VolumeClaimTemplate); err != nil {
-		panic(err)
-	}
 	h := fnv.New32()
 	_, err := h.Write(buf.Bytes())
 	if err != nil {
