@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/go-logr/logr"
+	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
 	corev1 "k8s.io/api/core/v1"
@@ -73,5 +74,40 @@ func (vc PVCControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmos
 		}
 	}
 
+	if len(diff.Deletes())+len(diff.Creates()) > 0 {
+		// Scaling happens first; then updates. So requeue to handle updates after scaling finished.
+		return true, nil
+	}
+
+	// PVCs have many immutable fields, so only update the storage size.
+	for _, pvc := range diff.Updates() {
+		// Only bound claims can be resized.
+		found, ok := findMatchingResource(pvc, currentPVCs)
+		if ok && found.Status.Phase != corev1.ClaimBound {
+			continue
+		}
+
+		log.Info("Patching pvc", "pvcName", pvc.Name)
+		patch := corev1.PersistentVolumeClaim{
+			ObjectMeta: pvc.ObjectMeta,
+			TypeMeta:   pvc.TypeMeta,
+			Spec: corev1.PersistentVolumeClaimSpec{
+				Resources: pvc.Spec.Resources,
+			},
+		}
+		// It's safe to patch all PVCs at once. Pods must be restarted after resizing complete.
+		if err := vc.client.Patch(ctx, &patch, client.Merge); err != nil {
+			// TODO (nix - 8/11/22) Update status with failures
+			log.Error(err, "Patch failed", "pvcName", pvc.Name)
+			continue
+		}
+	}
+
 	return false, nil
+}
+
+func findMatchingResource[T client.Object](r T, list []T) (T, bool) {
+	return lo.Find(list, func(other T) bool {
+		return client.ObjectKeyFromObject(r) == client.ObjectKeyFromObject(other)
+	})
 }

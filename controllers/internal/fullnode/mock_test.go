@@ -16,7 +16,12 @@ type mockClient[T client.Object] struct {
 
 	CreateCount         int
 	LastCreatedResource T
-	DeleteCount         int
+
+	DeleteCount int
+
+	PatchCount      int
+	LastPatchObject client.Object
+	LastPatch       client.Patch
 }
 
 func (m *mockClient[T]) Get(ctx context.Context, key client.ObjectKey, obj client.Object) error {
@@ -67,7 +72,13 @@ func (m *mockClient[T]) Update(ctx context.Context, obj client.Object, opts ...c
 }
 
 func (m *mockClient[T]) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
-	panic("implement me")
+	if ctx == nil {
+		panic("nil context")
+	}
+	m.PatchCount++
+	m.LastPatchObject = obj
+	m.LastPatch = patch
+	return nil
 }
 
 func (m *mockClient[T]) DeleteAllOf(ctx context.Context, obj client.Object, opts ...client.DeleteAllOfOption) error {
