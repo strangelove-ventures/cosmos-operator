@@ -89,13 +89,7 @@ func TestBuildPVCs(t *testing.T) {
 		require.NotEmpty(t, pvcs)
 
 		for _, got := range pvcs {
-			require.LessOrEqual(t, len(got.Name), 253)
-			for _, v := range got.Labels {
-				require.LessOrEqual(t, len(v), 63)
-			}
-			for _, v := range got.Annotations {
-				require.LessOrEqual(t, len(v), 63)
-			}
+			HasTruncatedMetadata(t, got)
 		}
 	})
 }

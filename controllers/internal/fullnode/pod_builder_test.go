@@ -173,18 +173,9 @@ func TestPodBuilder(t *testing.T) {
 		builder := NewPodBuilder(longCrd)
 		pod := builder.WithOrdinal(125).Build()
 
-		require.Len(t, pod.Name, 253)
 		require.Regexp(t, `a.*-fullnode-125`, pod.Name)
 
-		wantLabels := map[string]string{
-			"cosmosfullnode.cosmos.strange.love/chain-name": strings.Repeat("a", 63),
-			"app.kubernetes.io/instance":                    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-fullnode-125",
-			"app.kubernetes.io/created-by":                  "cosmosfullnode",
-			"app.kubernetes.io/name":                        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-fullnode",
-			"app.kubernetes.io/version":                     "v1.2.3",
-		}
-		delete(pod.Labels, revisionLabel)
-		require.Equal(t, wantLabels, pod.Labels)
+		HasTruncatedMetadata(t, pod)
 	})
 }
 

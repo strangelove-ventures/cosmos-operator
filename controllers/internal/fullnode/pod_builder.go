@@ -131,12 +131,12 @@ func (b PodBuilder) Build() *corev1.Pod {
 // ordered sequence. Pods have deterministic, consistent names similar to a StatefulSet instead of generated names.
 func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 	pod := b.pod.DeepCopy()
-	name := b.name(ordinal)
+	name := podName(b.crd.Name, ordinal)
 
 	pod.Annotations[OrdinalAnnotation] = kube.ToIntegerValue(ordinal)
-	pod.Labels[kube.InstanceLabel] = kube.ToLabelValue(name)
+	pod.Labels[kube.InstanceLabel] = name
 
-	pod.Name = kube.ToName(name)
+	pod.Name = name
 
 	volName := kube.ToName(fmt.Sprintf("vol-%s-fullnode-%d", b.crd.Name, ordinal))
 	// TODO (nix - 8/10/22) Container needs reference to volume also.
@@ -153,8 +153,8 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 	return b
 }
 
-func (b PodBuilder) name(ordinal int32) string {
-	return fmt.Sprintf("%s-fullnode-%d", b.crd.Name, ordinal)
+func podName(crdName string, ordinal int32) string {
+	return kube.ToLabelValue(fmt.Sprintf("%s-fullnode-%d", crdName, ordinal))
 }
 
 var fullNodePorts = []corev1.ContainerPort{
