@@ -45,8 +45,9 @@ func TestPVCControl_Reconcile(t *testing.T) {
 		crd.Name = "hub"
 
 		control := NewPVCControl(&mClient)
-		control.diffFactory = func(ordinalAnnotationKey string, current, want []*corev1.PersistentVolumeClaim) pvcDiffer {
+		control.diffFactory = func(ordinalAnnotationKey, revisionLabelKey string, current, want []*corev1.PersistentVolumeClaim) pvcDiffer {
 			require.Equal(t, "cosmosfullnode.cosmos.strange.love/ordinal", ordinalAnnotationKey)
+			require.Equal(t, "cosmosfullnode.cosmos.strange.love/resource-revision", revisionLabelKey)
 			require.Len(t, current, 1)
 			require.Equal(t, "pvc-1", current[0].Name)
 			require.Len(t, want, 3)
@@ -79,7 +80,7 @@ func TestPVCControl_Reconcile(t *testing.T) {
 			control = NewPVCControl(&mClient)
 		)
 		crd.Namespace = namespace
-		control.diffFactory = func(ordinalAnnotationKey string, current, want []*corev1.PersistentVolumeClaim) pvcDiffer {
+		control.diffFactory = func(_, _ string, current, want []*corev1.PersistentVolumeClaim) pvcDiffer {
 			return mDiff
 		}
 		requeue, err := control.Reconcile(ctx, nopLogger, &crd)

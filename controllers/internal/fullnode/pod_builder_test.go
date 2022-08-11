@@ -188,13 +188,12 @@ func TestPodBuilder(t *testing.T) {
 	})
 }
 
-//nolint:stylecheck // Underscore in func name is acceptable for tests.
-func FuzzPodBuilder_Build(f *testing.F) {
+func FuzzPodBuilderBuild(f *testing.F) {
 	crd := defaultCRD()
 	f.Add("busybox:latest", "cpu")
 	f.Fuzz(func(t *testing.T, image, resourceName string) {
 		crd.Spec.PodTemplate.Image = image
-		crd.Spec.VolumeClaimTemplate.Resources = corev1.ResourceRequirements{
+		crd.Spec.PodTemplate.Resources = corev1.ResourceRequirements{
 			Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceName(resourceName): resource.MustParse("1")},
 		}
 		pod1 := NewPodBuilder(&crd).Build()
@@ -205,9 +204,8 @@ func FuzzPodBuilder_Build(f *testing.F) {
 
 		require.Equal(t, pod1.Labels[revisionLabel], pod2.Labels[revisionLabel], image)
 
-		resourceName += "_changed"
-		crd.Spec.VolumeClaimTemplate.Resources = corev1.ResourceRequirements{
-			Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceName(resourceName): resource.MustParse("1")},
+		crd.Spec.PodTemplate.Resources = corev1.ResourceRequirements{
+			Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceName(resourceName): resource.MustParse("2")}, // Changed value here.
 		}
 		pod3 := NewPodBuilder(&crd).Build()
 

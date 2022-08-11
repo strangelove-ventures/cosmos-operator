@@ -34,7 +34,7 @@ type Client interface {
 // PodControl reconciles pods for a CosmosFullNode.
 type PodControl struct {
 	client         Client
-	diffFactory    func(ordinalAnnotationKey string, current, want []*corev1.Pod) podDiffer
+	diffFactory    func(ordinalAnnotationKey, revisionLabelKey string, current, want []*corev1.Pod) podDiffer
 	computeRollout func(maxUnavail *intstr.IntOrString, desired, ready int) int
 }
 
@@ -42,8 +42,8 @@ type PodControl struct {
 func NewPodControl(client Client) PodControl {
 	return PodControl{
 		client: client,
-		diffFactory: func(ordinalAnnotationKey string, current, want []*corev1.Pod) podDiffer {
-			return kube.NewDiff(ordinalAnnotationKey, current, want)
+		diffFactory: func(ordinalAnnotationKey, revisionLabelKey string, current, want []*corev1.Pod) podDiffer {
+			return kube.NewDiff(ordinalAnnotationKey, revisionLabelKey, current, want)
 		},
 		computeRollout: kube.ComputeRollout,
 	}
@@ -66,7 +66,7 @@ func (pc PodControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmos
 	var (
 		currentPods = ptrSlice(pods.Items)
 		wantPods    = PodState(crd)
-		diff        = pc.diffFactory(OrdinalAnnotation, currentPods, wantPods)
+		diff        = pc.diffFactory(OrdinalAnnotation, revisionLabel, currentPods, wantPods)
 	)
 
 	for _, pod := range diff.Creates() {
