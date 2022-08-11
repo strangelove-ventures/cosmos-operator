@@ -10,16 +10,18 @@ import (
 )
 
 const (
-	testOrdinalAnnotation  = "ordinal"
-	testRevisionAnnotation = "revision"
+	testOrdinalAnnotation = "ordinal"
+	testRevisionLabel     = "revision"
 )
 
 func diffablePod(ordinal int, revision string) *corev1.Pod {
 	p := new(corev1.Pod)
 	p.Name = fmt.Sprintf("pod-%d", ordinal)
 	p.Annotations = map[string]string{
-		testOrdinalAnnotation:  ToIntegerValue(ordinal),
-		testRevisionAnnotation: revision,
+		testOrdinalAnnotation: ToIntegerValue(ordinal),
+	}
+	p.Labels = map[string]string{
+		testRevisionLabel: revision,
 	}
 	return p
 }
@@ -39,36 +41,42 @@ func TestNewDiff(t *testing.T) {
 		}
 
 		require.Panics(t, func() {
-			NewDiff(testOrdinalAnnotation, dupeNames, resources)
+			NewDiff(testOrdinalAnnotation, testRevisionLabel, dupeNames, resources)
 		})
 
 		require.Panics(t, func() {
-			NewDiff(testOrdinalAnnotation, resources, dupeNames)
+			NewDiff(testOrdinalAnnotation, testRevisionLabel, resources, dupeNames)
 		})
 	})
 
-	t.Run("missing required annotations", func(t *testing.T) {
+	t.Run("missing required annotations and labels", func(t *testing.T) {
 		for _, tt := range []struct {
-			Annotations map[string]string
+			OrdinalValue  string
+			RevisionValue string
 		}{
-			{nil},
-			{map[string]string{
-				testOrdinalAnnotation: "value should be a number",
-			}},
-			{map[string]string{
-				testOrdinalAnnotation: "",
-			}},
+			{"", "revision"},
+			{"should be a number", "revision"},
+			{"1", ""},
 		} {
-			current := []*corev1.Pod{
+			bad := []*corev1.Pod{
 				{
-					ObjectMeta: metav1.ObjectMeta{Name: "pod-0", Annotations: tt.Annotations},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        "pod-0",
+						Annotations: map[string]string{testOrdinalAnnotation: tt.OrdinalValue},
+						Labels:      map[string]string{testRevisionLabel: tt.RevisionValue},
+					},
 				},
 			}
-			want := []*corev1.Pod{
+			good := []*corev1.Pod{
 				diffablePod(0, "_new_resource_"),
 			}
+
 			require.Panics(t, func() {
-				NewDiff(testOrdinalAnnotation, current, want)
+				NewDiff(testOrdinalAnnotation, testRevisionLabel, bad, good)
+			}, tt)
+			// Test the inverse.
+			require.Panics(t, func() {
+				NewDiff(testOrdinalAnnotation, testRevisionLabel, good, bad)
 			}, tt)
 		}
 	})
@@ -91,7 +99,7 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 			diffablePod(110, revision), // tests for numeric (not lexical) sorting
 		}
 
-		diff := NewDiff(testOrdinalAnnotation, current, want)
+		diff := NewDiff(testOrdinalAnnotation, testRevisionLabel, current, want)
 
 		require.Empty(t, diff.Deletes())
 		require.Empty(t, diff.Updates())
@@ -107,7 +115,7 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 			diffablePod(1, revision),
 		}
 
-		diff := NewDiff(testOrdinalAnnotation, nil, want)
+		diff := NewDiff(testOrdinalAnnotation, testRevisionLabel, nil, want)
 
 		require.Empty(t, diff.Deletes())
 		require.Empty(t, diff.Updates())
@@ -127,7 +135,7 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 			diffablePod(0, revision),
 		}
 
-		diff := NewDiff(testOrdinalAnnotation, current, want)
+		diff := NewDiff(testOrdinalAnnotation, testRevisionLabel, current, want)
 
 		require.Empty(t, diff.Updates())
 		require.Empty(t, diff.Creates())
@@ -149,7 +157,7 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 			diffablePod(2, "_new_version_"),
 		}
 
-		diff := NewDiff(testOrdinalAnnotation, current, want)
+		diff := NewDiff(testOrdinalAnnotation, testRevisionLabel, current, want)
 
 		require.Empty(t, diff.Creates())
 		require.Empty(t, diff.Deletes())
@@ -171,7 +179,7 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 			diffablePod(1, revision),
 		}
 
-		diff := NewDiff(testOrdinalAnnotation, current, want)
+		diff := NewDiff(testOrdinalAnnotation, testRevisionLabel, current, want)
 
 		require.Len(t, diff.Updates(), 1)
 		require.Equal(t, "pod-0", diff.Updates()[0].Name)

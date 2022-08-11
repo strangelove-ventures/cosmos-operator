@@ -2,6 +2,7 @@ package kube
 
 import (
 	"errors"
+	"fmt"
 	"sort"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -16,6 +17,7 @@ type ordinalSet[T Resource] map[string]ordinalResource[T]
 // Diff computes steps needed to bring a current state equal to a new state.
 type Diff[T Resource] struct {
 	ordinalAnnotationKey string
+	revisionLabelKey     string
 
 	creates, deletes, updates []T
 }
@@ -24,18 +26,24 @@ type Diff[T Resource] struct {
 // It computes differences between the "current" state needed to reconcile to the "want" state.
 //
 // Diff expects resources with annotations denoting ordinal positioning similar to a StatefulSet. E.g. pod-0, pod-1, pod-2.
-// The ordinalAnnotationKey allows Diff to sort resources deterministically.
+// The "ordinalAnnotationKey" allows Diff to sort resources deterministically.
 // Therefore, resources must have ordinalAnnotationKey set to an integer value such as "0", "1", "2"
 // otherwise this function panics.
+//
+// Diff also expects "revisionLabelKey" which is a label with a revision that is expected to change if the resource
+// has changed. A short hash is a common value for this label. We cannot simply diff the annotations and/or labels in case
+// a 3rd party injects annotations or labels.
+// For example, GKE injects other annotations beyond our control.
 //
 // For Updates to work properly, Diff uses ObjectHasChanges. Concretely, to detect updates the recommended path
 // is changing annotations or labels.
 //
 // There are several O(N) or O(2N) operations where N = number of resources.
 // However, we expect N to be small.
-func NewDiff[T Resource](ordinalAnnotationKey string, current, want []T) *Diff[T] {
+func NewDiff[T Resource](ordinalAnnotationKey string, revisionLabelKey string, current, want []T) *Diff[T] {
 	d := &Diff[T]{
 		ordinalAnnotationKey: ordinalAnnotationKey,
+		revisionLabelKey:     revisionLabelKey,
 	}
 
 	currentSet := d.toSet(current)
@@ -93,7 +101,7 @@ func (diff *Diff[T]) Updates() []T {
 	return diff.updates
 }
 
-// creates and deletes must be calculated first.
+// uses the revisionLabelKey to determine if a resource has changed thus requiring an update.
 func (diff *Diff[T]) computeUpdates(current, want ordinalSet[T]) []T {
 	var updates []ordinalResource[T]
 	for _, existing := range current {
@@ -101,7 +109,16 @@ func (diff *Diff[T]) computeUpdates(current, want ordinalSet[T]) []T {
 		if !ok {
 			continue
 		}
-		if ObjectHasChanges(existing.Resource, target.Resource) {
+		existingRev := existing.Resource.GetLabels()[diff.revisionLabelKey]
+		if existingRev == "" {
+			panic(fmt.Errorf("%s missing revision label %s", existing.Resource.GetName(), diff.revisionLabelKey))
+		}
+		newRev := target.Resource.GetLabels()[diff.revisionLabelKey]
+		if newRev == "" {
+			panic(fmt.Errorf("%s missing revision label %s", existing.Resource.GetName(), diff.revisionLabelKey))
+		}
+
+		if existingRev != newRev {
 			updates = append(updates, target)
 		}
 	}
