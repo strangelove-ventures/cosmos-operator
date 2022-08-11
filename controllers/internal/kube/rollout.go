@@ -16,8 +16,8 @@ var defaultMaxUnavail = intstr.FromString("25%")
 // If "maxUnavail" is nil, defaults to 25% and string value must be a percentage.
 // "desired" must be >= 1 and "ready" must be >= 0 or else this function panics.
 func ComputeRollout(maxUnavail *intstr.IntOrString, desired, ready int) int {
-	if desired < 0 {
-		panic(errors.New("desired must be >= 0"))
+	if desired < 1 {
+		panic(errors.New("desired must be >= 1"))
 	}
 	if ready < 0 {
 		panic(errors.New("ready must be >= 0"))
