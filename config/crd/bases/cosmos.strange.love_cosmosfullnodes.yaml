@@ -39,7 +39,7 @@ spec:
                 description: Number of replicas to create. Individual replicas have
                   a consistent identity.
                 format: int32
-                minimum: 1
+                minimum: 0
                 type: integer
               strategy:
                 description: How to scale pods when performing an update.
