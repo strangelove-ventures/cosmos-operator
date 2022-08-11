@@ -65,7 +65,8 @@ var (
 //+kubebuilder:rbac:groups=cosmos.strange.love,resources=cosmosfullnodes/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=cosmos.strange.love,resources=cosmosfullnodes/finalizers,verbs=update
 // Generate RBAC roles to watch and update Pods
-//+kubebuilder:rbac:groups="",resources=pods,verbs=get;watch;list
+//+kubebuilder:rbac:groups="",resources=pods,verbs=get;watch;list;delete
+//+kubebuilder:rbac:groups="",resources=pvcs,verbs=get;watch;list;patch;delete
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -85,8 +86,10 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return finishResult, client.IgnoreNotFound(err)
 	}
 
-	// Reconcile pvcs.
-	requeue, err := r.pvcControl.Reconcile(ctx, logger, &crd)
+	// TODO: try creating pods first? You can't delete the PVC until the pod is also deleted. Could change method to ReconcileCreates and another one for ReconcileDeletes.
+
+	// Reconcile pods.
+	requeue, err := r.podControl.Reconcile(ctx, logger, &crd)
 	if err != nil {
 		return r.resultWithErr(err)
 	}
@@ -94,8 +97,8 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return requeueResult, nil
 	}
 
-	// Reconcile pods.
-	requeue, err = r.podControl.Reconcile(ctx, logger, &crd)
+	// Reconcile pvcs.
+	requeue, err = r.pvcControl.Reconcile(ctx, logger, &crd)
 	if err != nil {
 		return r.resultWithErr(err)
 	}
