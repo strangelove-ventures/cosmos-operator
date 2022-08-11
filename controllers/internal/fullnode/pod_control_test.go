@@ -17,6 +17,8 @@ import (
 var nopLogger = logr.Discard()
 
 func TestPodControl_Reconcile(t *testing.T) {
+	t.Parallel()
+
 	type (
 		mockPodClient = mockClient[*corev1.Pod]
 		mockPodDiffer = mockDiffer[*corev1.Pod]

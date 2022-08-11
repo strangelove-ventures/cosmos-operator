@@ -8,6 +8,8 @@ import (
 )
 
 func TestReconcileError(t *testing.T) {
+	t.Parallel()
+
 	err := errors.New("boom")
 
 	terr := TransientError(err)

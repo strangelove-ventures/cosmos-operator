@@ -13,6 +13,8 @@ import (
 )
 
 func TestPVCControl_Reconcile(t *testing.T) {
+	t.Parallel()
+
 	type (
 		mockPVCClient = mockClient[*corev1.PersistentVolumeClaim]
 		mockPVCDiffer = mockDiffer[*corev1.PersistentVolumeClaim]
