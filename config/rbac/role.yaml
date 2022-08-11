@@ -10,8 +10,19 @@ rules:
   resources:
   - pods
   verbs:
+  - delete
   - get
   - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - pvcs
+  verbs:
+  - delete
+  - get
+  - list
+  - patch
   - watch
 - apiGroups:
   - cosmos.strange.love
