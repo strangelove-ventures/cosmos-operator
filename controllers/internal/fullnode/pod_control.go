@@ -71,10 +71,10 @@ func (pc PodControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmos
 
 	for _, pod := range diff.Creates() {
 		log.Info("Creating pod", "podName", pod.Name)
-		if err := ctrl.SetControllerReference(crd, pod, pc.client.Scheme()); kube.IgnoreAlreadyExists(err) != nil {
+		if err := ctrl.SetControllerReference(crd, pod, pc.client.Scheme()); err != nil {
 			return true, kube.TransientError(fmt.Errorf("set controller reference on pod %q: %w", pod.Name, err))
 		}
-		if err := pc.client.Create(ctx, pod); err != nil {
+		if err := pc.client.Create(ctx, pod); kube.IgnoreAlreadyExists(err) != nil {
 			return true, kube.TransientError(fmt.Errorf("create pod %q: %w", pod.Name, err))
 		}
 	}
