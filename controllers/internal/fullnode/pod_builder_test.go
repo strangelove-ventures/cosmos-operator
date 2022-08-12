@@ -73,7 +73,7 @@ func TestPodBuilder(t *testing.T) {
 		require.EqualValues(t, 30, *pod.Spec.TerminationGracePeriodSeconds)
 
 		wantAnnotations := map[string]string{
-			"cosmosfullnode.cosmos.strange.love/ordinal": "5",
+			"app.kubernetes.io/ordinal": "5",
 			// TODO (nix - 8/2/22) Prom metrics here
 		}
 		require.Equal(t, wantAnnotations, pod.Annotations)
@@ -129,7 +129,7 @@ func TestPodBuilder(t *testing.T) {
 		optCrd := crd.DeepCopy()
 
 		optCrd.Spec.PodTemplate.Metadata.Labels = map[string]string{"custom": "label", chainLabel: "should not see me"}
-		optCrd.Spec.PodTemplate.Metadata.Annotations = map[string]string{"custom": "annotation", OrdinalAnnotation: "should not see me"}
+		optCrd.Spec.PodTemplate.Metadata.Annotations = map[string]string{"custom": "annotation", kube.OrdinalAnnotation: "should not see me"}
 
 		optCrd.Spec.PodTemplate.Affinity = &corev1.Affinity{
 			PodAffinity: &corev1.PodAffinity{
@@ -153,7 +153,7 @@ func TestPodBuilder(t *testing.T) {
 
 		require.Equal(t, "annotation", pod.Annotations["custom"])
 		// Operator label takes precedence.
-		require.Equal(t, "9", pod.Annotations[OrdinalAnnotation])
+		require.Equal(t, "9", pod.Annotations[kube.OrdinalAnnotation])
 
 		require.Equal(t, optCrd.Spec.PodTemplate.Affinity, pod.Spec.Affinity)
 		require.Equal(t, optCrd.Spec.PodTemplate.Tolerations, pod.Spec.Tolerations)

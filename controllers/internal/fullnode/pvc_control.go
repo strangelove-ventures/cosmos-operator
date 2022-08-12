@@ -53,7 +53,7 @@ func (vc PVCControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmos
 	var (
 		currentPVCs = ptrSlice(vols.Items)
 		wantPVCs    = BuildPVCs(crd)
-		diff        = vc.diffFactory(OrdinalAnnotation, kube.RevisionLabel, currentPVCs, wantPVCs)
+		diff        = vc.diffFactory(kube.OrdinalAnnotation, kube.RevisionLabel, currentPVCs, wantPVCs)
 	)
 
 	for _, pvc := range diff.Creates() {

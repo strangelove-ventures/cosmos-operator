@@ -133,7 +133,7 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 	pod := b.pod.DeepCopy()
 	name := b.name(ordinal)
 
-	pod.Annotations[OrdinalAnnotation] = kube.ToIntegerValue(ordinal)
+	pod.Annotations[kube.OrdinalAnnotation] = kube.ToIntegerValue(ordinal)
 	pod.Labels[kube.InstanceLabel] = kube.ToLabelValue(name)
 
 	pod.Name = kube.ToName(name)

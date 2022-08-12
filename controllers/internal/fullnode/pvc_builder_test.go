@@ -32,7 +32,7 @@ func TestBuildPVCs(t *testing.T) {
 		gotNames := lo.Map(pvcs, func(pvc *corev1.PersistentVolumeClaim, _ int) string { return pvc.Name })
 		require.Equal(t, []string{"pvc-juno-fullnode-0", "pvc-juno-fullnode-1", "pvc-juno-fullnode-2"}, gotNames)
 
-		gotOrds := lo.Map(pvcs, func(pvc *corev1.PersistentVolumeClaim, _ int) string { return pvc.Annotations[OrdinalAnnotation] })
+		gotOrds := lo.Map(pvcs, func(pvc *corev1.PersistentVolumeClaim, _ int) string { return pvc.Annotations[kube.OrdinalAnnotation] })
 		require.Equal(t, []string{"0", "1", "2"}, gotOrds)
 
 		revisions := lo.Map(pvcs, func(pvc *corev1.PersistentVolumeClaim, _ int) string { return pvc.Labels[kube.RevisionLabel] })
