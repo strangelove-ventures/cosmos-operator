@@ -1,65 +1,22 @@
 # cosmos-operator
 Cosmos Operator manages custom resource definitions (CRDs) for full nodes (aka RPC nodes) and eventually validator nodes for blockchains created with the [Cosmos SDK](https://v1.cosmos.network/sdk).
 
+The long-term vision of the Operator is to allow you to "configure it and forget it". 
+
 ## CosmosFullNode
 
 The CosmosFullNode creates a highly available, fault-tolerant [full node](https://docs.cosmos.network/main/run-node/run-node.html) deployment.
 
 The CosmosFullNode controller acts like a hybrid between a StatefulSet and a Deployment.
 Like a StatefulSet, each pod has a corresponding persistent volume to manage blockchain state and data.
-You can configure rolling updates similar to a Deployment.
+But, you can also configure rolling updates similar to a Deployment.
 
 Additionally, because full node persistent data can be destroyed and recreated with little consequence, the controller 
-will destroy/recreate PVCs which is different from StatefulSets which never delete PVCs.
-Deleting a CosmosFullNode also cleans up PVCs.
+will clean up PVCs which is different from StatefulSets which never delete PVCs. Deleting a CosmosFullNode also cleans up PVCs.
 
 ## Validators?
 
 Coming soon!
-
-## Getting Started
-
-Run these commands to setup your environment:
-
-```shell
-make tools
-```
-
-You’ll need a Kubernetes cluster to run against. You can use [KIND](https://sigs.k8s.io/kind) to get a local cluster for testing, or run against a remote cluster.
-**Note:** Your controller will automatically use the current context in your kubeconfig file (i.e. whatever cluster `kubectl cluster-info` shows).
-
-### Running on the cluster
-1. Install Instances of Custom Resources:
-
-```sh
-kubectl apply -f config/samples/
-```
-
-2. Build and push your image to the location specified by `IMG`:
-
-```sh
-make docker-build docker-push IMG=<some-registry>/cosmos-operator:tag
-```
-
-3. Deploy the controller to the cluster with the image specified by `IMG`:
-
-```sh
-make deploy IMG=<some-registry>/cosmos-operator:tag
-```
-
-### Uninstall CRDs
-To delete the CRDs from the cluster:
-
-```sh
-make uninstall
-```
-
-### Undeploy controller
-UnDeploy the controller to the cluster:
-
-```sh
-make undeploy
-```
 
 # Best Practices
 
@@ -110,6 +67,50 @@ There is [future work](https://github.com/strangelove-ventures/cosmos-operator/i
 ## Using Volume Snapshots
 
 TODO: How to use snapscheduler to create and restore from a kubernetes volume snapshot.
+
+# Getting Started
+
+Run these commands to setup your environment:
+
+```shell
+make tools
+```
+
+You’ll need a Kubernetes cluster to run against. You can use [KIND](https://sigs.k8s.io/kind) to get a local cluster for testing, or run against a remote cluster.
+**Note:** Your controller will automatically use the current context in your kubeconfig file (i.e. whatever cluster `kubectl cluster-info` shows).
+
+## Running on the cluster
+1. Install Instances of Custom Resources:
+
+```sh
+kubectl apply -f config/samples/
+```
+
+2. Build and push your image to the location specified by `IMG`:
+
+```sh
+make docker-build docker-push IMG=<some-registry>/cosmos-operator:tag
+```
+
+3. Deploy the controller to the cluster with the image specified by `IMG`:
+
+```sh
+make deploy IMG=<some-registry>/cosmos-operator:tag
+```
+
+## Uninstall CRDs
+To delete the CRDs from the cluster:
+
+```sh
+make uninstall
+```
+
+## Undeploy controller
+UnDeploy the controller to the cluster:
+
+```sh
+make undeploy
+```
 
 # Contributing
 // TODO(user): Add detailed information on how you would like others to contribute to this project
