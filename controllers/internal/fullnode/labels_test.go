@@ -15,5 +15,5 @@ func TestSelectorLabels(t *testing.T) {
 	crd.Name = "cool-chain"
 
 	got := SelectorLabels(crd)
-	require.Equal(t, client.MatchingLabels{"cosmosfullnode.cosmos.strange.love/chain-name": "cool-chain"}, got)
+	require.Equal(t, client.MatchingLabels{"app.kubernetes.io/name": "cool-chain-fullnode"}, got)
 }

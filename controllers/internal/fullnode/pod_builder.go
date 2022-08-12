@@ -41,9 +41,8 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: crd.Namespace,
 			Labels: map[string]string{
-				chainLabel:           kube.ToLabelValue(crd.Name),
 				kube.ControllerLabel: kube.ToLabelValue("CosmosFullNode"),
-				kube.NameLabel:       kube.ToLabelValue(fmt.Sprintf("%s-fullnode", crd.Name)),
+				kube.NameLabel:       appName(crd),
 				kube.VersionLabel:    kube.ParseImageVersion(tpl.Image),
 				revisionLabel:        podRevisionHash(crd),
 			},
@@ -153,6 +152,10 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 
 	b.pod = pod
 	return b
+}
+
+func appName(crd *cosmosv1.CosmosFullNode) string {
+	return kube.ToLabelValue(fmt.Sprintf("%s-fullnode", crd.Name))
 }
 
 func podName(crdName string, ordinal int32) string {

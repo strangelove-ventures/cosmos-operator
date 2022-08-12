@@ -28,7 +28,6 @@ func BuildPVCs(crd *cosmosv1.CosmosFullNode) []*corev1.PersistentVolumeClaim {
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: crd.Namespace,
 			Labels: map[string]string{
-				chainLabel:           kube.ToLabelValue(crd.Name),
 				kube.ControllerLabel: kube.ToLabelValue("CosmosFullNode"),
 				kube.NameLabel:       kube.ToLabelValue(fmt.Sprintf("%s-fullnode", crd.Name)),
 				revisionLabel:        pvcRevisionHash(crd),
