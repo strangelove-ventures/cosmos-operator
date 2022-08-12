@@ -64,8 +64,11 @@ spec:
                 description: Template applied to all pods. Creates 1 pod per replica.
                 properties:
                   affinity:
-                    description: If specified, the pod's scheduling constraints This
-                      is an advanced configuration option.
+                    description: If specified, the pod's scheduling constraints. If
+                      absent, the operator adds reasonable affinity rules to ensure
+                      pods spread across nodes. If you supply your own affinity, those
+                      rules replace the defaults. This is an advanced configuration
+                      option.
                     properties:
                       nodeAffinity:
                         description: Describes node affinity scheduling rules for

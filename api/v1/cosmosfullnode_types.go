@@ -93,7 +93,9 @@ type CosmosPodSpec struct {
 	// +optional
 	NodeSelector map[string]string `json:"nodeSelector"`
 
-	// If specified, the pod's scheduling constraints
+	// If specified, the pod's scheduling constraints.
+	// If absent, the operator adds reasonable affinity rules to ensure pods spread across nodes.
+	// If you supply your own affinity, those rules replace the defaults.
 	// This is an advanced configuration option.
 	// +optional
 	Affinity *corev1.Affinity `json:"affinity"`
