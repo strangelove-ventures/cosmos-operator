@@ -66,7 +66,7 @@ There is [future work](https://github.com/strangelove-ventures/cosmos-operator/i
 
 ## Pod Affinity
 
-The Operator cannot assume your preferred topology. Therefore, set affinity appropriately if it fits your use case.
+The Operator cannot assume your preferred topology. Therefore, set affinity appropriately to fit your use case.
 
 E.g. To encourage the scheduler to spread pods across nodes:
 
