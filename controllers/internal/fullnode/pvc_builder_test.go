@@ -45,9 +45,8 @@ func TestBuildPVCs(t *testing.T) {
 			require.Equal(t, "v1", got.APIVersion)
 
 			wantLabels := map[string]string{
-				"cosmosfullnode.cosmos.strange.love/chain-name": "juno",
-				"app.kubernetes.io/created-by":                  "cosmosfullnode",
-				"app.kubernetes.io/name":                        "juno-fullnode",
+				"app.kubernetes.io/created-by": "cosmosfullnode",
+				"app.kubernetes.io/name":       "juno-fullnode",
 			}
 			// These labels change and tested elsewhere.
 			delete(got.Labels, kube.RevisionLabel)
