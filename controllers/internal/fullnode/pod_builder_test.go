@@ -176,7 +176,7 @@ func TestPodBuilder(t *testing.T) {
 
 		require.Regexp(t, `a.*-fullnode-125`, pod.Name)
 
-		HasTruncatedMetadata(t, pod)
+		RequireValidMetadata(t, pod)
 	})
 }
 

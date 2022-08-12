@@ -89,7 +89,7 @@ func TestBuildPVCs(t *testing.T) {
 		require.NotEmpty(t, pvcs)
 
 		for _, got := range pvcs {
-			HasTruncatedMetadata(t, got)
+			RequireValidMetadata(t, got)
 		}
 	})
 }
