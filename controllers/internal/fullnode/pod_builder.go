@@ -162,6 +162,24 @@ func podName(crdName string, ordinal int32) string {
 	return kube.ToLabelValue(fmt.Sprintf("%s-fullnode-%d", crdName, ordinal))
 }
 
+func defaultPodAffinity(crdName string) *corev1.Affinity {
+	return &corev1.Affinity{
+		PodAntiAffinity: &corev1.PodAntiAffinity{
+			PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{
+				{
+					Weight: 100,
+					PodAffinityTerm: corev1.PodAffinityTerm{
+						LabelSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{kube.NameLabel: "osmosis-fullnode"},
+						},
+						TopologyKey: "kubernetes.io/hostname",
+					},
+				},
+			},
+		},
+	}
+}
+
 var fullNodePorts = []corev1.ContainerPort{
 	{
 		Name:          "api",

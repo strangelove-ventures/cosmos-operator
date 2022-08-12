@@ -125,6 +125,28 @@ func TestPodBuilder(t *testing.T) {
 		}
 	})
 
+	t.Run("default affinity", func(t *testing.T) {
+		pod := NewPodBuilder(&crd).WithOrdinal(1).Build()
+
+		want := &corev1.Affinity{
+			PodAntiAffinity: &corev1.PodAntiAffinity{
+				PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{
+					{
+						Weight: 100,
+						PodAffinityTerm: corev1.PodAffinityTerm{
+							LabelSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{"app.kubernetes.io/name": "osmosis-fullnode"},
+							},
+							TopologyKey: "kubernetes.io/hostname",
+						},
+					},
+				},
+			},
+		}
+
+		require.Equal(t, want, pod.Spec.Affinity)
+	})
+
 	t.Run("happy path - optional fields", func(t *testing.T) {
 		optCrd := crd.DeepCopy()
 
