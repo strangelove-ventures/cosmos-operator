@@ -64,6 +64,28 @@ If you need to update an immutable field like the StorageClass, the workaround i
 
 There is [future work](https://github.com/strangelove-ventures/cosmos-operator/issues/38) planned for the Operator to handle this scenario for you.
 
+## Pod Affinity
+
+The Operator cannot assume your preferred topology. Therefore, set affinity appropriately if it fits your use case.
+
+E.g. To encourage the scheduler to spread pods across nodes:
+
+```yaml
+template:
+  affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                  - key: app.kubernetes.io/name
+                    operator: In
+                    values:
+                      - <name of crd>-fullnode
+              topologyKey: kubernetes.io/hostname
+```
+
 ## Using Volume Snapshots
 
 TODO: How to use snapscheduler to create and restore from a kubernetes volume snapshot.
