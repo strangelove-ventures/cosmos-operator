@@ -86,8 +86,6 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return finishResult, client.IgnoreNotFound(err)
 	}
 
-	// TODO: try creating pods first? You can't delete the PVC until the pod is also deleted. Could change method to ReconcileCreates and another one for ReconcileDeletes.
-
 	// Reconcile pods.
 	requeue, err := r.podControl.Reconcile(ctx, logger, &crd)
 	if err != nil {
