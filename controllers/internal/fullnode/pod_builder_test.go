@@ -128,7 +128,7 @@ func TestPodBuilder(t *testing.T) {
 	t.Run("happy path - optional fields", func(t *testing.T) {
 		optCrd := crd.DeepCopy()
 
-		optCrd.Spec.PodTemplate.Metadata.Labels = map[string]string{"custom": "label", chainLabel: "should not see me"}
+		optCrd.Spec.PodTemplate.Metadata.Labels = map[string]string{"custom": "label", kube.NameLabel: "should not see me"}
 		optCrd.Spec.PodTemplate.Metadata.Annotations = map[string]string{"custom": "annotation", kube.OrdinalAnnotation: "should not see me"}
 
 		optCrd.Spec.PodTemplate.Affinity = &corev1.Affinity{
