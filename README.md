@@ -1,23 +1,74 @@
 # cosmos-operator
 Cosmos Operator manages custom resource definitions (CRDs) for full nodes (aka RPC nodes) and eventually validator nodes for blockchains created with the [Cosmos SDK](https://v1.cosmos.network/sdk).
 
+The long-term vision of the Operator is to allow you to "configure it and forget it". 
+
 ## CosmosFullNode
 
 The CosmosFullNode creates a highly available, fault-tolerant [full node](https://docs.cosmos.network/main/run-node/run-node.html) deployment.
 
 The CosmosFullNode controller acts like a hybrid between a StatefulSet and a Deployment.
 Like a StatefulSet, each pod has a corresponding persistent volume to manage blockchain state and data.
-You can configure rolling updates similar to a Deployment.
+But, you can also configure rolling updates similar to a Deployment.
 
 Additionally, because full node persistent data can be destroyed and recreated with little consequence, the controller 
-will destroy/recreate PVCs which is different from StatefulSets which never delete PVCs.
-Deleting a CosmosFullNode also cleans up PVCs.
+will clean up PVCs which is different from StatefulSets which never delete PVCs. Deleting a CosmosFullNode also cleans up PVCs.
 
 ## Validators?
 
 Coming soon!
 
-## Getting Started
+# Best Practices
+
+## Volumes, PVCs and StorageClass
+
+Generally, Volumes are bound to a single Availability Zone (AZ). Therefore, use or define a [StorageClass](https://kubernetes.io/docs/concepts/storage/storage-classes/)
+which has `volumeBindingMode: WaitForFirstConsumer`. This way, kubernetes will not provision the volume until there is a pod ready to bind to it.
+
+If you do not configure `volumeBindingMode` to wait, you risk the scheduler ignoring pod topology rules such as `Affinity`.
+For example, in GKE, volumes will be provisioned [in random zones](https://cloud.google.com/kubernetes-engine/docs/concepts/persistent-volumes).
+
+The Operator cannot define a StorageClass for you. Instead, you must configure the CRD with a pre-existing StorageClass.
+
+Cloud providers generally provide default StorageClasses for you. Some of them set `volumeBindingMode: WaitForFirstConsumer` such as GKE's `premium-rwo`.
+```shell
+kubectl get storageclass
+```
+
+Additionally, Cosmos nodes require heavy disk IO. Therefore, choose a faster StorageClass such as GKE's `premium-rwo`.
+
+## Resizing Volumes
+
+The StorageClass must support resizing. Most cloud providers (like GKE) support it.
+
+To resize, update resources in the CRD like so:
+```yaml
+resources:
+  requests:
+    storage: 100Gi # increase size here
+```
+
+You can only increase the storage (never decrease).
+
+You must manually watch the PVC for a status of `FileSystemResizePending`. Then manually restart the pod associated with the PVC to complete resizing.
+
+The above is a workaround; there is [future work](https://github.com/strangelove-ventures/cosmos-operator/issues/37) planned to allow the Operator to handle this scenario for you.
+
+## Updating Volumes
+
+Most PVC fields are immutable (such as StorageClass), so once the Operator creates PVCs, immutable fields are not updated even if you change values in the CRD.
+
+As mentioned in the above section, you can only update the storage size.
+
+If you need to update an immutable field like the StorageClass, the workaround is to `kubectl apply` the CRD. Then manually delete PVCs and pods. The Operator will recreate them with the new configuration.
+
+There is [future work](https://github.com/strangelove-ventures/cosmos-operator/issues/38) planned for the Operator to handle this scenario for you.
+
+## Using Volume Snapshots
+
+TODO: How to use snapscheduler to create and restore from a kubernetes volume snapshot.
+
+# Getting Started
 
 Run these commands to setup your environment:
 
@@ -28,7 +79,7 @@ make tools
 You’ll need a Kubernetes cluster to run against. You can use [KIND](https://sigs.k8s.io/kind) to get a local cluster for testing, or run against a remote cluster.
 **Note:** Your controller will automatically use the current context in your kubeconfig file (i.e. whatever cluster `kubectl cluster-info` shows).
 
-### Running on the cluster
+## Running on the cluster
 1. Install Instances of Custom Resources:
 
 ```sh
@@ -47,42 +98,19 @@ make docker-build docker-push IMG=<some-registry>/cosmos-operator:tag
 make deploy IMG=<some-registry>/cosmos-operator:tag
 ```
 
-### Uninstall CRDs
+## Uninstall CRDs
 To delete the CRDs from the cluster:
 
 ```sh
 make uninstall
 ```
 
-### Undeploy controller
+## Undeploy controller
 UnDeploy the controller to the cluster:
 
 ```sh
 make undeploy
 ```
-
-# Best Practices
-
-### Volumes, PVCs and StorageClass
-
-Generally, Volumes are bound to a single Availability Zone (AZ). Therefore, use or define a [StorageClass](https://kubernetes.io/docs/concepts/storage/storage-classes/)
-which has `volumeBindingMode: WaitForFirstConsumer`. This way, kubernetes will not provision the volume until there is a pod ready to bind to it.
-
-If you do not configure `volumeBindingMode` to wait, you risk the scheduler ignoring pod topology rules such as `Affinity`.
-For example, in GKE, volumes will be provisioned [in random zones](https://cloud.google.com/kubernetes-engine/docs/concepts/persistent-volumes).
-
-The Operator cannot define a StorageClass for you. Instead, you must configure the CRD with a pre-existing StorageClass.
-
-Cloud providers generally provide default StorageClasses for you. Some of them set `volumeBindingMode: WaitForFirstConsumer` such as GKE's `premium-rwo`.
-```shell
-kubectl get storageclass
-```
-
-Additionally, Cosmos nodes require heavy disk IO. Therefore, choose a faster StorageClass such as GKE's `premium-rwo`.
-
-## Using Volume Snapshots
-
-TODO: How to use snapscheduler to create and restore from a kubernetes volume snapshot.
 
 # Contributing
 // TODO(user): Add detailed information on how you would like others to contribute to this project

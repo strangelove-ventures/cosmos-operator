@@ -1089,17 +1089,19 @@ spec:
                   accessModes:
                     description: 'accessModes contain the desired access modes the
                       volume should have. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1
-                      If not specified, defaults to ReadWriteOnce.'
+                      If not specified, defaults to ReadWriteOnce. This field is immutable.
+                      Updating this field requires manually deleting the PVC.'
                     items:
                       type: string
                     type: array
                   resources:
                     description: 'resources represents the minimum resources the volume
-                      should have. This field is required. If RecoverVolumeExpansionFailure
-                      feature is enabled users are allowed to specify resource requirements
-                      that are lower than previous value but must still be higher
-                      than capacity recorded in the status field of the claim. More
-                      info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
+                      should have. If RecoverVolumeExpansionFailure feature is enabled
+                      users are allowed to specify resource requirements that are
+                      lower than previous value but must still be higher than capacity
+                      recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
+                      Updating the storage size is allowed but the StorageClass must
+                      support file system resizing. Only increasing storage is permitted.
                       This field is required.'
                     properties:
                       limits:
@@ -1131,12 +1133,14 @@ spec:
                       recommended to set "volumeBindingMode: WaitForFirstConsumer"
                       in the StorageClass. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1
                       For GKE, recommended storage class is "premium-rwo". This field
-                      is required.'
+                      is immutable. Updating this field requires manually deleting
+                      the PVC. This field is required.'
                     type: string
                   volumeMode:
                     description: volumeMode defines what type of volume is required
                       by the claim. Value of Filesystem is implied when not included
-                      in claim spec.
+                      in claim spec. This field is immutable. Updating this field
+                      requires manually deleting the PVC.
                     type: string
                 required:
                 - resources

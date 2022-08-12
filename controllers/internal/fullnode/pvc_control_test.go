@@ -85,7 +85,7 @@ func TestPVCControl_Reconcile(t *testing.T) {
 		}
 		requeue, err := control.Reconcile(ctx, nopLogger, &crd)
 		require.NoError(t, err)
-		require.False(t, requeue) // TODO (nix - 8/10/22) Change to true once updates supported.
+		require.True(t, requeue)
 
 		require.Equal(t, 3, mClient.CreateCount)
 		require.Equal(t, 2, mClient.DeleteCount)
@@ -94,5 +94,42 @@ func TestPVCControl_Reconcile(t *testing.T) {
 		require.Equal(t, crd.Name, mClient.LastCreatedResource.OwnerReferences[0].Name)
 		require.Equal(t, "CosmosFullNode", mClient.LastCreatedResource.OwnerReferences[0].Kind)
 		require.True(t, *mClient.LastCreatedResource.OwnerReferences[0].Controller)
+	})
+
+	t.Run("updates", func(t *testing.T) {
+		updates := buildPVCs(2)
+		unbound := updates[0]
+		unbound.Status.Phase = corev1.ClaimPending
+
+		var mClient mockPVCClient
+		mClient.ObjectList = corev1.PersistentVolumeClaimList{
+			Items: []corev1.PersistentVolumeClaim{*unbound},
+		}
+		var (
+			mDiff = mockPVCDiffer{
+				StubUpdates: updates,
+			}
+			crd     = defaultCRD()
+			control = NewPVCControl(&mClient)
+		)
+		crd.Namespace = namespace
+		crd.Spec.VolumeClaimTemplate.VolumeMode = ptr(corev1.PersistentVolumeMode("should not be in the patch"))
+		control.diffFactory = func(_, _ string, current, want []*corev1.PersistentVolumeClaim) pvcDiffer {
+			return mDiff
+		}
+		requeue, rerr := control.Reconcile(ctx, nopLogger, &crd)
+		require.NoError(t, rerr)
+		require.False(t, requeue)
+
+		require.Empty(t, mClient.CreateCount)
+		require.Empty(t, mClient.DeleteCount)
+
+		// Count of 1 because we skip patching unbound claims (results in kube API error).
+		require.Equal(t, 1, mClient.PatchCount)
+		require.Equal(t, client.Merge, mClient.LastPatch)
+
+		gotPVC := mClient.LastPatchObject.(*corev1.PersistentVolumeClaim)
+		require.Empty(t, gotPVC.Spec.VolumeMode)
+		require.Equal(t, updates[1].Spec.Resources, gotPVC.Spec.Resources)
 	})
 }
