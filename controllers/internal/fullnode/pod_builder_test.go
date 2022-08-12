@@ -84,6 +84,7 @@ func TestPodBuilder(t *testing.T) {
 		require.Equal(t, "busybox:v1.2.3", lastContainer.Image)
 		require.Empty(t, lastContainer.ImagePullPolicy)
 		require.Equal(t, crd.Spec.PodTemplate.Resources, lastContainer.Resources)
+		require.NotEmpty(t, lastContainer.VolumeMounts) // TODO (nix - 8/12/22) Better assertion once we know what container needs.
 
 		// Test we don't share or leak data per invocation.
 		pod = builder.Build()

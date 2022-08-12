@@ -51,7 +51,6 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 			Annotations: make(map[string]string),
 		},
 		Spec: corev1.PodSpec{
-			Volumes:                       nil, // TODO: must create volumes before this step
 			InitContainers:                nil, // TODO: real chain will need init containers
 			TerminationGracePeriodSeconds: valOrDefault(tpl.TerminationGracePeriodSeconds, ptr(int64(30))),
 			Affinity:                      tpl.Affinity,
@@ -70,7 +69,6 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 					Ports:     fullNodePorts,
 					Resources: tpl.Resources,
 					// TODO (nix - 7/27/22) - Set these values.
-					VolumeMounts:   nil,
 					LivenessProbe:  nil,
 					ReadinessProbe: nil,
 					StartupProbe:   nil,
@@ -139,7 +137,6 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 	pod.Name = name
 
 	volName := kube.ToName(fmt.Sprintf("vol-%s-fullnode-%d", b.crd.Name, ordinal))
-	// TODO (nix - 8/10/22) Container needs reference to volume also.
 	pod.Spec.Volumes = []corev1.Volume{
 		{
 			Name: volName,
@@ -147,6 +144,11 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: pvcName(b.crd.Name, ordinal)},
 			},
 		},
+	}
+	for i := range pod.Spec.Containers {
+		pod.Spec.Containers[i].VolumeMounts = []corev1.VolumeMount{
+			{Name: volName, MountPath: "/home/cosmos"}, // TODO (nix - 8/12/22) MountPath may not be correct.
+		}
 	}
 
 	b.pod = pod
