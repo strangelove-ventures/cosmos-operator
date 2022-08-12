@@ -1,6 +1,11 @@
 package kube
 
-import "fmt"
+import (
+	"fmt"
+
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+)
 
 // ReconcileError is a controller-specific error.
 type ReconcileError interface {
@@ -33,4 +38,17 @@ func TransientError(err error) ReconcileError {
 // UnrecoverableError cannot be recovered and should not be retried.
 func UnrecoverableError(err error) ReconcileError {
 	return reconcileError{err, false}
+}
+
+// IgnoreNotFound returns nil if err reason is "not found".
+func IgnoreNotFound(err error) error {
+	return client.IgnoreNotFound(err)
+}
+
+// IgnoreAlreadyExists returns nil if err reason is "already exists".
+func IgnoreAlreadyExists(err error) error {
+	if apierrors.IsAlreadyExists(err) {
+		return nil
+	}
+	return err
 }

@@ -84,6 +84,7 @@ func TestPodBuilder(t *testing.T) {
 		require.Equal(t, "busybox:v1.2.3", lastContainer.Image)
 		require.Empty(t, lastContainer.ImagePullPolicy)
 		require.Equal(t, crd.Spec.PodTemplate.Resources, lastContainer.Resources)
+		require.NotEmpty(t, lastContainer.VolumeMounts) // TODO (nix - 8/12/22) Better assertion once we know what container needs.
 
 		// Test we don't share or leak data per invocation.
 		pod = builder.Build()
@@ -173,18 +174,9 @@ func TestPodBuilder(t *testing.T) {
 		builder := NewPodBuilder(longCrd)
 		pod := builder.WithOrdinal(125).Build()
 
-		require.Len(t, pod.Name, 253)
 		require.Regexp(t, `a.*-fullnode-125`, pod.Name)
 
-		wantLabels := map[string]string{
-			"cosmosfullnode.cosmos.strange.love/chain-name": strings.Repeat("a", 63),
-			"app.kubernetes.io/instance":                    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-fullnode-125",
-			"app.kubernetes.io/created-by":                  "cosmosfullnode",
-			"app.kubernetes.io/name":                        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-fullnode",
-			"app.kubernetes.io/version":                     "v1.2.3",
-		}
-		delete(pod.Labels, revisionLabel)
-		require.Equal(t, wantLabels, pod.Labels)
+		RequireValidMetadata(t, pod)
 	})
 }
 
