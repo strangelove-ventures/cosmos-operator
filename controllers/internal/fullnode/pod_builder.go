@@ -52,7 +52,7 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 		Spec: corev1.PodSpec{
 			InitContainers:                nil, // TODO: real chain will need init containers
 			TerminationGracePeriodSeconds: valOrDefault(tpl.TerminationGracePeriodSeconds, ptr(int64(30))),
-			Affinity:                      tpl.Affinity,
+			Affinity:                      valOrDefault(tpl.Affinity, defaultPodAffinity(crd)),
 			NodeSelector:                  tpl.NodeSelector,
 			Tolerations:                   tpl.Tolerations,
 			PriorityClassName:             tpl.PriorityClassName,
@@ -154,23 +154,23 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 	return b
 }
 
-func appName(crd *cosmosv1.CosmosFullNode) string {
-	return kube.ToLabelValue(fmt.Sprintf("%s-fullnode", crd.Name))
+func appName(crd metav1.Object) string {
+	return kube.ToLabelValue(fmt.Sprintf("%s-fullnode", crd.GetName()))
 }
 
 func podName(crdName string, ordinal int32) string {
 	return kube.ToLabelValue(fmt.Sprintf("%s-fullnode-%d", crdName, ordinal))
 }
 
-func defaultPodAffinity(crdName string) *corev1.Affinity {
+func defaultPodAffinity(crd metav1.Object) *corev1.Affinity {
 	return &corev1.Affinity{
 		PodAntiAffinity: &corev1.PodAntiAffinity{
 			PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{
 				{
-					Weight: 100,
+					Weight: 1,
 					PodAffinityTerm: corev1.PodAffinityTerm{
 						LabelSelector: &metav1.LabelSelector{
-							MatchLabels: map[string]string{kube.NameLabel: "osmosis-fullnode"},
+							MatchLabels: map[string]string{kube.NameLabel: appName(crd)},
 						},
 						TopologyKey: "kubernetes.io/hostname",
 					},
