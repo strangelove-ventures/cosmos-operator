@@ -146,26 +146,30 @@ type CosmosPersistentVolumeClaim struct {
 	// For proper pod scheduling, it's highly recommended to set "volumeBindingMode: WaitForFirstConsumer" in the StorageClass.
 	// More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1
 	// For GKE, recommended storage class is "premium-rwo".
+	// This field is immutable. Updating this field requires manually deleting the PVC.
 	// This field is required.
 	StorageClassName string `json:"storageClassName"`
 
 	// resources represents the minimum resources the volume should have.
-	// This field is required.
 	// If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements
 	// that are lower than previous value but must still be higher than capacity recorded in the
 	// status field of the claim.
 	// More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
+	// Updating the storage size is allowed but the StorageClass must support file system resizing.
+	// Only increasing storage is permitted.
 	// This field is required.
 	Resources corev1.ResourceRequirements `json:"resources"`
 
 	// accessModes contain the desired access modes the volume should have.
 	// More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1
 	// If not specified, defaults to ReadWriteOnce.
+	// This field is immutable. Updating this field requires manually deleting the PVC.
 	// +optional
 	AccessModes []corev1.PersistentVolumeAccessMode `json:"accessModes"`
 
 	// volumeMode defines what type of volume is required by the claim.
 	// Value of Filesystem is implied when not included in claim spec.
+	// This field is immutable. Updating this field requires manually deleting the PVC.
 	// +optional
 	VolumeMode *corev1.PersistentVolumeMode `json:"volumeMode"`
 }
