@@ -86,6 +86,9 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return finishResult, client.IgnoreNotFound(err)
 	}
 
+	// Order of operations is important here for deletion. PVCs won't delete unless pods are deleted first.
+	// K8S can create pods first even if the PVC isn't ready. Pods won't be in a ready state until PVC is bound.
+
 	// Reconcile pods.
 	requeue, err := r.podControl.Reconcile(ctx, logger, &crd)
 	if err != nil {
