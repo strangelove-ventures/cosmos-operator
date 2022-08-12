@@ -7,9 +7,6 @@ import (
 
 const (
 	chainLabel = "cosmosfullnode.cosmos.strange.love/chain-name"
-
-	// Denotes the resource's revision typically using hex-encoded fnv hash. Used to detect resource changes for updates.
-	revisionLabel = "cosmosfullnode.cosmos.strange.love/resource-revision"
 )
 
 // SelectorLabels returns the labels used in selector operations.

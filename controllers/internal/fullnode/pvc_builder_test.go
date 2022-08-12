@@ -35,7 +35,7 @@ func TestBuildPVCs(t *testing.T) {
 		gotOrds := lo.Map(pvcs, func(pvc *corev1.PersistentVolumeClaim, _ int) string { return pvc.Annotations[OrdinalAnnotation] })
 		require.Equal(t, []string{"0", "1", "2"}, gotOrds)
 
-		revisions := lo.Map(pvcs, func(pvc *corev1.PersistentVolumeClaim, _ int) string { return pvc.Labels[revisionLabel] })
+		revisions := lo.Map(pvcs, func(pvc *corev1.PersistentVolumeClaim, _ int) string { return pvc.Labels[kube.RevisionLabel] })
 		require.NotEmpty(t, lo.Uniq(revisions))
 		require.Len(t, lo.Uniq(revisions), 1)
 
@@ -50,7 +50,7 @@ func TestBuildPVCs(t *testing.T) {
 				"app.kubernetes.io/name":                        "juno-fullnode",
 			}
 			// These labels change and tested elsewhere.
-			delete(got.Labels, revisionLabel)
+			delete(got.Labels, kube.RevisionLabel)
 			delete(got.Labels, kube.InstanceLabel)
 
 			require.Equal(t, wantLabels, got.Labels)
@@ -116,15 +116,15 @@ func FuzzBuildPVCs(f *testing.F) {
 		pvc1 := BuildPVCs(&crd)[0]
 		pvc2 := BuildPVCs(&crd)[0]
 
-		require.NotEmpty(t, pvc1.Labels[revisionLabel])
-		require.NotEmpty(t, pvc2.Labels[revisionLabel])
+		require.NotEmpty(t, pvc1.Labels[kube.RevisionLabel])
+		require.NotEmpty(t, pvc2.Labels[kube.RevisionLabel])
 
-		require.Equal(t, pvc1.Labels[revisionLabel], pvc2.Labels[revisionLabel])
+		require.Equal(t, pvc1.Labels[kube.RevisionLabel], pvc2.Labels[kube.RevisionLabel])
 
 		crd.Spec.VolumeClaimTemplate.StorageClassName = "different"
 
 		pvc3 := BuildPVCs(&crd)[0]
-		require.NotEmpty(t, pvc3.Labels[revisionLabel])
-		require.NotEqual(t, pvc3.Labels[revisionLabel], pvc1.Labels[revisionLabel])
+		require.NotEmpty(t, pvc3.Labels[kube.RevisionLabel])
+		require.NotEqual(t, pvc3.Labels[kube.RevisionLabel], pvc1.Labels[kube.RevisionLabel])
 	})
 }

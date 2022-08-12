@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -57,9 +58,9 @@ func TestPodBuilder(t *testing.T) {
 		require.Equal(t, "test", pod.Namespace)
 		require.Equal(t, "osmosis-fullnode-5", pod.Name)
 
-		require.NotEmpty(t, pod.Labels["cosmosfullnode.cosmos.strange.love/resource-revision"])
+		require.NotEmpty(t, pod.Labels["app.kubernetes.io/revision"])
 		// The fuzz test below tests this property.
-		delete(pod.Labels, revisionLabel)
+		delete(pod.Labels, kube.RevisionLabel)
 		wantLabels := map[string]string{
 			"cosmosfullnode.cosmos.strange.love/chain-name": "osmosis",
 			"app.kubernetes.io/instance":                    "osmosis-fullnode-5",
@@ -183,7 +184,7 @@ func TestPodBuilder(t *testing.T) {
 			"app.kubernetes.io/name":                        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-fullnode",
 			"app.kubernetes.io/version":                     "v1.2.3",
 		}
-		delete(pod.Labels, revisionLabel)
+		delete(pod.Labels, kube.RevisionLabel)
 		require.Equal(t, wantLabels, pod.Labels)
 	})
 }
@@ -199,16 +200,16 @@ func FuzzPodBuilderBuild(f *testing.F) {
 		pod1 := NewPodBuilder(&crd).Build()
 		pod2 := NewPodBuilder(&crd).Build()
 
-		require.NotEmpty(t, pod1.Labels[revisionLabel], image)
-		require.NotEmpty(t, pod2.Labels[revisionLabel], image)
+		require.NotEmpty(t, pod1.Labels[kube.RevisionLabel], image)
+		require.NotEmpty(t, pod2.Labels[kube.RevisionLabel], image)
 
-		require.Equal(t, pod1.Labels[revisionLabel], pod2.Labels[revisionLabel], image)
+		require.Equal(t, pod1.Labels[kube.RevisionLabel], pod2.Labels[kube.RevisionLabel], image)
 
 		crd.Spec.PodTemplate.Resources = corev1.ResourceRequirements{
 			Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceName(resourceName): resource.MustParse("2")}, // Changed value here.
 		}
 		pod3 := NewPodBuilder(&crd).Build()
 
-		require.NotEqual(t, pod1.Labels[revisionLabel], pod3.Labels[revisionLabel])
+		require.NotEqual(t, pod1.Labels[kube.RevisionLabel], pod3.Labels[kube.RevisionLabel])
 	})
 }

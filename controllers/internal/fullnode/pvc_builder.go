@@ -31,7 +31,7 @@ func BuildPVCs(crd *cosmosv1.CosmosFullNode) []*corev1.PersistentVolumeClaim {
 				chainLabel:           kube.ToLabelValue(crd.Name),
 				kube.ControllerLabel: kube.ToLabelValue("CosmosFullNode"),
 				kube.NameLabel:       kube.ToLabelValue(fmt.Sprintf("%s-fullnode", crd.Name)),
-				revisionLabel:        pvcRevisionHash(crd),
+				kube.RevisionLabel:   pvcRevisionHash(crd),
 			},
 			Annotations: make(map[string]string),
 		},

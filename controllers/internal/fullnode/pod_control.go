@@ -66,7 +66,7 @@ func (pc PodControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmos
 	var (
 		currentPods = ptrSlice(pods.Items)
 		wantPods    = PodState(crd)
-		diff        = pc.diffFactory(OrdinalAnnotation, revisionLabel, currentPods, wantPods)
+		diff        = pc.diffFactory(OrdinalAnnotation, kube.RevisionLabel, currentPods, wantPods)
 	)
 
 	for _, pod := range diff.Creates() {
