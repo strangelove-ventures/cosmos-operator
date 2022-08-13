@@ -109,16 +109,16 @@ func (diff *Diff[T]) computeUpdates(current, want ordinalSet[T]) []T {
 		if !ok {
 			continue
 		}
-		existingRev := existing.Resource.GetLabels()[diff.revisionLabelKey]
-		if existingRev == "" {
-			panic(fmt.Errorf("%s missing revision label %s", existing.Resource.GetName(), diff.revisionLabelKey))
-		}
-		newRev := target.Resource.GetLabels()[diff.revisionLabelKey]
+		var (
+			oldRev = existing.Resource.GetLabels()[diff.revisionLabelKey]
+			newRev = target.Resource.GetLabels()[diff.revisionLabelKey]
+		)
 		if newRev == "" {
+			// If revision isn't found on new resources, indicates a serious error with the Operator.
 			panic(fmt.Errorf("%s missing revision label %s", existing.Resource.GetName(), diff.revisionLabelKey))
 		}
 
-		if existingRev != newRev {
+		if oldRev != newRev {
 			updates = append(updates, target)
 		}
 	}

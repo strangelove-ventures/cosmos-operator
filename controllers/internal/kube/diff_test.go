@@ -71,9 +71,13 @@ func TestNewDiff(t *testing.T) {
 				diffablePod(0, "_new_resource_"),
 			}
 
-			require.Panics(t, func() {
-				NewDiff(testOrdinalAnnotation, testRevisionLabel, bad, good)
-			}, tt)
+			// A blank revision is ok for the exiting resources. Future proofs the unlikely event we change the revision label.
+			if tt.RevisionValue != "" {
+				require.Panics(t, func() {
+					NewDiff(testOrdinalAnnotation, testRevisionLabel, bad, good)
+				}, tt)
+			}
+
 			// Test the inverse.
 			require.Panics(t, func() {
 				NewDiff(testOrdinalAnnotation, testRevisionLabel, good, bad)

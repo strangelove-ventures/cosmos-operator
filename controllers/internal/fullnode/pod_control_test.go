@@ -52,8 +52,8 @@ func TestPodControl_Reconcile(t *testing.T) {
 
 		control := NewPodControl(&mClient)
 		control.diffFactory = func(ordinalAnnotationKey, revisionLabelKey string, current, want []*corev1.Pod) podDiffer {
-			require.Equal(t, "cosmosfullnode.cosmos.strange.love/ordinal", ordinalAnnotationKey)
-			require.Equal(t, "cosmosfullnode.cosmos.strange.love/resource-revision", revisionLabelKey)
+			require.Equal(t, "app.kubernetes.io/ordinal", ordinalAnnotationKey)
+			require.Equal(t, "app.kubernetes.io/revision", revisionLabelKey)
 			require.Len(t, current, 1)
 			require.Equal(t, "pod-1", current[0].Name)
 			require.Len(t, want, 3)

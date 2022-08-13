@@ -30,7 +30,7 @@ func BuildPVCs(crd *cosmosv1.CosmosFullNode) []*corev1.PersistentVolumeClaim {
 			Labels: map[string]string{
 				kube.ControllerLabel: kube.ToLabelValue("CosmosFullNode"),
 				kube.NameLabel:       kube.ToLabelValue(fmt.Sprintf("%s-fullnode", crd.Name)),
-				revisionLabel:        pvcRevisionHash(crd),
+				kube.RevisionLabel:   pvcRevisionHash(crd),
 			},
 			Annotations: make(map[string]string),
 		},
@@ -49,7 +49,7 @@ func BuildPVCs(crd *cosmosv1.CosmosFullNode) []*corev1.PersistentVolumeClaim {
 		name := pvcName(crd.Name, i)
 		pvc.Name = name
 		pvc.Labels[kube.InstanceLabel] = name
-		pvc.Annotations[OrdinalAnnotation] = kube.ToIntegerValue(i)
+		pvc.Annotations[kube.OrdinalAnnotation] = kube.ToIntegerValue(i)
 
 		vols[i] = pvc
 	}
