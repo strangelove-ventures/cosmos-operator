@@ -3,6 +3,7 @@ module github.com/strangelove-ventures/cosmos-operator
 go 1.18
 
 require (
+	github.com/go-logr/logr v1.2.0
 	github.com/samber/lo v1.26.0
 	github.com/stretchr/testify v1.8.0
 	golang.org/x/exp v0.0.0-20220303212507-bbda1eaf7a17
@@ -29,7 +30,6 @@ require (
 	github.com/evanphx/json-patch v4.12.0+incompatible // indirect
 	github.com/form3tech-oss/jwt-go v3.2.3+incompatible // indirect
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
-	github.com/go-logr/logr v1.2.0 // indirect
 	github.com/go-logr/zapr v1.2.0 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
 	github.com/go-openapi/jsonreference v0.19.5 // indirect

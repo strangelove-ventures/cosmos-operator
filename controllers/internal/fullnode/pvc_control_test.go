@@ -46,8 +46,8 @@ func TestPVCControl_Reconcile(t *testing.T) {
 
 		control := NewPVCControl(&mClient)
 		control.diffFactory = func(ordinalAnnotationKey, revisionLabelKey string, current, want []*corev1.PersistentVolumeClaim) pvcDiffer {
-			require.Equal(t, "cosmosfullnode.cosmos.strange.love/ordinal", ordinalAnnotationKey)
-			require.Equal(t, "cosmosfullnode.cosmos.strange.love/resource-revision", revisionLabelKey)
+			require.Equal(t, "app.kubernetes.io/ordinal", ordinalAnnotationKey)
+			require.Equal(t, "app.kubernetes.io/revision", revisionLabelKey)
 			require.Len(t, current, 1)
 			require.Equal(t, "pvc-1", current[0].Name)
 			require.Len(t, want, 3)
@@ -64,7 +64,7 @@ func TestPVCControl_Reconcile(t *testing.T) {
 		}
 		require.Equal(t, namespace, listOpt.Namespace)
 		require.Zero(t, listOpt.Limit)
-		require.Equal(t, "cosmosfullnode.cosmos.strange.love/chain-name=hub", listOpt.LabelSelector.String())
+		require.Equal(t, "app.kubernetes.io/name=hub-fullnode", listOpt.LabelSelector.String())
 		require.Equal(t, ".metadata.controller=hub", listOpt.FieldSelector.String())
 	})
 
