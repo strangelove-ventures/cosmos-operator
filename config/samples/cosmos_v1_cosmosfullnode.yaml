@@ -12,8 +12,8 @@ spec:
       externalAddress: "p2p.example.com"
       peers: ["peer@example.com:26656"]
       seeds: ["seed@example.com:26656"]
-      maxInboundPeers: 20
-      maxOutboundPeers: 20
+      maxInboundPeers: 10
+      maxOutboundPeers: 10
     app: # Cosmos SDK config (translates to app.toml)
       minGasPrice: "0.0025uatom"
   template:
@@ -24,6 +24,7 @@ spec:
       limits:
         cpu: "0.75"
   volumeClaimTemplate:
+    # If testing on GKE, change to standard-rwo
     storageClassName: "standard" 
     resources:
       requests:
