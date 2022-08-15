@@ -10,14 +10,30 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/peterbourgon/mergemap"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// BuildConfigMap creates a config map with configuration to be mounted as files into containers.
+// BuildConfigMap creates a ConfigMap with configuration to be mounted as files into containers.
 // Currently, the config.toml (for Tendermint) and app.toml (for the Cosmos SDK).
-func BuildConfigMap(tendermint cosmosv1.CosmosTendermintConfig, app cosmosv1.CosmosAppConfig) (corev1.ConfigMap, error) {
-	var cm corev1.ConfigMap
-	dst := baseTendermint()
+func BuildConfigMap(crd *cosmosv1.CosmosFullNode) (corev1.ConfigMap, error) {
+	var (
+		tendermint = crd.Spec.ChainConfig.Tendermint
+		dst        = baseTendermint()
+		cm         = corev1.ConfigMap{
+			TypeMeta: metav1.TypeMeta{Kind: "ConfigMap", APIVersion: "v1"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      kube.ToName(fmt.Sprintf("%s-config", appName(crd))),
+				Namespace: crd.Namespace,
+				Labels: map[string]string{
+					kube.ControllerLabel: kube.ToLabelValue("CosmosFullNode"),
+					kube.NameLabel:       appName(crd),
+					kube.VersionLabel:    kube.ParseImageVersion(crd.Spec.PodTemplate.Image),
+				},
+			},
+		}
+	)
 	mergemap.Merge(dst, decodeTendermint(tendermint))
 
 	if overrides := tendermint.TomlOverrides; overrides != nil {

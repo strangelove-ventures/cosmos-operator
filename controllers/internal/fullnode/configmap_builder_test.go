@@ -19,25 +19,48 @@ var (
 )
 
 func TestBuildConfigMap(t *testing.T) {
+	crd := defaultCRD()
+
+	t.Run("happy path", func(t *testing.T) {
+		base := defaultCRD()
+		base.Name = "agoric"
+		base.Namespace = "test"
+		base.Spec.PodTemplate.Image = "agoric:v6.0.0"
+
+		cm, err := BuildConfigMap(&base)
+		require.NoError(t, err)
+
+		require.Equal(t, "agoric-fullnode-config", cm.Name)
+		require.Equal(t, "test", cm.Namespace)
+		require.Nil(t, cm.Immutable)
+
+		wantLabels := map[string]string{
+			"app.kubernetes.io/created-by": "cosmosfullnode",
+			"app.kubernetes.io/name":       "agoric-fullnode",
+			"app.kubernetes.io/version":    "v6.0.0",
+		}
+
+		require.Equal(t, wantLabels, cm.Labels)
+	})
+
 	t.Run("config.toml", func(t *testing.T) {
-		tendermint := cosmosv1.CosmosTendermintConfig{
+		crd.Spec.ChainConfig.Tendermint = cosmosv1.CosmosTendermintConfig{
 			ExternalAddress:  "test.example.com",
 			PersistentPeers:  []string{"peer1@1.2.2.2:789", "peer2@2.2.2.2:789", "peer3@3.2.2.2:789"},
 			Seeds:            []string{"seed1@1.1.1.1:456", "seed2@1.1.1.1:456"},
 			MaxInboundPeers:  5,
 			MaxOutboundPeers: 15,
 		}
-		// TODO
-		app := cosmosv1.CosmosAppConfig{}
 
 		t.Run("happy path", func(t *testing.T) {
-			custom := tendermint.DeepCopy()
-			custom.LogLevel = ptr("debug")
-			custom.LogFormat = ptr("json")
-			custom.CorsAllowedOrigins = []string{"*"}
+			custom := crd.DeepCopy()
 
-			cm, kerr := BuildConfigMap(*custom, app)
-			require.NoError(t, kerr)
+			custom.Spec.ChainConfig.Tendermint.LogLevel = ptr("debug")
+			custom.Spec.ChainConfig.Tendermint.LogFormat = ptr("json")
+			custom.Spec.ChainConfig.Tendermint.CorsAllowedOrigins = []string{"*"}
+
+			cm, err := BuildConfigMap(custom)
+			require.NoError(t, err)
 
 			require.NotEmpty(t, cm.Data)
 			require.Empty(t, cm.BinaryData)
@@ -46,7 +69,7 @@ func TestBuildConfigMap(t *testing.T) {
 				got  map[string]any
 				want map[string]any
 			)
-			_, err := toml.Decode(wantTendermint1, &want)
+			_, err = toml.Decode(wantTendermint1, &want)
 			require.NoError(t, err)
 
 			_, err = toml.Decode(cm.Data["config.toml"], &got)
@@ -56,14 +79,14 @@ func TestBuildConfigMap(t *testing.T) {
 		})
 
 		t.Run("defaults", func(t *testing.T) {
-			cm, kerr := BuildConfigMap(tendermint, app)
-			require.NoError(t, kerr)
+			cm, err := BuildConfigMap(&crd)
+			require.NoError(t, err)
 
 			var (
 				got  map[string]any
 				want map[string]any
 			)
-			_, err := toml.Decode(wantTendermintDefaults, &want)
+			_, err = toml.Decode(wantTendermintDefaults, &want)
 			require.NoError(t, err)
 
 			_, err = toml.Decode(cm.Data["config.toml"], &got)
@@ -73,9 +96,9 @@ func TestBuildConfigMap(t *testing.T) {
 		})
 
 		t.Run("overrides", func(t *testing.T) {
-			overrides := tendermint.DeepCopy()
-			overrides.CorsAllowedOrigins = []string{"should not see me"}
-			overrides.TomlOverrides = ptr(`
+			overrides := crd.DeepCopy()
+			overrides.Spec.ChainConfig.Tendermint.CorsAllowedOrigins = []string{"should not see me"}
+			overrides.Spec.ChainConfig.Tendermint.TomlOverrides = ptr(`
 log_format = "json"
 new_base = "new base value"
 
@@ -93,14 +116,14 @@ test = "value"
 indexer = "null"
 `)
 
-			cm, kerr := BuildConfigMap(*overrides, app)
-			require.NoError(t, kerr)
+			cm, err := BuildConfigMap(overrides)
+			require.NoError(t, err)
 
 			var (
 				got  map[string]any
 				want map[string]any
 			)
-			_, err := toml.Decode(wantTendermintOverrides, &want)
+			_, err = toml.Decode(wantTendermintOverrides, &want)
 			require.NoError(t, err)
 
 			_, err = toml.Decode(cm.Data["config.toml"], &got)
@@ -110,9 +133,9 @@ indexer = "null"
 		})
 
 		t.Run("invalid toml", func(t *testing.T) {
-			malformed := tendermint.DeepCopy()
-			malformed.TomlOverrides = ptr(`invalid_toml = should be invalid`)
-			_, err := BuildConfigMap(*malformed, app)
+			malformed := crd.DeepCopy()
+			malformed.Spec.ChainConfig.Tendermint.TomlOverrides = ptr(`invalid_toml = should be invalid`)
+			_, err := BuildConfigMap(malformed)
 
 			require.Error(t, err)
 			require.Contains(t, err.Error(), "invalid toml in overrides")

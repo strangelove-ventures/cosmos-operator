@@ -35,6 +35,99 @@ spec:
           spec:
             description: CosmosFullNodeSpec defines the desired state of CosmosFullNode
             properties:
+              chain:
+                description: Blockchain-specific configuration for the fullnode.
+                properties:
+                  appConfig:
+                    description: App configuration applied to app.toml.
+                    properties:
+                      minGasPrice:
+                        description: The minimum gas prices a validator is willing
+                          to accept for processing a transaction. A transaction's
+                          fees must meet the minimum of any denomination specified
+                          in this config (e.g. 0.25token1;0.0001token2).
+                        minLength: 1
+                        type: string
+                    required:
+                    - minGasPrice
+                    type: object
+                  binary:
+                    description: Binary name which runs commands. E.g. gaiad, junod,
+                      osmosisd
+                    minLength: 1
+                    type: string
+                  chainID:
+                    description: Genesis file chain-id.
+                    minLength: 1
+                    type: string
+                  config:
+                    description: Tendermint configuration applied to config.toml.
+                    properties:
+                      corsAllowedOrigins:
+                        description: rpc list of origins a cross-domain request can
+                          be executed from. Default value '[]' disables cors support.
+                          Use '["*"]' to allow any origin.
+                        items:
+                          type: string
+                        type: array
+                      externalAddress:
+                        description: 'p2p address to advertise for peers to dial.
+                          Example: 159.89.10.97 or my.domain.com. Omit the port. Operator
+                          will configure the port appropriately (26656).'
+                        minLength: 1
+                        type: string
+                      logFormat:
+                        description: One of plain or json. If not set, defaults to
+                          plain.
+                        type: string
+                      logLevel:
+                        description: One of error, info, debug, trace If not set,
+                          defaults to info.
+                        type: string
+                      maxInboundPeers:
+                        description: p2p maximum number of inbound peers.
+                        format: int32
+                        minimum: 1
+                        type: integer
+                      maxOutboundPeers:
+                        description: p2p maximum number of outbound peers.
+                        format: int32
+                        minimum: 1
+                        type: integer
+                      overrides:
+                        description: Custom tendermint config toml. Values entered
+                          here take precedence over all other configuration. Must
+                          be valid toml.
+                        type: string
+                      peers:
+                        description: List of p2p nodes in <ID>@<IP>:<PORT> format
+                          to keep persistent p2p connections. See https://docs.tendermint.com/master/spec/p2p/peer.html
+                          and https://docs.tendermint.com/master/spec/p3p/config.html#persistent-peers.
+                        items:
+                          type: string
+                        minItems: 1
+                        type: array
+                      seeds:
+                        description: List of p2p seed nodes in <ID>@<IP>:<PORT> format.
+                          See https://docs.tendermint.com/master/spec/p2p/config.html#seeds
+                          and https://docs.tendermint.com/master/spec/p2p/node.html#seeds.
+                        items:
+                          type: string
+                        minItems: 1
+                        type: array
+                    required:
+                    - externalAddress
+                    - maxInboundPeers
+                    - maxOutboundPeers
+                    - peers
+                    - seeds
+                    type: object
+                required:
+                - appConfig
+                - binary
+                - chainID
+                - config
+                type: object
               replicas:
                 description: Number of replicas to create. Individual replicas have
                   a consistent identity.
@@ -1147,6 +1240,7 @@ spec:
                 - storageClassName
                 type: object
             required:
+            - chain
             - replicas
             - template
             - volumeClaimTemplate

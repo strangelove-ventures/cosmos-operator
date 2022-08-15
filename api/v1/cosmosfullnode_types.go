@@ -35,6 +35,9 @@ type CosmosFullNodeSpec struct {
 	// Individual replicas have a consistent identity.
 	Replicas int32 `json:"replicas"`
 
+	// Blockchain-specific configuration for the fullnode.
+	ChainConfig CosmosChainConfig `json:"chain"`
+
 	// Template applied to all pods.
 	// Creates 1 pod per replica.
 	PodTemplate CosmosPodSpec `json:"template"`
@@ -205,10 +208,10 @@ type CosmosChainConfig struct {
 	Binary string `json:"binary"`
 
 	// Tendermint configuration applied to config.toml.
-	TendermintConfig *CosmosTendermintConfig `json:"config"`
+	Tendermint CosmosTendermintConfig `json:"config"`
 
 	// App configuration applied to app.toml.
-	AppConfig *CosmosAppConfig `json:"appConfig"`
+	App CosmosAppConfig `json:"appConfig"`
 }
 
 // CosmosTendermintConfig configures the tendermint config.toml.
@@ -217,11 +220,11 @@ type CosmosTendermintConfig struct {
 	// Example: 159.89.10.97 or my.domain.com.
 	// Omit the port. Operator will configure the port appropriately (26656).
 	// +kubebuilder:validation:MinLength:=1
-	ExternalAddress string
+	ExternalAddress string `json:"externalAddress"`
 
 	// List of p2p nodes in <ID>@<IP>:<PORT> format to keep persistent p2p connections.
 	// See https://docs.tendermint.com/master/spec/p2p/peer.html and
-	// https://docs.tendermint.com/master/spec/p2p/config.html#persistent-peers.
+	// https://docs.tendermint.com/master/spec/p3p/config.html#persistent-peers.
 	// +kubebuilder:validation:MinItems:=1
 	PersistentPeers []string `json:"peers"`
 
