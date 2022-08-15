@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // ReconcileError is a controller-specific error.
@@ -40,9 +39,17 @@ func UnrecoverableError(err error) ReconcileError {
 	return reconcileError{err, false}
 }
 
+// IsNotFound returns true if the err reason is "not found".
+func IsNotFound(err error) bool {
+	return apierrors.IsNotFound(err)
+}
+
 // IgnoreNotFound returns nil if err reason is "not found".
 func IgnoreNotFound(err error) error {
-	return client.IgnoreNotFound(err)
+	if apierrors.IsNotFound(err) {
+		return nil
+	}
+	return err
 }
 
 // IgnoreAlreadyExists returns nil if err reason is "already exists".

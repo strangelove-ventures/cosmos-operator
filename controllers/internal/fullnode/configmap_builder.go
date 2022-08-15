@@ -19,12 +19,10 @@ import (
 // Currently, the config.toml (for Tendermint) and app.toml (for the Cosmos SDK).
 func BuildConfigMap(crd *cosmosv1.CosmosFullNode) (corev1.ConfigMap, error) {
 	var (
-		tendermint = crd.Spec.ChainConfig.Tendermint
-		dst        = baseTendermint()
-		cm         = corev1.ConfigMap{
+		cm = corev1.ConfigMap{
 			TypeMeta: metav1.TypeMeta{Kind: "ConfigMap", APIVersion: "v1"},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      kube.ToName(fmt.Sprintf("%s-config", appName(crd))),
+				Name:      configMapName(crd),
 				Namespace: crd.Namespace,
 				Labels: map[string]string{
 					kube.ControllerLabel: kube.ToLabelValue("CosmosFullNode"),
@@ -33,6 +31,8 @@ func BuildConfigMap(crd *cosmosv1.CosmosFullNode) (corev1.ConfigMap, error) {
 				},
 			},
 		}
+		tendermint = crd.Spec.ChainConfig.Tendermint
+		dst        = baseTendermint()
 	)
 	mergemap.Merge(dst, decodeTendermint(tendermint))
 
@@ -52,6 +52,10 @@ func BuildConfigMap(crd *cosmosv1.CosmosFullNode) (corev1.ConfigMap, error) {
 	cm.Data = map[string]string{"config.toml": buf.String()}
 
 	return cm, nil
+}
+
+func configMapName(crd *cosmosv1.CosmosFullNode) string {
+	return kube.ToName(fmt.Sprintf("%s-fullnode-config", crd.Name))
 }
 
 type decodedToml = map[string]any
