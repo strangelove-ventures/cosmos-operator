@@ -202,5 +202,10 @@ func FuzzPodBuilderBuild(f *testing.F) {
 		pod3 := NewPodBuilder(&crd).Build()
 
 		require.NotEqual(t, pod1.Labels[kube.RevisionLabel], pod3.Labels[kube.RevisionLabel])
+
+		crd.Spec.ChainConfig.ChainID = "mychain-1"
+		pod4 := NewPodBuilder(&crd).Build()
+
+		require.NotEqual(t, pod3.Labels[kube.RevisionLabel], pod4.Labels[kube.RevisionLabel])
 	})
 }
