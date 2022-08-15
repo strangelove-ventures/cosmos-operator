@@ -19,7 +19,7 @@ var (
 )
 
 func TestBuildConfigMap(t *testing.T) {
-	crd := defaultCRD()
+	t.Parallel()
 
 	t.Run("happy path", func(t *testing.T) {
 		base := defaultCRD()
@@ -44,6 +44,7 @@ func TestBuildConfigMap(t *testing.T) {
 	})
 
 	t.Run("config.toml", func(t *testing.T) {
+		crd := defaultCRD()
 		crd.Spec.ChainConfig.Tendermint = cosmosv1.CosmosTendermintConfig{
 			ExternalAddress:  "test.example.com",
 			PersistentPeers:  []string{"peer1@1.2.2.2:789", "peer2@2.2.2.2:789", "peer3@3.2.2.2:789"},

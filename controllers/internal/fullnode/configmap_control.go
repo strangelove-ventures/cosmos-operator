@@ -15,22 +15,22 @@ import (
 
 // ConfigMapControl creates or updates configmaps.
 type ConfigMapControl struct {
-	//build  func(tendermint cosmosv1.CosmosTendermintConfig, app cosmosv1.CosmosAppConfig) (corev1.ConfigMap, error)
-	//build
+	build  func(crd *cosmosv1.CosmosFullNode) (corev1.ConfigMap, error)
 	client Client
 }
 
 // NewConfigMapControl returns a valid ConfigMapControl.
 func NewConfigMapControl(client Client) ConfigMapControl {
 	return ConfigMapControl{
-		//build:  BuildConfigMap,
+		build:  BuildConfigMap,
 		client: client,
 	}
 }
 
 // Reconcile creates or updates configmaps containing items that are mounted into pods as files.
+// The ConfigMap is never deleted unless the CRD itself is deleted.
 func (cmc ConfigMapControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmosv1.CosmosFullNode) (bool, kube.ReconcileError) {
-	want, err := BuildConfigMap(crd)
+	want, err := cmc.build(crd)
 	if err != nil {
 		return false, kube.UnrecoverableError(err)
 	}

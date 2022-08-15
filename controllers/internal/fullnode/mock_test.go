@@ -11,21 +11,41 @@ import (
 )
 
 type mockClient[T client.Object] struct {
+	Object       any
+	GetObjectKey client.ObjectKey
+	GetObjectErr error
+
 	ObjectList  any
 	GotListOpts []client.ListOption
 
-	CreateCount         int
-	LastCreatedResource T
+	CreateCount      int
+	LastCreateObject T
 
 	DeleteCount int
 
 	PatchCount      int
 	LastPatchObject client.Object
 	LastPatch       client.Patch
+
+	LastUpdateObject T
 }
 
 func (m *mockClient[T]) Get(ctx context.Context, key client.ObjectKey, obj client.Object) error {
-	panic("implement me")
+	if ctx == nil {
+		panic("nil context")
+	}
+	m.GetObjectKey = key
+	if m.Object == nil {
+		return m.GetObjectErr
+	}
+
+	switch ref := obj.(type) {
+	case *corev1.ConfigMap:
+		*ref = m.Object.(corev1.ConfigMap)
+	default:
+		panic(fmt.Errorf("unknown Object type: %T", m.ObjectList))
+	}
+	return m.GetObjectErr
 }
 
 func (m *mockClient[T]) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
@@ -54,7 +74,7 @@ func (m *mockClient[T]) Create(ctx context.Context, obj client.Object, opts ...c
 	if ctx == nil {
 		panic("nil context")
 	}
-	m.LastCreatedResource = obj.(T)
+	m.LastCreateObject = obj.(T)
 	m.CreateCount++
 	return nil
 }
@@ -68,7 +88,11 @@ func (m *mockClient[T]) Delete(ctx context.Context, obj client.Object, opts ...c
 }
 
 func (m *mockClient[T]) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
-	panic("implement me")
+	if ctx == nil {
+		panic("nil context")
+	}
+	m.LastUpdateObject = obj.(T)
+	return nil
 }
 
 func (m *mockClient[T]) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
