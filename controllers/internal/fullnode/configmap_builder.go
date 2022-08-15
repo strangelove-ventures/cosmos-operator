@@ -10,13 +10,12 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/peterbourgon/mergemap"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
-	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
 	corev1 "k8s.io/api/core/v1"
 )
 
 // BuildConfigMap creates a config map with configuration to be mounted as files into containers.
 // Currently, the config.toml (for Tendermint) and app.toml (for the Cosmos SDK).
-func BuildConfigMap(tendermint cosmosv1.CosmosTendermintConfig, app cosmosv1.CosmosAppConfig) (corev1.ConfigMap, kube.ReconcileError) {
+func BuildConfigMap(tendermint cosmosv1.CosmosTendermintConfig, app cosmosv1.CosmosAppConfig) (corev1.ConfigMap, error) {
 	var cm corev1.ConfigMap
 	dst := baseTendermint()
 	mergemap.Merge(dst, decodeTendermint(tendermint))
@@ -25,14 +24,14 @@ func BuildConfigMap(tendermint cosmosv1.CosmosTendermintConfig, app cosmosv1.Cos
 		var decoded decodedToml
 		_, err := toml.Decode(*overrides, &decoded)
 		if err != nil {
-			return cm, kube.UnrecoverableError(fmt.Errorf("invalid toml in overrides: %w", err))
+			return cm, fmt.Errorf("invalid toml in overrides: %w", err)
 		}
 		mergemap.Merge(dst, decoded)
 	}
 
 	buf := new(bytes.Buffer)
 	if err := toml.NewEncoder(buf).Encode(dst); err != nil {
-		return cm, kube.UnrecoverableError(err)
+		return cm, err
 	}
 	cm.Data = map[string]string{"config.toml": buf.String()}
 
