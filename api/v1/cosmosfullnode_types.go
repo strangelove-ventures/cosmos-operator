@@ -35,7 +35,7 @@ type CosmosFullNodeSpec struct {
 	// Individual replicas have a consistent identity.
 	Replicas int32 `json:"replicas"`
 
-	// Blockchain-specific configuration for the fullnode.
+	// Blockchain-specific configuration.
 	ChainConfig CosmosChainConfig `json:"chain"`
 
 	// Template applied to all pods.
@@ -216,23 +216,24 @@ type CosmosChainConfig struct {
 
 // CosmosTendermintConfig configures the tendermint config.toml.
 type CosmosTendermintConfig struct {
-	// p2p address to advertise for peers to dial.
+	// The address that will be advertised for other nodes to use.
+	// Set this field with your public LoadBalancer IP; or even better, a FQDN that points to your LB IP.
 	// Example: 159.89.10.97 or my.domain.com.
-	// Omit the port. Operator will configure the port appropriately (26656).
+	// Omit the port. Operator will configure the port appropriately (port: 26656).
 	// +kubebuilder:validation:MinLength:=1
 	ExternalAddress string `json:"externalAddress"`
 
-	// List of p2p nodes in <ID>@<IP>:<PORT> format to keep persistent p2p connections.
+	// Comma delimited list of p2p nodes in <ID>@<IP>:<PORT> format to keep persistent p2p connections.
 	// See https://docs.tendermint.com/master/spec/p2p/peer.html and
 	// https://docs.tendermint.com/master/spec/p3p/config.html#persistent-peers.
-	// +kubebuilder:validation:MinItems:=1
-	PersistentPeers []string `json:"peers"`
+	// +kubebuilder:validation:MinLength:=1
+	PersistentPeers string `json:"peers"`
 
-	// List of p2p seed nodes in <ID>@<IP>:<PORT> format.
+	// Comma delimited list of p2p seed nodes in <ID>@<IP>:<PORT> format.
 	// See https://docs.tendermint.com/master/spec/p2p/config.html#seeds and
 	// https://docs.tendermint.com/master/spec/p2p/node.html#seeds.
-	// +kubebuilder:validation:MinItems:=1
-	Seeds []string `json:"seeds"`
+	// +kubebuilder:validation:MinLength:=1
+	Seeds string `json:"seeds"`
 
 	// p2p maximum number of inbound peers.
 	// +kubebuilder:validation:Minimum:=1

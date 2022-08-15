@@ -47,8 +47,8 @@ func TestBuildConfigMap(t *testing.T) {
 		crd := defaultCRD()
 		crd.Spec.ChainConfig.Tendermint = cosmosv1.CosmosTendermintConfig{
 			ExternalAddress:  "test.example.com",
-			PersistentPeers:  []string{"peer1@1.2.2.2:789", "peer2@2.2.2.2:789", "peer3@3.2.2.2:789"},
-			Seeds:            []string{"seed1@1.1.1.1:456", "seed2@1.1.1.1:456"},
+			PersistentPeers:  "peer1@1.2.2.2:789,peer2@2.2.2.2:789,peer3@3.2.2.2:789",
+			Seeds:            "seed1@1.1.1.1:456,seed2@1.1.1.1:456",
 			MaxInboundPeers:  5,
 			MaxOutboundPeers: 15,
 		}
