@@ -2,12 +2,14 @@ package fullnode
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 
 	"github.com/go-logr/logr"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
 	corev1 "k8s.io/api/core/v1"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -40,7 +42,7 @@ func (cmc ConfigMapControl) Reconcile(ctx context.Context, log logr.Logger, crd 
 	err = cmc.client.Get(ctx, key, &current)
 	if kube.IsNotFound(err) {
 		log.Info("Creating ConfigMap", "configMapName", key.Name)
-		return cmc.create(ctx, want)
+		return cmc.create(ctx, crd, want)
 	}
 	if err != nil {
 		return false, kube.TransientError(err)
@@ -58,7 +60,10 @@ func (cmc ConfigMapControl) Reconcile(ctx context.Context, log logr.Logger, crd 
 	return false, nil
 }
 
-func (cmc ConfigMapControl) create(ctx context.Context, cm corev1.ConfigMap) (bool, kube.ReconcileError) {
+func (cmc ConfigMapControl) create(ctx context.Context, crd *cosmosv1.CosmosFullNode, cm corev1.ConfigMap) (bool, kube.ReconcileError) {
+	if err := ctrl.SetControllerReference(crd, &cm, cmc.client.Scheme()); err != nil {
+		return true, kube.TransientError(fmt.Errorf("set controller reference on configmap %q: %w", cm.Name, err))
+	}
 	if err := cmc.client.Create(ctx, &cm); kube.IgnoreAlreadyExists(err) != nil {
 		return false, kube.TransientError(err)
 	}

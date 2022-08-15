@@ -43,16 +43,18 @@ const (
 type CosmosFullNodeReconciler struct {
 	client.Client
 
-	podControl fullnode.PodControl
-	pvcControl fullnode.PVCControl
+	configMapControl fullnode.ConfigMapControl
+	podControl       fullnode.PodControl
+	pvcControl       fullnode.PVCControl
 }
 
 // NewFullNode returns a valid CosmosFullNode controller.
 func NewFullNode(client client.Client) *CosmosFullNodeReconciler {
 	return &CosmosFullNodeReconciler{
-		Client:     client,
-		podControl: fullnode.NewPodControl(client),
-		pvcControl: fullnode.NewPVCControl(client),
+		Client:           client,
+		configMapControl: fullnode.NewConfigMapControl(client),
+		podControl:       fullnode.NewPodControl(client),
+		pvcControl:       fullnode.NewPVCControl(client),
 	}
 }
 
@@ -89,8 +91,17 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	// Order of operations is important here for deletion. PVCs won't delete unless pods are deleted first.
 	// K8S can create pods first even if the PVC isn't ready. Pods won't be in a ready state until PVC is bound.
 
+	// Create or update ConfigMap.
+	requeue, err := r.configMapControl.Reconcile(ctx, logger, &crd)
+	if err != nil {
+		return r.resultWithErr(err)
+	}
+	if requeue {
+		return requeueResult, nil
+	}
+
 	// Reconcile pods.
-	requeue, err := r.podControl.Reconcile(ctx, logger, &crd)
+	requeue, err = r.podControl.Reconcile(ctx, logger, &crd)
 	if err != nil {
 		return r.resultWithErr(err)
 	}
