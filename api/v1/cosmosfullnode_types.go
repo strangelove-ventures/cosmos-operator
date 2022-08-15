@@ -211,7 +211,7 @@ type CosmosChainConfig struct {
 	Tendermint CosmosTendermintConfig `json:"config"`
 
 	// App configuration applied to app.toml.
-	App CosmosAppConfig `json:"appConfig"`
+	App CosmosAppConfig `json:"app"`
 }
 
 // CosmosTendermintConfig configures the tendermint config.toml.

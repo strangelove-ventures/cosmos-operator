@@ -4,9 +4,18 @@ metadata:
   # name should be the chain name
   name: cosmoshub
 spec:
-  replicas: 5
-  strategy:
-    maxUnavailable: "50%"
+  replicas: 3
+  chain:
+    chainID: gaia
+    binary: gaiad
+    config: # Tendermint config (translates to config.toml)
+      externalAddress: "p2p.example.com"
+      peers: ["peer@example.com:26656"]
+      seeds: ["seed@example.com:26656"]
+      maxInboundPeers: 20
+      maxOutboundPeers: 20
+    app: # Cosmos SDK config (translates to app.toml)
+      minGasPrice: "0.0025uatom"
   template:
     image: "busybox:stable"
     resources:

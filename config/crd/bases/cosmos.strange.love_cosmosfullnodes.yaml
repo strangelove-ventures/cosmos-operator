@@ -38,7 +38,7 @@ spec:
               chain:
                 description: Blockchain-specific configuration for the fullnode.
                 properties:
-                  appConfig:
+                  app:
                     description: App configuration applied to app.toml.
                     properties:
                       minGasPrice:
@@ -123,7 +123,7 @@ spec:
                     - seeds
                     type: object
                 required:
-                - appConfig
+                - app
                 - binary
                 - chainID
                 - config
