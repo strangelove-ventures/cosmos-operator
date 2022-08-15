@@ -3,7 +3,9 @@ module github.com/strangelove-ventures/cosmos-operator
 go 1.18
 
 require (
+	github.com/BurntSushi/toml v1.2.0
 	github.com/go-logr/logr v1.2.0
+	github.com/peterbourgon/mergemap v0.0.1
 	github.com/samber/lo v1.26.0
 	github.com/stretchr/testify v1.8.0
 	golang.org/x/exp v0.0.0-20220303212507-bbda1eaf7a17
