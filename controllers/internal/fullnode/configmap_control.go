@@ -51,8 +51,8 @@ func (cmc ConfigMapControl) Reconcile(ctx context.Context, log logr.Logger, crd 
 	if !reflect.DeepEqual(current.Labels, want.Labels) ||
 		!reflect.DeepEqual(current.Data, want.Data) ||
 		!reflect.DeepEqual(current.BinaryData, want.BinaryData) {
+		log.Info("Updating ConfigMap", "configMapName", key.Name)
 		if err := cmc.client.Update(ctx, &want); err != nil {
-			log.Info("Updating ConfigMap", "configMapName", key.Name)
 			return false, kube.TransientError(err)
 		}
 	}
