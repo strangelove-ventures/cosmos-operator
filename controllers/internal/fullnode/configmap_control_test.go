@@ -32,6 +32,11 @@ func TestConfigMapControl_Reconcile(t *testing.T) {
 		require.NotNil(t, mClient.LastCreateObject)
 		require.Equal(t, "create-fullnode-config", mClient.LastCreateObject.GetName())
 
+		require.NotEmpty(t, mClient.LastCreateObject.OwnerReferences)
+		require.Equal(t, crd.Name, mClient.LastCreateObject.OwnerReferences[0].Name)
+		require.Equal(t, "CosmosFullNode", mClient.LastCreateObject.OwnerReferences[0].Kind)
+		require.True(t, *mClient.LastCreateObject.OwnerReferences[0].Controller)
+
 		require.Nil(t, mClient.LastUpdateObject)
 	})
 
