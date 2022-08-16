@@ -13,6 +13,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	configOverlayFile = "config-overlay.toml"
+	appOverlayFile    = "app-overlay.toml"
+)
+
 // BuildConfigMap creates a ConfigMap with configuration to be mounted as files into containers.
 // Currently, the config.toml (for Tendermint) and app.toml (for the Cosmos SDK).
 func BuildConfigMap(crd *cosmosv1.CosmosFullNode) (corev1.ConfigMap, error) {
@@ -101,7 +106,7 @@ func addTendermintToml(buf *bytes.Buffer, cmData map[string]string, spec cosmosv
 	if err := toml.NewEncoder(buf).Encode(dst); err != nil {
 		return err
 	}
-	cmData["config.toml"] = buf.String()
+	cmData[configOverlayFile] = buf.String()
 	return nil
 }
 
@@ -147,6 +152,6 @@ func addAppToml(buf *bytes.Buffer, cmData map[string]string, app cosmosv1.Cosmos
 	if err := toml.NewEncoder(buf).Encode(dst); err != nil {
 		return err
 	}
-	cmData["app.toml"] = buf.String()
+	cmData[appOverlayFile] = buf.String()
 	return nil
 }

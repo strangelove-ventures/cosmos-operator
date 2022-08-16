@@ -50,7 +50,7 @@ func TestBuildConfigMap(t *testing.T) {
 		require.Equal(t, wantLabels, cm.Labels)
 	})
 
-	t.Run("config.toml", func(t *testing.T) {
+	t.Run("config-overlay.toml", func(t *testing.T) {
 		crd := defaultCRD()
 		crd.Spec.ChainConfig.Tendermint = cosmosv1.CosmosTendermintConfig{
 			PersistentPeers: "peer1@1.2.2.2:789,peer2@2.2.2.2:789,peer3@3.2.2.2:789",
@@ -79,7 +79,7 @@ func TestBuildConfigMap(t *testing.T) {
 			_, err = toml.Decode(wantTendermint, &want)
 			require.NoError(t, err)
 
-			_, err = toml.Decode(cm.Data["config.toml"], &got)
+			_, err = toml.Decode(cm.Data["config-overlay.toml"], &got)
 			require.NoError(t, err)
 
 			require.Equal(t, want, got)
@@ -96,7 +96,7 @@ func TestBuildConfigMap(t *testing.T) {
 			_, err = toml.Decode(wantTendermintDefaults, &want)
 			require.NoError(t, err)
 
-			_, err = toml.Decode(cm.Data["config.toml"], &got)
+			_, err = toml.Decode(cm.Data["config-overlay.toml"], &got)
 			require.NoError(t, err)
 
 			require.Equal(t, want, got)
@@ -133,7 +133,7 @@ indexer = "null"
 			_, err = toml.Decode(wantTendermintOverrides, &want)
 			require.NoError(t, err)
 
-			_, err = toml.Decode(cm.Data["config.toml"], &got)
+			_, err = toml.Decode(cm.Data["config-overlay.toml"], &got)
 			require.NoError(t, err)
 
 			require.Equal(t, want, got)
@@ -149,7 +149,7 @@ indexer = "null"
 		})
 	})
 
-	t.Run("app.toml", func(t *testing.T) {
+	t.Run("app-overlay.toml", func(t *testing.T) {
 		crd := defaultCRD()
 		crd.Spec.ChainConfig.App = cosmosv1.CosmosAppConfig{
 			MinGasPrice: "0.123token",
@@ -174,7 +174,7 @@ indexer = "null"
 			_, err = toml.Decode(wantApp, &want)
 			require.NoError(t, err)
 
-			_, err = toml.Decode(cm.Data["app.toml"], &got)
+			_, err = toml.Decode(cm.Data["app-overlay.toml"], &got)
 			require.NoError(t, err)
 
 			require.Equal(t, want, got)
@@ -191,7 +191,7 @@ indexer = "null"
 			_, err = toml.Decode(wantAppDefaults, &want)
 			require.NoError(t, err)
 
-			_, err = toml.Decode(cm.Data["app.toml"], &got)
+			_, err = toml.Decode(cm.Data["app-overlay.toml"], &got)
 			require.NoError(t, err)
 
 			require.Equal(t, want, got)
@@ -218,7 +218,7 @@ new-field = "test"
 			_, err = toml.Decode(wantAppOverrides, &want)
 			require.NoError(t, err)
 
-			_, err = toml.Decode(cm.Data["app.toml"], &got)
+			_, err = toml.Decode(cm.Data["app-overlay.toml"], &got)
 			require.NoError(t, err)
 
 			require.Equal(t, want, got)
