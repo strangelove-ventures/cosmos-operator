@@ -70,14 +70,6 @@ spec:
                         items:
                           type: string
                         type: array
-                      logFormat:
-                        description: One of plain or json. If not set, defaults to
-                          plain.
-                        type: string
-                      logLevel:
-                        description: One of error, info, debug, trace If not set,
-                          defaults to info.
-                        type: string
                       maxInboundPeers:
                         description: p2p maximum number of inbound peers. If unset,
                           defaults to 20.
@@ -111,6 +103,13 @@ spec:
                     - peers
                     - seeds
                     type: object
+                  logFormat:
+                    description: One of plain or json. If not set, defaults to plain.
+                    type: string
+                  logLevel:
+                    description: One of error, info, debug, trace. If not set, defaults
+                      to info.
+                    type: string
                 required:
                 - app
                 - binary

@@ -53,8 +53,8 @@ func TestBuildConfigMap(t *testing.T) {
 		t.Run("happy path", func(t *testing.T) {
 			custom := crd.DeepCopy()
 
-			custom.Spec.ChainConfig.Tendermint.LogLevel = ptr("debug")
-			custom.Spec.ChainConfig.Tendermint.LogFormat = ptr("json")
+			custom.Spec.ChainConfig.LogLevel = ptr("debug")
+			custom.Spec.ChainConfig.LogFormat = ptr("json")
 			custom.Spec.ChainConfig.Tendermint.CorsAllowedOrigins = []string{"*"}
 			custom.Spec.ChainConfig.Tendermint.MaxInboundPeers = ptr(int32(5))
 			custom.Spec.ChainConfig.Tendermint.MaxOutboundPeers = ptr(int32(15))
