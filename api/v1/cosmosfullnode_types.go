@@ -30,9 +30,9 @@ type CosmosFullNodeSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// +kubebuilder:validation:Minimum:=1
 	// Number of replicas to create.
 	// Individual replicas have a consistent identity.
+	// +kubebuilder:validation:Minimum:=0
 	Replicas int32 `json:"replicas"`
 
 	// Blockchain-specific configuration.
