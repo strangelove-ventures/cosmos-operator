@@ -16,48 +16,32 @@ import (
 // BuildConfigMap creates a ConfigMap with configuration to be mounted as files into containers.
 // Currently, the config.toml (for Tendermint) and app.toml (for the Cosmos SDK).
 func BuildConfigMap(crd *cosmosv1.CosmosFullNode) (corev1.ConfigMap, error) {
-	var (
-		cm = corev1.ConfigMap{
-			TypeMeta: metav1.TypeMeta{Kind: "ConfigMap", APIVersion: "v1"},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      configMapName(crd),
-				Namespace: crd.Namespace,
-				Labels: map[string]string{
-					kube.ControllerLabel: kube.ToLabelValue("CosmosFullNode"),
-					kube.NameLabel:       appName(crd),
-					kube.VersionLabel:    kube.ParseImageVersion(crd.Spec.PodTemplate.Image),
-				},
+	cm := corev1.ConfigMap{
+		TypeMeta: metav1.TypeMeta{Kind: "ConfigMap", APIVersion: "v1"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      configMapName(crd),
+			Namespace: crd.Namespace,
+			Labels: map[string]string{
+				kube.ControllerLabel: kube.ToLabelValue("CosmosFullNode"),
+				kube.NameLabel:       appName(crd),
+				kube.VersionLabel:    kube.ParseImageVersion(crd.Spec.PodTemplate.Image),
 			},
-		}
-		tendermint = crd.Spec.ChainConfig.Tendermint
-		dst        = baseTendermint()
+		},
+	}
+
+	var (
+		data = make(map[string]string)
+		buf  = new(bytes.Buffer)
 	)
-
-	base := make(decodedToml)
-	if v := crd.Spec.ChainConfig.LogLevel; v != nil {
-		base["log_level"] = v
-	}
-	if v := crd.Spec.ChainConfig.LogFormat; v != nil {
-		base["log_format"] = v
-	}
-
-	mergemap.Merge(dst, addTendermint(base, tendermint))
-
-	if overrides := tendermint.TomlOverrides; overrides != nil {
-		var decoded decodedToml
-		_, err := toml.Decode(*overrides, &decoded)
-		if err != nil {
-			return cm, fmt.Errorf("invalid toml in overrides: %w", err)
-		}
-		mergemap.Merge(dst, decoded)
-	}
-
-	buf := new(bytes.Buffer)
-	if err := toml.NewEncoder(buf).Encode(dst); err != nil {
+	if err := addTendermintToml(buf, data, crd.Spec.ChainConfig); err != nil {
 		return cm, err
 	}
-	cm.Data = map[string]string{"config.toml": buf.String()}
+	buf.Reset()
+	if err := addAppToml(buf, data, crd.Spec.ChainConfig.App); err != nil {
+		return cm, err
+	}
 
+	cm.Data = data
 	return cm, nil
 }
 
@@ -67,18 +51,61 @@ func configMapName(crd *cosmosv1.CosmosFullNode) string {
 
 type decodedToml = map[string]any
 
-//go:embed tendermint_config.toml
-var baseTendermintToml []byte
+//go:embed tendermint_default_config.toml
+var defaultTendermintToml []byte
 
-func baseTendermint() decodedToml {
+func defaultTendermint() decodedToml {
 	var data decodedToml
-	if err := toml.Unmarshal(baseTendermintToml, &data); err != nil {
+	if err := toml.Unmarshal(defaultTendermintToml, &data); err != nil {
 		panic(err)
 	}
 	return data
 }
 
-func addTendermint(base decodedToml, tendermint cosmosv1.CosmosTendermintConfig) decodedToml {
+//go:embed app_default_config.toml
+var defaultAppToml []byte
+
+func defaultApp() decodedToml {
+	var data decodedToml
+	if err := toml.Unmarshal(defaultAppToml, &data); err != nil {
+		panic(err)
+	}
+	return data
+}
+
+func addTendermintToml(buf *bytes.Buffer, cmData map[string]string, spec cosmosv1.CosmosChainConfig) error {
+	base := make(decodedToml)
+	if v := spec.LogLevel; v != nil {
+		base["log_level"] = v
+	}
+	if v := spec.LogFormat; v != nil {
+		base["log_format"] = v
+	}
+
+	var (
+		tendermint = spec.Tendermint
+		dst        = defaultTendermint()
+	)
+
+	mergemap.Merge(dst, configuredTendermint(base, tendermint))
+
+	if overrides := tendermint.TomlOverrides; overrides != nil {
+		var decoded decodedToml
+		_, err := toml.Decode(*overrides, &decoded)
+		if err != nil {
+			return fmt.Errorf("invalid toml in tendermint overrides: %w", err)
+		}
+		mergemap.Merge(dst, decoded)
+	}
+
+	if err := toml.NewEncoder(buf).Encode(dst); err != nil {
+		return err
+	}
+	cmData["config.toml"] = buf.String()
+	return nil
+}
+
+func configuredTendermint(base decodedToml, tendermint cosmosv1.CosmosTendermintConfig) decodedToml {
 	p2p := decodedToml{
 		"persistent_peers": tendermint.PersistentPeers,
 		"seeds":            tendermint.Seeds,
@@ -96,4 +123,30 @@ func addTendermint(base decodedToml, tendermint cosmosv1.CosmosTendermintConfig)
 	}
 
 	return base
+}
+
+func addAppToml(buf *bytes.Buffer, cmData map[string]string, app cosmosv1.CosmosAppConfig) error {
+	base := make(decodedToml)
+	base["minimum-gas-prices"] = app.MinGasPrice
+	// Note: The name discrepancy "enable" vs. "enabled" is intentional; a known inconsistency within the app.toml.
+	base["api"] = decodedToml{"enabled-unsafe-cors": app.APIEnableUnsafeCORS}
+	base["grpc-web"] = decodedToml{"enable-unsafe-cors": app.GRPCWebEnableUnsafeCORS}
+
+	dst := defaultApp()
+	mergemap.Merge(dst, base)
+
+	if overrides := app.TomlOverrides; overrides != nil {
+		var decoded decodedToml
+		_, err := toml.Decode(*overrides, &decoded)
+		if err != nil {
+			return fmt.Errorf("invalid toml in app overrides: %w", err)
+		}
+		mergemap.Merge(dst, decoded)
+	}
+
+	if err := toml.NewEncoder(buf).Encode(dst); err != nil {
+		return err
+	}
+	cmData["app.toml"] = buf.String()
+	return nil
 }

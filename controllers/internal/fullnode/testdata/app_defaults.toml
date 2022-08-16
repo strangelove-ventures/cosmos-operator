@@ -1,0 +1,16 @@
+minimum-gas-prices = "0.123token"
+
+[api]
+enable = true
+swagger = true
+address = "tcp://0.0.0.0:1317"
+enabled-unsafe-cors = false
+
+[grpc]
+enable = true
+address = "0.0.0.0:9090"
+
+[grpc-web]
+enable = true
+address = "0.0.0.0:9091"
+enable-unsafe-cors = false

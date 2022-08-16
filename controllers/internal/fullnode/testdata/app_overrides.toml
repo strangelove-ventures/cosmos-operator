@@ -1,0 +1,18 @@
+minimum-gas-prices = "0.1override"
+new-base = "new base value"
+
+[api]
+enable = false
+swagger = true
+address = "tcp://0.0.0.0:1317"
+enabled-unsafe-cors = false
+new-field = "test"
+
+[grpc]
+enable = true
+address = "0.0.0.0:9090"
+
+[grpc-web]
+enable = true
+address = "0.0.0.0:9091"
+enable-unsafe-cors = false
