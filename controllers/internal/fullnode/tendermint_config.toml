@@ -9,6 +9,9 @@ log_format = "plain"
 # Address to listen for incoming connections
 laddr = "tcp://0.0.0.0:26656"
 
+max_num_inbound_peers = 20
+max_num_outbound_peers = 20
+
 [rpc]
 
 # TCP or UNIX socket address for the RPC server to listen on

@@ -229,12 +229,16 @@ type CosmosTendermintConfig struct {
 	Seeds string `json:"seeds"`
 
 	// p2p maximum number of inbound peers.
+	// If unset, defaults to 20.
 	// +kubebuilder:validation:Minimum:=1
-	MaxInboundPeers int32 `json:"maxInboundPeers"`
+	// +optional
+	MaxInboundPeers *int32 `json:"maxInboundPeers"`
 
 	// p2p maximum number of outbound peers.
+	// If unset, defaults to 20.
 	// +kubebuilder:validation:Minimum:=1
-	MaxOutboundPeers int32 `json:"maxOutboundPeers"`
+	// +optional
+	MaxOutboundPeers *int32 `json:"maxOutboundPeers"`
 
 	// rpc list of origins a cross-domain request can be executed from.
 	// Default value '[]' disables cors support.

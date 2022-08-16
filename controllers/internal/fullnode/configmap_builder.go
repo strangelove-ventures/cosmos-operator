@@ -79,10 +79,14 @@ func decodeTendermint(tendermint cosmosv1.CosmosTendermintConfig) decodedToml {
 	}
 
 	p2p := decodedToml{
-		"persistent_peers":       tendermint.PersistentPeers,
-		"seeds":                  tendermint.Seeds,
-		"max_num_inbound_peers":  tendermint.MaxInboundPeers,
-		"max_num_outbound_peers": tendermint.MaxOutboundPeers,
+		"persistent_peers": tendermint.PersistentPeers,
+		"seeds":            tendermint.Seeds,
+	}
+	if v := tendermint.MaxInboundPeers; v != nil {
+		p2p["max_num_inbound_peers"] = tendermint.MaxInboundPeers
+	}
+	if v := tendermint.MaxOutboundPeers; v != nil {
+		p2p["max_num_outbound_peers"] = tendermint.MaxOutboundPeers
 	}
 	base["p2p"] = p2p
 

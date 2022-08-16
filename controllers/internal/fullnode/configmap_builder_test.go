@@ -46,10 +46,8 @@ func TestBuildConfigMap(t *testing.T) {
 	t.Run("config.toml", func(t *testing.T) {
 		crd := defaultCRD()
 		crd.Spec.ChainConfig.Tendermint = cosmosv1.CosmosTendermintConfig{
-			PersistentPeers:  "peer1@1.2.2.2:789,peer2@2.2.2.2:789,peer3@3.2.2.2:789",
-			Seeds:            "seed1@1.1.1.1:456,seed2@1.1.1.1:456",
-			MaxInboundPeers:  5,
-			MaxOutboundPeers: 15,
+			PersistentPeers: "peer1@1.2.2.2:789,peer2@2.2.2.2:789,peer3@3.2.2.2:789",
+			Seeds:           "seed1@1.1.1.1:456,seed2@1.1.1.1:456",
 		}
 
 		t.Run("happy path", func(t *testing.T) {
@@ -58,6 +56,8 @@ func TestBuildConfigMap(t *testing.T) {
 			custom.Spec.ChainConfig.Tendermint.LogLevel = ptr("debug")
 			custom.Spec.ChainConfig.Tendermint.LogFormat = ptr("json")
 			custom.Spec.ChainConfig.Tendermint.CorsAllowedOrigins = []string{"*"}
+			custom.Spec.ChainConfig.Tendermint.MaxInboundPeers = ptr(int32(5))
+			custom.Spec.ChainConfig.Tendermint.MaxOutboundPeers = ptr(int32(15))
 
 			cm, err := BuildConfigMap(custom)
 			require.NoError(t, err)

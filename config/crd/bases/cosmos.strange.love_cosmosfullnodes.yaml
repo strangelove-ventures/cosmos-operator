@@ -79,12 +79,14 @@ spec:
                           defaults to info.
                         type: string
                       maxInboundPeers:
-                        description: p2p maximum number of inbound peers.
+                        description: p2p maximum number of inbound peers. If unset,
+                          defaults to 20.
                         format: int32
                         minimum: 1
                         type: integer
                       maxOutboundPeers:
-                        description: p2p maximum number of outbound peers.
+                        description: p2p maximum number of outbound peers. If unset,
+                          defaults to 20.
                         format: int32
                         minimum: 1
                         type: integer
@@ -106,8 +108,6 @@ spec:
                         minLength: 1
                         type: string
                     required:
-                    - maxInboundPeers
-                    - maxOutboundPeers
                     - peers
                     - seeds
                     type: object
