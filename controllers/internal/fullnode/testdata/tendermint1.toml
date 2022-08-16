@@ -8,7 +8,6 @@ persistent_peers = "peer1@1.2.2.2:789,peer2@2.2.2.2:789,peer3@3.2.2.2:789"
 seeds = "seed1@1.1.1.1:456,seed2@1.1.1.1:456"
 max_num_inbound_peers = 5
 max_num_outbound_peers = 15
-external_address = "test.example.com:26656"
 
 [rpc]
 laddr = "tcp://0.0.0.0:26657"

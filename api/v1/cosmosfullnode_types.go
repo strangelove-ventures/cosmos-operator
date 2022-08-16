@@ -216,13 +216,6 @@ type CosmosChainConfig struct {
 
 // CosmosTendermintConfig configures the tendermint config.toml.
 type CosmosTendermintConfig struct {
-	// The address that will be advertised for other nodes to use.
-	// Set this field with your public LoadBalancer IP; or even better, a FQDN that points to your LB IP.
-	// Example: 159.89.10.97 or my.domain.com.
-	// Omit the port. Operator will configure the port appropriately (port: 26656).
-	// +kubebuilder:validation:MinLength:=1
-	ExternalAddress string `json:"externalAddress"`
-
 	// Comma delimited list of p2p nodes in <ID>@<IP>:<PORT> format to keep persistent p2p connections.
 	// See https://docs.tendermint.com/master/spec/p2p/peer.html and
 	// https://docs.tendermint.com/master/spec/p3p/config.html#persistent-peers.

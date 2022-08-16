@@ -46,7 +46,6 @@ func TestBuildConfigMap(t *testing.T) {
 	t.Run("config.toml", func(t *testing.T) {
 		crd := defaultCRD()
 		crd.Spec.ChainConfig.Tendermint = cosmosv1.CosmosTendermintConfig{
-			ExternalAddress:  "test.example.com",
 			PersistentPeers:  "peer1@1.2.2.2:789,peer2@2.2.2.2:789,peer3@3.2.2.2:789",
 			Seeds:            "seed1@1.1.1.1:456,seed2@1.1.1.1:456",
 			MaxInboundPeers:  5,

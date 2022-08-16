@@ -9,7 +9,6 @@ persistent_peers = "peer1@1.2.2.2:789,peer2@2.2.2.2:789,peer3@3.2.2.2:789"
 seeds = "override@seed"
 max_num_inbound_peers = 5
 max_num_outbound_peers = 15
-external_address = "test.example.com:26656"
 new_field = "p2p"
 
 [rpc]

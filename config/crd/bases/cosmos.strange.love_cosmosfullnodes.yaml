@@ -70,14 +70,6 @@ spec:
                         items:
                           type: string
                         type: array
-                      externalAddress:
-                        description: 'The address that will be advertised for other
-                          nodes to use. Set this field with your public LoadBalancer
-                          IP; or even better, a FQDN that points to your LB IP. Example:
-                          159.89.10.97 or my.domain.com. Omit the port. Operator will
-                          configure the port appropriately (port: 26656).'
-                        minLength: 1
-                        type: string
                       logFormat:
                         description: One of plain or json. If not set, defaults to
                           plain.
@@ -114,7 +106,6 @@ spec:
                         minLength: 1
                         type: string
                     required:
-                    - externalAddress
                     - maxInboundPeers
                     - maxOutboundPeers
                     - peers

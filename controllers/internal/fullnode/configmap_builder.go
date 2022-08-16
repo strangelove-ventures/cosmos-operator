@@ -4,7 +4,6 @@ import (
 	"bytes"
 	_ "embed"
 	"fmt"
-	"net"
 
 	"github.com/BurntSushi/toml"
 	"github.com/peterbourgon/mergemap"
@@ -80,7 +79,6 @@ func decodeTendermint(tendermint cosmosv1.CosmosTendermintConfig) decodedToml {
 	}
 
 	p2p := decodedToml{
-		"external_address":       net.JoinHostPort(tendermint.ExternalAddress, "26656"),
 		"persistent_peers":       tendermint.PersistentPeers,
 		"seeds":                  tendermint.Seeds,
 		"max_num_inbound_peers":  tendermint.MaxInboundPeers,
