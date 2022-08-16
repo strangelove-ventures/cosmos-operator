@@ -32,7 +32,16 @@ func BuildConfigMap(crd *cosmosv1.CosmosFullNode) (corev1.ConfigMap, error) {
 		tendermint = crd.Spec.ChainConfig.Tendermint
 		dst        = baseTendermint()
 	)
-	mergemap.Merge(dst, decodeTendermint(tendermint))
+
+	base := make(decodedToml)
+	if v := crd.Spec.ChainConfig.LogLevel; v != nil {
+		base["log_level"] = v
+	}
+	if v := crd.Spec.ChainConfig.LogFormat; v != nil {
+		base["log_format"] = v
+	}
+
+	mergemap.Merge(dst, addTendermint(base, tendermint))
 
 	if overrides := tendermint.TomlOverrides; overrides != nil {
 		var decoded decodedToml
@@ -69,15 +78,7 @@ func baseTendermint() decodedToml {
 	return data
 }
 
-func decodeTendermint(tendermint cosmosv1.CosmosTendermintConfig) decodedToml {
-	base := make(decodedToml)
-	if v := tendermint.LogLevel; v != nil {
-		base["log_level"] = v
-	}
-	if v := tendermint.LogFormat; v != nil {
-		base["log_format"] = v
-	}
-
+func addTendermint(base decodedToml, tendermint cosmosv1.CosmosTendermintConfig) decodedToml {
 	p2p := decodedToml{
 		"persistent_peers": tendermint.PersistentPeers,
 		"seeds":            tendermint.Seeds,

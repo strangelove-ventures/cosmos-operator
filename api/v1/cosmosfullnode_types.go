@@ -212,6 +212,16 @@ type CosmosChainConfig struct {
 
 	// App configuration applied to app.toml.
 	App CosmosAppConfig `json:"app"`
+
+	// One of error, info, debug, trace.
+	// If not set, defaults to info.
+	// +optional
+	LogLevel *string `json:"logLevel"`
+
+	// One of plain or json.
+	// If not set, defaults to plain.
+	// +optional
+	LogFormat *string `json:"logFormat"`
 }
 
 // CosmosTendermintConfig configures the tendermint config.toml.
@@ -251,16 +261,6 @@ type CosmosTendermintConfig struct {
 	// Must be valid toml.
 	// +optional
 	TomlOverrides *string `json:"overrides"`
-
-	// One of error, info, debug, trace
-	// If not set, defaults to info.
-	// +optional
-	LogLevel *string `json:"logLevel"`
-
-	// One of plain or json.
-	// If not set, defaults to plain.
-	// +optional
-	LogFormat *string `json:"logFormat"`
 }
 
 type CosmosAppConfig struct {
