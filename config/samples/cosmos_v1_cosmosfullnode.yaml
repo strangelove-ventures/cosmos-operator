@@ -4,9 +4,15 @@ metadata:
   # name should be the chain name
   name: cosmoshub
 spec:
-  replicas: 5
-  strategy:
-    maxUnavailable: "50%"
+  replicas: 3
+  chain:
+    chainID: gaia
+    binary: gaiad
+    config: # Tendermint config (translates to config.toml)
+      peers: "peer@example.com:26656,peer2@example.com:26656"
+      seeds: "seed@example.com:26656"
+    app: # Cosmos SDK config (translates to app.toml)
+      minGasPrice: "0.0025uatom"
   template:
     image: "busybox:stable"
     resources:
@@ -15,6 +21,7 @@ spec:
       limits:
         cpu: "0.75"
   volumeClaimTemplate:
+    # If testing on GKE, change to standard-rwo
     storageClassName: "standard" 
     resources:
       requests:

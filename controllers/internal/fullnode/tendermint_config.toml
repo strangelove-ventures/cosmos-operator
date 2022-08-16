@@ -1,0 +1,33 @@
+# Output level for logging, including package level options
+log_level = "info"
+
+# Output format: 'plain' (colored text) or 'json'
+log_format = "plain"
+
+[p2p]
+
+# Address to listen for incoming connections
+laddr = "tcp://0.0.0.0:26656"
+
+max_num_inbound_peers = 20
+max_num_outbound_peers = 20
+
+[rpc]
+
+# TCP or UNIX socket address for the RPC server to listen on
+laddr = "tcp://0.0.0.0:26657"
+
+cors_allowed_origins = []
+
+[tx_index]
+
+# What indexer to use for transactions
+#
+# The application will set which txs to index. In some cases a node operator will be able
+# to decide which txs to index based on configuration set in the application.
+#
+# Options:
+#   1) "null"
+#   2) "kv" (default) - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
+# 		- When "kv" is chosen "tx.height" and "tx.hash" will always be indexed.
+indexer = "kv"

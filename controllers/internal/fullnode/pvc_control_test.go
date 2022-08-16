@@ -90,10 +90,10 @@ func TestPVCControl_Reconcile(t *testing.T) {
 		require.Equal(t, 3, mClient.CreateCount)
 		require.Equal(t, 2, mClient.DeleteCount)
 
-		require.NotEmpty(t, mClient.LastCreatedResource.OwnerReferences)
-		require.Equal(t, crd.Name, mClient.LastCreatedResource.OwnerReferences[0].Name)
-		require.Equal(t, "CosmosFullNode", mClient.LastCreatedResource.OwnerReferences[0].Kind)
-		require.True(t, *mClient.LastCreatedResource.OwnerReferences[0].Controller)
+		require.NotEmpty(t, mClient.LastCreateObject.OwnerReferences)
+		require.Equal(t, crd.Name, mClient.LastCreateObject.OwnerReferences[0].Name)
+		require.Equal(t, "CosmosFullNode", mClient.LastCreateObject.OwnerReferences[0].Kind)
+		require.True(t, *mClient.LastCreateObject.OwnerReferences[0].Controller)
 	})
 
 	t.Run("updates", func(t *testing.T) {

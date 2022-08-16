@@ -111,6 +111,13 @@ func podRevisionHash(crd *cosmosv1.CosmosFullNode) string {
 	if err := enc.Encode(crd.Spec.PodTemplate); err != nil {
 		panic(err)
 	}
+
+	// If chain config changes, we need to trigger a rollout to get new files config files mounted into
+	// containers.
+	if err := enc.Encode(crd.Spec.ChainConfig); err != nil {
+		panic(err)
+	}
+
 	h := fnv.New32()
 	_, err := h.Write(buf.Bytes())
 	if err != nil {

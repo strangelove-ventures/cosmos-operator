@@ -35,6 +35,9 @@ type CosmosFullNodeSpec struct {
 	// Individual replicas have a consistent identity.
 	Replicas int32 `json:"replicas"`
 
+	// Blockchain-specific configuration.
+	ChainConfig CosmosChainConfig `json:"chain"`
+
 	// Template applied to all pods.
 	// Creates 1 pod per replica.
 	PodTemplate CosmosPodSpec `json:"template"`
@@ -46,6 +49,12 @@ type CosmosFullNodeSpec struct {
 	// Will be used to create a stand-alone PVC to provision the volume.
 	// One PVC per replica mapped and mounted to a corresponding pod.
 	VolumeClaimTemplate CosmosPersistentVolumeClaim `json:"volumeClaimTemplate"`
+}
+
+// CosmosFullNodeStatus defines the observed state of CosmosFullNode
+type CosmosFullNodeStatus struct {
+	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
+	// Important: Run "make" to regenerate code after modifying this file
 }
 
 type CosmosMetadata struct {
@@ -189,10 +198,77 @@ type CosmosRolloutStrategy struct {
 	MaxUnavailable *intstr.IntOrString `json:"maxUnavailable"`
 }
 
-// CosmosFullNodeStatus defines the observed state of CosmosFullNode
-type CosmosFullNodeStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+type CosmosChainConfig struct {
+	// Genesis file chain-id.
+	// +kubebuilder:validation:MinLength:=1
+	ChainID string `json:"chainID"`
+
+	// Binary name which runs commands. E.g. gaiad, junod, osmosisd
+	// +kubebuilder:validation:MinLength:=1
+	Binary string `json:"binary"`
+
+	// Tendermint configuration applied to config.toml.
+	Tendermint CosmosTendermintConfig `json:"config"`
+
+	// App configuration applied to app.toml.
+	App CosmosAppConfig `json:"app"`
+}
+
+// CosmosTendermintConfig configures the tendermint config.toml.
+type CosmosTendermintConfig struct {
+	// Comma delimited list of p2p nodes in <ID>@<IP>:<PORT> format to keep persistent p2p connections.
+	// See https://docs.tendermint.com/master/spec/p2p/peer.html and
+	// https://docs.tendermint.com/master/spec/p3p/config.html#persistent-peers.
+	// +kubebuilder:validation:MinLength:=1
+	PersistentPeers string `json:"peers"`
+
+	// Comma delimited list of p2p seed nodes in <ID>@<IP>:<PORT> format.
+	// See https://docs.tendermint.com/master/spec/p2p/config.html#seeds and
+	// https://docs.tendermint.com/master/spec/p2p/node.html#seeds.
+	// +kubebuilder:validation:MinLength:=1
+	Seeds string `json:"seeds"`
+
+	// p2p maximum number of inbound peers.
+	// If unset, defaults to 20.
+	// +kubebuilder:validation:Minimum:=1
+	// +optional
+	MaxInboundPeers *int32 `json:"maxInboundPeers"`
+
+	// p2p maximum number of outbound peers.
+	// If unset, defaults to 20.
+	// +kubebuilder:validation:Minimum:=1
+	// +optional
+	MaxOutboundPeers *int32 `json:"maxOutboundPeers"`
+
+	// rpc list of origins a cross-domain request can be executed from.
+	// Default value '[]' disables cors support.
+	// Use '["*"]' to allow any origin.
+	// +optional
+	CorsAllowedOrigins []string `json:"corsAllowedOrigins"`
+
+	// Custom tendermint config toml.
+	// Values entered here take precedence over all other configuration.
+	// Must be valid toml.
+	// +optional
+	TomlOverrides *string `json:"overrides"`
+
+	// One of error, info, debug, trace
+	// If not set, defaults to info.
+	// +optional
+	LogLevel *string `json:"logLevel"`
+
+	// One of plain or json.
+	// If not set, defaults to plain.
+	// +optional
+	LogFormat *string `json:"logFormat"`
+}
+
+type CosmosAppConfig struct {
+	// The minimum gas prices a validator is willing to accept for processing a
+	// transaction. A transaction's fees must meet the minimum of any denomination
+	// specified in this config (e.g. 0.25token1;0.0001token2).
+	// +kubebuilder:validation:MinLength:=1
+	MinGasPrice string `json:"minGasPrice"`
 }
 
 //+kubebuilder:object:root=true

@@ -1,0 +1,23 @@
+log_format = "json"
+log_level = "info"
+new_base = "new base value"
+
+[p2p]
+
+laddr = "tcp://0.0.0.0:26656"
+persistent_peers = "peer1@1.2.2.2:789,peer2@2.2.2.2:789,peer3@3.2.2.2:789"
+seeds = "override@seed"
+max_num_inbound_peers = 20
+max_num_outbound_peers = 20
+new_field = "p2p"
+
+[rpc]
+laddr = "tcp://0.0.0.0:26657"
+cors_allowed_origins = ["override"]
+
+[tx_index]
+
+indexer = "null"
+
+[new_section]
+test = "value"
