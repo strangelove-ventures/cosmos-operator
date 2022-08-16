@@ -259,6 +259,7 @@ type CosmosTendermintConfig struct {
 	// Custom tendermint config toml.
 	// Values entered here take precedence over all other configuration.
 	// Must be valid toml.
+	// Important: all keys must be "snake_case" which differs from app.toml.
 	// +optional
 	TomlOverrides *string `json:"overrides"`
 }
@@ -282,6 +283,7 @@ type CosmosAppConfig struct {
 	// Custom app config toml.
 	// Values entered here take precedence over all other configuration.
 	// Must be valid toml.
+	// Important: all keys must be "kebab-case" which differs from config.toml.
 	// +optional
 	TomlOverrides *string `json:"overrides"`
 }
