@@ -9,11 +9,8 @@ spec:
     chainID: gaia
     binary: gaiad
     config: # Tendermint config (translates to config.toml)
-      externalAddress: "p2p.example.com"
       peers: "peer@example.com:26656,peer2@example.com:26656"
       seeds: "seed@example.com:26656"
-      maxInboundPeers: 10
-      maxOutboundPeers: 10
     app: # Cosmos SDK config (translates to app.toml)
       minGasPrice: "0.0025uatom"
   template:
