@@ -143,9 +143,9 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 	pod.Spec.InitContainers = initContainers(b.crd, name)
 
 	const (
-	const volName = "vol-chain-home"
-		volTmp       = "vol-tmp"        // Stores temporary config files for manipulation later.
-		volConfig    = "vol-config"     // Items from ConfigMap.
+		volChainHome = "vol-chain-home"
+		volTmp       = "vol-tmp"    // Stores temporary config files for manipulation later.
+		volConfig    = "vol-config" // Items from ConfigMap.
 	)
 	pod.Spec.Volumes = []corev1.Volume{
 		{
