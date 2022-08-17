@@ -139,7 +139,7 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 
 	pod.Name = name
 
-	volName := kube.ToName(fmt.Sprintf("vol-%s-fullnode-%d", b.crd.Name, ordinal))
+	const volName = "vol-chain-home"
 	pod.Spec.Volumes = []corev1.Volume{
 		{
 			Name: volName,

@@ -2,6 +2,7 @@ package fullnode
 
 import (
 	_ "embed"
+	"strings"
 	"testing"
 
 	"github.com/BurntSushi/toml"
@@ -29,25 +30,38 @@ func TestBuildConfigMap(t *testing.T) {
 	t.Parallel()
 
 	t.Run("happy path", func(t *testing.T) {
-		base := defaultCRD()
-		base.Name = "agoric"
-		base.Namespace = "test"
-		base.Spec.PodTemplate.Image = "agoric:v6.0.0"
+		crd := defaultCRD()
+		crd.Name = "agoric"
+		crd.Namespace = "test"
+		crd.Spec.PodTemplate.Image = "agoric:v6.0.0"
+		crd.Spec.ChainConfig.Network = "testnet"
 
-		cm, err := BuildConfigMap(&base)
+		cm, err := BuildConfigMap(&crd)
 		require.NoError(t, err)
 
-		require.Equal(t, "agoric-fullnode-config", cm.Name)
+		require.Equal(t, "agoric-testnet-fullnode", cm.Name)
 		require.Equal(t, "test", cm.Namespace)
 		require.Nil(t, cm.Immutable)
 
 		wantLabels := map[string]string{
-			"app.kubernetes.io/created-by": "cosmosfullnode",
-			"app.kubernetes.io/name":       "agoric-fullnode",
+			"app.kubernetes.io/created-by": "cosmos.strange.love/cosmosfullnode",
+			"app.kubernetes.io/name":       "agoric-testnet-fullnode",
 			"app.kubernetes.io/version":    "v6.0.0",
+			"cosmos.strange.love/network":  "testnet",
 		}
 
 		require.Equal(t, wantLabels, cm.Labels)
+	})
+
+	t.Run("long name", func(t *testing.T) {
+		crd := defaultCRD()
+		crd.Name = strings.Repeat("chain", 300)
+		crd.Spec.ChainConfig.Network = strings.Repeat("network", 300)
+
+		cm, err := BuildConfigMap(&crd)
+		require.NoError(t, err)
+
+		RequireValidMetadata(t, &cm)
 	})
 
 	t.Run("config-overlay.toml", func(t *testing.T) {

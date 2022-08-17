@@ -37,7 +37,7 @@ func (cmc ConfigMapControl) Reconcile(ctx context.Context, log logr.Logger, crd 
 
 	var (
 		current corev1.ConfigMap
-		key     = client.ObjectKey{Namespace: crd.Namespace, Name: configMapName(crd)}
+		key     = client.ObjectKey{Namespace: crd.Namespace, Name: appName(crd)}
 	)
 	err = cmc.client.Get(ctx, key, &current)
 	if kube.IsNotFound(err) {

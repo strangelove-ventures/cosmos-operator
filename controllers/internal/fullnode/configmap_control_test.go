@@ -23,14 +23,15 @@ func TestConfigMapControl_Reconcile(t *testing.T) {
 		mClient.GetObjectErr = &apierrors.StatusError{ErrStatus: metav1.Status{Reason: metav1.StatusReasonNotFound}}
 		control := NewConfigMapControl(&mClient)
 		crd := defaultCRD()
-		crd.Name = "create"
+		crd.Name = "stargaze"
+		crd.Spec.ChainConfig.Network = "testnet"
 
 		requeue, err := control.Reconcile(ctx, nopLogger, &crd)
 		require.NoError(t, err)
 		require.False(t, requeue)
 
 		require.NotNil(t, mClient.LastCreateObject)
-		require.Equal(t, "create-fullnode-config", mClient.LastCreateObject.GetName())
+		require.Equal(t, "stargaze-testnet-fullnode", mClient.LastCreateObject.GetName())
 
 		require.NotEmpty(t, mClient.LastCreateObject.OwnerReferences)
 		require.Equal(t, crd.Name, mClient.LastCreateObject.OwnerReferences[0].Name)
@@ -44,7 +45,8 @@ func TestConfigMapControl_Reconcile(t *testing.T) {
 		var mClient configClient
 		control := NewConfigMapControl(&mClient)
 		crd := defaultCRD()
-		crd.Name = "create"
+		crd.Name = "stargaze"
+		crd.Spec.ChainConfig.Network = "testnet"
 
 		requeue, err := control.Reconcile(ctx, nopLogger, &crd)
 		require.NoError(t, err)
@@ -52,7 +54,7 @@ func TestConfigMapControl_Reconcile(t *testing.T) {
 
 		require.Nil(t, mClient.LastCreateObject)
 		require.NotNil(t, mClient.LastUpdateObject)
-		require.Equal(t, "create-fullnode-config", mClient.LastUpdateObject.GetName())
+		require.Equal(t, "stargaze-testnet-fullnode", mClient.LastUpdateObject.GetName())
 	})
 
 	t.Run("no-op", func(t *testing.T) {

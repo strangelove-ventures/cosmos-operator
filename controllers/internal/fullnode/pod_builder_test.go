@@ -90,8 +90,8 @@ func TestPodBuilder(t *testing.T) {
 
 		vols := pod.Spec.Volumes
 		require.Len(t, vols, 1)
-		require.Equal(t, "vol-osmosis-fullnode-5", vols[0].Name)
-		require.Equal(t, "pvc-osmosis-fullnode-5", vols[0].PersistentVolumeClaim.ClaimName)
+		require.Equal(t, "pvc-osmosis-mainnet-fullnode-5", vols[0].PersistentVolumeClaim.ClaimName)
+		require.Equal(t, "vol-chain-home", vols[0].Name)
 
 		// Test we don't share or leak data per invocation.
 		pod = builder.Build()
