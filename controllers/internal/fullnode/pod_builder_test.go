@@ -181,14 +181,17 @@ func TestPodBuilder(t *testing.T) {
 		require.Equal(t, crd.Spec.PodTemplate.Resources, container.Resources)
 		require.Equal(t, wantWrkDir, container.WorkingDir)
 
-		require.Equal(t, envVars, container.Env)
 		require.Equal(t, container.Env[0].Name, "CHAIN_HOME")
 		require.Equal(t, container.Env[0].Value, "/home/operator/cosmos")
+		require.Equal(t, envVars, container.Env)
 
 		require.Len(t, pod.Spec.InitContainers, 2)
 
+		chown := pod.Spec.InitContainers[0]
 		// Can't have security context for chown to succeed.
-		require.Empty(t, pod.Spec.InitContainers[0].SecurityContext)
+		require.Nil(t, chown.SecurityContext)
+		require.Equal(t, wantWrkDir, chown.WorkingDir)
+		require.Equal(t, envVars, chown.Env)
 
 		for _, c := range pod.Spec.InitContainers[1:] {
 			require.Equal(t, envVars, container.Env, c.Name)
@@ -218,7 +221,7 @@ func TestPodBuilder(t *testing.T) {
 
 		containers := append(pod.Spec.InitContainers, pod.Spec.InitContainers...)
 
-		require.NotZero(t, containers)
+		require.NotEmpty(t, containers)
 
 		for _, c := range containers {
 			require.Len(t, c.VolumeMounts, 1)

@@ -234,7 +234,7 @@ func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Conta
 	tpl := crd.Spec.PodTemplate
 	return []corev1.Container{
 		{
-			Name:            "permissions",
+			Name:            "chown",
 			Image:           infraToolImage,
 			Command:         []string{"sh"},
 			Args:            []string{"-c", fmt.Sprintf(`set -e; chown 1025:1025 %q`, workDir)},
