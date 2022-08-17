@@ -203,6 +203,10 @@ type CosmosChainConfig struct {
 	// +kubebuilder:validation:MinLength:=1
 	ChainID string `json:"chainID"`
 
+	// The network environment. Typically, mainnet, testnet, devnet, etc.
+	// +kubebuilder:validation:MinLength:=1
+	Network string `json:"network"`
+
 	// Binary name which runs commands. E.g. gaiad, junod, osmosisd
 	// +kubebuilder:validation:MinLength:=1
 	Binary string `json:"binary"`

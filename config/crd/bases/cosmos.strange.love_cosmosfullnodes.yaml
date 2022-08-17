@@ -125,11 +125,17 @@ spec:
                     description: One of error, info, debug, trace. If not set, defaults
                       to info.
                     type: string
+                  network:
+                    description: The network environment. Typically, mainnet, testnet,
+                      devnet, etc.
+                    minLength: 1
+                    type: string
                 required:
                 - app
                 - binary
                 - chainID
                 - config
+                - network
                 type: object
               replicas:
                 description: Number of replicas to create. Individual replicas have

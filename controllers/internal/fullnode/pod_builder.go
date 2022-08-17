@@ -40,12 +40,9 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: crd.Namespace,
-			Labels: map[string]string{
-				kube.ControllerLabel: kube.ToLabelValue("CosmosFullNode"),
-				kube.NameLabel:       appName(crd),
-				kube.VersionLabel:    kube.ParseImageVersion(tpl.Image),
-				kube.RevisionLabel:   podRevisionHash(crd),
-			},
+			Labels: defaultLabels(crd,
+				kube.RevisionLabel, podRevisionHash(crd),
+			),
 			// TODO: prom metrics
 			Annotations: make(map[string]string),
 		},
@@ -135,7 +132,7 @@ func (b PodBuilder) Build() *corev1.Pod {
 // ordered sequence. Pods have deterministic, consistent names similar to a StatefulSet instead of generated names.
 func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 	pod := b.pod.DeepCopy()
-	name := podName(b.crd.Name, ordinal)
+	name := podName(b.crd, ordinal)
 
 	pod.Annotations[kube.OrdinalAnnotation] = kube.ToIntegerValue(ordinal)
 	pod.Labels[kube.InstanceLabel] = kube.ToLabelValue(name)
@@ -161,12 +158,8 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 	return b
 }
 
-func appName(crd *cosmosv1.CosmosFullNode) string {
-	return kube.ToLabelValue(fmt.Sprintf("%s-fullnode", crd.Name))
-}
-
-func podName(crdName string, ordinal int32) string {
-	return kube.ToLabelValue(fmt.Sprintf("%s-fullnode-%d", crdName, ordinal))
+func podName(crd *cosmosv1.CosmosFullNode, ordinal int32) string {
+	return kube.ToLabelValue(fmt.Sprintf("%s-%d", appName(crd), ordinal))
 }
 
 var fullNodePorts = []corev1.ContainerPort{
