@@ -45,7 +45,7 @@ func TestBuildPVCs(t *testing.T) {
 			require.Equal(t, "v1", got.APIVersion)
 
 			wantLabels := map[string]string{
-				"app.kubernetes.io/created-by": "cosmos.strange.love/cosmosfullnode",
+				"app.kubernetes.io/created-by": "cosmosfullnode",
 				"app.kubernetes.io/name":       "juno-mainnet-fullnode",
 				"app.kubernetes.io/version":    "v1.2.3",
 				"cosmos.strange.love/network":  "mainnet",

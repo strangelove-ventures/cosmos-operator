@@ -44,7 +44,7 @@ func TestBuildConfigMap(t *testing.T) {
 		require.Nil(t, cm.Immutable)
 
 		wantLabels := map[string]string{
-			"app.kubernetes.io/created-by": "cosmos.strange.love/cosmosfullnode",
+			"app.kubernetes.io/created-by": "cosmosfullnode",
 			"app.kubernetes.io/name":       "agoric-testnet-fullnode",
 			"app.kubernetes.io/version":    "v6.0.0",
 			"cosmos.strange.love/network":  "testnet",
