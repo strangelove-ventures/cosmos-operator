@@ -21,6 +21,7 @@ func defaultCRD() cosmosv1.CosmosFullNode {
 			ResourceVersion: "_resource_version_",
 		},
 		Spec: cosmosv1.CosmosFullNodeSpec{
+			ChainConfig: cosmosv1.CosmosChainConfig{Network: "mainnet"},
 			PodTemplate: cosmosv1.CosmosPodSpec{
 				Image: "busybox:v1.2.3",
 				Resources: corev1.ResourceRequirements{
@@ -56,16 +57,17 @@ func TestPodBuilder(t *testing.T) {
 		require.Equal(t, "v1", pod.APIVersion)
 
 		require.Equal(t, "test", pod.Namespace)
-		require.Equal(t, "osmosis-fullnode-5", pod.Name)
+		require.Equal(t, "osmosis-mainnet-fullnode-5", pod.Name)
 
 		require.NotEmpty(t, pod.Labels["app.kubernetes.io/revision"])
 		// The fuzz test below tests this property.
 		delete(pod.Labels, kube.RevisionLabel)
 		wantLabels := map[string]string{
-			"app.kubernetes.io/instance":   "osmosis-fullnode-5",
+			"app.kubernetes.io/instance":   "osmosis-mainnet-fullnode-5",
 			"app.kubernetes.io/created-by": "cosmosfullnode",
-			"app.kubernetes.io/name":       "osmosis-fullnode",
+			"app.kubernetes.io/name":       "osmosis-mainnet-fullnode",
 			"app.kubernetes.io/version":    "v1.2.3",
+			"cosmos.strange.love/network":  "mainnet",
 		}
 		require.Equal(t, wantLabels, pod.Labels)
 
@@ -88,15 +90,15 @@ func TestPodBuilder(t *testing.T) {
 
 		vols := pod.Spec.Volumes
 		require.Len(t, vols, 1)
-		require.Equal(t, "vol-osmosis-fullnode-5", vols[0].Name)
-		require.Equal(t, "pvc-osmosis-fullnode-5", vols[0].PersistentVolumeClaim.ClaimName)
+		require.Equal(t, "pvc-osmosis-mainnet-fullnode-5", vols[0].PersistentVolumeClaim.ClaimName)
+		require.Equal(t, "vol-chain-home", vols[0].Name)
 
 		// Test we don't share or leak data per invocation.
 		pod = builder.Build()
 		require.Empty(t, pod.Name)
 
 		pod = builder.WithOrdinal(123).Build()
-		require.Equal(t, "osmosis-fullnode-123", pod.Name)
+		require.Equal(t, "osmosis-mainnet-fullnode-123", pod.Name)
 	})
 
 	t.Run("happy path - ports", func(t *testing.T) {
@@ -149,7 +151,7 @@ func TestPodBuilder(t *testing.T) {
 
 		require.Equal(t, "label", pod.Labels["custom"])
 		// Operator label takes precedence.
-		require.Equal(t, "osmosis-fullnode", pod.Labels[kube.NameLabel])
+		require.Equal(t, "osmosis-mainnet-fullnode", pod.Labels[kube.NameLabel])
 
 		require.Equal(t, "annotation", pod.Annotations["custom"])
 		// Operator label takes precedence.
@@ -174,7 +176,7 @@ func TestPodBuilder(t *testing.T) {
 		builder := NewPodBuilder(longCrd)
 		pod := builder.WithOrdinal(125).Build()
 
-		require.Regexp(t, `a.*-fullnode-125`, pod.Name)
+		require.Regexp(t, `a.*-mainnet-fullnode-125`, pod.Name)
 
 		RequireValidMetadata(t, pod)
 	})
@@ -204,6 +206,7 @@ func FuzzPodBuilderBuild(f *testing.F) {
 		require.NotEqual(t, pod1.Labels[kube.RevisionLabel], pod3.Labels[kube.RevisionLabel])
 
 		crd.Spec.ChainConfig.ChainID = "mychain-1"
+		crd.Spec.ChainConfig.Network = "newnetwork"
 		pod4 := NewPodBuilder(&crd).Build()
 
 		require.NotEqual(t, pod3.Labels[kube.RevisionLabel], pod4.Labels[kube.RevisionLabel])

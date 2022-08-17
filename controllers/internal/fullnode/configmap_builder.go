@@ -8,7 +8,6 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/peterbourgon/mergemap"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
-	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -24,13 +23,9 @@ func BuildConfigMap(crd *cosmosv1.CosmosFullNode) (corev1.ConfigMap, error) {
 	cm := corev1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{Kind: "ConfigMap", APIVersion: "v1"},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      configMapName(crd),
+			Name:      appName(crd),
 			Namespace: crd.Namespace,
-			Labels: map[string]string{
-				kube.ControllerLabel: kube.ToLabelValue("CosmosFullNode"),
-				kube.NameLabel:       appName(crd),
-				kube.VersionLabel:    kube.ParseImageVersion(crd.Spec.PodTemplate.Image),
-			},
+			Labels:    defaultLabels(crd),
 		},
 	}
 
@@ -48,10 +43,6 @@ func BuildConfigMap(crd *cosmosv1.CosmosFullNode) (corev1.ConfigMap, error) {
 
 	cm.Data = data
 	return cm, nil
-}
-
-func configMapName(crd *cosmosv1.CosmosFullNode) string {
-	return kube.ToName(fmt.Sprintf("%s-fullnode-config", crd.Name))
 }
 
 type decodedToml = map[string]any

@@ -6,6 +6,7 @@ metadata:
 spec:
   replicas: 3
   chain:
+    network: testnet
     chainID: gaia
     binary: gaiad
     config: # Tendermint config (translates to config.toml)
