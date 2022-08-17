@@ -142,21 +142,32 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 	pod.Name = name
 	pod.Spec.InitContainers = initContainers(b.crd, name)
 
-	const volName = "vol-chain-home"
+	const (
+		volChainHome = "vol-chain-home" // Stores live chain data and config files.
+		volTmp       = "vol-tmp"        // Stores temporary config files for manipulation later.
+	)
 	pod.Spec.Volumes = []corev1.Volume{
 		{
-			Name: volName,
+			Name: volChainHome,
 			VolumeSource: corev1.VolumeSource{
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: pvcName(b.crd, ordinal)},
+			},
+		},
+		{
+			Name: volTmp,
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
 	}
 
 	mounts := []corev1.VolumeMount{
-		{Name: volName, MountPath: chainHomeEnvVar},
+		{Name: volChainHome, MountPath: chainHomeDir},
 	}
 	for i := range pod.Spec.InitContainers {
-		pod.Spec.InitContainers[i].VolumeMounts = mounts
+		pod.Spec.InitContainers[i].VolumeMounts = append(mounts, []corev1.VolumeMount{
+			{Name: volTmp, MountPath: tmpDir},
+		}...)
 	}
 	for i := range pod.Spec.Containers {
 		pod.Spec.Containers[i].VolumeMounts = mounts
@@ -209,13 +220,11 @@ var fullNodePorts = []corev1.ContainerPort{
 }
 
 const (
-	workDir        = "/home/operator"
-	infraToolImage = "ghcr.io/strangelove-ventures/infra-toolkit"
-)
+	workDir      = "/home/operator"
+	tmpDir       = workDir + "/tmp"
+	chainHomeDir = "/home/operator/cosmos"
 
-// environment variables
-const (
-	chainHomeEnvVar = "/home/operator/cosmos"
+	infraToolImage = "ghcr.io/strangelove-ventures/infra-toolkit"
 )
 
 var (
@@ -226,13 +235,15 @@ var (
 		AllowPrivilegeEscalation: ptr(false),
 	}
 	envVars = []corev1.EnvVar{
-		{Name: "CHAIN_HOME", Value: chainHomeEnvVar},
+		{Name: "CHAIN_HOME", Value: chainHomeDir},
 	}
 )
 
 func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Container {
 	tpl := crd.Spec.PodTemplate
+	binary := crd.Spec.ChainConfig.Binary
 	return []corev1.Container{
+		// Chown, so we have proper permissions.
 		{
 			Name:            "chown",
 			Image:           infraToolImage,
@@ -243,6 +254,7 @@ func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Conta
 			WorkingDir:      workDir,
 			SecurityContext: nil, // Purposefully nil for chown to succeed.
 		},
+		// Init.
 		{
 			Name:    "chain-init",
 			Image:   tpl.Image,
@@ -253,9 +265,10 @@ if [ ! -d "$CHAIN_HOME/data" ]; then
 	echo "Initializing chain..."
 	%s init %s --home "$CHAIN_HOME"
 else
-	echo "Skipping init; chain already initialized."
+	echo "Chain already initialized; initializing into tmp dir..."
+	%s init %s --home %q
 fi
-`, crd.Spec.ChainConfig.Binary, moniker),
+`, binary, moniker, binary, moniker, tmpDir),
 			},
 			Env:             envVars,
 			ImagePullPolicy: tpl.ImagePullPolicy,

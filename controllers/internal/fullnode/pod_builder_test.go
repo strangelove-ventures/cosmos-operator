@@ -208,6 +208,7 @@ func TestPodBuilder(t *testing.T) {
 
 		initCont := pod.Spec.InitContainers[1]
 		require.Contains(t, initCont.Args[1], `osmosisd init osmosis-mainnet-fullnode-6 --home "$CHAIN_HOME"`)
+		require.Contains(t, initCont.Args[1], `osmosisd init osmosis-mainnet-fullnode-6 --home "/home/operator/tmp"`)
 	})
 
 	t.Run("volumes", func(t *testing.T) {
