@@ -41,12 +41,26 @@ spec:
                   app:
                     description: App configuration applied to app.toml.
                     properties:
+                      apiEnableUnsafeCORS:
+                        description: Defines if CORS should be enabled for the API
+                          (unsafe - use it at your own risk).
+                        type: boolean
+                      grpcWebEnableUnsafeCORS:
+                        description: Defines if CORS should be enabled for grpc-web
+                          (unsafe - use it at your own risk).
+                        type: boolean
                       minGasPrice:
                         description: The minimum gas prices a validator is willing
                           to accept for processing a transaction. A transaction's
                           fees must meet the minimum of any denomination specified
                           in this config (e.g. 0.25token1;0.0001token2).
                         minLength: 1
+                        type: string
+                      overrides:
+                        description: 'Custom app config toml. Values entered here
+                          take precedence over all other configuration. Must be valid
+                          toml. Important: all keys must be "kebab-case" which differs
+                          from config.toml.'
                         type: string
                     required:
                     - minGasPrice
@@ -83,9 +97,10 @@ spec:
                         minimum: 1
                         type: integer
                       overrides:
-                        description: Custom tendermint config toml. Values entered
+                        description: 'Custom tendermint config toml. Values entered
                           here take precedence over all other configuration. Must
-                          be valid toml.
+                          be valid toml. Important: all keys must be "snake_case"
+                          which differs from app.toml.'
                         type: string
                       peers:
                         description: Comma delimited list of p2p nodes in <ID>@<IP>:<PORT>

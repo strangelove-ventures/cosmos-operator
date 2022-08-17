@@ -10,12 +10,19 @@ import (
 )
 
 var (
-	//go:embed testdata/tendermint1.toml
-	wantTendermint1 string
+	//go:embed testdata/tendermint.toml
+	wantTendermint string
 	//go:embed testdata/tendermint_defaults.toml
 	wantTendermintDefaults string
 	//go:embed testdata/tendermint_overrides.toml
 	wantTendermintOverrides string
+
+	//go:embed testdata/app.toml
+	wantApp string
+	//go:embed testdata/app_defaults.toml
+	wantAppDefaults string
+	//go:embed testdata/app_overrides.toml
+	wantAppOverrides string
 )
 
 func TestBuildConfigMap(t *testing.T) {
@@ -43,7 +50,7 @@ func TestBuildConfigMap(t *testing.T) {
 		require.Equal(t, wantLabels, cm.Labels)
 	})
 
-	t.Run("config.toml", func(t *testing.T) {
+	t.Run("config-overlay.toml", func(t *testing.T) {
 		crd := defaultCRD()
 		crd.Spec.ChainConfig.Tendermint = cosmosv1.CosmosTendermintConfig{
 			PersistentPeers: "peer1@1.2.2.2:789,peer2@2.2.2.2:789,peer3@3.2.2.2:789",
@@ -69,10 +76,10 @@ func TestBuildConfigMap(t *testing.T) {
 				got  map[string]any
 				want map[string]any
 			)
-			_, err = toml.Decode(wantTendermint1, &want)
+			_, err = toml.Decode(wantTendermint, &want)
 			require.NoError(t, err)
 
-			_, err = toml.Decode(cm.Data["config.toml"], &got)
+			_, err = toml.Decode(cm.Data["config-overlay.toml"], &got)
 			require.NoError(t, err)
 
 			require.Equal(t, want, got)
@@ -89,7 +96,7 @@ func TestBuildConfigMap(t *testing.T) {
 			_, err = toml.Decode(wantTendermintDefaults, &want)
 			require.NoError(t, err)
 
-			_, err = toml.Decode(cm.Data["config.toml"], &got)
+			_, err = toml.Decode(cm.Data["config-overlay.toml"], &got)
 			require.NoError(t, err)
 
 			require.Equal(t, want, got)
@@ -126,7 +133,7 @@ indexer = "null"
 			_, err = toml.Decode(wantTendermintOverrides, &want)
 			require.NoError(t, err)
 
-			_, err = toml.Decode(cm.Data["config.toml"], &got)
+			_, err = toml.Decode(cm.Data["config-overlay.toml"], &got)
 			require.NoError(t, err)
 
 			require.Equal(t, want, got)
@@ -138,11 +145,92 @@ indexer = "null"
 			_, err := BuildConfigMap(malformed)
 
 			require.Error(t, err)
-			require.Contains(t, err.Error(), "invalid toml in overrides")
+			require.Contains(t, err.Error(), "invalid toml in tendermint overrides")
 		})
 	})
 
-	t.Run("app.toml", func(t *testing.T) {
-		t.Skip("TODO")
+	t.Run("app-overlay.toml", func(t *testing.T) {
+		crd := defaultCRD()
+		crd.Spec.ChainConfig.App = cosmosv1.CosmosAppConfig{
+			MinGasPrice: "0.123token",
+		}
+
+		t.Run("happy path", func(t *testing.T) {
+			custom := crd.DeepCopy()
+
+			custom.Spec.ChainConfig.App.APIEnableUnsafeCORS = true
+			custom.Spec.ChainConfig.App.GRPCWebEnableUnsafeCORS = true
+
+			cm, err := BuildConfigMap(custom)
+			require.NoError(t, err)
+
+			require.NotEmpty(t, cm.Data)
+			require.Empty(t, cm.BinaryData)
+
+			var (
+				got  map[string]any
+				want map[string]any
+			)
+			_, err = toml.Decode(wantApp, &want)
+			require.NoError(t, err)
+
+			_, err = toml.Decode(cm.Data["app-overlay.toml"], &got)
+			require.NoError(t, err)
+
+			require.Equal(t, want, got)
+		})
+
+		t.Run("defaults", func(t *testing.T) {
+			cm, err := BuildConfigMap(&crd)
+			require.NoError(t, err)
+
+			var (
+				got  map[string]any
+				want map[string]any
+			)
+			_, err = toml.Decode(wantAppDefaults, &want)
+			require.NoError(t, err)
+
+			_, err = toml.Decode(cm.Data["app-overlay.toml"], &got)
+			require.NoError(t, err)
+
+			require.Equal(t, want, got)
+		})
+
+		t.Run("overrides", func(t *testing.T) {
+			overrides := crd.DeepCopy()
+			overrides.Spec.ChainConfig.App.MinGasPrice = "should not see me"
+			overrides.Spec.ChainConfig.App.TomlOverrides = ptr(`
+minimum-gas-prices = "0.1override"
+new-base = "new base value"
+
+[api]
+enable = false
+new-field = "test"
+`)
+			cm, err := BuildConfigMap(overrides)
+			require.NoError(t, err)
+
+			var (
+				got  map[string]any
+				want map[string]any
+			)
+			_, err = toml.Decode(wantAppOverrides, &want)
+			require.NoError(t, err)
+
+			_, err = toml.Decode(cm.Data["app-overlay.toml"], &got)
+			require.NoError(t, err)
+
+			require.Equal(t, want, got)
+		})
+
+		t.Run("invalid toml", func(t *testing.T) {
+			malformed := crd.DeepCopy()
+			malformed.Spec.ChainConfig.App.TomlOverrides = ptr(`invalid_toml = should be invalid`)
+			_, err := BuildConfigMap(malformed)
+
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "invalid toml in app overrides")
+		})
 	})
 }

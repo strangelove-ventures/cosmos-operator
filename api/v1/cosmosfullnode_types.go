@@ -259,16 +259,33 @@ type CosmosTendermintConfig struct {
 	// Custom tendermint config toml.
 	// Values entered here take precedence over all other configuration.
 	// Must be valid toml.
+	// Important: all keys must be "snake_case" which differs from app.toml.
 	// +optional
 	TomlOverrides *string `json:"overrides"`
 }
 
+// CosmosAppConfig configures the cosmos sdk application app.toml.
 type CosmosAppConfig struct {
 	// The minimum gas prices a validator is willing to accept for processing a
 	// transaction. A transaction's fees must meet the minimum of any denomination
 	// specified in this config (e.g. 0.25token1;0.0001token2).
 	// +kubebuilder:validation:MinLength:=1
 	MinGasPrice string `json:"minGasPrice"`
+
+	// Defines if CORS should be enabled for the API (unsafe - use it at your own risk).
+	// +optional
+	APIEnableUnsafeCORS bool `json:"apiEnableUnsafeCORS"`
+
+	// Defines if CORS should be enabled for grpc-web (unsafe - use it at your own risk).
+	// +optional
+	GRPCWebEnableUnsafeCORS bool `json:"grpcWebEnableUnsafeCORS"`
+
+	// Custom app config toml.
+	// Values entered here take precedence over all other configuration.
+	// Must be valid toml.
+	// Important: all keys must be "kebab-case" which differs from config.toml.
+	// +optional
+	TomlOverrides *string `json:"overrides"`
 }
 
 //+kubebuilder:object:root=true
