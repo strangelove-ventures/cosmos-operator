@@ -30,7 +30,7 @@ func TestBuildPVCs(t *testing.T) {
 		require.Len(t, pvcs, 3)
 
 		gotNames := lo.Map(pvcs, func(pvc *corev1.PersistentVolumeClaim, _ int) string { return pvc.Name })
-		require.Equal(t, []string{"pvc-juno-fullnode-0", "pvc-juno-fullnode-1", "pvc-juno-fullnode-2"}, gotNames)
+		require.Equal(t, []string{"pvc-juno-mainnet-fullnode-0", "pvc-juno-mainnet-fullnode-1", "pvc-juno-mainnet-fullnode-2"}, gotNames)
 
 		gotOrds := lo.Map(pvcs, func(pvc *corev1.PersistentVolumeClaim, _ int) string { return pvc.Annotations[kube.OrdinalAnnotation] })
 		require.Equal(t, []string{"0", "1", "2"}, gotOrds)
@@ -45,8 +45,10 @@ func TestBuildPVCs(t *testing.T) {
 			require.Equal(t, "v1", got.APIVersion)
 
 			wantLabels := map[string]string{
-				"app.kubernetes.io/created-by": "cosmosfullnode",
-				"app.kubernetes.io/name":       "juno-fullnode",
+				"app.kubernetes.io/created-by": "cosmos.strange.love/cosmosfullnode",
+				"app.kubernetes.io/name":       "juno-mainnet-fullnode",
+				"app.kubernetes.io/version":    "v1.2.3",
+				"cosmos.strange.love/network":  "mainnet",
 			}
 			// These labels change and tested elsewhere.
 			delete(got.Labels, kube.RevisionLabel)

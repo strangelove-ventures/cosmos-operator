@@ -64,7 +64,7 @@ func TestPVCControl_Reconcile(t *testing.T) {
 		}
 		require.Equal(t, namespace, listOpt.Namespace)
 		require.Zero(t, listOpt.Limit)
-		require.Equal(t, "app.kubernetes.io/name=hub-fullnode", listOpt.LabelSelector.String())
+		require.Equal(t, "app.kubernetes.io/name=hub-mainnet-fullnode", listOpt.LabelSelector.String())
 		require.Equal(t, ".metadata.controller=hub", listOpt.FieldSelector.String())
 	})
 

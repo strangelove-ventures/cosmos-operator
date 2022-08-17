@@ -144,7 +144,7 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 		{
 			Name: volName,
 			VolumeSource: corev1.VolumeSource{
-				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: pvcName(b.crd.Name, ordinal)},
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: pvcName(b.crd, ordinal)},
 			},
 		},
 	}

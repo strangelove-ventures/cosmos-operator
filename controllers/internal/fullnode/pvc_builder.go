@@ -27,11 +27,9 @@ func BuildPVCs(crd *cosmosv1.CosmosFullNode) []*corev1.PersistentVolumeClaim {
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: crd.Namespace,
-			Labels: map[string]string{
-				kube.ControllerLabel: kube.ToLabelValue("CosmosFullNode"),
-				kube.NameLabel:       kube.ToLabelValue(fmt.Sprintf("%s-fullnode", crd.Name)),
-				kube.RevisionLabel:   pvcRevisionHash(crd),
-			},
+			Labels: defaultLabels(crd,
+				kube.RevisionLabel, pvcRevisionHash(crd),
+			),
 			Annotations: make(map[string]string),
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
@@ -46,7 +44,7 @@ func BuildPVCs(crd *cosmosv1.CosmosFullNode) []*corev1.PersistentVolumeClaim {
 	for i := int32(0); i < crd.Spec.Replicas; i++ {
 		pvc := template.DeepCopy()
 
-		name := pvcName(crd.Name, i)
+		name := pvcName(crd, i)
 		pvc.Name = name
 		pvc.Labels[kube.InstanceLabel] = name
 		pvc.Annotations[kube.OrdinalAnnotation] = kube.ToIntegerValue(i)
@@ -56,8 +54,8 @@ func BuildPVCs(crd *cosmosv1.CosmosFullNode) []*corev1.PersistentVolumeClaim {
 	return vols
 }
 
-func pvcName(crdName string, ordinal int32) string {
-	name := fmt.Sprintf("pvc-%s-fullnode-%d", crdName, ordinal)
+func pvcName(crd *cosmosv1.CosmosFullNode, ordinal int32) string {
+	name := fmt.Sprintf("pvc-%s-%d", appName(crd), ordinal)
 	return kube.ToLabelValue(name)
 }
 
