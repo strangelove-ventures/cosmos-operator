@@ -145,6 +145,7 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 	const (
 		volChainHome = "vol-chain-home" // Stores live chain data and config files.
 		volTmp       = "vol-tmp"        // Stores temporary config files for manipulation later.
+		volConfig    = "vol-config"     // Items from ConfigMap.
 	)
 	pod.Spec.Volumes = []corev1.Volume{
 		{
@@ -159,6 +160,18 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
+		{
+			Name: volConfig,
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{Name: appName(b.crd)},
+					Items: []corev1.KeyToPath{
+						{Key: configOverlayFile, Path: configOverlayFile},
+						{Key: appOverlayFile, Path: appOverlayFile},
+					},
+				},
+			},
+		},
 	}
 
 	mounts := []corev1.VolumeMount{
@@ -167,6 +180,7 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 	for i := range pod.Spec.InitContainers {
 		pod.Spec.InitContainers[i].VolumeMounts = append(mounts, []corev1.VolumeMount{
 			{Name: volTmp, MountPath: tmpDir},
+			{Name: volConfig, MountPath: configDir},
 		}...)
 	}
 	for i := range pod.Spec.Containers {
@@ -221,8 +235,9 @@ var fullNodePorts = []corev1.ContainerPort{
 
 const (
 	workDir      = "/home/operator"
-	tmpDir       = workDir + "/tmp"
-	chainHomeDir = "/home/operator/cosmos"
+	chainHomeDir = workDir + "/cosmos"
+	tmpDir       = workDir + "/.tmp"
+	configDir    = workDir + "/.config"
 
 	infraToolImage = "ghcr.io/strangelove-ventures/infra-toolkit"
 )
@@ -235,6 +250,7 @@ var (
 		AllowPrivilegeEscalation: ptr(false),
 	}
 	envVars = []corev1.EnvVar{
+		{Name: "HOME", Value: workDir},
 		{Name: "CHAIN_HOME", Value: chainHomeDir},
 	}
 )
@@ -245,30 +261,56 @@ func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Conta
 	return []corev1.Container{
 		// Chown, so we have proper permissions.
 		{
-			Name:            "chown",
-			Image:           infraToolImage,
-			Command:         []string{"sh"},
-			Args:            []string{"-c", fmt.Sprintf(`set -e; chown 1025:1025 %q`, workDir)},
+			Name:    "chown",
+			Image:   infraToolImage,
+			Command: []string{"sh"},
+			Args: []string{"-c", `
+set -e
+chown 1025:1025 "$HOME"
+`},
 			Env:             envVars,
 			ImagePullPolicy: tpl.ImagePullPolicy,
 			WorkingDir:      workDir,
 			SecurityContext: nil, // Purposefully nil for chown to succeed.
 		},
-		// Init.
+
 		{
 			Name:    "chain-init",
 			Image:   tpl.Image,
 			Command: []string{"sh"},
 			Args: []string{"-c",
 				fmt.Sprintf(`
+set -eu
 if [ ! -d "$CHAIN_HOME/data" ]; then
 	echo "Initializing chain..."
 	%s init %s --home "$CHAIN_HOME"
-else
-	echo "Chain already initialized; initializing into tmp dir..."
-	%s init %s --home %q
 fi
-`, binary, moniker, binary, moniker, tmpDir),
+
+echo "Initializing into tmp dir for downstream processing..."
+%s init %s --home "$HOME/.tmp"
+`, binary, moniker, binary, moniker),
+			},
+			Env:             envVars,
+			ImagePullPolicy: tpl.ImagePullPolicy,
+			WorkingDir:      workDir,
+			SecurityContext: securityContext,
+		},
+
+		{
+			Name:    "config-merge",
+			Image:   infraToolImage,
+			Command: []string{"sh"},
+			Args: []string{"-c",
+				`
+set -eu
+CONFIG_DIR="$CHAIN_HOME/config"
+TMP_DIR="$HOME/.tmp/config"
+OVERLAY_DIR="$HOME/.config"
+echo "Merging config..."
+set -x
+config-merge -f toml "$TMP_DIR/config.toml" "$OVERLAY_DIR/config-overlay.toml" > "$CONFIG_DIR/config.toml"
+config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CONFIG_DIR/app.toml"
+`,
 			},
 			Env:             envVars,
 			ImagePullPolicy: tpl.ImagePullPolicy,
