@@ -79,20 +79,6 @@ func TestPodBuilder(t *testing.T) {
 		}
 		require.Equal(t, wantAnnotations, pod.Annotations)
 
-		require.Len(t, pod.Spec.Containers, 1)
-
-		lastContainer := pod.Spec.Containers[len(pod.Spec.Containers)-1]
-		require.Equal(t, "osmosis", lastContainer.Name)
-		require.Equal(t, "busybox:v1.2.3", lastContainer.Image)
-		require.Empty(t, lastContainer.ImagePullPolicy)
-		require.Equal(t, crd.Spec.PodTemplate.Resources, lastContainer.Resources)
-		require.NotEmpty(t, lastContainer.VolumeMounts) // TODO (nix - 8/12/22) Better assertion once we know what container needs.
-
-		vols := pod.Spec.Volumes
-		require.Len(t, vols, 1)
-		require.Equal(t, "pvc-osmosis-mainnet-fullnode-5", vols[0].PersistentVolumeClaim.ClaimName)
-		require.Equal(t, "vol-chain-home", vols[0].Name)
-
 		// Test we don't share or leak data per invocation.
 		pod = builder.Build()
 		require.Empty(t, pod.Name)
@@ -179,6 +165,71 @@ func TestPodBuilder(t *testing.T) {
 		require.Regexp(t, `a.*-mainnet-fullnode-125`, pod.Name)
 
 		RequireValidMetadata(t, pod)
+	})
+
+	t.Run("containers", func(t *testing.T) {
+		const wantWrkDir = "/home/operator"
+		crd.Spec.ChainConfig.Binary = "osmosisd"
+		builder := NewPodBuilder(&crd)
+		pod := builder.WithOrdinal(6).Build()
+
+		require.Len(t, pod.Spec.Containers, 1)
+
+		container := pod.Spec.Containers[0]
+		require.Equal(t, "osmosis", container.Name)
+		require.Empty(t, container.ImagePullPolicy)
+		require.Equal(t, crd.Spec.PodTemplate.Resources, container.Resources)
+		require.Equal(t, wantWrkDir, container.WorkingDir)
+
+		require.Equal(t, envVars, container.Env)
+		require.Equal(t, container.Env[0].Name, "CHAIN_HOME")
+		require.Equal(t, container.Env[0].Value, "/home/operator/cosmos")
+
+		require.Len(t, pod.Spec.InitContainers, 2)
+
+		// Can't have security context for chown to succeed.
+		require.Empty(t, pod.Spec.InitContainers[0].SecurityContext)
+
+		for _, c := range pod.Spec.InitContainers[1:] {
+			require.Equal(t, envVars, container.Env, c.Name)
+			require.Equal(t, wantWrkDir, c.WorkingDir)
+
+			sc := c.SecurityContext
+			require.Nil(t, sc.Privileged, c.Name)
+			require.EqualValues(t, 1025, *sc.RunAsUser, c.Name)
+			require.EqualValues(t, 1025, *sc.RunAsGroup, c.Name)
+			require.True(t, *sc.RunAsNonRoot, c.Name)
+			require.False(t, *sc.AllowPrivilegeEscalation, c.Name)
+			require.Equal(t, envVars, container.Env, c.Name)
+		}
+
+		initCont := pod.Spec.InitContainers[1]
+		require.Contains(t, initCont.Args[1], `osmosisd init osmosis-mainnet-fullnode-6 --home "$CHAIN_HOME"`)
+	})
+
+	t.Run("volumes", func(t *testing.T) {
+		builder := NewPodBuilder(&crd)
+		pod := builder.WithOrdinal(5).Build()
+
+		vols := pod.Spec.Volumes
+		require.Len(t, vols, 1)
+		require.Equal(t, "pvc-osmosis-mainnet-fullnode-5", vols[0].PersistentVolumeClaim.ClaimName)
+		require.Equal(t, "vol-chain-home", vols[0].Name)
+
+		containers := append(pod.Spec.InitContainers, pod.Spec.InitContainers...)
+
+		require.NotZero(t, containers)
+
+		for _, c := range containers {
+			require.Len(t, c.VolumeMounts, 1)
+			mount := c.VolumeMounts[0]
+			require.Equal(t, "vol-chain-home", mount.Name, c.Name)
+			require.Equal(t, "/home/operator/cosmos", mount.MountPath, c.Name)
+		}
+	})
+
+	t.Run("start container command", func(t *testing.T) {
+		t.Skip("TODO: assert command, skip invariants, etc.")
 	})
 }
 

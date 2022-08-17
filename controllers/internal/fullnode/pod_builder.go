@@ -58,10 +58,11 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 			Containers: []corev1.Container{
 				{
 					Name:  crd.Name,
-					Image: tpl.Image,
+					Image: "busybox:stable", // TODO: change me to tpl.Image
 					// TODO need binary name
 					Command:   []string{"/bin/sh"},
 					Args:      []string{"-c", `trap : TERM INT; sleep infinity & wait`},
+					Env:       envVars,
 					Ports:     fullNodePorts,
 					Resources: tpl.Resources,
 					// TODO (nix - 7/27/22) - Set these values.
@@ -70,6 +71,7 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 					StartupProbe:   nil,
 
 					ImagePullPolicy: tpl.ImagePullPolicy,
+					WorkingDir:      workDir,
 				},
 			},
 		},
@@ -138,6 +140,7 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 	pod.Labels[kube.InstanceLabel] = kube.ToLabelValue(name)
 
 	pod.Name = name
+	pod.Spec.InitContainers = initContainers(b.crd, name)
 
 	const volName = "vol-chain-home"
 	pod.Spec.Volumes = []corev1.Volume{
@@ -148,10 +151,15 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 			},
 		},
 	}
+
+	mounts := []corev1.VolumeMount{
+		{Name: volName, MountPath: chainHomeEnvVar},
+	}
+	for i := range pod.Spec.InitContainers {
+		pod.Spec.InitContainers[i].VolumeMounts = mounts
+	}
 	for i := range pod.Spec.Containers {
-		pod.Spec.Containers[i].VolumeMounts = []corev1.VolumeMount{
-			{Name: volName, MountPath: "/home/cosmos"}, // TODO (nix - 8/12/22) MountPath may not be correct.
-		}
+		pod.Spec.Containers[i].VolumeMounts = mounts
 	}
 
 	b.pod = pod
@@ -198,4 +206,62 @@ var fullNodePorts = []corev1.ContainerPort{
 		Protocol:      corev1.ProtocolTCP,
 		ContainerPort: 9091,
 	},
+}
+
+const (
+	workDir        = "/home/operator"
+	infraToolImage = "ghcr.io/strangelove-ventures/infra-toolkit"
+)
+
+// environment variables
+const (
+	chainHomeEnvVar = "/home/operator/cosmos"
+)
+
+var (
+	securityContext = &corev1.SecurityContext{
+		RunAsUser:                ptr(int64(1025)),
+		RunAsGroup:               ptr(int64(1025)),
+		RunAsNonRoot:             ptr(true),
+		AllowPrivilegeEscalation: ptr(false),
+	}
+	envVars = []corev1.EnvVar{
+		{Name: "CHAIN_HOME", Value: chainHomeEnvVar},
+	}
+)
+
+func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Container {
+	tpl := crd.Spec.PodTemplate
+	return []corev1.Container{
+		{
+			Name:            "permissions",
+			Image:           infraToolImage,
+			Command:         []string{"sh"},
+			Args:            []string{"-c", fmt.Sprintf(`set -e; chown 1025:1025 %q`, workDir)},
+			Env:             envVars,
+			ImagePullPolicy: tpl.ImagePullPolicy,
+			WorkingDir:      workDir,
+			SecurityContext: nil, // Purposefully nil for chown to succeed.
+		},
+		{
+			Name:  "chain-init",
+			Image: tpl.Image,
+			// TODO need binary name
+			Command: []string{"sh"},
+			Args: []string{"-c",
+				fmt.Sprintf(`
+if [ ! -d "$CHAIN_HOME/data" ]; then
+	echo "Initializing chain..."
+	%s init %s --home "$CHAIN_HOME"
+else
+	echo "Skipping init; chain already initialized."
+fi
+`, crd.Spec.ChainConfig.Binary, moniker),
+			},
+			Env:             envVars,
+			ImagePullPolicy: tpl.ImagePullPolicy,
+			WorkingDir:      workDir,
+			SecurityContext: securityContext,
+		},
+	}
 }
