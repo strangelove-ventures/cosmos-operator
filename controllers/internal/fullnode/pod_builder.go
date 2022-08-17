@@ -244,9 +244,8 @@ func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Conta
 			SecurityContext: nil, // Purposefully nil for chown to succeed.
 		},
 		{
-			Name:  "chain-init",
-			Image: tpl.Image,
-			// TODO need binary name
+			Name:    "chain-init",
+			Image:   tpl.Image,
 			Command: []string{"sh"},
 			Args: []string{"-c",
 				fmt.Sprintf(`
