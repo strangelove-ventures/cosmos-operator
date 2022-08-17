@@ -181,11 +181,13 @@ func TestPodBuilder(t *testing.T) {
 		require.Equal(t, crd.Spec.PodTemplate.Resources, container.Resources)
 		require.Equal(t, wantWrkDir, container.WorkingDir)
 
-		require.Equal(t, container.Env[0].Name, "CHAIN_HOME")
-		require.Equal(t, container.Env[0].Value, "/home/operator/cosmos")
+		require.Equal(t, container.Env[0].Name, "HOME")
+		require.Equal(t, container.Env[0].Value, "/home/operator")
+		require.Equal(t, container.Env[1].Name, "CHAIN_HOME")
+		require.Equal(t, container.Env[1].Value, "/home/operator/cosmos")
 		require.Equal(t, envVars, container.Env)
 
-		require.Len(t, pod.Spec.InitContainers, 2)
+		require.Greater(t, len(pod.Spec.InitContainers), 1)
 
 		chown := pod.Spec.InitContainers[0]
 		// Can't have security context for chown to succeed.
@@ -208,7 +210,12 @@ func TestPodBuilder(t *testing.T) {
 
 		initCont := pod.Spec.InitContainers[1]
 		require.Contains(t, initCont.Args[1], `osmosisd init osmosis-mainnet-fullnode-6 --home "$CHAIN_HOME"`)
-		require.Contains(t, initCont.Args[1], `osmosisd init osmosis-mainnet-fullnode-6 --home "/home/operator/.tmp"`)
+		require.Contains(t, initCont.Args[1], `osmosisd init osmosis-mainnet-fullnode-6 --home "$HOME/.tmp"`)
+
+		mergeConfig := pod.Spec.InitContainers[2]
+		// The order of config-merge arguments is important. Rightmost takes precedence.
+		require.Contains(t, mergeConfig.Args[1], `config-merge -f toml "$TMP_DIR/config.toml" "$OVERLAY_DIR/config-overlay.toml" > "$CONFIG_DIR/config.toml"`)
+		require.Contains(t, mergeConfig.Args[1], `config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CONFIG_DIR/app.toml`)
 	})
 
 	t.Run("volumes", func(t *testing.T) {
@@ -216,19 +223,42 @@ func TestPodBuilder(t *testing.T) {
 		pod := builder.WithOrdinal(5).Build()
 
 		vols := pod.Spec.Volumes
-		require.Len(t, vols, 1)
-		require.Equal(t, "pvc-osmosis-mainnet-fullnode-5", vols[0].PersistentVolumeClaim.ClaimName)
+		require.Len(t, vols, 3)
+
 		require.Equal(t, "vol-chain-home", vols[0].Name)
+		require.Equal(t, "pvc-osmosis-mainnet-fullnode-5", vols[0].PersistentVolumeClaim.ClaimName)
 
-		containers := append(pod.Spec.InitContainers, pod.Spec.InitContainers...)
+		require.Equal(t, "vol-tmp", vols[1].Name)
+		require.NotNil(t, vols[1].EmptyDir)
 
-		require.NotEmpty(t, containers)
+		require.Equal(t, "vol-config", vols[2].Name)
+		require.NotNil(t, "osmosis-mainnet-fullnode", vols[2].ConfigMap.Name)
+		wantItems := []corev1.KeyToPath{
+			{Key: "config-overlay.toml", Path: "config-overlay.toml"},
+			{Key: "app-overlay.toml", Path: "app-overlay.toml"},
+		}
+		require.Equal(t, wantItems, vols[2].ConfigMap.Items)
 
-		for _, c := range containers {
+		for _, c := range pod.Spec.Containers {
 			require.Len(t, c.VolumeMounts, 1)
 			mount := c.VolumeMounts[0]
 			require.Equal(t, "vol-chain-home", mount.Name, c.Name)
 			require.Equal(t, "/home/operator/cosmos", mount.MountPath, c.Name)
+		}
+
+		for _, c := range pod.Spec.InitContainers {
+			require.Len(t, c.VolumeMounts, 3)
+			mount := c.VolumeMounts[0]
+			require.Equal(t, "vol-chain-home", mount.Name, c.Name)
+			require.Equal(t, "/home/operator/cosmos", mount.MountPath, c.Name)
+
+			mount = c.VolumeMounts[1]
+			require.Equal(t, "vol-tmp", mount.Name, c.Name)
+			require.Equal(t, "/home/operator/.tmp", mount.MountPath, c.Name)
+
+			mount = c.VolumeMounts[2]
+			require.Equal(t, "vol-config", mount.Name, c.Name)
+			require.Equal(t, "/home/operator/.config", mount.MountPath, c.Name)
 		}
 	})
 
