@@ -58,10 +58,11 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 			Containers: []corev1.Container{
 				{
 					Name:  crd.Name,
-					Image: tpl.Image,
+					Image: "busybox:stable", // TODO: change me to tpl.Image
 					// TODO need binary name
 					Command:   []string{"/bin/sh"},
 					Args:      []string{"-c", `trap : TERM INT; sleep infinity & wait`},
+					Env:       envVars,
 					Ports:     fullNodePorts,
 					Resources: tpl.Resources,
 					// TODO (nix - 7/27/22) - Set these values.
@@ -70,6 +71,7 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 					StartupProbe:   nil,
 
 					ImagePullPolicy: tpl.ImagePullPolicy,
+					WorkingDir:      workDir,
 				},
 			},
 		},
@@ -138,20 +140,51 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 	pod.Labels[kube.InstanceLabel] = kube.ToLabelValue(name)
 
 	pod.Name = name
+	pod.Spec.InitContainers = initContainers(b.crd, name)
 
-	const volName = "vol-chain-home"
+	const (
+		volChainHome = "vol-chain-home"
+		volTmp       = "vol-tmp"    // Stores temporary config files for manipulation later.
+		volConfig    = "vol-config" // Items from ConfigMap.
+	)
 	pod.Spec.Volumes = []corev1.Volume{
 		{
-			Name: volName,
+			Name: volChainHome,
 			VolumeSource: corev1.VolumeSource{
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: pvcName(b.crd, ordinal)},
 			},
 		},
+		{
+			Name: volTmp,
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+		{
+			Name: volConfig,
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{Name: appName(b.crd)},
+					Items: []corev1.KeyToPath{
+						{Key: configOverlayFile, Path: configOverlayFile},
+						{Key: appOverlayFile, Path: appOverlayFile},
+					},
+				},
+			},
+		},
+	}
+
+	mounts := []corev1.VolumeMount{
+		{Name: volChainHome, MountPath: chainHomeDir},
+	}
+	for i := range pod.Spec.InitContainers {
+		pod.Spec.InitContainers[i].VolumeMounts = append(mounts, []corev1.VolumeMount{
+			{Name: volTmp, MountPath: tmpDir},
+			{Name: volConfig, MountPath: configDir},
+		}...)
 	}
 	for i := range pod.Spec.Containers {
-		pod.Spec.Containers[i].VolumeMounts = []corev1.VolumeMount{
-			{Name: volName, MountPath: "/home/cosmos"}, // TODO (nix - 8/12/22) MountPath may not be correct.
-		}
+		pod.Spec.Containers[i].VolumeMounts = mounts
 	}
 
 	b.pod = pod
@@ -198,4 +231,93 @@ var fullNodePorts = []corev1.ContainerPort{
 		Protocol:      corev1.ProtocolTCP,
 		ContainerPort: 9091,
 	},
+}
+
+const (
+	workDir      = "/home/operator"
+	chainHomeDir = workDir + "/cosmos"
+	tmpDir       = workDir + "/.tmp"
+	configDir    = workDir + "/.config"
+
+	infraToolImage = "ghcr.io/strangelove-ventures/infra-toolkit"
+)
+
+var (
+	securityContext = &corev1.SecurityContext{
+		RunAsUser:                ptr(int64(1025)),
+		RunAsGroup:               ptr(int64(1025)),
+		RunAsNonRoot:             ptr(true),
+		AllowPrivilegeEscalation: ptr(false),
+	}
+	envVars = []corev1.EnvVar{
+		{Name: "HOME", Value: workDir},
+		{Name: "CHAIN_HOME", Value: chainHomeDir},
+	}
+)
+
+func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Container {
+	tpl := crd.Spec.PodTemplate
+	binary := crd.Spec.ChainConfig.Binary
+	return []corev1.Container{
+		// Chown, so we have proper permissions.
+		{
+			Name:    "chown",
+			Image:   infraToolImage,
+			Command: []string{"sh"},
+			Args: []string{"-c", `
+set -e
+chown 1025:1025 "$HOME"
+`},
+			Env:             envVars,
+			ImagePullPolicy: tpl.ImagePullPolicy,
+			WorkingDir:      workDir,
+			SecurityContext: nil, // Purposefully nil for chown to succeed.
+		},
+
+		{
+			Name:    "chain-init",
+			Image:   tpl.Image,
+			Command: []string{"sh"},
+			Args: []string{"-c",
+				fmt.Sprintf(`
+set -eu
+if [ ! -d "$CHAIN_HOME/data" ]; then
+	echo "Initializing chain..."
+	%s init %s --home "$CHAIN_HOME"
+else
+	echo "Skipping chain init; already initialized."
+fi
+
+echo "Initializing into tmp dir for downstream processing..."
+%s init %s --home "$HOME/.tmp"
+`, binary, moniker, binary, moniker),
+			},
+			Env:             envVars,
+			ImagePullPolicy: tpl.ImagePullPolicy,
+			WorkingDir:      workDir,
+			SecurityContext: securityContext,
+		},
+
+		{
+			Name:    "config-merge",
+			Image:   infraToolImage,
+			Command: []string{"sh"},
+			Args: []string{"-c",
+				`
+set -eu
+CONFIG_DIR="$CHAIN_HOME/config"
+TMP_DIR="$HOME/.tmp/config"
+OVERLAY_DIR="$HOME/.config"
+echo "Merging config..."
+set -x
+config-merge -f toml "$TMP_DIR/config.toml" "$OVERLAY_DIR/config-overlay.toml" > "$CONFIG_DIR/config.toml"
+config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CONFIG_DIR/app.toml"
+`,
+			},
+			Env:             envVars,
+			ImagePullPolicy: tpl.ImagePullPolicy,
+			WorkingDir:      workDir,
+			SecurityContext: securityContext,
+		},
+	}
 }
