@@ -284,6 +284,8 @@ set -eu
 if [ ! -d "$CHAIN_HOME/data" ]; then
 	echo "Initializing chain..."
 	%s init %s --home "$CHAIN_HOME"
+else
+	echo "Skipping chain init; already initialized."
 fi
 
 echo "Initializing into tmp dir for downstream processing..."
