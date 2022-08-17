@@ -15,7 +15,7 @@ spec:
     app: # Cosmos SDK config (translates to app.toml)
       minGasPrice: "0.0025uatom"
   template:
-    image: "busybox:stable"
+    image: "ghcr.io/strangelove-ventures/heighliner/gaia"
     resources:
       requests:
         cpu: "0.5"
