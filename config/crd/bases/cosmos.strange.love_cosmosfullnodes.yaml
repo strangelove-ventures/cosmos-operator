@@ -49,6 +49,12 @@ spec:
                         description: Defines if CORS should be enabled for grpc-web
                           (unsafe - use it at your own risk).
                         type: boolean
+                      haltHeight:
+                        description: If set, block height at which to gracefully halt
+                          the chain and shutdown the node. Useful for testing or upgrades.
+                        format: int64
+                        minimum: 1
+                        type: integer
                       minGasPrice:
                         description: The minimum gas prices a validator is willing
                           to accept for processing a transaction. A transaction's
@@ -62,6 +68,48 @@ spec:
                           toml. Important: all keys must be "kebab-case" which differs
                           from config.toml.'
                         type: string
+                      pruning:
+                        description: Controls pruning settings. i.e. How much data
+                          to keep on disk. If not set, defaults to "default" pruning
+                          strategy.
+                        properties:
+                          interval:
+                            description: Bock height interval at which pruned heights
+                              are removed from disk (ignored if pruning is not 'custom').
+                              If not set, defaults to 0.
+                            format: int32
+                            type: integer
+                          keepEvery:
+                            description: Offset heights to keep on disk after 'keep-every'
+                              (ignored if pruning is not 'custom') Often, setting
+                              this to 0 is appropriate. If not set, defaults to 0.
+                            format: int32
+                            type: integer
+                          keepRecent:
+                            description: Number of recent block heights to keep on
+                              disk (ignored if pruning is not 'custom') If not set,
+                              defaults to 0.
+                            format: int32
+                            type: integer
+                          strategy:
+                            description: 'One of default|nothing|everything|custom.
+                              default: the last 100 states are kept in addition to
+                              every 500th state; pruning at 10 block intervals. nothing:
+                              all historic states will be saved, nothing will be deleted
+                              (i.e. archiving node). everything: all saved states
+                              will be deleted, storing only the current state; pruning
+                              at 10 block intervals. custom: allow pruning options
+                              to be manually specified through Interval, KeepEvery,
+                              KeepRecent.'
+                            enum:
+                            - default
+                            - nothing
+                            - everything
+                            - custom
+                            type: string
+                        required:
+                        - strategy
+                        type: object
                     required:
                     - minGasPrice
                     type: object
