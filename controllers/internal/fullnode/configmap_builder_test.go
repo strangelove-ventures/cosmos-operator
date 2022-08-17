@@ -174,6 +174,13 @@ indexer = "null"
 
 			custom.Spec.ChainConfig.App.APIEnableUnsafeCORS = true
 			custom.Spec.ChainConfig.App.GRPCWebEnableUnsafeCORS = true
+			custom.Spec.ChainConfig.App.HaltHeight = ptr(uint64(34567))
+			custom.Spec.ChainConfig.App.Pruning = &cosmosv1.CosmosPruning{
+				Strategy:   "custom",
+				Interval:   ptr(uint32(222)),
+				KeepEvery:  ptr(uint32(333)),
+				KeepRecent: ptr(uint32(444)),
+			}
 
 			cm, err := BuildConfigMap(custom)
 			require.NoError(t, err)

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	_ "embed"
 	"fmt"
+	"strconv"
 
 	"github.com/BurntSushi/toml"
 	"github.com/peterbourgon/mergemap"
@@ -127,6 +128,21 @@ func addAppToml(buf *bytes.Buffer, cmData map[string]string, app cosmosv1.Cosmos
 	// Note: The name discrepancy "enable" vs. "enabled" is intentional; a known inconsistency within the app.toml.
 	base["api"] = decodedToml{"enabled-unsafe-cors": app.APIEnableUnsafeCORS}
 	base["grpc-web"] = decodedToml{"enable-unsafe-cors": app.GRPCWebEnableUnsafeCORS}
+
+	if v := app.HaltHeight; v != nil {
+		base["halt-height"] = v
+	}
+
+	if pruning := app.Pruning; pruning != nil {
+		intStr := func(n *uint32) string {
+			v := valOrDefault(n, ptr(uint32(0)))
+			return strconv.FormatUint(uint64(*v), 10)
+		}
+		base["pruning"] = pruning.Strategy
+		base["pruning-interval"] = intStr(pruning.Interval)
+		base["pruning-keep-every"] = intStr(pruning.KeepEvery)
+		base["pruning-keep-recent"] = intStr(pruning.KeepRecent)
+	}
 
 	dst := defaultApp()
 	mergemap.Merge(dst, base)
