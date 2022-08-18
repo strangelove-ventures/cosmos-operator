@@ -181,7 +181,7 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 	for i := range pod.Spec.InitContainers {
 		pod.Spec.InitContainers[i].VolumeMounts = append(mounts, []corev1.VolumeMount{
 			{Name: volTmp, MountPath: tmpDir},
-			{Name: volConfig, MountPath: configDir},
+			{Name: volConfig, MountPath: tmpConfigDir},
 		}...)
 	}
 	for i := range pod.Spec.Containers {
@@ -238,7 +238,7 @@ const (
 	workDir      = "/home/operator"
 	chainHomeDir = workDir + "/cosmos"
 	tmpDir       = workDir + "/.tmp"
-	configDir    = workDir + "/.config"
+	tmpConfigDir = workDir + "/.config"
 
 	infraToolImage = "ghcr.io/strangelove-ventures/infra-toolkit"
 )
@@ -254,6 +254,7 @@ var (
 		{Name: "HOME", Value: workDir},
 		{Name: "CHAIN_HOME", Value: chainHomeDir},
 		{Name: "GENESIS_FILE", Value: path.Join(chainHomeDir, "config", "genesis.json")},
+		{Name: "CONFIG_DIR", Value: path.Join(chainHomeDir, "config")},
 	}
 )
 
