@@ -79,14 +79,6 @@ func TestPodBuilder(t *testing.T) {
 		}
 		require.Equal(t, wantAnnotations, pod.Annotations)
 
-		require.Len(t, pod.Spec.Containers, 1)
-
-		lastContainer := pod.Spec.Containers[len(pod.Spec.Containers)-1]
-		require.Equal(t, "osmosis", lastContainer.Name)
-		require.Empty(t, lastContainer.ImagePullPolicy)
-		require.Equal(t, crd.Spec.PodTemplate.Resources, lastContainer.Resources)
-		require.NotEmpty(t, lastContainer.VolumeMounts) // TODO (nix - 8/12/22) Better assertion once we know what container needs.
-
 		// Test we don't share or leak data per invocation.
 		pod = builder.Build()
 		require.Empty(t, pod.Name)

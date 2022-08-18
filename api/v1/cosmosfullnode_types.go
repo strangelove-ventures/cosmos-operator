@@ -284,6 +284,17 @@ type CosmosAppConfig struct {
 	// +optional
 	GRPCWebEnableUnsafeCORS bool `json:"grpcWebEnableUnsafeCORS"`
 
+	// Controls pruning settings. i.e. How much data to keep on disk.
+	// If not set, defaults to "default" pruning strategy.
+	// +optional
+	Pruning *CosmosPruning `json:"pruning"`
+
+	// If set, block height at which to gracefully halt the chain and shutdown the node.
+	// Useful for testing or upgrades.
+	// +kubebuilder:validation:Minimum:=1
+	// +optional
+	HaltHeight *uint64 `json:"haltHeight"`
+
 	// Custom app config toml.
 	// Values entered here take precedence over all other configuration.
 	// Must be valid toml.
@@ -291,6 +302,43 @@ type CosmosAppConfig struct {
 	// +optional
 	TomlOverrides *string `json:"overrides"`
 }
+
+// CosmosPruning controls the pruning settings.
+type CosmosPruning struct {
+	// One of default|nothing|everything|custom.
+	// default: the last 100 states are kept in addition to every 500th state; pruning at 10 block intervals.
+	// nothing: all historic states will be saved, nothing will be deleted (i.e. archiving node).
+	// everything: all saved states will be deleted, storing only the current state; pruning at 10 block intervals.
+	// custom: allow pruning options to be manually specified through Interval, KeepEvery, KeepRecent.
+	// +kubebuilder:validation:Enum:=default;nothing;everything;custom
+	Strategy CosmosPruningStrategy `json:"strategy"`
+
+	// Bock height interval at which pruned heights are removed from disk (ignored if pruning is not 'custom').
+	// If not set, defaults to 0.
+	// +optional
+	Interval *uint32 `json:"interval"`
+
+	// Offset heights to keep on disk after 'keep-every' (ignored if pruning is not 'custom')
+	// Often, setting this to 0 is appropriate.
+	// If not set, defaults to 0.
+	// +optional
+	KeepEvery *uint32 `json:"keepEvery"`
+
+	// Number of recent block heights to keep on disk (ignored if pruning is not 'custom')
+	// If not set, defaults to 0.
+	// +optional
+	KeepRecent *uint32 `json:"keepRecent"`
+}
+
+// CosmosPruningStrategy control pruning.
+type CosmosPruningStrategy string
+
+const (
+	CosmosPruningDefault    CosmosPruningStrategy = "default"
+	CosmosPruningNothing    CosmosPruningStrategy = "nothing"
+	CosmosPruningEverything CosmosPruningStrategy = "everything"
+	CosmosPruningCustom     CosmosPruningStrategy = "custom"
+)
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status

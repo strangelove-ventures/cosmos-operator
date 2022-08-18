@@ -1,5 +1,13 @@
 minimum-gas-prices = "0.123token"
 
+halt-height = 34567
+
+pruning = "custom"
+pruning-keep-recent = "444"
+pruning-keep-every = "333"
+pruning-interval = "222"
+
+
 [api]
 enable = true
 swagger = true
