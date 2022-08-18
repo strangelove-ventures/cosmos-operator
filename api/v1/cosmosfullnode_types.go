@@ -204,6 +204,7 @@ type CosmosChainConfig struct {
 	ChainID string `json:"chainID"`
 
 	// The network environment. Typically, mainnet, testnet, devnet, etc.
+	// This field is immutable because it affects resource names.
 	// +kubebuilder:validation:MinLength:=1
 	Network string `json:"network"`
 
