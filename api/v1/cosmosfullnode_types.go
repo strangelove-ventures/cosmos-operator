@@ -271,7 +271,8 @@ type CosmosChainConfig struct {
 	// Takes precedence over SnapshotURL.
 	// Hint: Use "set -eux" in your script.
 	// Available env vars:
-	// $HOME: The home directory.
+	// $HOME: The user's home directory.
+	// $CHAIN_HOME: The home directory for the chain, aka: --home flag
 	// $DATA_DIR: The directory for the database files.
 	// +optional
 	SnapshotScript *string `json:"snapshotScript"`
