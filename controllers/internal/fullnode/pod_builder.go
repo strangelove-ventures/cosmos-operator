@@ -304,6 +304,17 @@ echo "Initializing into tmp dir for downstream processing..."
 		},
 
 		{
+			Name:            "init-genesis",
+			Image:           infraToolImage,
+			Command:         []string{"sh"},
+			Args:            []string{"-c", GenesisScript(crd.Spec.ChainConfig)},
+			Env:             envVars,
+			ImagePullPolicy: tpl.ImagePullPolicy,
+			WorkingDir:      workDir,
+			SecurityContext: securityContext,
+		},
+
+		{
 			Name:    "config-merge",
 			Image:   infraToolImage,
 			Command: []string{"sh"},
