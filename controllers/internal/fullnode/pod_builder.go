@@ -343,7 +343,7 @@ config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CON
 
 	if willRestoreFromSnapshot(crd) {
 		required = append(required, corev1.Container{
-			Name:            "restore-snapshot",
+			Name:            "restore-from-snapshot",
 			Image:           infraToolImage,
 			Command:         []string{"sh"},
 			Args:            []string{"-c", SnapshotScript(crd.Spec.ChainConfig)},

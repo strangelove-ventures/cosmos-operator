@@ -2,6 +2,8 @@ package fullnode
 
 import (
 	_ "embed"
+	"errors"
+	"fmt"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 )
@@ -24,16 +26,15 @@ echo "$DATA_DIR initialized."
 `
 
 func SnapshotScript(cfg cosmosv1.CosmosChainConfig) string {
-	return ""
-	//var scriptBody string
-	//switch {
-	//case cfg.GenesisScript != nil:
-	//	scriptBody = *cfg.GenesisScript
-	//case cfg.GenesisURL != nil:
-	//	scriptBody = fmt.Sprintf("GENESIS_URL=%q\n%s", *cfg.GenesisURL, scriptDownloadGenesis)
-	//default:
-	//	scriptBody = scriptUseInitGenesis
-	//}
-	//
-	//return fmt.Sprintf(genesisScriptWrapper, scriptBody)
+	var scriptBody string
+	switch {
+	case cfg.SnapshotScript != nil:
+		scriptBody = *cfg.SnapshotScript
+	case cfg.SnapshotURL != nil:
+		scriptBody = fmt.Sprintf("SNAPSHOT_URL=%q\n%s", *cfg.SnapshotURL, scriptDownloadSnapshot)
+	default:
+		panic(errors.New("attempted to restore from a snapshot but snapshots not not configured"))
+	}
+
+	return fmt.Sprintf(snapshotScriptWrapper, scriptBody)
 }
