@@ -200,6 +200,9 @@ spec:
                       devnet, etc.
                     minLength: 1
                     type: string
+                  skipInvariants:
+                    description: Skip x/crisis invariants check on startup.
+                    type: boolean
                 required:
                 - app
                 - binary
