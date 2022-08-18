@@ -231,7 +231,7 @@ type CosmosChainConfig struct {
 	// Although this field is optional, you will almost always want to set it.
 	// If not set, uses the genesis file created from the init subcommand. (This behavior may be desirable for new chains or testing.)
 	// The operator detects and properly handles the following file extensions:
-	// .json, .json.gz, .tar, .tar.gz, .zip
+	// .json, .json.gz, .tar, .tar.gz, .tar.gzip, .zip
 	// Use GenesisScript if the chain has an unconventional file format or genesis location.
 	// +optional
 	GenesisURL *string `json:"genesisURL"`
@@ -258,7 +258,7 @@ type CosmosChainConfig struct {
 	// Unarchiving the snapshot populates the data directory.
 	// Although this field is optional, you will almost always want to set it.
 	// The operator detects and properly handles the following file extensions:
-	// .tar, .tar.gz, .lz4
+	// .tar, .tar.gz, .tar.gzip, .tar.lz4
 	// Use SnapshotScript if the snapshot archive is unconventional or requires special handling.
 	// +optional
 	SnapshotURL *string `json:"snapshotURL"`
@@ -267,7 +267,6 @@ type CosmosChainConfig struct {
 	// Prefer SnapshotURL if possible.
 	// The available shell commands are from docker image ghcr.io/strangelove-ventures/infra-toolkit, including wget and curl.
 	// Save the file to env var $GENESIS_FILE.
-	// E.g. TODO
 	// Takes precedence over SnapshotURL.
 	// Hint: Use "set -eux" in your script.
 	// Available env vars:
