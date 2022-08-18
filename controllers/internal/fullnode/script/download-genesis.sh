@@ -1,8 +1,7 @@
-#!/usr/bin/env sh
-
 set -eu
 
-# $GENESIS_FILE, $GENESIS_URL and $CONFIG_DIR already set via pod env vars.
+# $GENESIS_URL is injected.
+# $GENESIS_FILE and $CONFIG_DIR already set via pod env vars.
 
 echo "Downloading genesis file $GENESIS_URL to $GENESIS_FILE..."
 
@@ -41,3 +40,4 @@ case "$GENESIS_URL" in
 esac
 
 echo "Saved genesis file to $GENESIS_FILE."
+echo "Download genesis file complete."
