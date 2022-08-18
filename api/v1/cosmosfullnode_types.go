@@ -253,6 +253,28 @@ type CosmosChainConfig struct {
 	// Skip x/crisis invariants check on startup.
 	// +optional
 	SkipInvariants bool `json:"skipInvariants"`
+
+	// URL for a snapshot archive to download from the internet.
+	// Unarchiving the snapshot populates the data directory.
+	// Although this field is optional, you will almost always want to set it.
+	// The operator detects and properly handles the following file extensions:
+	// .tar, .tar.gz, .lz4
+	// Use SnapshotScript if the snapshot archive is unconventional or requires special handling.
+	// +optional
+	SnapshotURL *string `json:"snapshotURL"`
+
+	// Specify shell (sh) script commands to properly download and process a snapshot archive.
+	// Prefer SnapshotURL if possible.
+	// The available shell commands are from docker image ghcr.io/strangelove-ventures/infra-toolkit, including wget and curl.
+	// Save the file to env var $GENESIS_FILE.
+	// E.g. TODO
+	// Takes precedence over SnapshotURL.
+	// Hint: Use "set -eux" in your script.
+	// Available env vars:
+	// $HOME: The home directory.
+	// $DATA_DIR: The directory for the database files.
+	// +optional
+	SnapshotScript *string `json:"snapshotScript"`
 }
 
 // CosmosTendermintConfig configures the tendermint config.toml.
