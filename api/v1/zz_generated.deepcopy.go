@@ -72,8 +72,13 @@ func (in *CosmosChainConfig) DeepCopyInto(out *CosmosChainConfig) {
 		*out = new(string)
 		**out = **in
 	}
-	if in.GenesisDownload != nil {
-		in, out := &in.GenesisDownload, &out.GenesisDownload
+	if in.GenesisURL != nil {
+		in, out := &in.GenesisURL, &out.GenesisURL
+		*out = new(string)
+		**out = **in
+	}
+	if in.GenesisScript != nil {
+		in, out := &in.GenesisScript, &out.GenesisScript
 		*out = new(string)
 		**out = **in
 	}

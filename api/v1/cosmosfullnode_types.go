@@ -232,18 +232,23 @@ type CosmosChainConfig struct {
 	// For testing or new chains, you may want to leave this blank and use the genesis file created from the init subcommand.
 	// The operator detects and properly handles the following file extensions:
 	// .json, .tar, .tar.gz, .zip
-	// Use GenesisDownload if the chain has an unconventional file format or genesis location.
+	// Use GenesisScript if the chain has an unconventional file format or genesis location.
 	// +optional
-	GenesisURL string `json:"genesisURL"`
+	GenesisURL *string `json:"genesisURL"`
 
-	// Specify shell commands to properly download and save the genesis file.
+	// Specify shell (sh) script commands to properly download and save the genesis file.
 	// Prefer GenesisURL if the file is in a conventional format.
 	// The available shell commands are from docker image ghcr.io/strangelove-ventures/infra-toolkit, including wget and curl.
 	// Save the file to env var $GENESIS_FILE.
 	// E.g. curl https://url-to-genesis.com | jq '.genesis' > $GENESIS_FILE
 	// Takes precedence over GenesisURL.
+	// Hint: Use "set -eux" in your script.
+	// Available env vars:
+	// $HOME: The home directory.
+	// $GENESIS_FILE: The location of the final genesis file.
+	// $CONFIG_DIR: The location of the config dir that houses the genesis file. Used for extracting from archives. The archive must have a single file called "genesis.json".
 	// +optional
-	GenesisDownload *string `json:"genesisDownload"`
+	GenesisScript *string `json:"genesisScript"`
 }
 
 // CosmosTendermintConfig configures the tendermint config.toml.
