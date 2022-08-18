@@ -258,13 +258,14 @@ var (
 		{Name: "CHAIN_HOME", Value: chainHomeDir},
 		{Name: "GENESIS_FILE", Value: path.Join(chainHomeDir, "config", "genesis.json")},
 		{Name: "CONFIG_DIR", Value: path.Join(chainHomeDir, "config")},
+		{Name: "DATA_DIR", Value: path.Join(chainHomeDir, "data")},
 	}
 )
 
 func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Container {
 	tpl := crd.Spec.PodTemplate
 	binary := crd.Spec.ChainConfig.Binary
-	return []corev1.Container{
+	required := []corev1.Container{
 		// Chown, so we have proper permissions.
 		{
 			Name:    "chown",
@@ -290,7 +291,7 @@ set -eu
 if [ ! -d "$CHAIN_HOME/data" ]; then
 	echo "Initializing chain..."
 	%s init %s --home "$CHAIN_HOME"
-	# Remove because downstream containers check the presence of this file.
+	# Delete the follwing because downstream containers check the presence of this file.
 	rm "$GENESIS_FILE"
 else
 	echo "Skipping chain init; already initialized."
@@ -339,6 +340,21 @@ config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CON
 			SecurityContext: securityContext,
 		},
 	}
+
+	if willRestoreFromSnapshot(crd) {
+		required = append(required, corev1.Container{
+			Name:            "restore-snapshot",
+			Image:           infraToolImage,
+			Command:         []string{"sh"},
+			Args:            []string{"-c", SnapshotScript(crd.Spec.ChainConfig)},
+			Env:             envVars,
+			ImagePullPolicy: tpl.ImagePullPolicy,
+			WorkingDir:      workDir,
+			SecurityContext: securityContext,
+		})
+	}
+
+	return required
 }
 
 func startCommandArgs(cfg cosmosv1.CosmosChainConfig) []string {
@@ -347,4 +363,8 @@ func startCommandArgs(cfg cosmosv1.CosmosChainConfig) []string {
 		return append(args, "--x-crisis-skip-assert-invariants")
 	}
 	return args
+}
+
+func willRestoreFromSnapshot(crd *cosmosv1.CosmosFullNode) bool {
+	return crd.Spec.ChainConfig.SnapshotURL != nil || crd.Spec.ChainConfig.SnapshotScript != nil
 }

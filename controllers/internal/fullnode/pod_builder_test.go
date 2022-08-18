@@ -47,9 +47,8 @@ func TestPodBuilder(t *testing.T) {
 
 	t.Parallel()
 
-	crd := defaultCRD()
-
 	t.Run("happy path - critical fields", func(t *testing.T) {
+		crd := defaultCRD()
 		builder := NewPodBuilder(&crd)
 		pod := builder.WithOrdinal(5).Build()
 
@@ -88,6 +87,7 @@ func TestPodBuilder(t *testing.T) {
 	})
 
 	t.Run("happy path - ports", func(t *testing.T) {
+		crd := defaultCRD()
 		pod := NewPodBuilder(&crd).Build()
 		ports := pod.Spec.Containers[0].Ports
 
@@ -114,7 +114,7 @@ func TestPodBuilder(t *testing.T) {
 	})
 
 	t.Run("happy path - optional fields", func(t *testing.T) {
-		optCrd := crd.DeepCopy()
+		optCrd := defaultCRD()
 
 		optCrd.Spec.PodTemplate.Metadata.Labels = map[string]string{"custom": "label", kube.NameLabel: "should not see me"}
 		optCrd.Spec.PodTemplate.Metadata.Annotations = map[string]string{"custom": "annotation", kube.OrdinalAnnotation: "should not see me"}
@@ -132,7 +132,7 @@ func TestPodBuilder(t *testing.T) {
 		optCrd.Spec.PodTemplate.Priority = ptr(int32(55))
 		optCrd.Spec.PodTemplate.TerminationGracePeriodSeconds = ptr(int64(40))
 
-		builder := NewPodBuilder(optCrd)
+		builder := NewPodBuilder(&optCrd)
 		pod := builder.WithOrdinal(9).Build()
 
 		require.Equal(t, "label", pod.Labels["custom"])
@@ -156,10 +156,10 @@ func TestPodBuilder(t *testing.T) {
 	})
 
 	t.Run("long name", func(t *testing.T) {
-		longCrd := crd.DeepCopy()
+		longCrd := defaultCRD()
 		longCrd.Name = strings.Repeat("a", 253)
 
-		builder := NewPodBuilder(longCrd)
+		builder := NewPodBuilder(&longCrd)
 		pod := builder.WithOrdinal(125).Build()
 
 		require.Regexp(t, `a.*-mainnet-fullnode-125`, pod.Name)
@@ -168,8 +168,10 @@ func TestPodBuilder(t *testing.T) {
 	})
 
 	t.Run("containers", func(t *testing.T) {
+		crd := defaultCRD()
 		const wantWrkDir = "/home/operator"
 		crd.Spec.ChainConfig.Binary = "osmosisd"
+		crd.Spec.ChainConfig.SnapshotURL = ptr("https://example.com/snapshot.tar")
 		builder := NewPodBuilder(&crd)
 		pod := builder.WithOrdinal(6).Build()
 
@@ -191,11 +193,13 @@ func TestPodBuilder(t *testing.T) {
 		require.Equal(t, container.Env[2].Value, "/home/operator/cosmos/config/genesis.json")
 		require.Equal(t, container.Env[3].Name, "CONFIG_DIR")
 		require.Equal(t, container.Env[3].Value, "/home/operator/cosmos/config")
+		require.Equal(t, container.Env[4].Name, "DATA_DIR")
+		require.Equal(t, container.Env[4].Value, "/home/operator/cosmos/data")
 		require.Equal(t, envVars, container.Env)
 
 		require.Greater(t, len(pod.Spec.InitContainers), 1)
 
-		require.Equal(t, len(pod.Spec.InitContainers), 4)
+		require.Equal(t, 5, len(pod.Spec.InitContainers))
 
 		chown := pod.Spec.InitContainers[0]
 		// Can't have security context for chown to succeed.
@@ -220,7 +224,15 @@ func TestPodBuilder(t *testing.T) {
 		require.Contains(t, mergeConfig.Args[1], `config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CONFIG_DIR/app.toml`)
 	})
 
+	t.Run("optional containers", func(t *testing.T) {
+		crd := defaultCRD()
+		pod := NewPodBuilder(&crd).WithOrdinal(0).Build()
+
+		require.Equal(t, 4, len(pod.Spec.InitContainers))
+	})
+
 	t.Run("volumes", func(t *testing.T) {
+		crd := defaultCRD()
 		builder := NewPodBuilder(&crd)
 		pod := builder.WithOrdinal(5).Build()
 
@@ -265,11 +277,11 @@ func TestPodBuilder(t *testing.T) {
 	})
 
 	t.Run("start container command", func(t *testing.T) {
-		cmdCrd := crd.DeepCopy()
+		cmdCrd := defaultCRD()
 		cmdCrd.Spec.ChainConfig.Binary = "gaiad"
 		cmdCrd.Spec.PodTemplate.Image = "ghcr.io/cosmoshub:v1.2.3"
 
-		pod := NewPodBuilder(cmdCrd).WithOrdinal(1).Build()
+		pod := NewPodBuilder(&cmdCrd).WithOrdinal(1).Build()
 		c := pod.Spec.Containers[0]
 
 		require.Equal(t, "ghcr.io/cosmoshub:v1.2.3", c.Image)
@@ -278,7 +290,7 @@ func TestPodBuilder(t *testing.T) {
 		require.Equal(t, []string{"start", "--home", "/home/operator/cosmos"}, c.Args)
 
 		cmdCrd.Spec.ChainConfig.SkipInvariants = true
-		pod = NewPodBuilder(cmdCrd).WithOrdinal(1).Build()
+		pod = NewPodBuilder(&cmdCrd).WithOrdinal(1).Build()
 		c = pod.Spec.Containers[0]
 
 		require.Equal(t, []string{"gaiad"}, c.Command)
