@@ -229,9 +229,9 @@ type CosmosChainConfig struct {
 
 	// URL to genesis file to download from the internet.
 	// Although this field is optional, you will almost always want to set it.
-	// For testing or new chains, you may want to leave this blank and use the genesis file created from the init subcommand.
+	// If not set, uses the genesis file created from the init subcommand. (This behavior may be desirable for new chains or testing.)
 	// The operator detects and properly handles the following file extensions:
-	// .json, .tar, .tar.gz, .zip
+	// .json, .json.gz, .tar, .tar.gz, .zip
 	// Use GenesisScript if the chain has an unconventional file format or genesis location.
 	// +optional
 	GenesisURL *string `json:"genesisURL"`

@@ -14,7 +14,7 @@ var (
 	scriptUseInitGenesis string
 )
 
-const scriptWrapper = `if [ -f "$GENESIS_FILE" ]; then
+const genesisScriptWrapper = `if [ -f "$GENESIS_FILE" ]; then
 	echo "Genesis file $GENESIS_FILE already exists; skipping initialization."
 	exit 0
 fi
@@ -39,5 +39,5 @@ func GenesisScript(cfg cosmosv1.CosmosChainConfig) string {
 		scriptBody = scriptUseInitGenesis
 	}
 
-	return fmt.Sprintf(scriptWrapper, scriptBody)
+	return fmt.Sprintf(genesisScriptWrapper, scriptBody)
 }
