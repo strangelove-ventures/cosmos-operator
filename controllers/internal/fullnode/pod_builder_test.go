@@ -181,6 +181,8 @@ func TestPodBuilder(t *testing.T) {
 		require.Equal(t, crd.Spec.PodTemplate.Resources, container.Resources)
 		require.Equal(t, wantWrkDir, container.WorkingDir)
 
+		requireValidSecurityContext(t, *container.SecurityContext, container.Name)
+
 		require.Equal(t, container.Env[0].Name, "HOME")
 		require.Equal(t, container.Env[0].Value, "/home/operator")
 		require.Equal(t, container.Env[1].Name, "CHAIN_HOME")
@@ -205,13 +207,7 @@ func TestPodBuilder(t *testing.T) {
 			require.Equal(t, envVars, container.Env, c.Name)
 			require.Equal(t, wantWrkDir, c.WorkingDir)
 
-			sc := c.SecurityContext
-			require.Nil(t, sc.Privileged, c.Name)
-			require.EqualValues(t, 1025, *sc.RunAsUser, c.Name)
-			require.EqualValues(t, 1025, *sc.RunAsGroup, c.Name)
-			require.True(t, *sc.RunAsNonRoot, c.Name)
-			require.False(t, *sc.AllowPrivilegeEscalation, c.Name)
-			require.Equal(t, envVars, container.Env, c.Name)
+			requireValidSecurityContext(t, *c.SecurityContext, c.Name)
 		}
 
 		initCont := pod.Spec.InitContainers[1]
@@ -279,14 +275,14 @@ func TestPodBuilder(t *testing.T) {
 		require.Equal(t, "ghcr.io/cosmoshub:v1.2.3", c.Image)
 
 		require.Equal(t, []string{"gaiad"}, c.Command)
-		require.Equal(t, []string{"start"}, c.Args)
+		require.Equal(t, []string{"start", "--home", "/home/operator/cosmos"}, c.Args)
 
 		cmdCrd.Spec.ChainConfig.SkipInvariants = true
 		pod = NewPodBuilder(cmdCrd).WithOrdinal(1).Build()
 		c = pod.Spec.Containers[0]
 
 		require.Equal(t, []string{"gaiad"}, c.Command)
-		require.Equal(t, []string{"start", "--x-crisis-skip-assert-invariants"}, c.Args)
+		require.Equal(t, []string{"start", "--home", "/home/operator/cosmos", "--x-crisis-skip-assert-invariants"}, c.Args)
 	})
 }
 
@@ -319,4 +315,14 @@ func FuzzPodBuilderBuild(f *testing.F) {
 
 		require.NotEqual(t, pod3.Labels[kube.RevisionLabel], pod4.Labels[kube.RevisionLabel])
 	})
+}
+
+func requireValidSecurityContext(t *testing.T, sc corev1.SecurityContext, containerName string) {
+	t.Helper()
+
+	require.Nil(t, sc.Privileged, containerName)
+	require.EqualValues(t, 1025, *sc.RunAsUser, containerName)
+	require.EqualValues(t, 1025, *sc.RunAsGroup, containerName)
+	require.True(t, *sc.RunAsNonRoot, containerName)
+	require.False(t, *sc.AllowPrivilegeEscalation, containerName)
 }
