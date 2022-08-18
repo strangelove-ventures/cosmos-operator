@@ -14,9 +14,7 @@ var (
 	scriptUseInitGenesis string
 )
 
-const scriptWrapper = `#!/usr/bin/env sh
-
-if [ -f "$GENESIS_FILE" ]; then
+const scriptWrapper = `if [ -f "$GENESIS_FILE" ]; then
 	echo "Genesis file $GENESIS_FILE already exists; skipping initialization."
 	exit 0
 fi

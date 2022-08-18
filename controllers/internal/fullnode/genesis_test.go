@@ -11,7 +11,6 @@ func TestGenesisScript(t *testing.T) {
 	requireValidScript := func(t *testing.T, script string) {
 		t.Helper()
 		require.NotEmpty(t, script)
-		require.Contains(t, script, "#!/usr/bin/env sh")
 		require.Contains(t, script, `if [ -f "$GENESIS_FILE" ]; then
 	echo "Genesis file $GENESIS_FILE already exists; skipping initialization."
 	exit 0
