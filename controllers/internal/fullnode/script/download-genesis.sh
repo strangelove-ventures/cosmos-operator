@@ -17,6 +17,11 @@ download_jsongz() {
 
 download_tar() {
   echo "Downloading and extracting tar..."
+  wget -c -O - "$GENESIS_URL" | tar -x -C "$CONFIG_DIR"
+}
+
+download_targz() {
+  echo "Downloading and extracting compressed tar..."
   wget -c -O - "$GENESIS_URL" | tar -xz -C "$CONFIG_DIR"
 }
 
@@ -33,7 +38,8 @@ rm -f "$GENESIS_FILE"
 case "$GENESIS_URL" in
   *.json.gz) download_jsongz ;;
   *.json) download_json ;;
-  *.tar.gz) download_tar ;;
+  *.tar.gz) download_targz ;;
+  *.tar.gzip) download_targz ;;
   *.tar) download_tar ;;
   *.zip) download_zip ;;
   *) echo "Unable to handle file extension for $GENESIS_URL"; exit 1 ;;
