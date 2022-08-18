@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"hash/fnv"
+	"path"
 	"sync"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
@@ -252,6 +253,7 @@ var (
 	envVars = []corev1.EnvVar{
 		{Name: "HOME", Value: workDir},
 		{Name: "CHAIN_HOME", Value: chainHomeDir},
+		{Name: "GENESIS_FILE", Value: path.Join(chainHomeDir, "config", "genesis.json")},
 	}
 )
 

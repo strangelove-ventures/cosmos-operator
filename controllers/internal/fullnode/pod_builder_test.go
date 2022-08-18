@@ -185,6 +185,8 @@ func TestPodBuilder(t *testing.T) {
 		require.Equal(t, container.Env[0].Value, "/home/operator")
 		require.Equal(t, container.Env[1].Name, "CHAIN_HOME")
 		require.Equal(t, container.Env[1].Value, "/home/operator/cosmos")
+		require.Equal(t, container.Env[2].Name, "GENESIS_FILE")
+		require.Equal(t, container.Env[2].Value, "/home/operator/cosmos/config/genesis.json")
 		require.Equal(t, envVars, container.Env)
 
 		require.Greater(t, len(pod.Spec.InitContainers), 1)
