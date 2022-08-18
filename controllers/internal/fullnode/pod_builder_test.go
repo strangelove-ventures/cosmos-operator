@@ -89,7 +89,7 @@ func TestPodBuilder(t *testing.T) {
 
 	t.Run("happy path - ports", func(t *testing.T) {
 		pod := NewPodBuilder(&crd).Build()
-		ports := pod.Spec.Containers[len(pod.Spec.Containers)-1].Ports
+		ports := pod.Spec.Containers[0].Ports
 
 		require.Len(t, ports, 7)
 
@@ -269,7 +269,24 @@ func TestPodBuilder(t *testing.T) {
 	})
 
 	t.Run("start container command", func(t *testing.T) {
-		t.Skip("TODO: assert command, skip invariants, etc.")
+		cmdCrd := crd.DeepCopy()
+		cmdCrd.Spec.ChainConfig.Binary = "gaiad"
+		cmdCrd.Spec.PodTemplate.Image = "ghcr.io/cosmoshub:v1.2.3"
+
+		pod := NewPodBuilder(cmdCrd).WithOrdinal(1).Build()
+		c := pod.Spec.Containers[0]
+
+		require.Equal(t, "ghcr.io/cosmoshub:v1.2.3", c.Image)
+
+		require.Equal(t, []string{"gaiad"}, c.Command)
+		require.Equal(t, []string{"start"}, c.Args)
+
+		cmdCrd.Spec.ChainConfig.SkipInvariants = true
+		pod = NewPodBuilder(cmdCrd).WithOrdinal(1).Build()
+		c = pod.Spec.Containers[0]
+
+		require.Equal(t, []string{"gaiad"}, c.Command)
+		require.Equal(t, []string{"start", "--x-crisis-skip-assert-invariants"}, c.Args)
 	})
 }
 
