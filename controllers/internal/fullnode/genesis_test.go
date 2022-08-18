@@ -8,6 +8,8 @@ import (
 )
 
 func TestGenesisScript(t *testing.T) {
+	t.Parallel()
+
 	requireValidScript := func(t *testing.T, script string) {
 		t.Helper()
 		require.NotEmpty(t, script)

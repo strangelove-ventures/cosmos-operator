@@ -8,6 +8,8 @@ import (
 )
 
 func TestSnapshotScript(t *testing.T) {
+	t.Parallel()
+
 	const (
 		testURL         = "https://example.com/archive.tar"
 		wantIfStatement = `ls "$DATA_DIR/*.db" 1> /dev/null 2>&1
