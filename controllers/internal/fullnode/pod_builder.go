@@ -56,6 +56,13 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 			PriorityClassName:             tpl.PriorityClassName,
 			Priority:                      tpl.Priority,
 			ImagePullSecrets:              tpl.ImagePullSecrets,
+			SecurityContext: &corev1.PodSecurityContext{
+				RunAsUser:           ptr(int64(1025)),
+				RunAsGroup:          ptr(int64(1025)),
+				RunAsNonRoot:        ptr(true),
+				FSGroup:             ptr(int64(1025)),
+				FSGroupChangePolicy: ptr(corev1.FSGroupChangeOnRootMismatch),
+			},
 			Containers: []corev1.Container{
 				{
 					Name:  crd.Name,
@@ -75,7 +82,6 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 
 					ImagePullPolicy: tpl.ImagePullPolicy,
 					WorkingDir:      workDir,
-					SecurityContext: securityContext,
 				},
 			},
 		},
@@ -247,39 +253,21 @@ const (
 )
 
 var (
-	securityContext = &corev1.SecurityContext{
-		RunAsUser:                ptr(int64(1025)),
-		RunAsGroup:               ptr(int64(1025)),
-		RunAsNonRoot:             ptr(true),
-		AllowPrivilegeEscalation: ptr(false),
-	}
 	envVars = []corev1.EnvVar{
 		{Name: "HOME", Value: workDir},
 		{Name: "CHAIN_HOME", Value: chainHomeDir},
 		{Name: "GENESIS_FILE", Value: path.Join(chainHomeDir, "config", "genesis.json")},
 		{Name: "CONFIG_DIR", Value: path.Join(chainHomeDir, "config")},
+		{Name: "DATA_DIR", Value: path.Join(chainHomeDir, "data")},
 	}
 )
 
 func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Container {
 	tpl := crd.Spec.PodTemplate
 	binary := crd.Spec.ChainConfig.Binary
-	return []corev1.Container{
-		// Chown, so we have proper permissions.
-		{
-			Name:    "chown",
-			Image:   infraToolImage,
-			Command: []string{"sh"},
-			Args: []string{"-c", `
-set -e
-chown 1025:1025 "$HOME"
-`},
-			Env:             envVars,
-			ImagePullPolicy: tpl.ImagePullPolicy,
-			WorkingDir:      workDir,
-			SecurityContext: nil, // Purposefully nil for chown to succeed.
-		},
+	genesisCmd, genesisArgs := DownloadGenesisCommand(crd.Spec.ChainConfig)
 
+	required := []corev1.Container{
 		{
 			Name:    "chain-init",
 			Image:   tpl.Image,
@@ -303,18 +291,16 @@ echo "Initializing into tmp dir for downstream processing..."
 			Env:             envVars,
 			ImagePullPolicy: tpl.ImagePullPolicy,
 			WorkingDir:      workDir,
-			SecurityContext: securityContext,
 		},
 
 		{
-			Name:            "init-genesis",
+			Name:            "genesis-init",
 			Image:           infraToolImage,
-			Command:         []string{"sh"},
-			Args:            []string{"-c", GenesisScript(crd.Spec.ChainConfig)},
+			Command:         []string{genesisCmd},
+			Args:            genesisArgs,
 			Env:             envVars,
 			ImagePullPolicy: tpl.ImagePullPolicy,
 			WorkingDir:      workDir,
-			SecurityContext: securityContext,
 		},
 
 		{
@@ -336,9 +322,23 @@ config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CON
 			Env:             envVars,
 			ImagePullPolicy: tpl.ImagePullPolicy,
 			WorkingDir:      workDir,
-			SecurityContext: securityContext,
 		},
 	}
+
+	if willRestoreFromSnapshot(crd) {
+		cmd, args := DownloadSnapshotCommand(crd.Spec.ChainConfig)
+		required = append(required, corev1.Container{
+			Name:            "snapshot-restore",
+			Image:           infraToolImage,
+			Command:         []string{cmd},
+			Args:            args,
+			Env:             envVars,
+			ImagePullPolicy: tpl.ImagePullPolicy,
+			WorkingDir:      workDir,
+		})
+	}
+
+	return required
 }
 
 func startCommandArgs(cfg cosmosv1.CosmosChainConfig) []string {
@@ -347,4 +347,8 @@ func startCommandArgs(cfg cosmosv1.CosmosChainConfig) []string {
 		return append(args, "--x-crisis-skip-assert-invariants")
 	}
 	return args
+}
+
+func willRestoreFromSnapshot(crd *cosmosv1.CosmosFullNode) bool {
+	return crd.Spec.ChainConfig.SnapshotURL != nil || crd.Spec.ChainConfig.SnapshotScript != nil
 }
