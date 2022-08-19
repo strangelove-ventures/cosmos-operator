@@ -14,8 +14,8 @@ var (
 )
 
 // There are other files in the DATA_DIR that we must not touch, so we only test for the existence of database files.
-const snapshotScriptWrapper = `ls "$DATA_DIR/*.db" 1> /dev/null 2>&1
-if [ $? -eq 0 ]; then
+const snapshotScriptWrapper = `set -eu
+if test -n "$(find $DATA_DIR -maxdepth 1 -name '*.db' -print -quit)"; then
 	echo "Databases in $DATA_DIR already exists; skipping initialization."
 	exit 0
 fi
@@ -25,7 +25,8 @@ fi
 echo "$DATA_DIR initialized."
 `
 
-func SnapshotScript(cfg cosmosv1.CosmosChainConfig) string {
+// DownloadSnapshotCommand returns a command and args for downloading and restoring from a snapshot.
+func DownloadSnapshotCommand(cfg cosmosv1.CosmosChainConfig) (string, []string) {
 	var scriptBody string
 	switch {
 	case cfg.SnapshotScript != nil:
@@ -33,8 +34,9 @@ func SnapshotScript(cfg cosmosv1.CosmosChainConfig) string {
 	case cfg.SnapshotURL != nil:
 		scriptBody = fmt.Sprintf("SNAPSHOT_URL=%q\n%s", *cfg.SnapshotURL, scriptDownloadSnapshot)
 	default:
-		panic(errors.New("attempted to restore from a snapshot but snapshots not not configured"))
+		panic(errors.New("attempted to restore from a snapshot but snapshots are not configured"))
 	}
 
-	return fmt.Sprintf(snapshotScriptWrapper, scriptBody)
+	script := fmt.Sprintf(snapshotScriptWrapper, scriptBody)
+	return "sh", []string{"-c", script}
 }
