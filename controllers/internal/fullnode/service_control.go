@@ -28,7 +28,7 @@ func NewServiceControl(client Client) ServiceControl {
 	return ServiceControl{
 		client: client,
 		diffFactory: func(ordinalAnnotationKey, revisionLabelKey string, current, want []*corev1.Service) svcDiffer {
-			return kube.NewOrdinalDiff(ordinalAnnotationKey, revisionLabelKey, current, want)
+			return kube.NewDiff(ordinalAnnotationKey, revisionLabelKey, current, want)
 		},
 	}
 }

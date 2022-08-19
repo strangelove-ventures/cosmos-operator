@@ -41,11 +41,11 @@ func TestNewDiff(t *testing.T) {
 		}
 
 		require.Panics(t, func() {
-			NewOrdinalDiff(testOrdinalAnnotation, testRevisionLabel, dupeNames, resources)
+			NewDiff(testOrdinalAnnotation, testRevisionLabel, dupeNames, resources)
 		})
 
 		require.Panics(t, func() {
-			NewOrdinalDiff(testOrdinalAnnotation, testRevisionLabel, resources, dupeNames)
+			NewDiff(testOrdinalAnnotation, testRevisionLabel, resources, dupeNames)
 		})
 	})
 
@@ -74,13 +74,13 @@ func TestNewDiff(t *testing.T) {
 			// A blank revision is ok for the exiting resources. Future proofs the unlikely event we change the revision label.
 			if tt.RevisionValue != "" {
 				require.Panics(t, func() {
-					NewOrdinalDiff(testOrdinalAnnotation, testRevisionLabel, bad, good)
+					NewDiff(testOrdinalAnnotation, testRevisionLabel, bad, good)
 				}, tt)
 			}
 
 			// Test the inverse.
 			require.Panics(t, func() {
-				NewOrdinalDiff(testOrdinalAnnotation, testRevisionLabel, good, bad)
+				NewDiff(testOrdinalAnnotation, testRevisionLabel, good, bad)
 			}, tt)
 		}
 	})
@@ -103,7 +103,7 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 			diffablePod(110, revision), // tests for numeric (not lexical) sorting
 		}
 
-		diff := NewOrdinalDiff(testOrdinalAnnotation, testRevisionLabel, current, want)
+		diff := NewDiff(testOrdinalAnnotation, testRevisionLabel, current, want)
 
 		require.Empty(t, diff.Deletes())
 		require.Empty(t, diff.Updates())
@@ -119,7 +119,7 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 			diffablePod(1, revision),
 		}
 
-		diff := NewOrdinalDiff(testOrdinalAnnotation, testRevisionLabel, nil, want)
+		diff := NewDiff(testOrdinalAnnotation, testRevisionLabel, nil, want)
 
 		require.Empty(t, diff.Deletes())
 		require.Empty(t, diff.Updates())
@@ -139,7 +139,7 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 			diffablePod(0, revision),
 		}
 
-		diff := NewOrdinalDiff(testOrdinalAnnotation, testRevisionLabel, current, want)
+		diff := NewDiff(testOrdinalAnnotation, testRevisionLabel, current, want)
 
 		require.Empty(t, diff.Updates())
 		require.Empty(t, diff.Creates())
@@ -161,7 +161,7 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 			diffablePod(2, "_new_version_"),
 		}
 
-		diff := NewOrdinalDiff(testOrdinalAnnotation, testRevisionLabel, current, want)
+		diff := NewDiff(testOrdinalAnnotation, testRevisionLabel, current, want)
 
 		require.Empty(t, diff.Creates())
 		require.Empty(t, diff.Deletes())
@@ -183,7 +183,7 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 			diffablePod(1, revision),
 		}
 
-		diff := NewOrdinalDiff(testOrdinalAnnotation, testRevisionLabel, current, want)
+		diff := NewDiff(testOrdinalAnnotation, testRevisionLabel, current, want)
 
 		require.Len(t, diff.Updates(), 1)
 		require.Equal(t, "pod-0", diff.Updates()[0].Name)

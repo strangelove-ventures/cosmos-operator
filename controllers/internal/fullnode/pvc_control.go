@@ -32,7 +32,7 @@ func NewPVCControl(client Client) PVCControl {
 	return PVCControl{
 		client: client,
 		diffFactory: func(ordinalAnnotationKey, revisionLabelKey string, current, want []*corev1.PersistentVolumeClaim) pvcDiffer {
-			return kube.NewOrdinalDiff(ordinalAnnotationKey, revisionLabelKey, current, want)
+			return kube.NewDiff(ordinalAnnotationKey, revisionLabelKey, current, want)
 		},
 	}
 }
