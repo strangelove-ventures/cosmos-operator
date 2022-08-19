@@ -250,6 +250,10 @@ type CosmosChainConfig struct {
 	// $CONFIG_DIR: The location of the config dir that houses the genesis file. Used for extracting from archives. The archive must have a single file called "genesis.json".
 	// +optional
 	GenesisScript *string `json:"genesisScript"`
+
+	// Skip x/crisis invariants check on startup.
+	// +optional
+	SkipInvariants bool `json:"skipInvariants"`
 }
 
 // CosmosTendermintConfig configures the tendermint config.toml.

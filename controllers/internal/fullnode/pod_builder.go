@@ -59,10 +59,12 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 			Containers: []corev1.Container{
 				{
 					Name:  crd.Name,
-					Image: "busybox:stable", // TODO: change me to tpl.Image
-					// TODO need binary name
-					Command:   []string{"/bin/sh"},
-					Args:      []string{"-c", `trap : TERM INT; sleep infinity & wait`},
+					Image: tpl.Image,
+					// The following is a useful hack if you need to inspect the PV.
+					//Command: []string{"/bin/sh"},
+					//Args:    []string{"-c", `trap : TERM INT; sleep infinity & wait`},
+					Command:   []string{crd.Spec.ChainConfig.Binary},
+					Args:      startCommandArgs(crd.Spec.ChainConfig),
 					Env:       envVars,
 					Ports:     fullNodePorts,
 					Resources: tpl.Resources,
@@ -73,6 +75,7 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 
 					ImagePullPolicy: tpl.ImagePullPolicy,
 					WorkingDir:      workDir,
+					SecurityContext: securityContext,
 				},
 			},
 		},
@@ -336,4 +339,12 @@ config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CON
 			SecurityContext: securityContext,
 		},
 	}
+}
+
+func startCommandArgs(cfg cosmosv1.CosmosChainConfig) []string {
+	args := []string{"start", "--home", chainHomeDir}
+	if cfg.SkipInvariants {
+		return append(args, "--x-crisis-skip-assert-invariants")
+	}
+	return args
 }
