@@ -294,7 +294,7 @@ echo "Initializing into tmp dir for downstream processing..."
 		},
 
 		{
-			Name:            "init-genesis",
+			Name:            "genesis-init",
 			Image:           infraToolImage,
 			Command:         []string{genesisCmd},
 			Args:            genesisArgs,
@@ -328,7 +328,7 @@ config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CON
 	if willRestoreFromSnapshot(crd) {
 		cmd, args := DownloadSnapshotCommand(crd.Spec.ChainConfig)
 		required = append(required, corev1.Container{
-			Name:            "restore-from-snapshot",
+			Name:            "snapshot-restore",
 			Image:           infraToolImage,
 			Command:         []string{cmd},
 			Args:            args,
