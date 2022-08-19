@@ -23,11 +23,17 @@ fi`
 
 		cmd, args := DownloadSnapshotCommand(cfg)
 		require.Equal(t, "sh", cmd)
+
+		require.Len(t, args, 4)
+
 		require.Equal(t, "-c", args[0])
 
 		script := args[1]
 		require.Contains(t, script, wantIfStatement)
-		require.Contains(t, script, `SNAPSHOT_URL="https://example.com/archive.tar"`)
+		require.Contains(t, script, `SNAPSHOT_URL`)
+
+		require.Equal(t, "-s", args[2])
+		require.Equal(t, testURL, args[3])
 	})
 
 	t.Run("snapshot script", func(t *testing.T) {
@@ -36,9 +42,13 @@ fi`
 		cfg.SnapshotScript = ptr("echo hello")
 
 		_, args := DownloadSnapshotCommand(cfg)
+		require.Len(t, args, 2)
+
+		require.Equal(t, "-c", args[0])
+
 		got := args[1]
 		require.Contains(t, got, wantIfStatement)
-		require.NotContains(t, got, testURL)
+		require.NotContains(t, got, "SNAPSHOT_URL")
 		require.Contains(t, got, "echo hello")
 	})
 

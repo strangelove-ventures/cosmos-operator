@@ -27,16 +27,15 @@ echo "$DATA_DIR initialized."
 
 // DownloadSnapshotCommand returns a command and args for downloading and restoring from a snapshot.
 func DownloadSnapshotCommand(cfg cosmosv1.CosmosChainConfig) (string, []string) {
-	var scriptBody string
+	args := []string{"-c"}
 	switch {
 	case cfg.SnapshotScript != nil:
-		scriptBody = *cfg.SnapshotScript
+		args = append(args, fmt.Sprintf(snapshotScriptWrapper, *cfg.SnapshotScript))
 	case cfg.SnapshotURL != nil:
-		scriptBody = fmt.Sprintf("SNAPSHOT_URL=%q\n%s", *cfg.SnapshotURL, scriptDownloadSnapshot)
+		args = append(args, fmt.Sprintf(snapshotScriptWrapper, scriptDownloadSnapshot), "-s", *cfg.SnapshotURL)
 	default:
 		panic(errors.New("attempted to restore from a snapshot but snapshots are not configured"))
 	}
 
-	script := fmt.Sprintf(snapshotScriptWrapper, scriptBody)
-	return "sh", []string{"-c", script}
+	return "sh", args
 }

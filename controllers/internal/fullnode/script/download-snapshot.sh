@@ -1,7 +1,8 @@
 set -eu
 
-# $SNAPSHOT_URL is injected.
 # $CHAIN_HOME already set via pod env vars.
+
+SNAPSHOT_URL="$1"
 
 echo "Downloading snapshot archive $SNAPSHOT_URL to $CHAIN_HOME..."
 
