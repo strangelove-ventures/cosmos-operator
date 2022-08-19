@@ -29,10 +29,10 @@ func NewConfigMapControl(client Client) ConfigMapControl {
 
 // Reconcile creates or updates configmaps containing items that are mounted into pods as files.
 // The ConfigMap is never deleted unless the CRD itself is deleted.
-func (cmc ConfigMapControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmosv1.CosmosFullNode) (bool, kube.ReconcileError) {
+func (cmc ConfigMapControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmosv1.CosmosFullNode) kube.ReconcileError {
 	want, err := cmc.build(crd)
 	if err != nil {
-		return false, kube.UnrecoverableError(err)
+		return kube.UnrecoverableError(err)
 	}
 
 	var (
@@ -45,7 +45,7 @@ func (cmc ConfigMapControl) Reconcile(ctx context.Context, log logr.Logger, crd 
 		return cmc.create(ctx, crd, want)
 	}
 	if err != nil {
-		return false, kube.TransientError(err)
+		return kube.TransientError(err)
 	}
 
 	if !reflect.DeepEqual(current.Labels, want.Labels) ||
@@ -53,19 +53,19 @@ func (cmc ConfigMapControl) Reconcile(ctx context.Context, log logr.Logger, crd 
 		!reflect.DeepEqual(current.BinaryData, want.BinaryData) {
 		log.Info("Updating ConfigMap", "configMapName", key.Name)
 		if err := cmc.client.Update(ctx, &want); err != nil {
-			return false, kube.TransientError(err)
+			return kube.TransientError(err)
 		}
 	}
 
-	return false, nil
+	return nil
 }
 
-func (cmc ConfigMapControl) create(ctx context.Context, crd *cosmosv1.CosmosFullNode, cm corev1.ConfigMap) (bool, kube.ReconcileError) {
+func (cmc ConfigMapControl) create(ctx context.Context, crd *cosmosv1.CosmosFullNode, cm corev1.ConfigMap) kube.ReconcileError {
 	if err := ctrl.SetControllerReference(crd, &cm, cmc.client.Scheme()); err != nil {
-		return true, kube.TransientError(fmt.Errorf("set controller reference on configmap %q: %w", cm.Name, err))
+		return kube.TransientError(fmt.Errorf("set controller reference on configmap %q: %w", cm.Name, err))
 	}
 	if err := cmc.client.Create(ctx, &cm); kube.IgnoreAlreadyExists(err) != nil {
-		return false, kube.TransientError(err)
+		return kube.TransientError(err)
 	}
-	return false, nil
+	return nil
 }
