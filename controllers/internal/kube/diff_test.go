@@ -26,7 +26,7 @@ func diffablePod(ordinal int, revision string) *corev1.Pod {
 	return p
 }
 
-func TestNewDiff(t *testing.T) {
+func TestNewOrdinalDiff(t *testing.T) {
 	t.Parallel()
 
 	const revision = "_revision_"
@@ -41,11 +41,11 @@ func TestNewDiff(t *testing.T) {
 		}
 
 		require.Panics(t, func() {
-			NewDiff(testOrdinalAnnotation, testRevisionLabel, dupeNames, resources)
+			NewOrdinalDiff(testOrdinalAnnotation, testRevisionLabel, dupeNames, resources)
 		})
 
 		require.Panics(t, func() {
-			NewDiff(testOrdinalAnnotation, testRevisionLabel, resources, dupeNames)
+			NewOrdinalDiff(testOrdinalAnnotation, testRevisionLabel, resources, dupeNames)
 		})
 	})
 
@@ -74,15 +74,29 @@ func TestNewDiff(t *testing.T) {
 			// A blank revision is ok for the exiting resources. Future proofs the unlikely event we change the revision label.
 			if tt.RevisionValue != "" {
 				require.Panics(t, func() {
-					NewDiff(testOrdinalAnnotation, testRevisionLabel, bad, good)
+					NewOrdinalDiff(testOrdinalAnnotation, testRevisionLabel, bad, good)
 				}, tt)
 			}
 
 			// Test the inverse.
 			require.Panics(t, func() {
-				NewDiff(testOrdinalAnnotation, testRevisionLabel, good, bad)
+				NewOrdinalDiff(testOrdinalAnnotation, testRevisionLabel, good, bad)
 			}, tt)
 		}
+	})
+}
+
+func TestNewDiff(t *testing.T) {
+	resources := []*corev1.Pod{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   "pod-0",
+				Labels: map[string]string{testRevisionLabel: "revision"},
+			},
+		},
+	}
+	require.NotPanics(t, func() {
+		NewDiff(testRevisionLabel, resources, resources)
 	})
 }
 
@@ -103,7 +117,7 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 			diffablePod(110, revision), // tests for numeric (not lexical) sorting
 		}
 
-		diff := NewDiff(testOrdinalAnnotation, testRevisionLabel, current, want)
+		diff := NewOrdinalDiff(testOrdinalAnnotation, testRevisionLabel, current, want)
 
 		require.Empty(t, diff.Deletes())
 		require.Empty(t, diff.Updates())
@@ -119,7 +133,7 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 			diffablePod(1, revision),
 		}
 
-		diff := NewDiff(testOrdinalAnnotation, testRevisionLabel, nil, want)
+		diff := NewOrdinalDiff(testOrdinalAnnotation, testRevisionLabel, nil, want)
 
 		require.Empty(t, diff.Deletes())
 		require.Empty(t, diff.Updates())
@@ -139,7 +153,7 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 			diffablePod(0, revision),
 		}
 
-		diff := NewDiff(testOrdinalAnnotation, testRevisionLabel, current, want)
+		diff := NewOrdinalDiff(testOrdinalAnnotation, testRevisionLabel, current, want)
 
 		require.Empty(t, diff.Updates())
 		require.Empty(t, diff.Creates())
@@ -150,18 +164,25 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 	})
 
 	t.Run("simple update", func(t *testing.T) {
-		// Purposefully unordered.
-		current := []*corev1.Pod{
-			diffablePod(22, revision), // tests for numeric (not lexical) sorting
-			diffablePod(2, revision),
-		}
+		pod1 := diffablePod(2, revision)
+		pod1.SetUID("uuid1")
+		pod1.SetResourceVersion("1")
+		pod1.SetGeneration(100)
+
+		pod2 := diffablePod(22, revision)
+		pod2.SetUID("uuid2")
+		pod2.SetResourceVersion("2")
+		pod2.SetGeneration(200)
+
+		// Purposefully unordered to test for numeric (vs lexical) sorting.
+		current := []*corev1.Pod{pod2, pod1}
 
 		want := []*corev1.Pod{
 			diffablePod(22, "_new_version_"),
 			diffablePod(2, "_new_version_"),
 		}
 
-		diff := NewDiff(testOrdinalAnnotation, testRevisionLabel, current, want)
+		diff := NewOrdinalDiff(testOrdinalAnnotation, testRevisionLabel, current, want)
 
 		require.Empty(t, diff.Creates())
 		require.Empty(t, diff.Deletes())
@@ -169,6 +190,11 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 		require.Len(t, diff.Updates(), 2)
 		require.Equal(t, diff.Updates()[0].Name, "pod-2")
 		require.Equal(t, diff.Updates()[1].Name, "pod-22")
+
+		gotPod := diff.Updates()[1]
+		require.Equal(t, "2", gotPod.GetResourceVersion())
+		require.EqualValues(t, "uuid2", gotPod.GetUID())
+		require.EqualValues(t, 200, gotPod.GetGeneration())
 	})
 
 	t.Run("combination", func(t *testing.T) {
@@ -183,7 +209,7 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 			diffablePod(1, revision),
 		}
 
-		diff := NewDiff(testOrdinalAnnotation, testRevisionLabel, current, want)
+		diff := NewOrdinalDiff(testOrdinalAnnotation, testRevisionLabel, current, want)
 
 		require.Len(t, diff.Updates(), 1)
 		require.Equal(t, "pod-0", diff.Updates()[0].Name)
@@ -194,5 +220,9 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 		require.Len(t, diff.Deletes(), 2)
 		require.Equal(t, diff.Deletes()[0].Name, "pod-3")
 		require.Equal(t, diff.Deletes()[1].Name, "pod-4")
+	})
+
+	t.Run("non-ordinal", func(t *testing.T) {
+		t.Fatal("TODO")
 	})
 }
