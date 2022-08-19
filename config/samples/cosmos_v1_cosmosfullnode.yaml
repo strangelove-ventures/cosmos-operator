@@ -5,7 +5,7 @@ metadata:
   # name should be the chain name
   name: cosmoshub
 spec:
-  replicas: 3
+  replicas: 2
   chain:
     network: mainnet
     chainID: cosmoshub-4
@@ -25,9 +25,9 @@ spec:
     image: "ghcr.io/strangelove-ventures/heighliner/gaia"
     resources:
       requests:
-        cpu: "1"
+        cpu: "0.5"
       limits:
-        cpu: "2"
+        cpu: "1"
   volumeClaimTemplate:
     storageClassName: "standard-rwo"
     resources:
