@@ -160,20 +160,20 @@ func (r *CosmosFullNodeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		kube.IndexOwner[*corev1.Service]("CosmosFullNode"),
 	)
 	if err != nil {
-		return fmt.Errorf("pvc index field %s: %w", controllerOwnerField, err)
+		return fmt.Errorf("service index field %s: %w", controllerOwnerField, err)
 	}
 
 	cbuilder := ctrl.NewControllerManagedBy(mgr).For(&cosmosv1.CosmosFullNode{})
 
 	// Watch for delete events for certain resources.
-	for _, kind := range []source.Kind{
+	for _, kind := range []*source.Kind{
 		{Type: &corev1.Pod{}},
 		{Type: &corev1.PersistentVolumeClaim{}},
 		{Type: &corev1.ConfigMap{}},
 		{Type: &corev1.Service{}},
 	} {
 		cbuilder.Watches(
-			&kind,
+			kind,
 			&handler.EnqueueRequestForOwner{OwnerType: &cosmosv1.CosmosFullNode{}, IsController: true},
 			builder.WithPredicates(&predicate.Funcs{
 				DeleteFunc: func(_ event.DeleteEvent) bool { return true },
