@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -209,20 +210,25 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 			diffablePod(1, revision),
 		}
 
-		diff := NewOrdinalDiff(testOrdinalAnnotation, testRevisionLabel, current, want)
+		for _, tt := range []struct {
+			TestName string
+			Diff     *Diff[*corev1.Pod]
+		}{
+			{"ordinal", NewOrdinalDiff(testOrdinalAnnotation, testRevisionLabel, current, want)},
+			{"non-ordinal", NewDiff(testRevisionLabel, current, want)},
+		} {
+			diff := tt.Diff
+			require.Len(t, diff.Updates(), 1, tt.TestName)
+			require.Equal(t, "pod-0", diff.Updates()[0].Name, tt.TestName)
 
-		require.Len(t, diff.Updates(), 1)
-		require.Equal(t, "pod-0", diff.Updates()[0].Name)
+			require.Len(t, diff.Creates(), 1, tt.TestName)
+			require.Equal(t, "pod-1", diff.Creates()[0].Name, tt.TestName)
 
-		require.Len(t, diff.Creates(), 1)
-		require.Equal(t, "pod-1", diff.Creates()[0].Name)
-
-		require.Len(t, diff.Deletes(), 2)
-		require.Equal(t, diff.Deletes()[0].Name, "pod-3")
-		require.Equal(t, diff.Deletes()[1].Name, "pod-4")
-	})
-
-	t.Run("non-ordinal", func(t *testing.T) {
-		t.Fatal("TODO")
+			deletes := lo.Map(diff.Deletes(), func(p *corev1.Pod, _ int) string {
+				return p.Name
+			})
+			require.Len(t, deletes, 2)
+			require.ElementsMatch(t, []string{"pod-3", "pod-4"}, deletes)
+		}
 	})
 }
