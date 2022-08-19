@@ -21,14 +21,14 @@ type svcDiffer interface {
 // ServiceControl creates or updates Services.
 type ServiceControl struct {
 	client      Client
-	diffFactory func(ordinalAnnotationKey, revisionLabelKey string, current, want []*corev1.Service) svcDiffer
+	diffFactory func(revisionLabelKey string, current, want []*corev1.Service) svcDiffer
 }
 
 func NewServiceControl(client Client) ServiceControl {
 	return ServiceControl{
 		client: client,
-		diffFactory: func(ordinalAnnotationKey, revisionLabelKey string, current, want []*corev1.Service) svcDiffer {
-			return kube.NewDiff(ordinalAnnotationKey, revisionLabelKey, current, want)
+		diffFactory: func(revisionLabelKey string, current, want []*corev1.Service) svcDiffer {
+			return kube.NewDiff(revisionLabelKey, current, want)
 		},
 	}
 }
@@ -53,7 +53,7 @@ func (sc ServiceControl) Reconcile(ctx context.Context, log logr.Logger, crd *co
 	var (
 		currentSvcs = ptrSlice(svcs.Items)
 		wantSvcs    = BuildServices(crd)
-		diff        = sc.diffFactory(kube.OrdinalAnnotation, kube.RevisionLabel, currentSvcs, wantSvcs)
+		diff        = sc.diffFactory(kube.RevisionLabel, currentSvcs, wantSvcs)
 	)
 
 	for _, svc := range diff.Creates() {

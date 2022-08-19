@@ -24,8 +24,9 @@ func BuildServices(crd *cosmosv1.CosmosFullNode) []*corev1.Service {
 		{
 			TypeMeta: metav1.TypeMeta{Kind: "Service", APIVersion: "v1"},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:   "p2p-" + appName(crd),
-				Labels: labels,
+				Name:      appName(crd) + "-p2p",
+				Namespace: crd.Namespace,
+				Labels:    labels,
 			},
 			Spec: corev1.ServiceSpec{
 				Ports: []corev1.ServicePort{
