@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
 	"github.com/stretchr/testify/require"
@@ -197,9 +198,7 @@ func TestPodBuilder(t *testing.T) {
 		require.Equal(t, container.Env[4].Value, "/home/operator/cosmos/data")
 		require.Equal(t, envVars, container.Env)
 
-		require.Greater(t, len(pod.Spec.InitContainers), 1)
-
-		require.Equal(t, len(pod.Spec.InitContainers), 4)
+		require.Len(t, lo.Map(pod.Spec.InitContainers, func(c corev1.Container, _ int) string { return c.Name }), 5)
 
 		chown := pod.Spec.InitContainers[0]
 		// Can't have security context for chown to succeed.
