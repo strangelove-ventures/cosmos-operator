@@ -198,7 +198,8 @@ spec:
                     type: string
                   network:
                     description: The network environment. Typically, mainnet, testnet,
-                      devnet, etc.
+                      devnet, etc. This field is immutable because it affects resource
+                      names.
                     minLength: 1
                     type: string
                   skipInvariants:

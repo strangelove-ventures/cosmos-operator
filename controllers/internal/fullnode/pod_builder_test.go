@@ -199,7 +199,7 @@ func TestPodBuilder(t *testing.T) {
 
 		require.Greater(t, len(pod.Spec.InitContainers), 1)
 
-		require.Equal(t, 5, len(pod.Spec.InitContainers))
+		require.Equal(t, len(pod.Spec.InitContainers), 4)
 
 		chown := pod.Spec.InitContainers[0]
 		// Can't have security context for chown to succeed.
