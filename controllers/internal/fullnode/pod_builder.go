@@ -265,6 +265,8 @@ var (
 func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Container {
 	tpl := crd.Spec.PodTemplate
 	binary := crd.Spec.ChainConfig.Binary
+	genesisCmd, genesisArgs := DownloadGenesisCommand(crd.Spec.ChainConfig)
+
 	required := []corev1.Container{
 		{
 			Name:    "chain-init",
@@ -294,8 +296,8 @@ echo "Initializing into tmp dir for downstream processing..."
 		{
 			Name:            "init-genesis",
 			Image:           infraToolImage,
-			Command:         []string{"sh"},
-			Args:            []string{"-c", GenesisScript(crd.Spec.ChainConfig)},
+			Command:         []string{genesisCmd},
+			Args:            genesisArgs,
 			Env:             envVars,
 			ImagePullPolicy: tpl.ImagePullPolicy,
 			WorkingDir:      workDir,

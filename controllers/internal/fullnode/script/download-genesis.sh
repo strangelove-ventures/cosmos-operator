@@ -1,7 +1,8 @@
 set -eu
 
-# $GENESIS_URL is injected.
 # $GENESIS_FILE and $CONFIG_DIR already set via pod env vars.
+
+GENESIS_URL="$1"
 
 echo "Downloading genesis file $GENESIS_URL to $GENESIS_FILE..."
 

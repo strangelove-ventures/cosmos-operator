@@ -24,20 +24,19 @@ fi
 echo "Genesis $GENESIS_FILE initialized."
 `
 
-// GenesisScript returns a proper genesis script for use in an init container.
+// DownloadGenesisCommand returns a proper genesis script for use in an init container.
 //
 // The general strategy is if the user does not configure an external genesis file, use the genesis from the <chain-binary> init command.
 // If the user supplies a custom script, we use that. Otherwise, we use attempt to download and extract the file.
-func GenesisScript(cfg cosmosv1.CosmosChainConfig) string {
-	var scriptBody string
+func DownloadGenesisCommand(cfg cosmosv1.CosmosChainConfig) (string, []string) {
+	args := []string{"-c"}
 	switch {
 	case cfg.GenesisScript != nil:
-		scriptBody = *cfg.GenesisScript
+		args = append(args, fmt.Sprintf(genesisScriptWrapper, *cfg.GenesisScript))
 	case cfg.GenesisURL != nil:
-		scriptBody = fmt.Sprintf("GENESIS_URL=%q\n%s", *cfg.GenesisURL, scriptDownloadGenesis)
+		args = append(args, fmt.Sprintf(genesisScriptWrapper, scriptDownloadGenesis), "-s", *cfg.GenesisURL)
 	default:
-		scriptBody = scriptUseInitGenesis
+		args = append(args, fmt.Sprintf(genesisScriptWrapper, scriptUseInitGenesis))
 	}
-
-	return fmt.Sprintf(genesisScriptWrapper, scriptBody)
+	return "sh", args
 }
