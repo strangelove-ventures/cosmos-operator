@@ -56,6 +56,13 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 			PriorityClassName:             tpl.PriorityClassName,
 			Priority:                      tpl.Priority,
 			ImagePullSecrets:              tpl.ImagePullSecrets,
+			SecurityContext: &corev1.PodSecurityContext{
+				RunAsUser:           ptr(int64(1025)),
+				RunAsGroup:          ptr(int64(1025)),
+				RunAsNonRoot:        ptr(true),
+				FSGroup:             ptr(int64(1025)),
+				FSGroupChangePolicy: ptr(corev1.FSGroupChangeOnRootMismatch),
+			},
 			Containers: []corev1.Container{
 				{
 					Name:  crd.Name,
@@ -75,7 +82,6 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 
 					ImagePullPolicy: tpl.ImagePullPolicy,
 					WorkingDir:      workDir,
-					SecurityContext: securityContext,
 				},
 			},
 		},
@@ -247,12 +253,6 @@ const (
 )
 
 var (
-	securityContext = &corev1.SecurityContext{
-		RunAsUser:                ptr(int64(1025)),
-		RunAsGroup:               ptr(int64(1025)),
-		RunAsNonRoot:             ptr(true),
-		AllowPrivilegeEscalation: ptr(false),
-	}
 	envVars = []corev1.EnvVar{
 		{Name: "HOME", Value: workDir},
 		{Name: "CHAIN_HOME", Value: chainHomeDir},
@@ -266,21 +266,6 @@ func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Conta
 	tpl := crd.Spec.PodTemplate
 	binary := crd.Spec.ChainConfig.Binary
 	required := []corev1.Container{
-		// Chown, so we have proper permissions.
-		{
-			Name:    "chown",
-			Image:   infraToolImage,
-			Command: []string{"sh"},
-			Args: []string{"-c", `
-set -e
-chown 1025:1025 "$HOME"
-`},
-			Env:             envVars,
-			ImagePullPolicy: tpl.ImagePullPolicy,
-			WorkingDir:      workDir,
-			SecurityContext: nil, // Purposefully nil for chown to succeed.
-		},
-
 		{
 			Name:    "chain-init",
 			Image:   tpl.Image,
@@ -304,7 +289,6 @@ echo "Initializing into tmp dir for downstream processing..."
 			Env:             envVars,
 			ImagePullPolicy: tpl.ImagePullPolicy,
 			WorkingDir:      workDir,
-			SecurityContext: securityContext,
 		},
 
 		{
@@ -315,7 +299,6 @@ echo "Initializing into tmp dir for downstream processing..."
 			Env:             envVars,
 			ImagePullPolicy: tpl.ImagePullPolicy,
 			WorkingDir:      workDir,
-			SecurityContext: securityContext,
 		},
 
 		{
@@ -337,7 +320,6 @@ config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CON
 			Env:             envVars,
 			ImagePullPolicy: tpl.ImagePullPolicy,
 			WorkingDir:      workDir,
-			SecurityContext: securityContext,
 		},
 	}
 
@@ -350,7 +332,6 @@ config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CON
 			Env:             envVars,
 			ImagePullPolicy: tpl.ImagePullPolicy,
 			WorkingDir:      workDir,
-			SecurityContext: securityContext,
 		})
 	}
 
