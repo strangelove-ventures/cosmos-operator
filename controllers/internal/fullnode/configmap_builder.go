@@ -48,7 +48,7 @@ func BuildConfigMap(crd *cosmosv1.CosmosFullNode) (corev1.ConfigMap, error) {
 
 type decodedToml = map[string]any
 
-//go:embed tendermint_default_config.toml
+//go:embed toml/tendermint_default_config.toml
 var defaultTendermintToml []byte
 
 func defaultTendermint() decodedToml {
@@ -59,7 +59,7 @@ func defaultTendermint() decodedToml {
 	return data
 }
 
-//go:embed app_default_config.toml
+//go:embed toml/app_default_config.toml
 var defaultAppToml []byte
 
 func defaultApp() decodedToml {

@@ -185,9 +185,15 @@ func TestPodBuilder(t *testing.T) {
 		require.Equal(t, container.Env[0].Value, "/home/operator")
 		require.Equal(t, container.Env[1].Name, "CHAIN_HOME")
 		require.Equal(t, container.Env[1].Value, "/home/operator/cosmos")
+		require.Equal(t, container.Env[2].Name, "GENESIS_FILE")
+		require.Equal(t, container.Env[2].Value, "/home/operator/cosmos/config/genesis.json")
+		require.Equal(t, container.Env[3].Name, "CONFIG_DIR")
+		require.Equal(t, container.Env[3].Value, "/home/operator/cosmos/config")
 		require.Equal(t, envVars, container.Env)
 
 		require.Greater(t, len(pod.Spec.InitContainers), 1)
+
+		require.Equal(t, len(pod.Spec.InitContainers), 4)
 
 		chown := pod.Spec.InitContainers[0]
 		// Can't have security context for chown to succeed.
@@ -212,7 +218,7 @@ func TestPodBuilder(t *testing.T) {
 		require.Contains(t, initCont.Args[1], `osmosisd init osmosis-mainnet-fullnode-6 --home "$CHAIN_HOME"`)
 		require.Contains(t, initCont.Args[1], `osmosisd init osmosis-mainnet-fullnode-6 --home "$HOME/.tmp"`)
 
-		mergeConfig := pod.Spec.InitContainers[2]
+		mergeConfig := pod.Spec.InitContainers[3]
 		// The order of config-merge arguments is important. Rightmost takes precedence.
 		require.Contains(t, mergeConfig.Args[1], `config-merge -f toml "$TMP_DIR/config.toml" "$OVERLAY_DIR/config-overlay.toml" > "$CONFIG_DIR/config.toml"`)
 		require.Contains(t, mergeConfig.Args[1], `config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CONFIG_DIR/app.toml`)

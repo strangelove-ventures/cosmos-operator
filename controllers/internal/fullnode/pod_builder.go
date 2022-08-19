@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"hash/fnv"
+	"path"
 	"sync"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
@@ -180,7 +181,7 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 	for i := range pod.Spec.InitContainers {
 		pod.Spec.InitContainers[i].VolumeMounts = append(mounts, []corev1.VolumeMount{
 			{Name: volTmp, MountPath: tmpDir},
-			{Name: volConfig, MountPath: configDir},
+			{Name: volConfig, MountPath: tmpConfigDir},
 		}...)
 	}
 	for i := range pod.Spec.Containers {
@@ -237,7 +238,7 @@ const (
 	workDir      = "/home/operator"
 	chainHomeDir = workDir + "/cosmos"
 	tmpDir       = workDir + "/.tmp"
-	configDir    = workDir + "/.config"
+	tmpConfigDir = workDir + "/.config"
 
 	infraToolImage = "ghcr.io/strangelove-ventures/infra-toolkit"
 )
@@ -252,6 +253,8 @@ var (
 	envVars = []corev1.EnvVar{
 		{Name: "HOME", Value: workDir},
 		{Name: "CHAIN_HOME", Value: chainHomeDir},
+		{Name: "GENESIS_FILE", Value: path.Join(chainHomeDir, "config", "genesis.json")},
+		{Name: "CONFIG_DIR", Value: path.Join(chainHomeDir, "config")},
 	}
 )
 
@@ -284,6 +287,8 @@ set -eu
 if [ ! -d "$CHAIN_HOME/data" ]; then
 	echo "Initializing chain..."
 	%s init %s --home "$CHAIN_HOME"
+	# Remove because downstream containers check the presence of this file.
+	rm "$GENESIS_FILE"
 else
 	echo "Skipping chain init; already initialized."
 fi
@@ -292,6 +297,17 @@ echo "Initializing into tmp dir for downstream processing..."
 %s init %s --home "$HOME/.tmp"
 `, binary, moniker, binary, moniker),
 			},
+			Env:             envVars,
+			ImagePullPolicy: tpl.ImagePullPolicy,
+			WorkingDir:      workDir,
+			SecurityContext: securityContext,
+		},
+
+		{
+			Name:            "init-genesis",
+			Image:           infraToolImage,
+			Command:         []string{"sh"},
+			Args:            []string{"-c", GenesisScript(crd.Spec.ChainConfig)},
 			Env:             envVars,
 			ImagePullPolicy: tpl.ImagePullPolicy,
 			WorkingDir:      workDir,
