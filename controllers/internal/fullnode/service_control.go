@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/go-logr/logr"
+	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
 	corev1 "k8s.io/api/core/v1"
@@ -33,14 +34,10 @@ func NewServiceControl(client Client) ServiceControl {
 	}
 }
 
-// ServiceReconcileResult contains data about Services.
-// TODO (nix - 8/22/22) Will be used to pass data downstream.
-type ServiceReconcileResult struct{}
-
 // Reconcile creates or updates services.
 // Services care never deleted unless the CRD itself is deleted.
-func (sc ServiceControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmosv1.CosmosFullNode) (ServiceReconcileResult, kube.ReconcileError) {
-	var result ServiceReconcileResult
+func (sc ServiceControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmosv1.CosmosFullNode) (ServiceResult, kube.ReconcileError) {
+	var result ServiceResult
 	var svcs corev1.ServiceList
 	if err := sc.client.List(ctx, &svcs,
 		client.InNamespace(crd.Namespace),
@@ -55,6 +52,8 @@ func (sc ServiceControl) Reconcile(ctx context.Context, log logr.Logger, crd *co
 		wantSvcs    = BuildServices(crd)
 		diff        = sc.diffFactory(kube.RevisionLabel, currentSvcs, wantSvcs)
 	)
+
+	updateP2PInfo(crd, currentSvcs, &result)
 
 	for _, svc := range diff.Creates() {
 		log.Info("Creating service", "svcName", svc.Name)
@@ -74,4 +73,33 @@ func (sc ServiceControl) Reconcile(ctx context.Context, log logr.Logger, crd *co
 	}
 
 	return result, nil
+}
+
+func updateP2PInfo(crd *cosmosv1.CosmosFullNode, current []*corev1.Service, result *ServiceResult) {
+	svc, ok := lo.Find(current, func(svc *corev1.Service) bool { return svc.Name == p2pServiceName(crd) })
+	if !ok {
+		return
+	}
+	ingress := svc.Status.LoadBalancer.Ingress
+	if len(ingress) == 0 {
+		return
+	}
+	result.P2PIPAddress = ingress[0].IP
+	result.P2PHostname = ingress[0].Hostname
+}
+
+// ServiceResult contains data about Services after reconciliation.
+type ServiceResult struct {
+	// The p2p IP address from a service. Mutually exclusive with P2PHostname.
+	P2PIPAddress string
+	// The p2p hostname from a service. Mutually exclusive with P2PIPAddress.
+	P2PHostname string
+}
+
+// P2PExternalAddress returns the IP or hostname for peers to connect through the public internet.
+func (result ServiceResult) P2PExternalAddress() string {
+	if result.P2PIPAddress != "" {
+		return result.P2PIPAddress
+	}
+	return result.P2PHostname
 }
