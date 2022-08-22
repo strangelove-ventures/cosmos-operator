@@ -28,6 +28,7 @@ type mockClient[T client.Object] struct {
 	LastPatch       client.Patch
 
 	LastUpdateObject T
+	UpdateCount      int
 }
 
 func (m *mockClient[T]) Get(ctx context.Context, key client.ObjectKey, obj client.Object) error {
@@ -63,6 +64,8 @@ func (m *mockClient[T]) List(ctx context.Context, list client.ObjectList, opts .
 		*ref = m.ObjectList.(corev1.PodList)
 	case *corev1.PersistentVolumeClaimList:
 		*ref = m.ObjectList.(corev1.PersistentVolumeClaimList)
+	case *corev1.ServiceList:
+		*ref = m.ObjectList.(corev1.ServiceList)
 	default:
 		panic(fmt.Errorf("unknown ObjectList type: %T", m.ObjectList))
 	}
@@ -91,6 +94,7 @@ func (m *mockClient[T]) Update(ctx context.Context, obj client.Object, opts ...c
 	if ctx == nil {
 		panic("nil context")
 	}
+	m.UpdateCount++
 	m.LastUpdateObject = obj.(T)
 	return nil
 }

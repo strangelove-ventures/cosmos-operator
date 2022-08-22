@@ -33,9 +33,9 @@ func NewServiceControl(client Client) ServiceControl {
 	}
 }
 
-type ServiceReconcileResult struct {
-	P2PIP string
-}
+// ServiceReconcileResult contains data about Services.
+// TODO (nix - 8/22/22) Will be used to pass data downstream.
+type ServiceReconcileResult struct{}
 
 // Reconcile creates or updates services.
 // Services care never deleted unless the CRD itself is deleted.

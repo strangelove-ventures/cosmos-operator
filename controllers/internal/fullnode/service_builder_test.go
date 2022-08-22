@@ -10,6 +10,8 @@ import (
 )
 
 func TestBuildServices(t *testing.T) {
+	t.Parallel()
+
 	crd := defaultCRD()
 	crd.Name = "terra"
 	crd.Namespace = "test"
