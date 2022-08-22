@@ -112,11 +112,11 @@ func TestServiceResult_P2PExternalAddress(t *testing.T) {
 	require.Zero(t, result.P2PExternalAddress())
 
 	result.P2PIPAddress = "1.2.3.4"
-	require.Equal(t, "1.2.3.4", result.P2PExternalAddress())
+	require.Equal(t, "1.2.3.4:26656", result.P2PExternalAddress())
 
 	result.P2PHostname = "test.com"
-	require.Equal(t, "1.2.3.4", result.P2PExternalAddress())
+	require.Equal(t, "1.2.3.4:26656", result.P2PExternalAddress())
 
 	result.P2PIPAddress = ""
-	require.Equal(t, "test.com", result.P2PExternalAddress())
+	require.Equal(t, "test.com:26656", result.P2PExternalAddress())
 }

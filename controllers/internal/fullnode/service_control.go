@@ -3,6 +3,8 @@ package fullnode
 import (
 	"context"
 	"fmt"
+	"net"
+	"strconv"
 
 	"github.com/go-logr/logr"
 	"github.com/samber/lo"
@@ -98,8 +100,15 @@ type ServiceResult struct {
 
 // P2PExternalAddress returns the IP or hostname for peers to connect through the public internet.
 func (result ServiceResult) P2PExternalAddress() string {
-	if result.P2PIPAddress != "" {
-		return result.P2PIPAddress
+	var host string
+	switch {
+	case result.P2PIPAddress != "":
+		host = result.P2PIPAddress
+	case result.P2PHostname != "":
+		host = result.P2PHostname
+	default:
+		return ""
 	}
-	return result.P2PHostname
+	port := strconv.Itoa(p2pPort)
+	return net.JoinHostPort(host, port)
 }
