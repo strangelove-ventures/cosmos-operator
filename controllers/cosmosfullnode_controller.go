@@ -99,6 +99,7 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return r.resultWithErr(err)
 	}
 
+	// Create or update Services.
 	_, err = r.serviceControl.Reconcile(ctx, logger, &crd)
 	if err != nil {
 		return r.resultWithErr(err)
