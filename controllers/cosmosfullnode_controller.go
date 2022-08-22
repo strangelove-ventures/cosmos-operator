@@ -126,7 +126,7 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	// Wait until LB has a public address.
 	if result.P2PExternalAddress() == "" {
 		logger.Info("P2P external address not available yet; requeueing")
-		return requeueResult, nil
+		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 	}
 
 	return finishResult, nil
