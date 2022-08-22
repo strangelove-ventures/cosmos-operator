@@ -26,6 +26,14 @@ var (
 	wantAppOverrides string
 )
 
+type mockExternalConfig struct {
+	P2PAddress string
+}
+
+func (m mockExternalConfig) P2PExternalAddress() string { return m.P2PAddress }
+
+var p2pConfig = mockExternalConfig{P2PAddress: "p2p-address"}
+
 func TestBuildConfigMap(t *testing.T) {
 	t.Parallel()
 
@@ -36,7 +44,7 @@ func TestBuildConfigMap(t *testing.T) {
 		crd.Spec.PodTemplate.Image = "agoric:v6.0.0"
 		crd.Spec.ChainConfig.Network = "testnet"
 
-		cm, err := BuildConfigMap(&crd)
+		cm, err := BuildConfigMap(&crd, mockExternalConfig{})
 		require.NoError(t, err)
 
 		require.Equal(t, "agoric-testnet-fullnode", cm.Name)
@@ -58,7 +66,7 @@ func TestBuildConfigMap(t *testing.T) {
 		crd.Name = strings.Repeat("chain", 300)
 		crd.Spec.ChainConfig.Network = strings.Repeat("network", 300)
 
-		cm, err := BuildConfigMap(&crd)
+		cm, err := BuildConfigMap(&crd, mockExternalConfig{})
 		require.NoError(t, err)
 
 		RequireValidMetadata(t, &cm)
@@ -80,7 +88,7 @@ func TestBuildConfigMap(t *testing.T) {
 			custom.Spec.ChainConfig.Tendermint.MaxInboundPeers = ptr(int32(5))
 			custom.Spec.ChainConfig.Tendermint.MaxOutboundPeers = ptr(int32(15))
 
-			cm, err := BuildConfigMap(custom)
+			cm, err := BuildConfigMap(custom, p2pConfig)
 			require.NoError(t, err)
 
 			require.NotEmpty(t, cm.Data)
@@ -100,7 +108,7 @@ func TestBuildConfigMap(t *testing.T) {
 		})
 
 		t.Run("defaults", func(t *testing.T) {
-			cm, err := BuildConfigMap(&crd)
+			cm, err := BuildConfigMap(&crd, mockExternalConfig{})
 			require.NoError(t, err)
 
 			var (
@@ -124,6 +132,7 @@ log_format = "json"
 new_base = "new base value"
 
 [p2p]
+external_address = "override.example.com"
 seeds = "override@seed"
 new_field = "p2p"
 
@@ -137,7 +146,7 @@ test = "value"
 indexer = "null"
 `)
 
-			cm, err := BuildConfigMap(overrides)
+			cm, err := BuildConfigMap(overrides, p2pConfig)
 			require.NoError(t, err)
 
 			var (
@@ -156,7 +165,7 @@ indexer = "null"
 		t.Run("invalid toml", func(t *testing.T) {
 			malformed := crd.DeepCopy()
 			malformed.Spec.ChainConfig.Tendermint.TomlOverrides = ptr(`invalid_toml = should be invalid`)
-			_, err := BuildConfigMap(malformed)
+			_, err := BuildConfigMap(malformed, mockExternalConfig{})
 
 			require.Error(t, err)
 			require.Contains(t, err.Error(), "invalid toml in tendermint overrides")
@@ -182,7 +191,7 @@ indexer = "null"
 				KeepRecent: ptr(uint32(444)),
 			}
 
-			cm, err := BuildConfigMap(custom)
+			cm, err := BuildConfigMap(custom, mockExternalConfig{})
 			require.NoError(t, err)
 
 			require.NotEmpty(t, cm.Data)
@@ -202,7 +211,7 @@ indexer = "null"
 		})
 
 		t.Run("defaults", func(t *testing.T) {
-			cm, err := BuildConfigMap(&crd)
+			cm, err := BuildConfigMap(&crd, mockExternalConfig{})
 			require.NoError(t, err)
 
 			var (
@@ -229,7 +238,7 @@ new-base = "new base value"
 enable = false
 new-field = "test"
 `)
-			cm, err := BuildConfigMap(overrides)
+			cm, err := BuildConfigMap(overrides, mockExternalConfig{})
 			require.NoError(t, err)
 
 			var (
@@ -248,7 +257,7 @@ new-field = "test"
 		t.Run("invalid toml", func(t *testing.T) {
 			malformed := crd.DeepCopy()
 			malformed.Spec.ChainConfig.App.TomlOverrides = ptr(`invalid_toml = should be invalid`)
-			_, err := BuildConfigMap(malformed)
+			_, err := BuildConfigMap(malformed, mockExternalConfig{})
 
 			require.Error(t, err)
 			require.Contains(t, err.Error(), "invalid toml in app overrides")

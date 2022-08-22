@@ -2,7 +2,6 @@ log_format = "plain"
 log_level = "info"
 
 [p2p]
-
 laddr = "tcp://0.0.0.0:26656"
 persistent_peers = "peer1@1.2.2.2:789,peer2@2.2.2.2:789,peer3@3.2.2.2:789"
 seeds = "seed1@1.1.1.1:456,seed2@1.1.1.1:456"

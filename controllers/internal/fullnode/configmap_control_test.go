@@ -26,7 +26,7 @@ func TestConfigMapControl_Reconcile(t *testing.T) {
 		crd.Name = "stargaze"
 		crd.Spec.ChainConfig.Network = "testnet"
 
-		err := control.Reconcile(ctx, nopLogger, &crd)
+		err := control.Reconcile(ctx, nopLogger, &crd, mockExternalConfig{})
 		require.NoError(t, err)
 
 		require.NotNil(t, mClient.LastCreateObject)
@@ -47,7 +47,7 @@ func TestConfigMapControl_Reconcile(t *testing.T) {
 		crd.Name = "stargaze"
 		crd.Spec.ChainConfig.Network = "testnet"
 
-		err := control.Reconcile(ctx, nopLogger, &crd)
+		err := control.Reconcile(ctx, nopLogger, &crd, mockExternalConfig{})
 		require.NoError(t, err)
 
 		require.Nil(t, mClient.LastCreateObject)
@@ -63,12 +63,12 @@ func TestConfigMapControl_Reconcile(t *testing.T) {
 			Data:       map[string]string{"test": "value", "another": "value"},
 		}
 		mClient.Object = cm
-		control.build = func(crd *cosmosv1.CosmosFullNode) (corev1.ConfigMap, error) {
+		control.build = func(crd *cosmosv1.CosmosFullNode, _ ExternalConfig) (corev1.ConfigMap, error) {
 			return *cm.DeepCopy(), nil
 		}
 
 		crd := defaultCRD()
-		err := control.Reconcile(ctx, nopLogger, &crd)
+		err := control.Reconcile(ctx, nopLogger, &crd, mockExternalConfig{})
 		require.NoError(t, err)
 
 		require.Nil(t, mClient.LastCreateObject)
@@ -78,12 +78,12 @@ func TestConfigMapControl_Reconcile(t *testing.T) {
 	t.Run("build error", func(t *testing.T) {
 		var mClient configClient
 		control := NewConfigMapControl(&mClient)
-		control.build = func(crd *cosmosv1.CosmosFullNode) (corev1.ConfigMap, error) {
+		control.build = func(crd *cosmosv1.CosmosFullNode, _ ExternalConfig) (corev1.ConfigMap, error) {
 			return corev1.ConfigMap{}, errors.New("boom")
 		}
 
 		crd := defaultCRD()
-		err := control.Reconcile(ctx, nopLogger, &crd)
+		err := control.Reconcile(ctx, nopLogger, &crd, mockExternalConfig{})
 
 		require.Error(t, err)
 		require.EqualError(t, err, "unrecoverable error: boom")

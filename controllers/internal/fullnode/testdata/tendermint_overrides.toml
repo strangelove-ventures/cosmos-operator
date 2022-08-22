@@ -3,7 +3,7 @@ log_level = "info"
 new_base = "new base value"
 
 [p2p]
-
+external_address = "override.example.com"
 laddr = "tcp://0.0.0.0:26656"
 persistent_peers = "peer1@1.2.2.2:789,peer2@2.2.2.2:789,peer3@3.2.2.2:789"
 seeds = "override@seed"
