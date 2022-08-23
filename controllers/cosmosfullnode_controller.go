@@ -90,17 +90,17 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return finishResult, client.IgnoreNotFound(err)
 	}
 
-	// Order of operations is important here for deletion. PVCs won't delete unless pods are deleted first.
+	// Order of operations is important. E.g. PVCs won't delete unless pods are deleted first.
 	// K8S can create pods first even if the PVC isn't ready. Pods won't be in a ready state until PVC is bound.
 
-	// Create or update ConfigMap.
-	err := r.configMapControl.Reconcile(ctx, logger, &crd)
+	// Create or update Services.
+	result, err := r.serviceControl.Reconcile(ctx, logger, &crd)
 	if err != nil {
 		return r.resultWithErr(err)
 	}
 
-	// Create or update Services.
-	_, err = r.serviceControl.Reconcile(ctx, logger, &crd)
+	// Create or update ConfigMap.
+	err = r.configMapControl.Reconcile(ctx, logger, &crd, result)
 	if err != nil {
 		return r.resultWithErr(err)
 	}
@@ -121,6 +121,12 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 	if requeue {
 		return requeueResult, nil
+	}
+
+	// Wait until LB has a public address.
+	if result.P2PExternalAddress() == "" {
+		logger.Info("P2P external address not available yet; requeueing")
+		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 	}
 
 	return finishResult, nil

@@ -18,9 +18,14 @@ const (
 	appOverlayFile    = "app-overlay.toml"
 )
 
+// ExternalConfig is configuration pulled from kubernetes or other sources.
+type ExternalConfig interface {
+	P2PExternalAddress() string
+}
+
 // BuildConfigMap creates a ConfigMap with configuration to be mounted as files into containers.
 // Currently, the config.toml (for Tendermint) and app.toml (for the Cosmos SDK).
-func BuildConfigMap(crd *cosmosv1.CosmosFullNode) (corev1.ConfigMap, error) {
+func BuildConfigMap(crd *cosmosv1.CosmosFullNode, cfg ExternalConfig) (corev1.ConfigMap, error) {
 	cm := corev1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{Kind: "ConfigMap", APIVersion: "v1"},
 		ObjectMeta: metav1.ObjectMeta{
@@ -34,7 +39,7 @@ func BuildConfigMap(crd *cosmosv1.CosmosFullNode) (corev1.ConfigMap, error) {
 		data = make(map[string]string)
 		buf  = new(bytes.Buffer)
 	)
-	if err := addTendermintToml(buf, data, crd.Spec.ChainConfig); err != nil {
+	if err := addTendermintToml(buf, data, crd.Spec.ChainConfig, cfg); err != nil {
 		return cm, err
 	}
 	buf.Reset()
@@ -70,8 +75,9 @@ func defaultApp() decodedToml {
 	return data
 }
 
-func addTendermintToml(buf *bytes.Buffer, cmData map[string]string, spec cosmosv1.CosmosChainConfig) error {
+func addTendermintToml(buf *bytes.Buffer, cmData map[string]string, spec cosmosv1.CosmosChainConfig, cfg ExternalConfig) error {
 	base := make(decodedToml)
+
 	if v := spec.LogLevel; v != nil {
 		base["log_level"] = v
 	}
@@ -79,12 +85,30 @@ func addTendermintToml(buf *bytes.Buffer, cmData map[string]string, spec cosmosv
 		base["log_format"] = v
 	}
 
-	var (
-		tendermint = spec.Tendermint
-		dst        = defaultTendermint()
-	)
+	tendermint := spec.Tendermint
+	p2p := decodedToml{
+		"persistent_peers": tendermint.PersistentPeers,
+		"seeds":            tendermint.Seeds,
+	}
+	if v := tendermint.MaxInboundPeers; v != nil {
+		p2p["max_num_inbound_peers"] = tendermint.MaxInboundPeers
+	}
+	if v := tendermint.MaxOutboundPeers; v != nil {
+		p2p["max_num_outbound_peers"] = tendermint.MaxOutboundPeers
+	}
+	if v := cfg.P2PExternalAddress(); v != "" {
+		p2p["external_address"] = v
+	}
 
-	mergemap.Merge(dst, configuredTendermint(base, tendermint))
+	base["p2p"] = p2p
+
+	if v := tendermint.CorsAllowedOrigins; v != nil {
+		base["rpc"] = decodedToml{"cors_allowed_origins": v}
+	}
+
+	dst := defaultTendermint()
+
+	mergemap.Merge(dst, base)
 
 	if overrides := tendermint.TomlOverrides; overrides != nil {
 		var decoded decodedToml
@@ -100,26 +124,6 @@ func addTendermintToml(buf *bytes.Buffer, cmData map[string]string, spec cosmosv
 	}
 	cmData[configOverlayFile] = buf.String()
 	return nil
-}
-
-func configuredTendermint(base decodedToml, tendermint cosmosv1.CosmosTendermintConfig) decodedToml {
-	p2p := decodedToml{
-		"persistent_peers": tendermint.PersistentPeers,
-		"seeds":            tendermint.Seeds,
-	}
-	if v := tendermint.MaxInboundPeers; v != nil {
-		p2p["max_num_inbound_peers"] = tendermint.MaxInboundPeers
-	}
-	if v := tendermint.MaxOutboundPeers; v != nil {
-		p2p["max_num_outbound_peers"] = tendermint.MaxOutboundPeers
-	}
-	base["p2p"] = p2p
-
-	if v := tendermint.CorsAllowedOrigins; v != nil {
-		base["rpc"] = decodedToml{"cors_allowed_origins": v}
-	}
-
-	return base
 }
 
 func addAppToml(buf *bytes.Buffer, cmData map[string]string, app cosmosv1.CosmosAppConfig) error {

@@ -2,7 +2,7 @@ log_format = "json"
 log_level = "debug"
 
 [p2p]
-
+external_address = "p2p-address"
 laddr = "tcp://0.0.0.0:26656"
 persistent_peers = "peer1@1.2.2.2:789,peer2@2.2.2.2:789,peer3@3.2.2.2:789"
 seeds = "seed1@1.1.1.1:456,seed2@1.1.1.1:456"

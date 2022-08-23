@@ -51,19 +51,29 @@ func TestServiceControl_Reconcile(t *testing.T) {
 		crd.Namespace = "test"
 
 		var stubSvc corev1.Service
-		stubSvc.Name = "stub-found"
+		stubSvc.Name = "osmosis-mainnet-fullnode-p2p"
+		stubSvc.Status = corev1.ServiceStatus{
+			LoadBalancer: corev1.LoadBalancerStatus{
+				Ingress: []corev1.LoadBalancerIngress{
+					{IP: "4.5.6.7", Hostname: "lb.example.com"},
+				},
+			},
+		}
 		var mClient mockSvcClient
-		mClient.ObjectList = corev1.ServiceList{Items: []corev1.Service{stubSvc}}
+		mClient.ObjectList = corev1.ServiceList{Items: []corev1.Service{stubSvc, {}, {}}}
 
 		control := NewServiceControl(&mClient)
 		control.diffFactory = func(revisionLabelKey string, current, want []*corev1.Service) svcDiffer {
-			require.Len(t, current, 1)
+			require.Len(t, current, 3)
 			var svc corev1.Service
 			svc.Name = "stub-update"
 			return mockSvcDiffer{StubUpdates: []*corev1.Service{&svc}}
 		}
-		_, err := control.Reconcile(ctx, nopLogger, &crd)
+		result, err := control.Reconcile(ctx, nopLogger, &crd)
 		require.NoError(t, err)
+
+		require.Equal(t, "4.5.6.7", result.P2PIPAddress)
+		require.Equal(t, "lb.example.com", result.P2PHostname)
 
 		require.Zero(t, mClient.CreateCount)
 		require.Equal(t, mClient.UpdateCount, 1)
@@ -95,4 +105,18 @@ func TestServiceControl_Reconcile(t *testing.T) {
 		require.Equal(t, "app.kubernetes.io/name=osmosis-mainnet-fullnode", listOpt.LabelSelector.String())
 		require.Equal(t, ".metadata.controller=osmosis", listOpt.FieldSelector.String())
 	})
+}
+
+func TestServiceResult_P2PExternalAddress(t *testing.T) {
+	var result ServiceResult
+	require.Zero(t, result.P2PExternalAddress())
+
+	result.P2PIPAddress = "1.2.3.4"
+	require.Equal(t, "1.2.3.4:26656", result.P2PExternalAddress())
+
+	result.P2PHostname = "test.com"
+	require.Equal(t, "1.2.3.4:26656", result.P2PExternalAddress())
+
+	result.P2PIPAddress = ""
+	require.Equal(t, "test.com:26656", result.P2PExternalAddress())
 }

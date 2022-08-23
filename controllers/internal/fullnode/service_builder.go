@@ -24,7 +24,7 @@ func BuildServices(crd *cosmosv1.CosmosFullNode) []*corev1.Service {
 		{
 			TypeMeta: metav1.TypeMeta{Kind: "Service", APIVersion: "v1"},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      appName(crd) + "-p2p",
+				Name:      p2pServiceName(crd),
 				Namespace: crd.Namespace,
 				Labels:    labels,
 			},
@@ -42,6 +42,10 @@ func BuildServices(crd *cosmosv1.CosmosFullNode) []*corev1.Service {
 			},
 		},
 	}
+}
+
+func p2pServiceName(crd *cosmosv1.CosmosFullNode) string {
+	return appName(crd) + "-p2p"
 }
 
 // only requires update if the labels change
