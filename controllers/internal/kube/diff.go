@@ -18,11 +18,12 @@ type ordinalSet[T Resource] map[string]ordinalResource[T]
 type Diff[T Resource] struct {
 	ordinalAnnotationKey string
 	revisionLabelKey     string
+	nonOrdinal           bool
 
 	creates, deletes, updates []T
 }
 
-// NewDiff creates a valid Diff.
+// NewOrdinalDiff creates a valid Diff where ordinal positioning is required.
 // It computes differences between the "current" state needed to reconcile to the "want" state.
 //
 // Diff expects resources with annotations denoting ordinal positioning similar to a StatefulSet. E.g. pod-0, pod-1, pod-2.
@@ -40,10 +41,21 @@ type Diff[T Resource] struct {
 //
 // There are several O(N) or O(2N) operations where N = number of resources.
 // However, we expect N to be small.
-func NewDiff[T Resource](ordinalAnnotationKey string, revisionLabelKey string, current, want []T) *Diff[T] {
+func NewOrdinalDiff[T Resource](ordinalAnnotationKey string, revisionLabelKey string, current, want []T) *Diff[T] {
+	return newDiff(ordinalAnnotationKey, revisionLabelKey, current, want, false)
+}
+
+// NewDiff creates a valid Diff where ordinal positioning is not required.
+// See NewOrdinalDiff for further details, ignoring requirements for ordinal annotations.
+func NewDiff[T Resource](revisionLabelKey string, current, want []T) *Diff[T] {
+	return newDiff("", revisionLabelKey, current, want, true)
+}
+
+func newDiff[T Resource](ordinalAnnotationKey string, revisionLabelKey string, current, want []T, nonOrdinal bool) *Diff[T] {
 	d := &Diff[T]{
 		ordinalAnnotationKey: ordinalAnnotationKey,
 		revisionLabelKey:     revisionLabelKey,
+		nonOrdinal:           nonOrdinal,
 	}
 
 	currentSet := d.toSet(current)
@@ -109,6 +121,9 @@ func (diff *Diff[T]) computeUpdates(current, want ordinalSet[T]) []T {
 		if !ok {
 			continue
 		}
+		target.Resource.SetResourceVersion(existing.Resource.GetResourceVersion())
+		target.Resource.SetUID(existing.Resource.GetUID())
+		target.Resource.SetGeneration(existing.Resource.GetGeneration())
 		var (
 			oldRev = existing.Resource.GetLabels()[diff.revisionLabelKey]
 			newRev = target.Resource.GetLabels()[diff.revisionLabelKey]
@@ -135,7 +150,10 @@ func (diff *Diff[T]) toSet(list []T) ordinalSet[T] {
 	m := make(map[string]ordinalResource[T])
 	for i := range list {
 		r := list[i]
-		n := MustToInt(r.GetAnnotations()[diff.ordinalAnnotationKey])
+		var n int64
+		if !diff.nonOrdinal {
+			n = MustToInt(r.GetAnnotations()[diff.ordinalAnnotationKey])
+		}
 		m[r.GetName()] = ordinalResource[T]{
 			Resource: r,
 			Ordinal:  n,

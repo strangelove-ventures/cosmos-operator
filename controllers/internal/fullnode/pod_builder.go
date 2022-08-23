@@ -205,44 +205,6 @@ func podName(crd *cosmosv1.CosmosFullNode, ordinal int32) string {
 	return kube.ToLabelValue(fmt.Sprintf("%s-%d", appName(crd), ordinal))
 }
 
-var fullNodePorts = []corev1.ContainerPort{
-	{
-		Name:          "api",
-		Protocol:      corev1.ProtocolTCP,
-		ContainerPort: 1317,
-	},
-	{
-		Name:          "rosetta",
-		Protocol:      corev1.ProtocolTCP,
-		ContainerPort: 8080,
-	},
-	{
-		Name:          "grpc",
-		Protocol:      corev1.ProtocolTCP,
-		ContainerPort: 9090,
-	},
-	{
-		Name:          "prometheus",
-		Protocol:      corev1.ProtocolTCP,
-		ContainerPort: 26660,
-	},
-	{
-		Name:          "p2p",
-		Protocol:      corev1.ProtocolTCP,
-		ContainerPort: 26656,
-	},
-	{
-		Name:          "rpc",
-		Protocol:      corev1.ProtocolTCP,
-		ContainerPort: 26657,
-	},
-	{
-		Name:          "web",
-		Protocol:      corev1.ProtocolTCP,
-		ContainerPort: 9091,
-	},
-}
-
 const (
 	workDir      = "/home/operator"
 	chainHomeDir = workDir + "/cosmos"

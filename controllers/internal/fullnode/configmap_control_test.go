@@ -26,9 +26,8 @@ func TestConfigMapControl_Reconcile(t *testing.T) {
 		crd.Name = "stargaze"
 		crd.Spec.ChainConfig.Network = "testnet"
 
-		requeue, err := control.Reconcile(ctx, nopLogger, &crd)
+		err := control.Reconcile(ctx, nopLogger, &crd)
 		require.NoError(t, err)
-		require.False(t, requeue)
 
 		require.NotNil(t, mClient.LastCreateObject)
 		require.Equal(t, "stargaze-testnet-fullnode", mClient.LastCreateObject.GetName())
@@ -48,9 +47,8 @@ func TestConfigMapControl_Reconcile(t *testing.T) {
 		crd.Name = "stargaze"
 		crd.Spec.ChainConfig.Network = "testnet"
 
-		requeue, err := control.Reconcile(ctx, nopLogger, &crd)
+		err := control.Reconcile(ctx, nopLogger, &crd)
 		require.NoError(t, err)
-		require.False(t, requeue)
 
 		require.Nil(t, mClient.LastCreateObject)
 		require.NotNil(t, mClient.LastUpdateObject)
@@ -70,9 +68,8 @@ func TestConfigMapControl_Reconcile(t *testing.T) {
 		}
 
 		crd := defaultCRD()
-		requeue, err := control.Reconcile(ctx, nopLogger, &crd)
+		err := control.Reconcile(ctx, nopLogger, &crd)
 		require.NoError(t, err)
-		require.False(t, requeue)
 
 		require.Nil(t, mClient.LastCreateObject)
 		require.Nil(t, mClient.LastUpdateObject)
@@ -86,7 +83,7 @@ func TestConfigMapControl_Reconcile(t *testing.T) {
 		}
 
 		crd := defaultCRD()
-		_, err := control.Reconcile(ctx, nopLogger, &crd)
+		err := control.Reconcile(ctx, nopLogger, &crd)
 
 		require.Error(t, err)
 		require.EqualError(t, err, "unrecoverable error: boom")

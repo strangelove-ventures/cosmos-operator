@@ -46,6 +46,7 @@ type CosmosFullNodeReconciler struct {
 	configMapControl fullnode.ConfigMapControl
 	podControl       fullnode.PodControl
 	pvcControl       fullnode.PVCControl
+	serviceControl   fullnode.ServiceControl
 }
 
 // NewFullNode returns a valid CosmosFullNode controller.
@@ -55,6 +56,7 @@ func NewFullNode(client client.Client) *CosmosFullNodeReconciler {
 		configMapControl: fullnode.NewConfigMapControl(client),
 		podControl:       fullnode.NewPodControl(client),
 		pvcControl:       fullnode.NewPVCControl(client),
+		serviceControl:   fullnode.NewServiceControl(client),
 	}
 }
 
@@ -92,16 +94,19 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	// K8S can create pods first even if the PVC isn't ready. Pods won't be in a ready state until PVC is bound.
 
 	// Create or update ConfigMap.
-	requeue, err := r.configMapControl.Reconcile(ctx, logger, &crd)
+	err := r.configMapControl.Reconcile(ctx, logger, &crd)
 	if err != nil {
 		return r.resultWithErr(err)
 	}
-	if requeue {
-		return requeueResult, nil
+
+	// Create or update Services.
+	_, err = r.serviceControl.Reconcile(ctx, logger, &crd)
+	if err != nil {
+		return r.resultWithErr(err)
 	}
 
 	// Reconcile pods.
-	requeue, err = r.podControl.Reconcile(ctx, logger, &crd)
+	requeue, err := r.podControl.Reconcile(ctx, logger, &crd)
 	if err != nil {
 		return r.resultWithErr(err)
 	}
@@ -152,25 +157,35 @@ func (r *CosmosFullNodeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return fmt.Errorf("pvc index field %s: %w", controllerOwnerField, err)
 	}
 
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&cosmosv1.CosmosFullNode{}).
-		// Watch some pod events to queue requests for pods owned by CosmosFullNode controller.
-		Watches(
-			&source.Kind{Type: &corev1.Pod{}},
+	// Index Services.
+	err = mgr.GetFieldIndexer().IndexField(
+		context.Background(),
+		&corev1.Service{},
+		controllerOwnerField,
+		kube.IndexOwner[*corev1.Service]("CosmosFullNode"),
+	)
+	if err != nil {
+		return fmt.Errorf("service index field %s: %w", controllerOwnerField, err)
+	}
+
+	cbuilder := ctrl.NewControllerManagedBy(mgr).For(&cosmosv1.CosmosFullNode{})
+
+	// Watch for delete events for certain resources.
+	for _, kind := range []*source.Kind{
+		{Type: &corev1.Pod{}},
+		{Type: &corev1.PersistentVolumeClaim{}},
+		{Type: &corev1.ConfigMap{}},
+		{Type: &corev1.Service{}},
+	} {
+		cbuilder.Watches(
+			kind,
 			&handler.EnqueueRequestForOwner{OwnerType: &cosmosv1.CosmosFullNode{}, IsController: true},
 			builder.WithPredicates(&predicate.Funcs{
 				DeleteFunc: func(_ event.DeleteEvent) bool { return true },
 			},
 			),
-		).
-		// Watch some pvc events to queue requests for pvcs owned by CosmosFullNode controller.
-		Watches(
-			&source.Kind{Type: &corev1.PersistentVolumeClaim{}},
-			&handler.EnqueueRequestForOwner{OwnerType: &cosmosv1.CosmosFullNode{}, IsController: true},
-			builder.WithPredicates(&predicate.Funcs{
-				DeleteFunc: func(_ event.DeleteEvent) bool { return true },
-			},
-			),
-		).
-		Complete(r)
+		)
+	}
+
+	return cbuilder.Complete(r)
 }
