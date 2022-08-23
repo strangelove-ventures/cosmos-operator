@@ -32,6 +32,7 @@ func BuildServices(crd *cosmosv1.CosmosFullNode) []*corev1.Service {
 		labels := defaultLabels(crd,
 			kube.RevisionLabel, serviceRevisionHash(crd),
 			kube.InstanceLabel, instanceName(crd, i),
+			kube.ComponentLabel, "p2p",
 		)
 		p2ps[i] = &corev1.Service{
 			TypeMeta: metav1.TypeMeta{Kind: "Service", APIVersion: "v1"},

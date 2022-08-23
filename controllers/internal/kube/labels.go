@@ -14,6 +14,7 @@ const (
 	InstanceLabel   = "app.kubernetes.io/instance"
 	NameLabel       = "app.kubernetes.io/name"
 	VersionLabel    = "app.kubernetes.io/version"
+	ComponentLabel  = "app.kubernetes.io/component"
 
 	// RevisionLabel denotes the resource's revision, typically a hex-encoded hash. Used to detect resource changes for updates.
 	RevisionLabel = "app.kubernetes.io/revision"

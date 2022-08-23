@@ -34,6 +34,7 @@ func TestBuildServices(t *testing.T) {
 		wantLabels := map[string]string{
 			"app.kubernetes.io/created-by": "cosmosfullnode",
 			"app.kubernetes.io/name":       "terra-testnet-fullnode",
+			"app.kubernetes.io/component":  "p2p",
 			"app.kubernetes.io/version":    "v6.0.0",
 			"app.kubernetes.io/instance":   "terra-testnet-fullnode-0",
 			"cosmos.strange.love/network":  "testnet",
