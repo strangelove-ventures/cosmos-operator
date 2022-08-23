@@ -94,13 +94,17 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	// K8S can create pods first even if the PVC isn't ready. Pods won't be in a ready state until PVC is bound.
 
 	// Create or update Services.
-	result, err := r.serviceControl.Reconcile(ctx, logger, &crd)
+	err := r.serviceControl.Reconcile(ctx, logger, &crd)
 	if err != nil {
 		return r.resultWithErr(err)
 	}
 
 	// Create or update ConfigMap.
-	err = r.configMapControl.Reconcile(ctx, logger, &crd, result)
+	p2pAddresses, err := fullnode.CollectP2PAddresses(ctx, &crd, r)
+	if err != nil {
+		return r.resultWithErr(err)
+	}
+	err = r.configMapControl.Reconcile(ctx, logger, &crd, p2pAddresses)
 	if err != nil {
 		return r.resultWithErr(err)
 	}
@@ -123,9 +127,10 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return requeueResult, nil
 	}
 
-	// Wait until LB has a public address.
-	if result.P2PExternalAddress() == "" {
-		logger.Info("P2P external address not available yet; requeueing")
+	// Check final state and requeue if necessary.
+	if p2pAddresses.Incomplete() {
+		logger.Info("Requeueing due to incomplete p2p external addresses")
+		// Allow more time to requeue while p2p services create their load balancers.
 		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 	}
 
