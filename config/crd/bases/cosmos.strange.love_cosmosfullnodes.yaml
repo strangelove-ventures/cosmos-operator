@@ -191,10 +191,21 @@ spec:
                     type: string
                   logFormat:
                     description: One of plain or json. If not set, defaults to plain.
+                    enum:
+                    - plain
+                    - json
                     type: string
                   logLevel:
-                    description: One of error, info, debug, trace. If not set, defaults
-                      to info.
+                    description: One of trace|debug|info|warn|error|fatal|panic. If
+                      not set, defaults to info.
+                    enum:
+                    - trace
+                    - debug
+                    - info
+                    - warn
+                    - error
+                    - fatal
+                    - panic
                     type: string
                   network:
                     description: The network environment. Typically, mainnet, testnet,

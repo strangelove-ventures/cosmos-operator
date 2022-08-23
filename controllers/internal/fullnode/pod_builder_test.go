@@ -297,6 +297,13 @@ func TestPodBuilder(t *testing.T) {
 
 		require.Equal(t, []string{"gaiad"}, c.Command)
 		require.Equal(t, []string{"start", "--home", "/home/operator/cosmos", "--x-crisis-skip-assert-invariants"}, c.Args)
+
+		cmdCrd.Spec.ChainConfig.LogLevel = ptr("debug")
+		cmdCrd.Spec.ChainConfig.LogFormat = ptr("json")
+		pod = NewPodBuilder(&cmdCrd).WithOrdinal(1).Build()
+		c = pod.Spec.Containers[0]
+
+		require.Equal(t, []string{"start", "--home", "/home/operator/cosmos", "--x-crisis-skip-assert-invariants", "--log_level", "debug", "--log_format", "json"}, c.Args)
 	})
 }
 
