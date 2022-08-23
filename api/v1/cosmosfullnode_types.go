@@ -218,13 +218,15 @@ type CosmosChainConfig struct {
 	// App configuration applied to app.toml.
 	App CosmosAppConfig `json:"app"`
 
-	// One of error, info, debug, trace.
+	// One of trace|debug|info|warn|error|fatal|panic.
 	// If not set, defaults to info.
+	// +kubebuilder:validation:Enum:=trace;debug;info;warn;error;fatal;panic
 	// +optional
 	LogLevel *string `json:"logLevel"`
 
 	// One of plain or json.
 	// If not set, defaults to plain.
+	// +kubebuilder:validation:Enum:=plain;json
 	// +optional
 	LogFormat *string `json:"logFormat"`
 

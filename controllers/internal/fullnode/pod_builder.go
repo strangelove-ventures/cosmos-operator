@@ -344,7 +344,13 @@ config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CON
 func startCommandArgs(cfg cosmosv1.CosmosChainConfig) []string {
 	args := []string{"start", "--home", chainHomeDir}
 	if cfg.SkipInvariants {
-		return append(args, "--x-crisis-skip-assert-invariants")
+		args = append(args, "--x-crisis-skip-assert-invariants")
+	}
+	if lvl := cfg.LogLevel; lvl != nil {
+		args = append(args, "--log_level", *lvl)
+	}
+	if format := cfg.LogFormat; format != nil {
+		args = append(args, "--log_format", *format)
 	}
 	return args
 }
