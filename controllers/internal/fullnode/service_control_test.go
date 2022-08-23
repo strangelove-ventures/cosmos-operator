@@ -52,20 +52,13 @@ func TestServiceControl_Reconcile(t *testing.T) {
 		crd.Namespace = "test"
 
 		var stubSvc corev1.Service
-		stubSvc.Name = "osmosis-mainnet-fullnode-p2p"
-		stubSvc.Status = corev1.ServiceStatus{
-			LoadBalancer: corev1.LoadBalancerStatus{
-				Ingress: []corev1.LoadBalancerIngress{
-					{IP: "4.5.6.7", Hostname: "lb.example.com"},
-				},
-			},
-		}
+		stubSvc.Name = "osmosis-mainnet-fullnode-p2p-0"
 		var mClient mockSvcClient
-		mClient.ObjectList = corev1.ServiceList{Items: []corev1.Service{stubSvc, {}, {}}}
+		mClient.ObjectList = corev1.ServiceList{Items: []corev1.Service{stubSvc}}
 
 		control := NewServiceControl(&mClient)
 		control.diffFactory = func(revisionLabelKey string, current, want []*corev1.Service) svcDiffer {
-			require.Len(t, current, 3)
+			require.Len(t, current, 1)
 			var svc corev1.Service
 			svc.Name = "stub-update"
 			return mockSvcDiffer{StubUpdates: []*corev1.Service{&svc}}

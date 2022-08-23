@@ -34,7 +34,8 @@ func NewServiceControl(client Client) ServiceControl {
 }
 
 // Reconcile creates or updates services.
-// Services care never deleted unless the CRD itself is deleted.
+// Some services, like P2P, reserve public addresses of which should not change.
+// Therefore, services are never deleted unless the CRD itself is deleted.
 func (sc ServiceControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmosv1.CosmosFullNode) kube.ReconcileError {
 	var svcs corev1.ServiceList
 	if err := sc.client.List(ctx, &svcs,
