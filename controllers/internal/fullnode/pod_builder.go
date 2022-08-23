@@ -174,7 +174,7 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 			Name: volConfig,
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{Name: appName(b.crd)},
+					LocalObjectReference: corev1.LocalObjectReference{Name: instanceName(b.crd, ordinal)},
 					Items: []corev1.KeyToPath{
 						{Key: configOverlayFile, Path: configOverlayFile},
 						{Key: appOverlayFile, Path: appOverlayFile},
