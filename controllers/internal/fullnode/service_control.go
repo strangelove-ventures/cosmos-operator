@@ -7,7 +7,6 @@ import (
 	"strconv"
 
 	"github.com/go-logr/logr"
-	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
 	corev1 "k8s.io/api/core/v1"
@@ -78,16 +77,17 @@ func (sc ServiceControl) Reconcile(ctx context.Context, log logr.Logger, crd *co
 }
 
 func updateP2PInfo(crd *cosmosv1.CosmosFullNode, current []*corev1.Service, result *ServiceResult) {
-	svc, ok := lo.Find(current, func(svc *corev1.Service) bool { return svc.Name == p2pServiceName(crd) })
-	if !ok {
-		return
-	}
-	ingress := svc.Status.LoadBalancer.Ingress
-	if len(ingress) == 0 {
-		return
-	}
-	result.P2PIPAddress = ingress[0].IP
-	result.P2PHostname = ingress[0].Hostname
+	panic("TODO")
+	//svc, ok := lo.Find(current, func(svc *corev1.Service) bool { return svc.Name == p2pServiceName(crd) })
+	//if !ok {
+	//	return
+	//}
+	//ingress := svc.Status.LoadBalancer.Ingress
+	//if len(ingress) == 0 {
+	//	return
+	//}
+	//result.P2PIPAddress = ingress[0].IP
+	//result.P2PHostname = ingress[0].Hostname
 }
 
 // ServiceResult contains data about Services after reconciliation.
