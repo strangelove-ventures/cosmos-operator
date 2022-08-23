@@ -47,6 +47,7 @@ func TestBuildServices(t *testing.T) {
 					TargetPort: intstr.FromString("p2p"),
 				},
 			},
+		},
 			Selector: map[string]string{"app.kubernetes.io/name": "terra-testnet-fullnode"},
 			Type:     "LoadBalancer",
 		}
