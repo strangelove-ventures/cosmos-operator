@@ -71,6 +71,8 @@ var (
 // Generate RBAC roles to watch and update Pods
 //+kubebuilder:rbac:groups="",resources=pods,verbs=get;watch;list;delete
 //+kubebuilder:rbac:groups="",resources=pvcs,verbs=get;watch;list;patch;delete
+//+kubebuilder:rbac:groups="",resources=services,verbs=get;update;watch;list;patch;delete
+//+kubebuilder:rbac:groups="",resources=configmaps,verbs=get;update;watch;list;patch;delete
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
