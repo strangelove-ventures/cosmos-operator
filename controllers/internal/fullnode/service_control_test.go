@@ -23,22 +23,23 @@ func TestServiceControl_Reconcile(t *testing.T) {
 	t.Run("create", func(t *testing.T) {
 		crd := defaultCRD()
 		crd.Namespace = "test"
+		crd.Spec.Replicas = 2
 
 		var mClient mockSvcClient
 		control := NewServiceControl(&mClient)
 		control.diffFactory = func(revisionLabelKey string, current, want []*corev1.Service) svcDiffer {
 			require.Equal(t, "app.kubernetes.io/revision", revisionLabelKey)
 			require.Empty(t, current)
-			require.Len(t, want, 1)
+			require.Len(t, want, 2)
 			return mockSvcDiffer{
 				StubCreates: want,
 			}
 		}
-		_, err := control.Reconcile(ctx, nopLogger, &crd)
+		err := control.Reconcile(ctx, nopLogger, &crd)
 		require.NoError(t, err)
 
-		require.Equal(t, 1, mClient.CreateCount)
-		require.Equal(t, "osmosis-mainnet-fullnode-p2p", mClient.LastCreateObject.Name)
+		require.Equal(t, 2, mClient.CreateCount)
+		require.Equal(t, "osmosis-mainnet-fullnode-p2p-1", mClient.LastCreateObject.Name)
 
 		require.NotEmpty(t, mClient.LastCreateObject.OwnerReferences)
 		require.Equal(t, crd.Name, mClient.LastCreateObject.OwnerReferences[0].Name)
@@ -69,11 +70,8 @@ func TestServiceControl_Reconcile(t *testing.T) {
 			svc.Name = "stub-update"
 			return mockSvcDiffer{StubUpdates: []*corev1.Service{&svc}}
 		}
-		result, err := control.Reconcile(ctx, nopLogger, &crd)
+		err := control.Reconcile(ctx, nopLogger, &crd)
 		require.NoError(t, err)
-
-		require.Equal(t, "4.5.6.7", result.P2PIPAddress)
-		require.Equal(t, "lb.example.com", result.P2PHostname)
 
 		require.Zero(t, mClient.CreateCount)
 		require.Equal(t, mClient.UpdateCount, 1)
@@ -89,7 +87,7 @@ func TestServiceControl_Reconcile(t *testing.T) {
 		control.diffFactory = func(revisionLabelKey string, current, want []*corev1.Service) svcDiffer {
 			return mockSvcDiffer{}
 		}
-		_, err := control.Reconcile(ctx, nopLogger, &crd)
+		err := control.Reconcile(ctx, nopLogger, &crd)
 		require.NoError(t, err)
 
 		require.Zero(t, mClient.CreateCount)
@@ -105,18 +103,4 @@ func TestServiceControl_Reconcile(t *testing.T) {
 		require.Equal(t, "app.kubernetes.io/name=osmosis-mainnet-fullnode", listOpt.LabelSelector.String())
 		require.Equal(t, ".metadata.controller=osmosis", listOpt.FieldSelector.String())
 	})
-}
-
-func TestServiceResult_P2PExternalAddress(t *testing.T) {
-	var result ServiceResult
-	require.Zero(t, result.P2PExternalAddress())
-
-	result.P2PIPAddress = "1.2.3.4"
-	require.Equal(t, "1.2.3.4:26656", result.P2PExternalAddress())
-
-	result.P2PHostname = "test.com"
-	require.Equal(t, "1.2.3.4:26656", result.P2PExternalAddress())
-
-	result.P2PIPAddress = ""
-	require.Equal(t, "test.com:26656", result.P2PExternalAddress())
 }
