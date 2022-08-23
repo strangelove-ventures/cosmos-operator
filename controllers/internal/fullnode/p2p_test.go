@@ -14,6 +14,8 @@ import (
 )
 
 func TestCollectP2PAddresses(t *testing.T) {
+	t.Parallel()
+
 	type (
 		mockSvcClient = mockClient[*corev1.Service]
 	)
@@ -77,6 +79,8 @@ func TestCollectP2PAddresses(t *testing.T) {
 }
 
 func TestExternalAddresses_Incomplete(t *testing.T) {
+	t.Parallel()
+
 	addrs := ExternalAddresses{}
 	// Supports scale to 0 scenario.
 	require.False(t, addrs.Incomplete())
