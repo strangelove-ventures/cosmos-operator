@@ -168,6 +168,17 @@ func (r *CosmosFullNodeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return fmt.Errorf("pvc index field %s: %w", controllerOwnerField, err)
 	}
 
+	// Index ConfigMaps.
+	err = mgr.GetFieldIndexer().IndexField(
+		context.Background(),
+		&corev1.ConfigMap{},
+		controllerOwnerField,
+		kube.IndexOwner[*corev1.ConfigMap]("CosmosFullNode"),
+	)
+	if err != nil {
+		return fmt.Errorf("configmap index field %s: %w", controllerOwnerField, err)
+	}
+
 	// Index Services.
 	err = mgr.GetFieldIndexer().IndexField(
 		context.Background(),
