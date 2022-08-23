@@ -3,12 +3,16 @@ package fullnode
 import (
 	"bytes"
 	_ "embed"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"hash/fnv"
 	"strconv"
 
 	"github.com/BurntSushi/toml"
 	"github.com/peterbourgon/mergemap"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -18,37 +22,66 @@ const (
 	appOverlayFile    = "app-overlay.toml"
 )
 
-// ExternalConfig is configuration pulled from kubernetes or other sources.
-type ExternalConfig interface {
-	P2PExternalAddress() string
+// BuildConfigMaps creates a ConfigMap with configuration to be mounted as files into containers.
+// Currently, the config.toml (for Tendermint) and app.toml (for the Cosmos SDK).
+func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, p2p ExternalAddresses) ([]*corev1.ConfigMap, error) {
+	var (
+		buf = bufPool.Get().(*bytes.Buffer)
+		cms = make([]*corev1.ConfigMap, crd.Spec.Replicas)
+	)
+	defer buf.Reset()
+	defer bufPool.Put(buf)
+
+	for i := int32(0); i < crd.Spec.Replicas; i++ {
+		data := make(map[string]string)
+		instance := instanceName(crd, i)
+		if err := addTendermintToml(buf, data, crd.Spec.ChainConfig, p2p[instance]); err != nil {
+			return nil, err
+		}
+		buf.Reset()
+		if err := addAppToml(buf, data, crd.Spec.ChainConfig.App); err != nil {
+			return nil, err
+		}
+		buf.Reset()
+
+		cm := corev1.ConfigMap{
+			TypeMeta: metav1.TypeMeta{Kind: "ConfigMap", APIVersion: "v1"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      instanceName(crd, i),
+				Namespace: crd.Namespace,
+				Labels: defaultLabels(crd,
+					kube.InstanceLabel, instanceName(crd, i),
+					kube.RevisionLabel, serviceRevisionHash(crd),
+				),
+			},
+		}
+		cm.Data = data
+
+		cms[i] = &cm
+	}
+
+	return cms, nil
 }
 
-// BuildConfigMap creates a ConfigMap with configuration to be mounted as files into containers.
-// Currently, the config.toml (for Tendermint) and app.toml (for the Cosmos SDK).
-func BuildConfigMap(crd *cosmosv1.CosmosFullNode, cfg ExternalConfig) (corev1.ConfigMap, error) {
-	cm := corev1.ConfigMap{
-		TypeMeta: metav1.TypeMeta{Kind: "ConfigMap", APIVersion: "v1"},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      appName(crd),
-			Namespace: crd.Namespace,
-			Labels:    defaultLabels(crd),
-		},
-	}
+func configMapRevisionHash(crd *cosmosv1.CosmosFullNode) string {
+	buf := bufPool.Get().(*bytes.Buffer)
+	defer buf.Reset()
+	defer bufPool.Put(buf)
 
-	var (
-		data = make(map[string]string)
-		buf  = new(bytes.Buffer)
-	)
-	if err := addTendermintToml(buf, data, crd.Spec.ChainConfig, cfg); err != nil {
-		return cm, err
+	enc := json.NewEncoder(buf)
+	if err := enc.Encode(crd.Spec.ChainConfig); err != nil {
+		panic(err)
 	}
-	buf.Reset()
-	if err := addAppToml(buf, data, crd.Spec.ChainConfig.App); err != nil {
-		return cm, err
+	// To keep the version label up to date.
+	if err := enc.Encode(crd.Spec.PodTemplate.Image); err != nil {
+		panic(err)
 	}
-
-	cm.Data = data
-	return cm, nil
+	h := fnv.New32()
+	_, err := h.Write(buf.Bytes())
+	if err != nil {
+		panic(err)
+	}
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 type decodedToml = map[string]any
@@ -75,7 +108,7 @@ func defaultApp() decodedToml {
 	return data
 }
 
-func addTendermintToml(buf *bytes.Buffer, cmData map[string]string, spec cosmosv1.CosmosChainConfig, cfg ExternalConfig) error {
+func addTendermintToml(buf *bytes.Buffer, cmData map[string]string, spec cosmosv1.CosmosChainConfig, externalAddress string) error {
 	base := make(decodedToml)
 
 	if v := spec.LogLevel; v != nil {
@@ -96,7 +129,7 @@ func addTendermintToml(buf *bytes.Buffer, cmData map[string]string, spec cosmosv
 	if v := tendermint.MaxOutboundPeers; v != nil {
 		p2p["max_num_outbound_peers"] = tendermint.MaxOutboundPeers
 	}
-	if v := cfg.P2PExternalAddress(); v != "" {
+	if v := externalAddress; v != "" {
 		p2p["external_address"] = v
 	}
 
