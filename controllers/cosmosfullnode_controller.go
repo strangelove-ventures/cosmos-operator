@@ -148,10 +148,10 @@ func (r *CosmosFullNodeReconciler) resultWithErr(err kube.ReconcileError) (ctrl.
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *CosmosFullNodeReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *CosmosFullNodeReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
 	// Index pods.
 	err := mgr.GetFieldIndexer().IndexField(
-		context.Background(),
+		ctx,
 		&corev1.Pod{},
 		controllerOwnerField,
 		kube.IndexOwner[*corev1.Pod]("CosmosFullNode"),
@@ -162,7 +162,7 @@ func (r *CosmosFullNodeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	// Index PVCs.
 	err = mgr.GetFieldIndexer().IndexField(
-		context.Background(),
+		ctx,
 		&corev1.PersistentVolumeClaim{},
 		controllerOwnerField,
 		kube.IndexOwner[*corev1.PersistentVolumeClaim]("CosmosFullNode"),
@@ -173,7 +173,7 @@ func (r *CosmosFullNodeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	// Index ConfigMaps.
 	err = mgr.GetFieldIndexer().IndexField(
-		context.Background(),
+		ctx,
 		&corev1.ConfigMap{},
 		controllerOwnerField,
 		kube.IndexOwner[*corev1.ConfigMap]("CosmosFullNode"),
@@ -184,7 +184,7 @@ func (r *CosmosFullNodeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	// Index Services.
 	err = mgr.GetFieldIndexer().IndexField(
-		context.Background(),
+		ctx,
 		&corev1.Service{},
 		controllerOwnerField,
 		kube.IndexOwner[*corev1.Service]("CosmosFullNode"),
