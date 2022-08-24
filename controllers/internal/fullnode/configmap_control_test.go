@@ -8,7 +8,6 @@ import (
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -24,7 +23,8 @@ func TestConfigMapControl_Reconcile(t *testing.T) {
 
 	t.Run("create", func(t *testing.T) {
 		var mClient mockConfigClient
-		mClient.GetObjectErr = &apierrors.StatusError{ErrStatus: metav1.Status{Reason: metav1.StatusReasonNotFound}}
+		mClient.ObjectList = corev1.ConfigMapList{Items: make([]corev1.ConfigMap, 4)}
+
 		control := NewConfigMapControl(&mClient)
 		crd := defaultCRD()
 		crd.Spec.Replicas = 3
@@ -33,52 +33,17 @@ func TestConfigMapControl_Reconcile(t *testing.T) {
 
 		control.diffFactory = func(revisionLabelKey string, current, want []*corev1.ConfigMap) configmapDiffer {
 			require.Equal(t, "app.kubernetes.io/revision", revisionLabelKey)
-			require.Empty(t, current)
-			require.Len(t, want, 3)
+			require.Equal(t, 4, len(current))
+			require.EqualValues(t, 3, crd.Spec.Replicas)
 			return mockConfigDiffer{
-				StubCreates: want,
+				StubCreates: []*corev1.ConfigMap{{ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "test"}}},
+				StubUpdates: ptrSlice(make([]corev1.ConfigMap, 2)),
+				StubDeletes: ptrSlice(make([]corev1.ConfigMap, 3)),
 			}
 		}
 
 		err := control.Reconcile(ctx, nopLogger, &crd, nil)
 		require.NoError(t, err)
-
-		require.Equal(t, 3, mClient.CreateCount)
-		require.NotNil(t, mClient.LastCreateObject)
-		require.Equal(t, "stargaze-testnet-fullnode-2", mClient.LastCreateObject.GetName())
-
-		require.NotEmpty(t, mClient.LastCreateObject.OwnerReferences)
-		require.Equal(t, crd.Name, mClient.LastCreateObject.OwnerReferences[0].Name)
-		require.Equal(t, "CosmosFullNode", mClient.LastCreateObject.OwnerReferences[0].Kind)
-		require.True(t, *mClient.LastCreateObject.OwnerReferences[0].Controller)
-
-		require.Zero(t, mClient.UpdateCount)
-	})
-
-	t.Run("updates", func(t *testing.T) {
-		crd := defaultCRD()
-		crd.Name = "stargaze"
-		crd.Spec.ChainConfig.Network = "testnet"
-
-		var stubCm corev1.ConfigMap
-		stubCm.Name = "stub"
-		var mClient mockConfigClient
-		mClient.ObjectList = corev1.ConfigMapList{Items: []corev1.ConfigMap{{}, {}}}
-
-		control := NewConfigMapControl(&mClient)
-		control.diffFactory = func(revisionLabelKey string, current, want []*corev1.ConfigMap) configmapDiffer {
-			require.Len(t, current, 2)
-			return mockConfigDiffer{
-				StubUpdates: []*corev1.ConfigMap{{}},
-			}
-		}
-
-		err := control.Reconcile(ctx, nopLogger, &crd, nil)
-		require.NoError(t, err)
-
-		require.Zero(t, mClient.CreateCount)
-		require.Equal(t, 1, mClient.UpdateCount)
-		require.NotNil(t, mClient.LastUpdateObject)
 
 		require.Len(t, mClient.GotListOpts, 3)
 		var listOpt client.ListOptions
@@ -89,30 +54,16 @@ func TestConfigMapControl_Reconcile(t *testing.T) {
 		require.Zero(t, listOpt.Limit)
 		require.Equal(t, "app.kubernetes.io/name=stargaze-testnet-fullnode", listOpt.LabelSelector.String())
 		require.Equal(t, ".metadata.controller=stargaze", listOpt.FieldSelector.String())
-	})
 
-	t.Run("deletes", func(t *testing.T) {
-		crd := defaultCRD()
-		crd.Name = "stargaze"
-		crd.Spec.ChainConfig.Network = "testnet"
+		require.Equal(t, 1, mClient.CreateCount)
 
-		var mClient mockConfigClient
+		require.NotEmpty(t, mClient.LastCreateObject.OwnerReferences)
+		require.Equal(t, crd.Name, mClient.LastCreateObject.OwnerReferences[0].Name)
+		require.Equal(t, "CosmosFullNode", mClient.LastCreateObject.OwnerReferences[0].Kind)
+		require.True(t, *mClient.LastCreateObject.OwnerReferences[0].Controller)
 
-		control := NewConfigMapControl(&mClient)
-		control.diffFactory = func(revisionLabelKey string, current, want []*corev1.ConfigMap) configmapDiffer {
-			return mockConfigDiffer{
-				StubDeletes: []*corev1.ConfigMap{{}, {}, {}},
-			}
-		}
-
-		err := control.Reconcile(ctx, nopLogger, &crd, nil)
-		require.NoError(t, err)
-
-		require.Zero(t, mClient.UpdateCount)
-		require.Zero(t, mClient.CreateCount)
+		require.Equal(t, 2, mClient.UpdateCount)
 		require.Equal(t, 3, mClient.DeleteCount)
-
-		require.Len(t, mClient.GotListOpts, 3)
 	})
 
 	t.Run("build error", func(t *testing.T) {

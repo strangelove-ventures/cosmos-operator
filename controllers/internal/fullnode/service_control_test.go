@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -18,82 +19,47 @@ func TestServiceControl_Reconcile(t *testing.T) {
 	)
 
 	ctx := context.Background()
-	const namespace = "test"
 
-	t.Run("create", func(t *testing.T) {
+	t.Run("happy path", func(t *testing.T) {
 		crd := defaultCRD()
 		crd.Namespace = "test"
-		crd.Spec.Replicas = 2
+		crd.Spec.Replicas = 3
 
 		var mClient mockSvcClient
+		mClient.ObjectList = corev1.ServiceList{Items: make([]corev1.Service, 4)}
+
 		control := NewServiceControl(&mClient)
 		control.diffFactory = func(revisionLabelKey string, current, want []*corev1.Service) svcDiffer {
 			require.Equal(t, "app.kubernetes.io/revision", revisionLabelKey)
-			require.Empty(t, current)
-			require.Len(t, want, 2)
+			require.Equal(t, 4, len(current))
+			require.EqualValues(t, crd.Spec.Replicas, len(want))
+
 			return mockSvcDiffer{
-				StubCreates: want,
+				StubCreates: []*corev1.Service{{ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "test"}}},
+				StubUpdates: ptrSlice(make([]corev1.Service, 2)),
+				StubDeletes: ptrSlice(make([]corev1.Service, 3)),
 			}
 		}
 		err := control.Reconcile(ctx, nopLogger, &crd)
 		require.NoError(t, err)
-
-		require.Equal(t, 2, mClient.CreateCount)
-		require.Equal(t, "osmosis-mainnet-fullnode-p2p-1", mClient.LastCreateObject.Name)
-
-		require.NotEmpty(t, mClient.LastCreateObject.OwnerReferences)
-		require.Equal(t, crd.Name, mClient.LastCreateObject.OwnerReferences[0].Name)
-		require.Equal(t, "CosmosFullNode", mClient.LastCreateObject.OwnerReferences[0].Kind)
-		require.True(t, *mClient.LastCreateObject.OwnerReferences[0].Controller)
-	})
-
-	t.Run("update", func(t *testing.T) {
-		crd := defaultCRD()
-		crd.Namespace = "test"
-
-		var stubSvc corev1.Service
-		stubSvc.Name = "osmosis-mainnet-fullnode-p2p-0"
-		var mClient mockSvcClient
-		mClient.ObjectList = corev1.ServiceList{Items: []corev1.Service{stubSvc}}
-
-		control := NewServiceControl(&mClient)
-		control.diffFactory = func(revisionLabelKey string, current, want []*corev1.Service) svcDiffer {
-			require.Len(t, current, 1)
-			var svc corev1.Service
-			svc.Name = "stub-update"
-			return mockSvcDiffer{StubUpdates: []*corev1.Service{&svc}}
-		}
-		err := control.Reconcile(ctx, nopLogger, &crd)
-		require.NoError(t, err)
-
-		require.Zero(t, mClient.CreateCount)
-		require.Equal(t, mClient.UpdateCount, 1)
-		require.Equal(t, "stub-update", mClient.LastUpdateObject.Name)
-	})
-
-	t.Run("no changes", func(t *testing.T) {
-		crd := defaultCRD()
-		crd.Namespace = "test"
-
-		var mClient mockSvcClient
-		control := NewServiceControl(&mClient)
-		control.diffFactory = func(revisionLabelKey string, current, want []*corev1.Service) svcDiffer {
-			return mockSvcDiffer{}
-		}
-		err := control.Reconcile(ctx, nopLogger, &crd)
-		require.NoError(t, err)
-
-		require.Zero(t, mClient.CreateCount)
-		require.Zero(t, mClient.UpdateCount)
 
 		require.Len(t, mClient.GotListOpts, 3)
 		var listOpt client.ListOptions
 		for _, opt := range mClient.GotListOpts {
 			opt.ApplyToList(&listOpt)
 		}
-		require.Equal(t, namespace, listOpt.Namespace)
+		require.Equal(t, "test", listOpt.Namespace)
 		require.Zero(t, listOpt.Limit)
 		require.Equal(t, "app.kubernetes.io/name=osmosis-mainnet-fullnode", listOpt.LabelSelector.String())
 		require.Equal(t, ".metadata.controller=osmosis", listOpt.FieldSelector.String())
+
+		require.Equal(t, 1, mClient.CreateCount)
+		require.NotEmpty(t, mClient.LastCreateObject.OwnerReferences)
+		require.Equal(t, crd.Name, mClient.LastCreateObject.OwnerReferences[0].Name)
+		require.Equal(t, "CosmosFullNode", mClient.LastCreateObject.OwnerReferences[0].Kind)
+		require.True(t, *mClient.LastCreateObject.OwnerReferences[0].Controller)
+
+		require.Equal(t, 2, mClient.UpdateCount)
+		require.Zero(t, mClient.DeleteCount) // Services are never deleted.
 	})
 }
