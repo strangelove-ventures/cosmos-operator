@@ -17,6 +17,8 @@ import (
 
 // BuildServices returns a list of services given the crd.
 //
+// Creates a single RPC service, likely for use with an Ingress.
+//
 // Creates 1 p2p service per pod. P2P diverges from traditional web and kubernetes architecture which calls for a single
 // p2p service backed by multiple pods.
 // Pods may be in various states even with proper readiness probes.
@@ -57,11 +59,68 @@ func BuildServices(crd *cosmosv1.CosmosFullNode) []*corev1.Service {
 		}
 	}
 
-	return p2ps
+	rpc := rpcService(crd)
+	return append(p2ps, rpc)
+}
+
+func rpcService(crd *cosmosv1.CosmosFullNode) *corev1.Service {
+	labels := defaultLabels(crd,
+		kube.RevisionLabel, serviceRevisionHash(crd),
+		kube.ComponentLabel, "rpc",
+	)
+
+	return &corev1.Service{
+		TypeMeta: metav1.TypeMeta{Kind: "Service", APIVersion: "v1"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      rpcServiceName(crd),
+			Namespace: crd.Namespace,
+			Labels:    labels,
+		},
+		Spec: corev1.ServiceSpec{
+			Ports: []corev1.ServicePort{
+				{
+					Name:       "api",
+					Protocol:   corev1.ProtocolTCP,
+					Port:       apiPort,
+					TargetPort: intstr.FromString("api"),
+				},
+				{
+					Name:       "rosetta",
+					Protocol:   corev1.ProtocolTCP,
+					Port:       rosettaPort,
+					TargetPort: intstr.FromString("rosetta"),
+				},
+				{
+					Name:       "grpc",
+					Protocol:   corev1.ProtocolTCP,
+					Port:       grpcPort,
+					TargetPort: intstr.FromString("grpc"),
+				},
+				{
+					Name:       "rpc",
+					Protocol:   corev1.ProtocolTCP,
+					Port:       rpcPort,
+					TargetPort: intstr.FromString("rpc"),
+				},
+				{
+					Name:       "grpc-web",
+					Protocol:   corev1.ProtocolTCP,
+					Port:       grpcWebPort,
+					TargetPort: intstr.FromString("grpc-web"),
+				},
+			},
+			Selector: map[string]string{kube.NameLabel: appName(crd)},
+			Type:     corev1.ServiceTypeClusterIP,
+		},
+	}
 }
 
 func p2pServiceName(crd *cosmosv1.CosmosFullNode, ordinal int32) string {
 	return fmt.Sprintf("%s-p2p-%d", appName(crd), ordinal)
+}
+
+func rpcServiceName(crd *cosmosv1.CosmosFullNode) string {
+	return fmt.Sprintf("%s-rpc", appName(crd))
 }
 
 // only requires update if the labels change
