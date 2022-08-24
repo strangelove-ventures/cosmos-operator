@@ -49,6 +49,10 @@ type CosmosFullNodeSpec struct {
 	// Will be used to create a stand-alone PVC to provision the volume.
 	// One PVC per replica mapped and mounted to a corresponding pod.
 	VolumeClaimTemplate CosmosPersistentVolumeClaim `json:"volumeClaimTemplate"`
+
+	// Optional overrides to the single RPC service.
+	// +optional
+	RPCServiceTemplate CosmosRPCServiceSpec `json:"rpcServiceTemplate"`
 }
 
 // CosmosFullNodeStatus defines the observed state of CosmosFullNode
@@ -393,6 +397,26 @@ const (
 	CosmosPruningEverything CosmosPruningStrategy = "everything"
 	CosmosPruningCustom     CosmosPruningStrategy = "custom"
 )
+
+// CosmosRPCServiceSpec allows some overrides for the created, single RPC service.
+type CosmosRPCServiceSpec struct {
+	// Added to the single RPC service annotations. Some cloud providers require special annotations.
+	// +optional
+	Annotations map[string]string `json:"annotations"`
+
+	// Describes ingress methods for a service.
+	// If not set, defaults to "ClusterIP".
+	// +kubebuilder:validation:Enum:=ClusterIP;NodePort;LoadBalancer;ExternalName
+	// +optional
+	Type *corev1.ServiceType `json:"type"`
+
+	// Sets endpoint and routing behavior.
+	// See: https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/#caveats-and-limitations-when-preserving-source-ips
+	// If not set, defaults to "Cluster".
+	// +kubebuilder:validation:Enum:=Cluster;Local
+	// +optional
+	ExternalTrafficPolicy *corev1.ServiceExternalTrafficPolicyType `json:"externalTrafficPolicy"`
+}
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status

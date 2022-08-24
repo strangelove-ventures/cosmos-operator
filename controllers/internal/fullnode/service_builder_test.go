@@ -116,6 +116,10 @@ func TestBuildServices(t *testing.T) {
 		require.Equal(t, want, rpc.Spec.Ports)
 	})
 
+	t.Run("rpc service with overrides", func(t *testing.T) {
+		t.Fatal("TODO")
+	})
+
 	t.Run("long name", func(t *testing.T) {
 		crd := defaultCRD()
 		name := strings.Repeat("Long", 500)
