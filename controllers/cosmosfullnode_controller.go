@@ -25,6 +25,7 @@ import (
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/fullnode"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -37,6 +38,9 @@ import (
 
 const (
 	controllerOwnerField = ".metadata.controller"
+
+	eventNormal  = "Normal"
+	eventWarning = "Warning"
 )
 
 // CosmosFullNodeReconciler reconciles a CosmosFullNode object
@@ -46,16 +50,18 @@ type CosmosFullNodeReconciler struct {
 	configMapControl fullnode.ConfigMapControl
 	podControl       fullnode.PodControl
 	pvcControl       fullnode.PVCControl
+	recorder         record.EventRecorder
 	serviceControl   fullnode.ServiceControl
 }
 
 // NewFullNode returns a valid CosmosFullNode controller.
-func NewFullNode(client client.Client) *CosmosFullNodeReconciler {
+func NewFullNode(client client.Client, recorder record.EventRecorder) *CosmosFullNodeReconciler {
 	return &CosmosFullNodeReconciler{
 		Client:           client,
 		configMapControl: fullnode.NewConfigMapControl(client),
 		podControl:       fullnode.NewPodControl(client),
 		pvcControl:       fullnode.NewPVCControl(client),
+		recorder:         recorder,
 		serviceControl:   fullnode.NewServiceControl(client),
 	}
 }
@@ -99,23 +105,23 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	// Create or update Services.
 	err := r.serviceControl.Reconcile(ctx, logger, &crd)
 	if err != nil {
-		return r.resultWithErr(err)
+		return r.resultWithErr(&crd, err)
 	}
 
 	// Create or update ConfigMap.
 	p2pAddresses, err := fullnode.CollectP2PAddresses(ctx, &crd, r)
 	if err != nil {
-		return r.resultWithErr(err)
+		return r.resultWithErr(&crd, err)
 	}
 	err = r.configMapControl.Reconcile(ctx, logger, &crd, p2pAddresses)
 	if err != nil {
-		return r.resultWithErr(err)
+		return r.resultWithErr(&crd, err)
 	}
 
 	// Reconcile pods.
 	requeue, err := r.podControl.Reconcile(ctx, logger, &crd)
 	if err != nil {
-		return r.resultWithErr(err)
+		return r.resultWithErr(&crd, err)
 	}
 	if requeue {
 		return requeueResult, nil
@@ -124,7 +130,7 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	// Reconcile pvcs.
 	requeue, err = r.pvcControl.Reconcile(ctx, logger, &crd)
 	if err != nil {
-		return r.resultWithErr(err)
+		return r.resultWithErr(&crd, err)
 	}
 	if requeue {
 		return requeueResult, nil
@@ -132,7 +138,8 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	// Check final state and requeue if necessary.
 	if p2pAddresses.Incomplete() {
-		logger.Info("Requeueing due to incomplete p2p external addresses")
+		r.recorder.Event(&crd, eventNormal, "p2pIncomplete", "Waiting for p2p service IPs or Hostnames to be ready.")
+		logger.V(1).Info("Requeueing due to incomplete p2p external addresses")
 		// Allow more time to requeue while p2p services create their load balancers.
 		return ctrl.Result{RequeueAfter: 15 * time.Second}, nil
 	}
@@ -140,10 +147,12 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	return finishResult, nil
 }
 
-func (r *CosmosFullNodeReconciler) resultWithErr(err kube.ReconcileError) (ctrl.Result, kube.ReconcileError) {
+func (r *CosmosFullNodeReconciler) resultWithErr(crd *cosmosv1.CosmosFullNode, err kube.ReconcileError) (ctrl.Result, kube.ReconcileError) {
 	if err.IsTransient() {
+		r.recorder.Event(crd, eventWarning, "errorTransient", fmt.Sprintf("%v; retrying.", err))
 		return requeueResult, err
 	}
+	r.recorder.Event(crd, eventWarning, "error", err.Error())
 	return finishResult, err
 }
 
