@@ -286,12 +286,14 @@ type CosmosTendermintConfig struct {
 	// See https://docs.tendermint.com/master/spec/p2p/peer.html and
 	// https://docs.tendermint.com/master/spec/p3p/config.html#persistent-peers.
 	// +kubebuilder:validation:MinLength:=1
+	// +optional
 	PersistentPeers string `json:"peers"`
 
 	// Comma delimited list of p2p seed nodes in <ID>@<IP>:<PORT> format.
 	// See https://docs.tendermint.com/master/spec/p2p/config.html#seeds and
 	// https://docs.tendermint.com/master/spec/p2p/node.html#seeds.
 	// +kubebuilder:validation:MinLength:=1
+	// +optional
 	Seeds string `json:"seeds"`
 
 	// p2p maximum number of inbound peers.
