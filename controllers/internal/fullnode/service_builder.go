@@ -125,14 +125,14 @@ func rpcServiceName(crd *cosmosv1.CosmosFullNode) string {
 
 // only requires update if the labels change
 func serviceRevisionHash(crd *cosmosv1.CosmosFullNode) string {
+	h := fnv.New32()
+
 	labels := lo.MapToSlice(defaultLabels(crd), func(v string, k string) string {
 		return k + v
 	})
 	sort.Strings(labels)
-	h := fnv.New32()
-	_, err := h.Write([]byte(strings.Join(labels, "")))
-	if err != nil {
-		panic(err)
-	}
+	mustWrite(h, strings.Join(labels, ""))
+	mustWrite(h, mustMarshalJSON(crd.Spec.RPCServiceTemplate))
+
 	return hex.EncodeToString(h.Sum(nil))
 }
