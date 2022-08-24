@@ -162,9 +162,6 @@ spec:
                           and https://docs.tendermint.com/master/spec/p2p/node.html#seeds.
                         minLength: 1
                         type: string
-                    required:
-                    - peers
-                    - seeds
                     type: object
                   genesisScript:
                     description: 'Specify shell (sh) script commands to properly download
