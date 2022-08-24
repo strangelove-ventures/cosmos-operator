@@ -82,6 +82,8 @@ var (
 func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
+	fmt.Println("EVENT LOOP")
+
 	// Get the CRD
 	var crd cosmosv1.CosmosFullNode
 	if err := r.Get(ctx, req.NamespacedName, &crd); err != nil {
@@ -133,7 +135,7 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	if p2pAddresses.Incomplete() {
 		logger.Info("Requeueing due to incomplete p2p external addresses")
 		// Allow more time to requeue while p2p services create their load balancers.
-		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+		return ctrl.Result{RequeueAfter: 15 * time.Second}, nil
 	}
 
 	return finishResult, nil

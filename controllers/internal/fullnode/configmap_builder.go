@@ -7,10 +7,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"hash/fnv"
+	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/BurntSushi/toml"
 	"github.com/peterbourgon/mergemap"
+	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
 	corev1 "k8s.io/api/core/v1"
@@ -51,7 +54,7 @@ func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, p2p ExternalAddresses) ([]*co
 				Namespace: crd.Namespace,
 				Labels: defaultLabels(crd,
 					kube.InstanceLabel, instanceName(crd, i),
-					kube.RevisionLabel, configMapRevisionHash(crd),
+					kube.RevisionLabel, configMapRevisionHash(crd, p2p),
 				),
 			},
 		}
@@ -63,7 +66,7 @@ func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, p2p ExternalAddresses) ([]*co
 	return cms, nil
 }
 
-func configMapRevisionHash(crd *cosmosv1.CosmosFullNode) string {
+func configMapRevisionHash(crd *cosmosv1.CosmosFullNode, addresses ExternalAddresses) string {
 	buf := bufPool.Get().(*bytes.Buffer)
 	defer buf.Reset()
 	defer bufPool.Put(buf)
@@ -76,6 +79,13 @@ func configMapRevisionHash(crd *cosmosv1.CosmosFullNode) string {
 	if err := enc.Encode(crd.Spec.PodTemplate.Image); err != nil {
 		panic(err)
 	}
+
+	vals := lo.MapToSlice(addresses, func(v, k string) string {
+		return v + k
+	})
+	sort.Strings(vals)
+	buf.WriteString(strings.Join(vals, ""))
+
 	h := fnv.New32()
 	_, err := h.Write(buf.Bytes())
 	if err != nil {

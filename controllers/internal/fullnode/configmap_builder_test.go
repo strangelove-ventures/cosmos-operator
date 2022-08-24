@@ -334,7 +334,10 @@ func FuzzBuildConfigMaps(f *testing.F) {
 		crd.Spec.PodTemplate.Image = "new-image:v3.4.5"
 		cms3, err := BuildConfigMaps(&crd, nil)
 		require.NoError(t, err)
-
 		require.NotEqual(t, cms1[0].Labels[kube.RevisionLabel], cms3[0].Labels[kube.RevisionLabel])
+
+		cms4, err := BuildConfigMaps(&crd, ExternalAddresses{"test": "value"})
+		require.NoError(t, err)
+		require.NotEqual(t, cms3[0].Labels[kube.RevisionLabel], cms4[0].Labels[kube.RevisionLabel])
 	})
 }
