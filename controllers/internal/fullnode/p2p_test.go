@@ -59,10 +59,10 @@ func TestCollectP2PAddresses(t *testing.T) {
 	require.NoError(t, err)
 
 	want := ExternalAddresses{
-		"instance-0": "0.0.0.0",
-		"instance-1": "0.0.0.1",
-		"instance-2": "0.0.0.2",
-		"instance-3": "host.example.com",
+		"instance-0": "0.0.0.0:26656",
+		"instance-1": "0.0.0.1:26656",
+		"instance-2": "0.0.0.2:26656",
+		"instance-3": "host.example.com:26656",
 		"instance-4": "",
 	}
 	require.Equal(t, want, got)

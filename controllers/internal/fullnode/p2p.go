@@ -3,6 +3,8 @@ package fullnode
 import (
 	"context"
 	"fmt"
+	"net"
+	"strconv"
 
 	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
@@ -42,7 +44,10 @@ func CollectP2PAddresses(ctx context.Context, crd *cosmosv1.CosmosFullNode, c Li
 		return nil, kube.TransientError(fmt.Errorf("list existing services: %w", err))
 	}
 
-	m := make(map[string]string)
+	var (
+		port = strconv.Itoa(p2pPort)
+		m    = make(map[string]string)
+	)
 	for _, svc := range svcs.Items {
 		ingress := svc.Status.LoadBalancer.Ingress
 		if len(ingress) == 0 {
@@ -50,7 +55,10 @@ func CollectP2PAddresses(ctx context.Context, crd *cosmosv1.CosmosFullNode, c Li
 			continue
 		}
 		lb := ingress[0]
-		m[svc.Labels[kube.InstanceLabel]] = lo.Ternary(lb.IP != "", lb.IP, lb.Hostname)
+		host := lo.Ternary(lb.IP != "", lb.IP, lb.Hostname)
+		if host != "" {
+			m[svc.Labels[kube.InstanceLabel]] = net.JoinHostPort(host, port)
+		}
 	}
 	return m, nil
 }
