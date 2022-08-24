@@ -144,7 +144,7 @@ func (b PodBuilder) Build() *corev1.Pod {
 // ordered sequence. Pods have deterministic, consistent names similar to a StatefulSet instead of generated names.
 func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 	pod := b.pod.DeepCopy()
-	name := podName(b.crd, ordinal)
+	name := instanceName(b.crd, ordinal)
 
 	pod.Annotations[kube.OrdinalAnnotation] = kube.ToIntegerValue(ordinal)
 	pod.Labels[kube.InstanceLabel] = kube.ToLabelValue(name)
@@ -174,7 +174,7 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 			Name: volConfig,
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{Name: appName(b.crd)},
+					LocalObjectReference: corev1.LocalObjectReference{Name: instanceName(b.crd, ordinal)},
 					Items: []corev1.KeyToPath{
 						{Key: configOverlayFile, Path: configOverlayFile},
 						{Key: appOverlayFile, Path: appOverlayFile},
@@ -199,10 +199,6 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 
 	b.pod = pod
 	return b
-}
-
-func podName(crd *cosmosv1.CosmosFullNode, ordinal int32) string {
-	return kube.ToLabelValue(fmt.Sprintf("%s-%d", appName(crd), ordinal))
 }
 
 const (

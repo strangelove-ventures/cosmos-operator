@@ -248,7 +248,7 @@ func TestPodBuilder(t *testing.T) {
 		require.NotNil(t, vols[1].EmptyDir)
 
 		require.Equal(t, "vol-config", vols[2].Name)
-		require.NotNil(t, "osmosis-mainnet-fullnode", vols[2].ConfigMap.Name)
+		require.Equal(t, "osmosis-mainnet-fullnode-5", vols[2].ConfigMap.Name)
 		wantItems := []corev1.KeyToPath{
 			{Key: "config-overlay.toml", Path: "config-overlay.toml"},
 			{Key: "app-overlay.toml", Path: "app-overlay.toml"},

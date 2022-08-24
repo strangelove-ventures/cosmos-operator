@@ -71,6 +71,8 @@ var (
 // Generate RBAC roles to watch and update Pods
 //+kubebuilder:rbac:groups="",resources=pods,verbs=get;watch;list;delete
 //+kubebuilder:rbac:groups="",resources=pvcs,verbs=get;watch;list;patch;delete
+//+kubebuilder:rbac:groups="",resources=services,verbs=get;update;watch;list;patch;delete
+//+kubebuilder:rbac:groups="",resources=configmaps,verbs=get;update;watch;list;patch;delete
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -79,6 +81,7 @@ var (
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.12.1/pkg/reconcile
 func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
+	logger.V(1).Info("Entering reconcile loop")
 
 	// Get the CRD
 	var crd cosmosv1.CosmosFullNode
@@ -94,13 +97,17 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	// K8S can create pods first even if the PVC isn't ready. Pods won't be in a ready state until PVC is bound.
 
 	// Create or update Services.
-	result, err := r.serviceControl.Reconcile(ctx, logger, &crd)
+	err := r.serviceControl.Reconcile(ctx, logger, &crd)
 	if err != nil {
 		return r.resultWithErr(err)
 	}
 
 	// Create or update ConfigMap.
-	err = r.configMapControl.Reconcile(ctx, logger, &crd, result)
+	p2pAddresses, err := fullnode.CollectP2PAddresses(ctx, &crd, r)
+	if err != nil {
+		return r.resultWithErr(err)
+	}
+	err = r.configMapControl.Reconcile(ctx, logger, &crd, p2pAddresses)
 	if err != nil {
 		return r.resultWithErr(err)
 	}
@@ -123,10 +130,11 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return requeueResult, nil
 	}
 
-	// Wait until LB has a public address.
-	if result.P2PExternalAddress() == "" {
-		logger.Info("P2P external address not available yet; requeueing")
-		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+	// Check final state and requeue if necessary.
+	if p2pAddresses.Incomplete() {
+		logger.Info("Requeueing due to incomplete p2p external addresses")
+		// Allow more time to requeue while p2p services create their load balancers.
+		return ctrl.Result{RequeueAfter: 15 * time.Second}, nil
 	}
 
 	return finishResult, nil
@@ -163,6 +171,17 @@ func (r *CosmosFullNodeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return fmt.Errorf("pvc index field %s: %w", controllerOwnerField, err)
 	}
 
+	// Index ConfigMaps.
+	err = mgr.GetFieldIndexer().IndexField(
+		context.Background(),
+		&corev1.ConfigMap{},
+		controllerOwnerField,
+		kube.IndexOwner[*corev1.ConfigMap]("CosmosFullNode"),
+	)
+	if err != nil {
+		return fmt.Errorf("configmap index field %s: %w", controllerOwnerField, err)
+	}
+
 	// Index Services.
 	err = mgr.GetFieldIndexer().IndexField(
 		context.Background(),
@@ -188,8 +207,7 @@ func (r *CosmosFullNodeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			&handler.EnqueueRequestForOwner{OwnerType: &cosmosv1.CosmosFullNode{}, IsController: true},
 			builder.WithPredicates(&predicate.Funcs{
 				DeleteFunc: func(_ event.DeleteEvent) bool { return true },
-			},
-			),
+			}),
 		)
 	}
 

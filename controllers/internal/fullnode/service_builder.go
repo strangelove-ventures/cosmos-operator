@@ -2,6 +2,7 @@ package fullnode
 
 import (
 	"encoding/hex"
+	"fmt"
 	"hash/fnv"
 	"sort"
 	"strings"
@@ -15,16 +16,28 @@ import (
 )
 
 // BuildServices returns a list of services given the crd.
+//
+// Creates 1 p2p service per pod. P2P diverges from traditional web and kubernetes architecture which calls for a single
+// p2p service backed by multiple pods.
+// Pods may be in various states even with proper readiness probes.
+// Therefore, we do not want to confuse or disrupt peer exchange (PEX) within
+// tendermint. If using a single p2p service, an outside peer discovering a pod out of sync it could be
+// interpreted as byzantine behavior if the peer previously connected to a pod that was in sync through the same
+// external address.
 func BuildServices(crd *cosmosv1.CosmosFullNode) []*corev1.Service {
-	labels := defaultLabels(crd,
-		kube.RevisionLabel, serviceRevisionHash(crd),
-	)
+	// TODO (nix - 8/23/22) One p2p service per pod will not scale well. See https://github.com/strangelove-ventures/cosmos-operator/issues/42
+	p2ps := make([]*corev1.Service, crd.Spec.Replicas)
 
-	return []*corev1.Service{
-		{
+	for i := int32(0); i < crd.Spec.Replicas; i++ {
+		labels := defaultLabels(crd,
+			kube.RevisionLabel, serviceRevisionHash(crd),
+			kube.InstanceLabel, instanceName(crd, i),
+			kube.ComponentLabel, "p2p",
+		)
+		p2ps[i] = &corev1.Service{
 			TypeMeta: metav1.TypeMeta{Kind: "Service", APIVersion: "v1"},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      p2pServiceName(crd),
+				Name:      p2pServiceName(crd, i),
 				Namespace: crd.Namespace,
 				Labels:    labels,
 			},
@@ -37,15 +50,18 @@ func BuildServices(crd *cosmosv1.CosmosFullNode) []*corev1.Service {
 						TargetPort: intstr.FromString("p2p"),
 					},
 				},
-				Selector: SelectorLabels(crd),
-				Type:     corev1.ServiceTypeLoadBalancer,
+				Selector:              map[string]string{kube.InstanceLabel: instanceName(crd, i)},
+				Type:                  corev1.ServiceTypeLoadBalancer,
+				ExternalTrafficPolicy: corev1.ServiceExternalTrafficPolicyTypeLocal,
 			},
-		},
+		}
 	}
+
+	return p2ps
 }
 
-func p2pServiceName(crd *cosmosv1.CosmosFullNode) string {
-	return appName(crd) + "-p2p"
+func p2pServiceName(crd *cosmosv1.CosmosFullNode, ordinal int32) string {
+	return fmt.Sprintf("%s-p2p-%d", appName(crd), ordinal)
 }
 
 // only requires update if the labels change
