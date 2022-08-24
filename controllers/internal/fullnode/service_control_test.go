@@ -32,7 +32,7 @@ func TestServiceControl_Reconcile(t *testing.T) {
 		control.diffFactory = func(revisionLabelKey string, current, want []*corev1.Service) svcDiffer {
 			require.Equal(t, "app.kubernetes.io/revision", revisionLabelKey)
 			require.Equal(t, 4, len(current))
-			require.EqualValues(t, crd.Spec.Replicas, len(want))
+			require.EqualValues(t, crd.Spec.Replicas+1, len(want)) // Includes rpc service.
 
 			return mockSvcDiffer{
 				StubCreates: []*corev1.Service{{ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "test"}}},

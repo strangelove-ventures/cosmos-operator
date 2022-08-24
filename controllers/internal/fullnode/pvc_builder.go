@@ -1,9 +1,7 @@
 package fullnode
 
 import (
-	"bytes"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"hash/fnv"
 
@@ -62,18 +60,7 @@ func pvcName(crd *cosmosv1.CosmosFullNode, ordinal int32) string {
 // Attempts to produce a deterministic hash based on the pvc template, so we can detect updates.
 // See podRevisionHash for more details.
 func pvcRevisionHash(crd *cosmosv1.CosmosFullNode) string {
-	buf := bufPool.Get().(*bytes.Buffer)
-	defer buf.Reset()
-	defer bufPool.Put(buf)
-
-	enc := json.NewEncoder(buf)
-	if err := enc.Encode(crd.Spec.VolumeClaimTemplate); err != nil {
-		panic(err)
-	}
 	h := fnv.New32()
-	_, err := h.Write(buf.Bytes())
-	if err != nil {
-		panic(err)
-	}
+	mustWrite(h, mustMarshalJSON(crd.Spec.VolumeClaimTemplate))
 	return hex.EncodeToString(h.Sum(nil))
 }

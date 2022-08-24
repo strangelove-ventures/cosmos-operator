@@ -3,7 +3,6 @@ package fullnode
 import (
 	"bytes"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"hash/fnv"
@@ -112,26 +111,9 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 // of fuzz tests showed encoding/json to be deterministic. There are other json packages like jsoniter that sort keys
 // if stdlib encoding/json ever becomes a problem.
 func podRevisionHash(crd *cosmosv1.CosmosFullNode) string {
-	buf := bufPool.Get().(*bytes.Buffer)
-	defer buf.Reset()
-	defer bufPool.Put(buf)
-
-	enc := json.NewEncoder(buf)
-	if err := enc.Encode(crd.Spec.PodTemplate); err != nil {
-		panic(err)
-	}
-
-	// If chain config changes, we need to trigger a rollout to get new files config files mounted into
-	// containers.
-	if err := enc.Encode(crd.Spec.ChainConfig); err != nil {
-		panic(err)
-	}
-
 	h := fnv.New32()
-	_, err := h.Write(buf.Bytes())
-	if err != nil {
-		panic(err)
-	}
+	mustWrite(h, mustMarshalJSON(crd.Spec.PodTemplate))
+	mustWrite(h, mustMarshalJSON(crd.Spec.ChainConfig))
 	return hex.EncodeToString(h.Sum(nil))
 }
 

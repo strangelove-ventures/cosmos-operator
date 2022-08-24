@@ -3,29 +3,35 @@ package fullnode
 import corev1 "k8s.io/api/core/v1"
 
 const (
-	p2pPort = 26656
+	apiPort     = 1317
+	grpcPort    = 9090
+	grpcWebPort = 9091
+	p2pPort     = 26656
+	promPort    = 26660
+	rosettaPort = 8080
+	rpcPort     = 26657
 )
 
 var fullNodePorts = []corev1.ContainerPort{
 	{
 		Name:          "api",
 		Protocol:      corev1.ProtocolTCP,
-		ContainerPort: 1317,
+		ContainerPort: apiPort,
 	},
 	{
 		Name:          "rosetta",
 		Protocol:      corev1.ProtocolTCP,
-		ContainerPort: 8080,
+		ContainerPort: rosettaPort,
 	},
 	{
 		Name:          "grpc",
 		Protocol:      corev1.ProtocolTCP,
-		ContainerPort: 9090,
+		ContainerPort: grpcPort,
 	},
 	{
 		Name:          "prometheus",
 		Protocol:      corev1.ProtocolTCP,
-		ContainerPort: 26660,
+		ContainerPort: promPort,
 	},
 	{
 		Name:          "p2p",
@@ -35,11 +41,11 @@ var fullNodePorts = []corev1.ContainerPort{
 	{
 		Name:          "rpc",
 		Protocol:      corev1.ProtocolTCP,
-		ContainerPort: 26657,
+		ContainerPort: rpcPort,
 	},
 	{
-		Name:          "web",
+		Name:          "grpc-web",
 		Protocol:      corev1.ProtocolTCP,
-		ContainerPort: 9091,
+		ContainerPort: grpcWebPort,
 	},
 }
