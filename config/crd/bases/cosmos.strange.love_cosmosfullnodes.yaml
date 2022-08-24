@@ -245,6 +245,32 @@ spec:
                 format: int32
                 minimum: 0
                 type: integer
+              rpcServiceTemplate:
+                description: Optional overrides to the single RPC service.
+                properties:
+                  annotations:
+                    additionalProperties:
+                      type: string
+                    description: Added to the single RPC service annotations. Some
+                      cloud providers require special annotations.
+                    type: object
+                  externalTrafficPolicy:
+                    description: 'Sets endpoint and routing behavior. See: https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/#caveats-and-limitations-when-preserving-source-ips
+                      If not set, defaults to "Cluster".'
+                    enum:
+                    - Cluster
+                    - Local
+                    type: string
+                  type:
+                    description: Describes ingress methods for a service. If not set,
+                      defaults to "ClusterIP".
+                    enum:
+                    - ClusterIP
+                    - NodePort
+                    - LoadBalancer
+                    - ExternalName
+                    type: string
+                type: object
               strategy:
                 description: How to scale pods when performing an update.
                 properties:

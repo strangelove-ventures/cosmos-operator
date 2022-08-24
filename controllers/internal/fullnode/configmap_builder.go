@@ -4,7 +4,6 @@ import (
 	"bytes"
 	_ "embed"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"hash/fnv"
 	"sort"
@@ -67,30 +66,16 @@ func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, p2p ExternalAddresses) ([]*co
 }
 
 func configMapRevisionHash(crd *cosmosv1.CosmosFullNode, addresses ExternalAddresses) string {
-	buf := bufPool.Get().(*bytes.Buffer)
-	defer buf.Reset()
-	defer bufPool.Put(buf)
-
-	enc := json.NewEncoder(buf)
-	if err := enc.Encode(crd.Spec.ChainConfig); err != nil {
-		panic(err)
-	}
-	// To keep the version label up to date.
-	if err := enc.Encode(crd.Spec.PodTemplate.Image); err != nil {
-		panic(err)
-	}
+	h := fnv.New32()
+	mustWrite(h, mustMarshalJSON(crd.Spec.ChainConfig))
+	mustWrite(h, mustMarshalJSON(crd.Spec.PodTemplate.Image))
 
 	vals := lo.MapToSlice(addresses, func(v, k string) string {
 		return v + k
 	})
 	sort.Strings(vals)
-	buf.WriteString(strings.Join(vals, ""))
+	mustWrite(h, strings.Join(vals, ""))
 
-	h := fnv.New32()
-	_, err := h.Write(buf.Bytes())
-	if err != nil {
-		panic(err)
-	}
 	return hex.EncodeToString(h.Sum(nil))
 }
 
