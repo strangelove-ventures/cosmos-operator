@@ -206,8 +206,7 @@ func (r *CosmosFullNodeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			&handler.EnqueueRequestForOwner{OwnerType: &cosmosv1.CosmosFullNode{}, IsController: true},
 			builder.WithPredicates(&predicate.Funcs{
 				DeleteFunc: func(_ event.DeleteEvent) bool { return true },
-			},
-			),
+			}),
 		)
 	}
 
