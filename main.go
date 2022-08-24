@@ -91,7 +91,10 @@ func main() {
 
 	ctx := ctrl.SetupSignalHandler()
 
-	if err = controllers.NewFullNode(mgr.GetClient()).SetupWithManager(ctx, mgr); err != nil {
+	if err = controllers.NewFullNode(
+		mgr.GetClient(),
+		mgr.GetEventRecorderFor("CosmosFullNode"),
+	).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "CosmosFullNode")
 		os.Exit(1)
 	}
