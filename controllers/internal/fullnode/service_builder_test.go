@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/samber/lo"
+	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -136,52 +137,17 @@ func TestBuildServices(t *testing.T) {
 		crd.Namespace = "test"
 		crd.Spec.ChainConfig.Network = "testnet"
 		crd.Spec.PodTemplate.Image = "terra:v6.0.0"
+		crd.Spec.RPCServiceTemplate = cosmosv1.CosmosRPCServiceSpec{
+			Annotations:           map[string]string{"test": "value"},
+			Type:                  ptr(corev1.ServiceTypeNodePort),
+			ExternalTrafficPolicy: ptr(corev1.ServiceExternalTrafficPolicyTypeLocal),
+		}
 		svcs := BuildServices(&crd)
 
-		require.Equal(t, 2, len(svcs)) // Includes single p2p service.
-
-		rpc := svcs[1]
-		require.Equal(t, "terra-testnet-fullnode-rpc", rpc.Name)
-		require.Equal(t, "test", rpc.Namespace)
-		require.Equal(t, corev1.ServiceTypeClusterIP, rpc.Spec.Type)
-		require.Equal(t, map[string]string{"app.kubernetes.io/name": "terra-testnet-fullnode"}, rpc.Spec.Selector)
-
-		require.Equal(t, 5, len(rpc.Spec.Ports))
-		// All ports minus prometheus and p2p.
-		want := []corev1.ServicePort{
-			{
-				Name:       "api",
-				Protocol:   corev1.ProtocolTCP,
-				Port:       1317,
-				TargetPort: intstr.FromString("api"),
-			},
-			{
-				Name:       "rosetta",
-				Protocol:   corev1.ProtocolTCP,
-				Port:       8080,
-				TargetPort: intstr.FromString("rosetta"),
-			},
-			{
-				Name:       "grpc",
-				Protocol:   corev1.ProtocolTCP,
-				Port:       9090,
-				TargetPort: intstr.FromString("grpc"),
-			},
-			{
-				Name:       "rpc",
-				Protocol:   corev1.ProtocolTCP,
-				Port:       26657,
-				TargetPort: intstr.FromString("rpc"),
-			},
-			{
-				Name:       "grpc-web",
-				Protocol:   corev1.ProtocolTCP,
-				Port:       9091,
-				TargetPort: intstr.FromString("grpc-web"),
-			},
-		}
-
-		require.Equal(t, want, rpc.Spec.Ports)
+		rpc := svcs[0]
+		require.Equal(t, map[string]string{"test": "value"}, rpc.Annotations)
+		require.Equal(t, corev1.ServiceExternalTrafficPolicyTypeLocal, rpc.Spec.ExternalTrafficPolicy)
+		require.Equal(t, corev1.ServiceTypeNodePort, rpc.Spec.Type)
 	})
 
 	t.Run("long name", func(t *testing.T) {

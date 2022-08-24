@@ -69,7 +69,7 @@ func rpcService(crd *cosmosv1.CosmosFullNode) *corev1.Service {
 		kube.ComponentLabel, "rpc",
 	)
 
-	return &corev1.Service{
+	svc := &corev1.Service{
 		TypeMeta: metav1.TypeMeta{Kind: "Service", APIVersion: "v1"},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      rpcServiceName(crd),
@@ -113,6 +113,19 @@ func rpcService(crd *cosmosv1.CosmosFullNode) *corev1.Service {
 			Type:     corev1.ServiceTypeClusterIP,
 		},
 	}
+
+	spec := crd.Spec.RPCServiceTemplate
+	if v := spec.Annotations; v != nil {
+		svc.Annotations = v
+	}
+	if v := spec.ExternalTrafficPolicy; v != nil {
+		svc.Spec.ExternalTrafficPolicy = *v
+	}
+	if v := spec.Type; v != nil {
+		svc.Spec.Type = *v
+	}
+
+	return svc
 }
 
 func p2pServiceName(crd *cosmosv1.CosmosFullNode, ordinal int32) string {
