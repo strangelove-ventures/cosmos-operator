@@ -29,8 +29,8 @@ func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, p2p ExternalAddresses) ([]*co
 		buf = bufPool.Get().(*bytes.Buffer)
 		cms = make([]*corev1.ConfigMap, crd.Spec.Replicas)
 	)
-	defer buf.Reset()
 	defer bufPool.Put(buf)
+	defer buf.Reset()
 
 	for i := int32(0); i < crd.Spec.Replicas; i++ {
 		data := make(map[string]string)
@@ -42,6 +42,7 @@ func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, p2p ExternalAddresses) ([]*co
 		if err := addAppToml(buf, data, crd.Spec.ChainConfig.App); err != nil {
 			return nil, err
 		}
+		buf.Reset()
 
 		cm := corev1.ConfigMap{
 			TypeMeta: metav1.TypeMeta{Kind: "ConfigMap", APIVersion: "v1"},

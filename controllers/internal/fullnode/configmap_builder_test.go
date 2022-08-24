@@ -62,6 +62,9 @@ func TestBuildConfigMap(t *testing.T) {
 
 		cm = cms[1]
 		require.Equal(t, "agoric-testnet-fullnode-1", cm.Name)
+
+		require.NotEmpty(t, cms[0].Data)
+		require.Equal(t, cms[0].Data, cms[1].Data)
 	})
 
 	t.Run("long name", func(t *testing.T) {
