@@ -50,7 +50,7 @@ func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, p2p ExternalAddresses) ([]*co
 				Namespace: crd.Namespace,
 				Labels: defaultLabels(crd,
 					kube.InstanceLabel, instanceName(crd, i),
-					kube.RevisionLabel, serviceRevisionHash(crd),
+					kube.RevisionLabel, configMapRevisionHash(crd),
 				),
 			},
 		}
