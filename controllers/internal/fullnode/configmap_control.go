@@ -47,7 +47,6 @@ func (cmc ConfigMapControl) Reconcile(ctx context.Context, log logr.Logger, crd 
 	var cms corev1.ConfigMapList
 	if err := cmc.client.List(ctx, &cms,
 		client.InNamespace(crd.Namespace),
-		client.MatchingFields{kube.ControllerOwnerField: crd.Name},
 		SelectorLabels(crd),
 	); err != nil {
 		return kube.TransientError(fmt.Errorf("list existing configmaps: %w", err))

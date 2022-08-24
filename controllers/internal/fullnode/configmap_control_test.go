@@ -45,7 +45,7 @@ func TestConfigMapControl_Reconcile(t *testing.T) {
 		err := control.Reconcile(ctx, nopLogger, &crd, nil)
 		require.NoError(t, err)
 
-		require.Len(t, mClient.GotListOpts, 3)
+		require.Len(t, mClient.GotListOpts, 2)
 		var listOpt client.ListOptions
 		for _, opt := range mClient.GotListOpts {
 			opt.ApplyToList(&listOpt)
@@ -53,7 +53,8 @@ func TestConfigMapControl_Reconcile(t *testing.T) {
 		require.Equal(t, "test", listOpt.Namespace)
 		require.Zero(t, listOpt.Limit)
 		require.Equal(t, "app.kubernetes.io/name=stargaze-testnet-fullnode", listOpt.LabelSelector.String())
-		require.Equal(t, ".metadata.controller=stargaze", listOpt.FieldSelector.String())
+		// Oddly, fetching configmap list does not work with the owner field selector.
+		require.Nil(t, listOpt.FieldSelector)
 
 		require.Equal(t, 1, mClient.CreateCount)
 
