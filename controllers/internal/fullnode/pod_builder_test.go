@@ -57,15 +57,15 @@ func TestPodBuilder(t *testing.T) {
 		require.Equal(t, "v1", pod.APIVersion)
 
 		require.Equal(t, "test", pod.Namespace)
-		require.Equal(t, "osmosis-mainnet-fullnode-5", pod.Name)
+		require.Equal(t, "osmosis-fullnode-5", pod.Name)
 
 		require.NotEmpty(t, pod.Labels["app.kubernetes.io/revision"])
 		// The fuzz test below tests this property.
 		delete(pod.Labels, kube.RevisionLabel)
 		wantLabels := map[string]string{
-			"app.kubernetes.io/instance":   "osmosis-mainnet-fullnode-5",
+			"app.kubernetes.io/instance":   "osmosis-fullnode-5",
 			"app.kubernetes.io/created-by": "cosmosfullnode",
-			"app.kubernetes.io/name":       "osmosis-mainnet-fullnode",
+			"app.kubernetes.io/name":       "osmosis-fullnode",
 			"app.kubernetes.io/version":    "v1.2.3",
 			"cosmos.strange.love/network":  "mainnet",
 		}
@@ -91,7 +91,7 @@ func TestPodBuilder(t *testing.T) {
 		require.Empty(t, pod.Name)
 
 		pod = builder.WithOrdinal(123).Build()
-		require.Equal(t, "osmosis-mainnet-fullnode-123", pod.Name)
+		require.Equal(t, "osmosis-fullnode-123", pod.Name)
 	})
 
 	t.Run("happy path - ports", func(t *testing.T) {
@@ -145,7 +145,7 @@ func TestPodBuilder(t *testing.T) {
 
 		require.Equal(t, "label", pod.Labels["custom"])
 		// Operator label takes precedence.
-		require.Equal(t, "osmosis-mainnet-fullnode", pod.Labels[kube.NameLabel])
+		require.Equal(t, "osmosis-fullnode", pod.Labels[kube.NameLabel])
 
 		require.Equal(t, "annotation", pod.Annotations["custom"])
 		// Operator label takes precedence.
@@ -170,7 +170,7 @@ func TestPodBuilder(t *testing.T) {
 		builder := NewPodBuilder(&longCrd)
 		pod := builder.WithOrdinal(125).Build()
 
-		require.Regexp(t, `a.*-mainnet-fullnode-125`, pod.Name)
+		require.Regexp(t, `a.*-fullnode-125`, pod.Name)
 
 		RequireValidMetadata(t, pod)
 	})
@@ -217,8 +217,8 @@ func TestPodBuilder(t *testing.T) {
 		}
 
 		initCont := pod.Spec.InitContainers[0]
-		require.Contains(t, initCont.Args[1], `osmosisd init osmosis-mainnet-fullnode-6 --home "$CHAIN_HOME"`)
-		require.Contains(t, initCont.Args[1], `osmosisd init osmosis-mainnet-fullnode-6 --home "$HOME/.tmp"`)
+		require.Contains(t, initCont.Args[1], `osmosisd init osmosis-fullnode-6 --home "$CHAIN_HOME"`)
+		require.Contains(t, initCont.Args[1], `osmosisd init osmosis-fullnode-6 --home "$HOME/.tmp"`)
 
 		mergeConfig := pod.Spec.InitContainers[2]
 		// The order of config-merge arguments is important. Rightmost takes precedence.
@@ -242,13 +242,13 @@ func TestPodBuilder(t *testing.T) {
 		require.Len(t, vols, 3)
 
 		require.Equal(t, "vol-chain-home", vols[0].Name)
-		require.Equal(t, "pvc-osmosis-mainnet-fullnode-5", vols[0].PersistentVolumeClaim.ClaimName)
+		require.Equal(t, "pvc-osmosis-fullnode-5", vols[0].PersistentVolumeClaim.ClaimName)
 
 		require.Equal(t, "vol-tmp", vols[1].Name)
 		require.NotNil(t, vols[1].EmptyDir)
 
 		require.Equal(t, "vol-config", vols[2].Name)
-		require.Equal(t, "osmosis-mainnet-fullnode-5", vols[2].ConfigMap.Name)
+		require.Equal(t, "osmosis-fullnode-5", vols[2].ConfigMap.Name)
 		wantItems := []corev1.KeyToPath{
 			{Key: "config-overlay.toml", Path: "config-overlay.toml"},
 			{Key: "app-overlay.toml", Path: "app-overlay.toml"},

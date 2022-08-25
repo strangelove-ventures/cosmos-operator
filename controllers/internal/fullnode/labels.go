@@ -36,7 +36,7 @@ func defaultLabels(crd *cosmosv1.CosmosFullNode, kvPairs ...string) map[string]s
 }
 
 func appName(crd *cosmosv1.CosmosFullNode) string {
-	return kube.ToLabelValue(fmt.Sprintf("%s-%s-fullnode", crd.Name, crd.Spec.ChainConfig.Network))
+	return kube.ToLabelValue(fmt.Sprintf("%s-fullnode", crd.Name))
 }
 
 func instanceName(crd *cosmosv1.CosmosFullNode, ordinal int32) string {

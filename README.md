@@ -20,6 +20,21 @@ Coming soon!
 
 # Best Practices
 
+## Resource Names
+
+If you plan to have multiple network environments in the same cluster or namespace, append the network name.
+
+Example:
+```yaml
+apiVersion: cosmos.strange.love/v1
+kind: CosmosFullNode
+metadata:
+  name: cosmoshub-mainnet
+spec:
+  chain:
+    network: mainnet # Should align with metadata.name above.
+```
+
 ## Volumes, PVCs and StorageClass
 
 Generally, Volumes are bound to a single Availability Zone (AZ). Therefore, use or define a [StorageClass](https://kubernetes.io/docs/concepts/storage/storage-classes/)

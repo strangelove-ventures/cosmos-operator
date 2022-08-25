@@ -43,7 +43,7 @@ func TestBuildConfigMap(t *testing.T) {
 		require.Equal(t, 3, len(cms))
 
 		cm := cms[0]
-		require.Equal(t, "agoric-testnet-fullnode-0", cm.Name)
+		require.Equal(t, "agoric-fullnode-0", cm.Name)
 		require.Equal(t, "test", cm.Namespace)
 		require.Nil(t, cm.Immutable)
 
@@ -52,8 +52,8 @@ func TestBuildConfigMap(t *testing.T) {
 
 		wantLabels := map[string]string{
 			"app.kubernetes.io/created-by": "cosmosfullnode",
-			"app.kubernetes.io/name":       "agoric-testnet-fullnode",
-			"app.kubernetes.io/instance":   "agoric-testnet-fullnode-0",
+			"app.kubernetes.io/name":       "agoric-fullnode",
+			"app.kubernetes.io/instance":   "agoric-fullnode-0",
 			"app.kubernetes.io/version":    "v6.0.0",
 			"cosmos.strange.love/network":  "testnet",
 		}
@@ -61,7 +61,7 @@ func TestBuildConfigMap(t *testing.T) {
 		require.Equal(t, wantLabels, cm.Labels)
 
 		cm = cms[1]
-		require.Equal(t, "agoric-testnet-fullnode-1", cm.Name)
+		require.Equal(t, "agoric-fullnode-1", cm.Name)
 
 		require.NotEmpty(t, cms[0].Data)
 		require.Equal(t, cms[0].Data, cms[1].Data)
@@ -163,7 +163,7 @@ func TestBuildConfigMap(t *testing.T) {
 	indexer = "null"
 	`)
 
-			p2p := ExternalAddresses{"osmosis-mainnet-fullnode-0": "should not see me"}
+			p2p := ExternalAddresses{"osmosis-fullnode-0": "should not see me"}
 			cms, err := BuildConfigMaps(overrides, p2p)
 			require.NoError(t, err)
 
@@ -184,9 +184,9 @@ func TestBuildConfigMap(t *testing.T) {
 
 		t.Run("p2p external addresses", func(t *testing.T) {
 			p2p := ExternalAddresses{
-				"osmosis-mainnet-fullnode-0": "1.1.1.1",
-				"osmosis-mainnet-fullnode-1": "2.2.2.2",
-				"osmosis-mainnet-fullnode-2": "3.3.3.3",
+				"osmosis-fullnode-0": "1.1.1.1",
+				"osmosis-fullnode-1": "2.2.2.2",
+				"osmosis-fullnode-2": "3.3.3.3",
 			}
 			p2pCrd := crd.DeepCopy()
 			p2pCrd.Spec.Replicas = 3
