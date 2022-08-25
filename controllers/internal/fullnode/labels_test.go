@@ -16,5 +16,5 @@ func TestSelectorLabels(t *testing.T) {
 	crd.Spec.ChainConfig.Network = "mainnet"
 
 	got := SelectorLabels(crd)
-	require.Equal(t, client.MatchingLabels{"app.kubernetes.io/name": "cool-chain-mainnet-fullnode"}, got)
+	require.Equal(t, client.MatchingLabels{"app.kubernetes.io/name": "cool-chain-fullnode"}, got)
 }

@@ -74,7 +74,7 @@ func TestCollectP2PAddresses(t *testing.T) {
 	}
 	require.Equal(t, "addresses", listOpt.Namespace)
 	require.Zero(t, listOpt.Limit)
-	require.Equal(t, "app.kubernetes.io/component=p2p,app.kubernetes.io/name=simapp-mainnet-fullnode", listOpt.LabelSelector.String())
+	require.Equal(t, "app.kubernetes.io/component=p2p,app.kubernetes.io/name=simapp-fullnode", listOpt.LabelSelector.String())
 	require.Equal(t, ".metadata.controller=simapp", listOpt.FieldSelector.String())
 }
 
