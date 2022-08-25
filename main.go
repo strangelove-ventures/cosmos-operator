@@ -20,12 +20,16 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 
 	"github.com/pkg/profile"
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
+
+	// Add Pprof endpoints.
+	_ "net/http/pprof"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -53,6 +57,13 @@ func init() {
 
 func main() {
 	ctx := ctrl.SetupSignalHandler()
+
+	go func() {
+		setupLog.Info("Serving pprof endpoints at localhost:6060/debug/pprof")
+		if err := http.ListenAndServe("localhost:6060", nil); err != nil {
+			setupLog.Error(err, "Pprof server exited with error")
+		}
+	}()
 
 	if err := start(ctx); err != nil {
 		setupLog.Error(err, "Failed to start")
