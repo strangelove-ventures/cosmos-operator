@@ -137,7 +137,7 @@ func TestBuildServices(t *testing.T) {
 		crd.Namespace = "test"
 		crd.Spec.ChainConfig.Network = "testnet"
 		crd.Spec.PodTemplate.Image = "terra:v6.0.0"
-		crd.Spec.RPCServiceTemplate = cosmosv1.CosmosRPCServiceSpec{
+		crd.Spec.Service.RPCTemplate = cosmosv1.CosmosRPCServiceSpec{
 			Annotations:           map[string]string{"test": "value"},
 			Type:                  ptr(corev1.ServiceTypeNodePort),
 			ExternalTrafficPolicy: ptr(corev1.ServiceExternalTrafficPolicyTypeLocal),
@@ -180,7 +180,7 @@ func FuzzBuildServices(f *testing.F) {
 		svcs2 := BuildServices(&crd)
 		require.Equal(t, uniq(svcs1), uniq(svcs2))
 
-		crd.Spec.RPCServiceTemplate.Type = ptr(corev1.ServiceType(svcType))
+		crd.Spec.Service.RPCTemplate.Type = ptr(corev1.ServiceType(svcType))
 		svcs3 := BuildServices(&crd)
 		require.NotEqual(t, uniq(svcs1), uniq(svcs3))
 	})

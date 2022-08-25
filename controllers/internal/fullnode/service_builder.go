@@ -115,7 +115,7 @@ func rpcService(crd *cosmosv1.CosmosFullNode) *corev1.Service {
 		},
 	}
 
-	spec := crd.Spec.RPCServiceTemplate
+	spec := crd.Spec.Service.RPCTemplate
 	if v := spec.Annotations; v != nil {
 		svc.Annotations = v
 	}
@@ -146,7 +146,7 @@ func serviceRevisionHash(crd *cosmosv1.CosmosFullNode) string {
 	})
 	sort.Strings(labels)
 	mustWrite(h, strings.Join(labels, ""))
-	mustWrite(h, mustMarshalJSON(crd.Spec.RPCServiceTemplate))
+	mustWrite(h, mustMarshalJSON(crd.Spec.Service.RPCTemplate))
 
 	return hex.EncodeToString(h.Sum(nil))
 }

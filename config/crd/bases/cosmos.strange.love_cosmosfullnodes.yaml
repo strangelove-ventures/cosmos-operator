@@ -245,31 +245,46 @@ spec:
                 format: int32
                 minimum: 0
                 type: integer
-              rpcServiceTemplate:
-                description: Optional overrides to the single RPC service.
+              service:
+                description: Configure Operator created services. A singe rpc service
+                  is created for load balancing api, grpc, rpc, etc. requests. This
+                  allows a k8s admin to use the service in an Ingress, for example.
+                  Additionally, multiple p2p services are created for tendermint peer
+                  exchange.
                 properties:
-                  annotations:
-                    additionalProperties:
-                      type: string
-                    description: Added to the single RPC service annotations. Some
-                      cloud providers require special annotations.
+                  maxP2PExternalAddresses:
+                    description: Maximum number of p2p services to create for tendermint
+                      peer exchange. The public endpoint is set as the "p2p.external_address"
+                      in the tendermint config.toml. If not set, defaults to 3.
+                    format: int32
+                    minimum: 0
+                    type: integer
+                  rpcTemplate:
+                    description: Overrides for the single RPC service.
+                    properties:
+                      annotations:
+                        additionalProperties:
+                          type: string
+                        description: Added to the single RPC service annotations.
+                          Some cloud providers require special annotations.
+                        type: object
+                      externalTrafficPolicy:
+                        description: 'Sets endpoint and routing behavior. See: https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/#caveats-and-limitations-when-preserving-source-ips
+                          If not set, defaults to "Cluster".'
+                        enum:
+                        - Cluster
+                        - Local
+                        type: string
+                      type:
+                        description: Describes ingress methods for a service. If not
+                          set, defaults to "ClusterIP".
+                        enum:
+                        - ClusterIP
+                        - NodePort
+                        - LoadBalancer
+                        - ExternalName
+                        type: string
                     type: object
-                  externalTrafficPolicy:
-                    description: 'Sets endpoint and routing behavior. See: https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/#caveats-and-limitations-when-preserving-source-ips
-                      If not set, defaults to "Cluster".'
-                    enum:
-                    - Cluster
-                    - Local
-                    type: string
-                  type:
-                    description: Describes ingress methods for a service. If not set,
-                      defaults to "ClusterIP".
-                    enum:
-                    - ClusterIP
-                    - NodePort
-                    - LoadBalancer
-                    - ExternalName
-                    type: string
                 type: object
               strategy:
                 description: How to scale pods when performing an update.

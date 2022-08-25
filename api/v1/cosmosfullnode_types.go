@@ -50,9 +50,11 @@ type CosmosFullNodeSpec struct {
 	// One PVC per replica mapped and mounted to a corresponding pod.
 	VolumeClaimTemplate CosmosPersistentVolumeClaim `json:"volumeClaimTemplate"`
 
-	// Optional overrides to the single RPC service.
+	// Configure Operator created services. A singe rpc service is created for load balancing api, grpc, rpc, etc. requests.
+	// This allows a k8s admin to use the service in an Ingress, for example.
+	// Additionally, multiple p2p services are created for tendermint peer exchange.
 	// +optional
-	RPCServiceTemplate CosmosRPCServiceSpec `json:"rpcServiceTemplate"`
+	Service CosmosServiceSpec `json:"service"`
 }
 
 // CosmosFullNodeStatus defines the observed state of CosmosFullNode
@@ -397,6 +399,19 @@ const (
 	CosmosPruningEverything CosmosPruningStrategy = "everything"
 	CosmosPruningCustom     CosmosPruningStrategy = "custom"
 )
+
+type CosmosServiceSpec struct {
+	// Maximum number of p2p services to create for tendermint peer exchange.
+	// The public endpoint is set as the "p2p.external_address" in the tendermint config.toml.
+	// If not set, defaults to 3.
+	// +kubebuilder:validation:Minimum:=0
+	// +optional
+	MaxP2PExternalAddresses *int32 `json:"maxP2PExternalAddresses"`
+
+	// Overrides for the single RPC service.
+	// +optional
+	RPCTemplate CosmosRPCServiceSpec `json:"rpcTemplate"`
+}
 
 // CosmosRPCServiceSpec allows some overrides for the created, single RPC service.
 type CosmosRPCServiceSpec struct {
