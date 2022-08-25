@@ -116,11 +116,22 @@ make tools
 You’ll need a Kubernetes cluster to run against. You can use [KIND](https://sigs.k8s.io/kind) to get a local cluster for testing, or run against a remote cluster.
 **Note:** Your controller will automatically use the current context in your kubeconfig file (i.e. whatever cluster `kubectl cluster-info` shows).
 
-## Running on the cluster
+## Running a Prerelease on the Cluster
+
+0. Authenticate with docker
+
+If cosmos-operator open sourced, remove this step.
+
+Create a [PAT on Github](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token) with package read and write permissions.
+
+```sh
+printenv GH_PAT | docker login ghcr.io -u <your GH username> --password-stdin 
+```
+
 1. Install Instances of Custom Resources:
 
 ```sh
-kubectl apply -f config/samples/
+make install
 ```
 
 2. Build and push your image to the location specified by `IMG`:
