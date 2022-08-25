@@ -219,6 +219,8 @@ type CosmosChainConfig struct {
 	Binary string `json:"binary"`
 
 	// Tendermint configuration applied to config.toml.
+	// Although optional, it's highly recommended you configure this field.
+	// +optional
 	Tendermint CosmosTendermintConfig `json:"config"`
 
 	// App configuration applied to app.toml.

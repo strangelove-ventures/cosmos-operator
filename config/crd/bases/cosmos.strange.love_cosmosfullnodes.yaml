@@ -124,6 +124,8 @@ spec:
                     type: string
                   config:
                     description: Tendermint configuration applied to config.toml.
+                      Although optional, it's highly recommended you configure this
+                      field.
                     properties:
                       corsAllowedOrigins:
                         description: rpc list of origins a cross-domain request can
@@ -236,7 +238,6 @@ spec:
                 - app
                 - binary
                 - chainID
-                - config
                 - network
                 type: object
               replicas:
