@@ -78,7 +78,7 @@ func TestConfigMapControl_Reconcile(t *testing.T) {
 		err := control.Reconcile(ctx, nopLogger, &crd, nil)
 
 		require.Error(t, err)
-		require.EqualError(t, err, "unrecoverable error: boom")
+		require.EqualError(t, err, "boom")
 		require.False(t, err.IsTransient())
 	})
 }
