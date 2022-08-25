@@ -206,10 +206,6 @@ func TestPodBuilder(t *testing.T) {
 
 		require.Len(t, lo.Map(pod.Spec.InitContainers, func(c corev1.Container, _ int) string { return c.Name }), 4)
 
-		chown := pod.Spec.InitContainers[0]
-		require.Equal(t, wantWrkDir, chown.WorkingDir)
-		require.Equal(t, envVars, chown.Env)
-
 		for _, c := range pod.Spec.InitContainers {
 			require.Equal(t, envVars, container.Env, c.Name)
 			require.Equal(t, wantWrkDir, c.WorkingDir)
