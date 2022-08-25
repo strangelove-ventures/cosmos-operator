@@ -63,6 +63,32 @@ func TestBuildServices(t *testing.T) {
 		require.Equal(t, "terra-testnet-fullnode-p2p-1", p2p.Name)
 	})
 
+	t.Run("p2p max external addresses", func(t *testing.T) {
+		crd := defaultCRD()
+		crd.Spec.Replicas = 10
+
+		for i := 0; i < 5; i++ {
+			crd.Spec.Service.MaxP2PExternalAddresses = ptr(int32(i))
+			svcs := BuildServices(&crd)
+
+			got := lo.Filter(svcs, func(s *corev1.Service, _ int) bool {
+				return s.Labels[kube.ComponentLabel] == "p2p"
+			})
+
+			require.Equal(t, i, len(got))
+		}
+
+		crd.Spec.Replicas = 1
+		crd.Spec.Service.MaxP2PExternalAddresses = ptr(int32(2))
+
+		svcs := BuildServices(&crd)
+		got := lo.Filter(svcs, func(s *corev1.Service, _ int) bool {
+			return s.Labels[kube.ComponentLabel] == "p2p"
+		})
+
+		require.Equal(t, 1, len(got))
+	})
+
 	t.Run("rpc service", func(t *testing.T) {
 		crd := defaultCRD()
 		crd.Spec.Replicas = 1
@@ -137,7 +163,7 @@ func TestBuildServices(t *testing.T) {
 		crd.Namespace = "test"
 		crd.Spec.ChainConfig.Network = "testnet"
 		crd.Spec.PodTemplate.Image = "terra:v6.0.0"
-		crd.Spec.RPCServiceTemplate = cosmosv1.CosmosRPCServiceSpec{
+		crd.Spec.Service.RPCTemplate = cosmosv1.CosmosRPCServiceSpec{
 			Annotations:           map[string]string{"test": "value"},
 			Type:                  ptr(corev1.ServiceTypeNodePort),
 			ExternalTrafficPolicy: ptr(corev1.ServiceExternalTrafficPolicyTypeLocal),
@@ -180,7 +206,7 @@ func FuzzBuildServices(f *testing.F) {
 		svcs2 := BuildServices(&crd)
 		require.Equal(t, uniq(svcs1), uniq(svcs2))
 
-		crd.Spec.RPCServiceTemplate.Type = ptr(corev1.ServiceType(svcType))
+		crd.Spec.Service.RPCTemplate.Type = ptr(corev1.ServiceType(svcType))
 		svcs3 := BuildServices(&crd)
 		require.NotEqual(t, uniq(svcs1), uniq(svcs3))
 	})
