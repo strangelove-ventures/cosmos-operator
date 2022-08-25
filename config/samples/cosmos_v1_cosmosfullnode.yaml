@@ -21,7 +21,7 @@ spec:
     # Cosmos SDK config (translates to app.toml)
     app:
       minGasPrice: "0.0025uatom"
-  template:
+  podTemplate:
     image: "ghcr.io/strangelove-ventures/heighliner/gaia"
     resources:
       requests:

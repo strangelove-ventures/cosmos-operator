@@ -163,7 +163,7 @@ func TestBuildServices(t *testing.T) {
 		crd.Namespace = "test"
 		crd.Spec.ChainConfig.Network = "testnet"
 		crd.Spec.PodTemplate.Image = "terra:v6.0.0"
-		crd.Spec.Service.RPCTemplate = cosmosv1.CosmosRPCServiceSpec{
+		crd.Spec.Service.RPCTemplate = cosmosv1.RPCServiceSpec{
 			Annotations:           map[string]string{"test": "value"},
 			Type:                  ptr(corev1.ServiceTypeNodePort),
 			ExternalTrafficPolicy: ptr(corev1.ServiceExternalTrafficPolicyTypeLocal),

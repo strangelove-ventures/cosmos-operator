@@ -87,7 +87,7 @@ func TestBuildConfigMap(t *testing.T) {
 		crd.Name = "osmosis"
 		crd.Spec.ChainConfig.Network = "mainnet"
 		crd.Spec.Replicas = 1
-		crd.Spec.ChainConfig.Tendermint = cosmosv1.CosmosTendermintConfig{
+		crd.Spec.ChainConfig.Tendermint = cosmosv1.TendermintConfig{
 			PersistentPeers: "peer1@1.2.2.2:789,peer2@2.2.2.2:789,peer3@3.2.2.2:789",
 			Seeds:           "seed1@1.1.1.1:456,seed2@1.1.1.1:456",
 		}
@@ -218,7 +218,7 @@ func TestBuildConfigMap(t *testing.T) {
 	t.Run("app-overlay.toml", func(t *testing.T) {
 		crd := defaultCRD()
 		crd.Spec.Replicas = 3
-		crd.Spec.ChainConfig.App = cosmosv1.CosmosAppConfig{
+		crd.Spec.ChainConfig.App = cosmosv1.SDKAppConfig{
 			MinGasPrice: "0.123token",
 		}
 
@@ -227,7 +227,7 @@ func TestBuildConfigMap(t *testing.T) {
 			custom.Spec.ChainConfig.App.APIEnableUnsafeCORS = true
 			custom.Spec.ChainConfig.App.GRPCWebEnableUnsafeCORS = true
 			custom.Spec.ChainConfig.App.HaltHeight = ptr(uint64(34567))
-			custom.Spec.ChainConfig.App.Pruning = &cosmosv1.CosmosPruning{
+			custom.Spec.ChainConfig.App.Pruning = &cosmosv1.Pruning{
 				Strategy:   "custom",
 				Interval:   ptr(uint32(222)),
 				KeepEvery:  ptr(uint32(333)),

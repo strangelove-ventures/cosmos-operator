@@ -26,7 +26,7 @@ echo "$DATA_DIR initialized."
 `
 
 // DownloadSnapshotCommand returns a command and args for downloading and restoring from a snapshot.
-func DownloadSnapshotCommand(cfg cosmosv1.CosmosChainConfig) (string, []string) {
+func DownloadSnapshotCommand(cfg cosmosv1.ChainConfig) (string, []string) {
 	args := []string{"-c"}
 	switch {
 	case cfg.SnapshotScript != nil:
