@@ -15,6 +15,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
+const maxP2PServiceDefault = 3
+
 // BuildServices returns a list of services given the crd.
 //
 // Creates a single RPC service, likely for use with an Ingress.
@@ -27,7 +29,11 @@ import (
 // interpreted as byzantine behavior if the peer previously connected to a pod that was in sync through the same
 // external address.
 func BuildServices(crd *cosmosv1.CosmosFullNode) []*corev1.Service {
-	maxp2p := lo.Clamp(2, 0, int(crd.Spec.Replicas))
+	max := maxP2PServiceDefault
+	if v := crd.Spec.Service.MaxP2PExternalAddresses; v != nil {
+		max = int(*v)
+	}
+	maxp2p := lo.Clamp(max, 0, int(crd.Spec.Replicas))
 	p2ps := make([]*corev1.Service, maxp2p)
 
 	for i := range lo.Range(maxp2p) {
