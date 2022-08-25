@@ -127,6 +127,13 @@ deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
 	$(KUSTOMIZE) build config/default | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
 
+GH_PAT ?= $(error Please set GH_PAT for you personal access token to log into ghcr)
+GH_USER ?= $(error Please set GH_USER to log into ghcr)
+DOCKER_EMAIL ?= infra@strangelove.ventures
+.PHONY: regcred
+regcred: ## Installs an image pull secret using the K8s cluster specified in ~/.kube/config.
+	@kubectl -n cosmos-operator-system create secret docker-registry regcred --docker-server=ghcr.io/strangelove-ventures/cosmos-operator --docker-username=$(GH_USER) --docker-password=$(GH_PAT) --docker-email=infra@strangelove.ventures
+
 ##@ Build Dependencies
 
 ## Location to install dependencies to
