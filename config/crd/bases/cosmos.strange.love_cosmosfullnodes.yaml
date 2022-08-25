@@ -240,73 +240,7 @@ spec:
                 - chainID
                 - network
                 type: object
-              replicas:
-                description: Number of replicas to create. Individual replicas have
-                  a consistent identity.
-                format: int32
-                minimum: 0
-                type: integer
-              service:
-                description: Configure Operator created services. A singe rpc service
-                  is created for load balancing api, grpc, rpc, etc. requests. This
-                  allows a k8s admin to use the service in an Ingress, for example.
-                  Additionally, multiple p2p services are created for tendermint peer
-                  exchange.
-                properties:
-                  maxP2PExternalAddresses:
-                    description: Maximum number of p2p services to create for tendermint
-                      peer exchange. The public endpoint is set as the "p2p.external_address"
-                      in the tendermint config.toml. If not set, defaults to 3.
-                    format: int32
-                    minimum: 0
-                    type: integer
-                  rpcTemplate:
-                    description: Overrides for the single RPC service.
-                    properties:
-                      annotations:
-                        additionalProperties:
-                          type: string
-                        description: Added to the single RPC service annotations.
-                          Some cloud providers require special annotations.
-                        type: object
-                      externalTrafficPolicy:
-                        description: 'Sets endpoint and routing behavior. See: https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/#caveats-and-limitations-when-preserving-source-ips
-                          If not set, defaults to "Cluster".'
-                        enum:
-                        - Cluster
-                        - Local
-                        type: string
-                      type:
-                        description: Describes ingress methods for a service. If not
-                          set, defaults to "ClusterIP".
-                        enum:
-                        - ClusterIP
-                        - NodePort
-                        - LoadBalancer
-                        - ExternalName
-                        type: string
-                    type: object
-                type: object
-              strategy:
-                description: How to scale pods when performing an update.
-                properties:
-                  maxUnavailable:
-                    anyOf:
-                    - type: integer
-                    - type: string
-                    description: 'The maximum number of pods that can be unavailable
-                      during an update. Value can be an absolute number (ex: 5) or
-                      a percentage of desired pods (ex: 10%). Absolute number is calculated
-                      from percentage by rounding down. The minimum max unavailable
-                      is 1. Defaults to 25%. Example: when this is set to 30%, pods
-                      are scaled down to 70% of desired pods immediately when the
-                      rolling update starts. Once new pods are ready, pods can be
-                      scaled down further, ensuring that the total number of pods
-                      available at all times during the update is at least 70% of
-                      desired pods.'
-                    x-kubernetes-int-or-string: true
-                type: object
-              template:
+              podTemplate:
                 description: Template applied to all pods. Creates 1 pod per replica.
                 properties:
                   affinity:
@@ -1327,6 +1261,72 @@ spec:
                 required:
                 - image
                 type: object
+              replicas:
+                description: Number of replicas to create. Individual replicas have
+                  a consistent identity.
+                format: int32
+                minimum: 0
+                type: integer
+              service:
+                description: Configure Operator created services. A singe rpc service
+                  is created for load balancing api, grpc, rpc, etc. requests. This
+                  allows a k8s admin to use the service in an Ingress, for example.
+                  Additionally, multiple p2p services are created for tendermint peer
+                  exchange.
+                properties:
+                  maxP2PExternalAddresses:
+                    description: Maximum number of p2p services to create for tendermint
+                      peer exchange. The public endpoint is set as the "p2p.external_address"
+                      in the tendermint config.toml. If not set, defaults to 3.
+                    format: int32
+                    minimum: 0
+                    type: integer
+                  rpcTemplate:
+                    description: Overrides for the single RPC service.
+                    properties:
+                      annotations:
+                        additionalProperties:
+                          type: string
+                        description: Added to the single RPC service annotations.
+                          Some cloud providers require special annotations.
+                        type: object
+                      externalTrafficPolicy:
+                        description: 'Sets endpoint and routing behavior. See: https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/#caveats-and-limitations-when-preserving-source-ips
+                          If not set, defaults to "Cluster".'
+                        enum:
+                        - Cluster
+                        - Local
+                        type: string
+                      type:
+                        description: Describes ingress methods for a service. If not
+                          set, defaults to "ClusterIP".
+                        enum:
+                        - ClusterIP
+                        - NodePort
+                        - LoadBalancer
+                        - ExternalName
+                        type: string
+                    type: object
+                type: object
+              strategy:
+                description: How to scale pods when performing an update.
+                properties:
+                  maxUnavailable:
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    description: 'The maximum number of pods that can be unavailable
+                      during an update. Value can be an absolute number (ex: 5) or
+                      a percentage of desired pods (ex: 10%). Absolute number is calculated
+                      from percentage by rounding down. The minimum max unavailable
+                      is 1. Defaults to 25%. Example: when this is set to 30%, pods
+                      are scaled down to 70% of desired pods immediately when the
+                      rolling update starts. Once new pods are ready, pods can be
+                      scaled down further, ensuring that the total number of pods
+                      available at all times during the update is at least 70% of
+                      desired pods.'
+                    x-kubernetes-int-or-string: true
+                type: object
               volumeClaimTemplate:
                 description: Will be used to create a stand-alone PVC to provision
                   the volume. One PVC per replica mapped and mounted to a corresponding
@@ -1394,8 +1394,8 @@ spec:
                 type: object
             required:
             - chain
+            - podTemplate
             - replicas
-            - template
             - volumeClaimTemplate
             type: object
           status:

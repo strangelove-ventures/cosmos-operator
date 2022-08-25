@@ -40,7 +40,7 @@ type FullNodeSpec struct {
 
 	// Template applied to all pods.
 	// Creates 1 pod per replica.
-	PodTemplate PodSpec `json:"template"`
+	PodTemplate PodSpec `json:"podTemplate"`
 
 	// How to scale pods when performing an update.
 	// +optional
