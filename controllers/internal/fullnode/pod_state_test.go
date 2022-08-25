@@ -18,10 +18,10 @@ func TestPodState(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "agoric",
 		},
-		Spec: cosmosv1.CosmosFullNodeSpec{
+		Spec: cosmosv1.FullNodeSpec{
 			Replicas:    5,
-			ChainConfig: cosmosv1.CosmosChainConfig{Network: "devnet"},
-			PodTemplate: cosmosv1.CosmosPodSpec{
+			ChainConfig: cosmosv1.ChainConfig{Network: "devnet"},
+			PodTemplate: cosmosv1.PodSpec{
 				Image: "busybox:latest",
 			},
 		},

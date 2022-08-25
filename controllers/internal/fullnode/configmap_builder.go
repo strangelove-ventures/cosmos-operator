@@ -103,7 +103,7 @@ func defaultApp() decodedToml {
 	return data
 }
 
-func addTendermintToml(buf *bytes.Buffer, cmData map[string]string, spec cosmosv1.CosmosChainConfig, externalAddress string) error {
+func addTendermintToml(buf *bytes.Buffer, cmData map[string]string, spec cosmosv1.ChainConfig, externalAddress string) error {
 	base := make(decodedToml)
 
 	if v := spec.LogLevel; v != nil {
@@ -154,7 +154,7 @@ func addTendermintToml(buf *bytes.Buffer, cmData map[string]string, spec cosmosv
 	return nil
 }
 
-func addAppToml(buf *bytes.Buffer, cmData map[string]string, app cosmosv1.CosmosAppConfig) error {
+func addAppToml(buf *bytes.Buffer, cmData map[string]string, app cosmosv1.SDKAppConfig) error {
 	base := make(decodedToml)
 	base["minimum-gas-prices"] = app.MinGasPrice
 	// Note: The name discrepancy "enable" vs. "enabled" is intentional; a known inconsistency within the app.toml.

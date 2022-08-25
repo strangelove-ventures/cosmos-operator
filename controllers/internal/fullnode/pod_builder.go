@@ -281,7 +281,7 @@ config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CON
 	return required
 }
 
-func startCommandArgs(cfg cosmosv1.CosmosChainConfig) []string {
+func startCommandArgs(cfg cosmosv1.ChainConfig) []string {
 	args := []string{"start", "--home", chainHomeDir}
 	if cfg.SkipInvariants {
 		args = append(args, "--x-crisis-skip-assert-invariants")

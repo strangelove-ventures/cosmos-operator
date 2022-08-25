@@ -19,7 +19,7 @@ func TestBuildPVCs(t *testing.T) {
 		crd := defaultCRD()
 		crd.Name = "juno"
 		crd.Spec.Replicas = 3
-		crd.Spec.VolumeClaimTemplate = cosmosv1.CosmosPersistentVolumeClaim{
+		crd.Spec.VolumeClaimTemplate = cosmosv1.PersistentVolumeClaimSpec{
 			StorageClassName: "test-storage-class",
 			Resources: corev1.ResourceRequirements{
 				Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceStorage: resource.MustParse("100G")},
@@ -68,7 +68,7 @@ func TestBuildPVCs(t *testing.T) {
 	t.Run("advanced configuration", func(t *testing.T) {
 		crd := defaultCRD()
 		crd.Spec.Replicas = 1
-		crd.Spec.VolumeClaimTemplate = cosmosv1.CosmosPersistentVolumeClaim{
+		crd.Spec.VolumeClaimTemplate = cosmosv1.PersistentVolumeClaimSpec{
 			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteMany},
 			VolumeMode:  ptr(corev1.PersistentVolumeBlock),
 		}

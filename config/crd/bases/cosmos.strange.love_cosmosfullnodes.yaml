@@ -33,7 +33,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: CosmosFullNodeSpec defines the desired state of CosmosFullNode
+            description: FullNodeSpec defines the desired state of CosmosFullNode
             properties:
               chain:
                 description: Blockchain-specific configuration.
@@ -1399,7 +1399,7 @@ spec:
             - volumeClaimTemplate
             type: object
           status:
-            description: CosmosFullNodeStatus defines the observed state of CosmosFullNode
+            description: FullNodeStatus defines the observed state of CosmosFullNode
             type: object
         type: object
     served: true

@@ -25,8 +25,8 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// CosmosFullNodeSpec defines the desired state of CosmosFullNode
-type CosmosFullNodeSpec struct {
+// FullNodeSpec defines the desired state of CosmosFullNode
+type FullNodeSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
@@ -36,34 +36,34 @@ type CosmosFullNodeSpec struct {
 	Replicas int32 `json:"replicas"`
 
 	// Blockchain-specific configuration.
-	ChainConfig CosmosChainConfig `json:"chain"`
+	ChainConfig ChainConfig `json:"chain"`
 
 	// Template applied to all pods.
 	// Creates 1 pod per replica.
-	PodTemplate CosmosPodSpec `json:"template"`
+	PodTemplate PodSpec `json:"template"`
 
 	// How to scale pods when performing an update.
 	// +optional
-	RolloutStrategy CosmosRolloutStrategy `json:"strategy"`
+	RolloutStrategy RolloutStrategy `json:"strategy"`
 
 	// Will be used to create a stand-alone PVC to provision the volume.
 	// One PVC per replica mapped and mounted to a corresponding pod.
-	VolumeClaimTemplate CosmosPersistentVolumeClaim `json:"volumeClaimTemplate"`
+	VolumeClaimTemplate PersistentVolumeClaimSpec `json:"volumeClaimTemplate"`
 
 	// Configure Operator created services. A singe rpc service is created for load balancing api, grpc, rpc, etc. requests.
 	// This allows a k8s admin to use the service in an Ingress, for example.
 	// Additionally, multiple p2p services are created for tendermint peer exchange.
 	// +optional
-	Service CosmosServiceSpec `json:"service"`
+	Service ServiceSpec `json:"service"`
 }
 
-// CosmosFullNodeStatus defines the observed state of CosmosFullNode
-type CosmosFullNodeStatus struct {
+// FullNodeStatus defines the observed state of CosmosFullNode
+type FullNodeStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 }
 
-type CosmosMetadata struct {
+type FullNodeMetadata struct {
 	// Labels are added to a resource. If there is a collision between labels the Operator creates, the Operator
 	// labels take precedence.
 	// +optional
@@ -74,10 +74,10 @@ type CosmosMetadata struct {
 	Annotations map[string]string `json:"annotations"`
 }
 
-type CosmosPodSpec struct {
+type PodSpec struct {
 	// Metadata is a subset of metav1.ObjectMeta applied to all pods.
 	// +optional
-	Metadata CosmosMetadata `json:"metadata"`
+	Metadata FullNodeMetadata `json:"metadata"`
 
 	// Image is the docker reference in "repository:tag" format. E.g. busybox:latest.
 	// This is for the main container running the chain process.
@@ -154,9 +154,9 @@ type CosmosPodSpec struct {
 	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds"`
 }
 
-// CosmosPersistentVolumeClaim describes the common attributes of storage devices
+// PersistentVolumeClaimSpec describes the common attributes of storage devices
 // and allows a Source for provider-specific attributes
-type CosmosPersistentVolumeClaim struct {
+type PersistentVolumeClaimSpec struct {
 	// storageClassName is the name of the StorageClass required by the claim.
 	// For proper pod scheduling, it's highly recommended to set "volumeBindingMode: WaitForFirstConsumer" in the StorageClass.
 	// More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1
@@ -189,8 +189,8 @@ type CosmosPersistentVolumeClaim struct {
 	VolumeMode *corev1.PersistentVolumeMode `json:"volumeMode"`
 }
 
-// CosmosRolloutStrategy is an update strategy that can be shared between several Cosmos CRDs.
-type CosmosRolloutStrategy struct {
+// RolloutStrategy is an update strategy that can be shared between several Cosmos CRDs.
+type RolloutStrategy struct {
 	// The maximum number of pods that can be unavailable during an update.
 	// Value can be an absolute number (ex: 5) or a percentage of desired pods (ex: 10%).
 	// Absolute number is calculated from percentage by rounding down. The minimum max unavailable is 1.
@@ -204,7 +204,7 @@ type CosmosRolloutStrategy struct {
 	MaxUnavailable *intstr.IntOrString `json:"maxUnavailable"`
 }
 
-type CosmosChainConfig struct {
+type ChainConfig struct {
 	// Genesis file chain-id.
 	// +kubebuilder:validation:MinLength:=1
 	ChainID string `json:"chainID"`
@@ -221,10 +221,10 @@ type CosmosChainConfig struct {
 	// Tendermint configuration applied to config.toml.
 	// Although optional, it's highly recommended you configure this field.
 	// +optional
-	Tendermint CosmosTendermintConfig `json:"config"`
+	Tendermint TendermintConfig `json:"config"`
 
 	// App configuration applied to app.toml.
-	App CosmosAppConfig `json:"app"`
+	App SDKAppConfig `json:"app"`
 
 	// One of trace|debug|info|warn|error|fatal|panic.
 	// If not set, defaults to info.
@@ -288,8 +288,8 @@ type CosmosChainConfig struct {
 	SnapshotScript *string `json:"snapshotScript"`
 }
 
-// CosmosTendermintConfig configures the tendermint config.toml.
-type CosmosTendermintConfig struct {
+// TendermintConfig configures the tendermint config.toml.
+type TendermintConfig struct {
 	// Comma delimited list of p2p nodes in <ID>@<IP>:<PORT> format to keep persistent p2p connections.
 	// See https://docs.tendermint.com/master/spec/p2p/peer.html and
 	// https://docs.tendermint.com/master/spec/p3p/config.html#persistent-peers.
@@ -330,8 +330,8 @@ type CosmosTendermintConfig struct {
 	TomlOverrides *string `json:"overrides"`
 }
 
-// CosmosAppConfig configures the cosmos sdk application app.toml.
-type CosmosAppConfig struct {
+// SDKAppConfig configures the cosmos sdk application app.toml.
+type SDKAppConfig struct {
 	// The minimum gas prices a validator is willing to accept for processing a
 	// transaction. A transaction's fees must meet the minimum of any denomination
 	// specified in this config (e.g. 0.25token1;0.0001token2).
@@ -349,7 +349,7 @@ type CosmosAppConfig struct {
 	// Controls pruning settings. i.e. How much data to keep on disk.
 	// If not set, defaults to "default" pruning strategy.
 	// +optional
-	Pruning *CosmosPruning `json:"pruning"`
+	Pruning *Pruning `json:"pruning"`
 
 	// If set, block height at which to gracefully halt the chain and shutdown the node.
 	// Useful for testing or upgrades.
@@ -365,15 +365,15 @@ type CosmosAppConfig struct {
 	TomlOverrides *string `json:"overrides"`
 }
 
-// CosmosPruning controls the pruning settings.
-type CosmosPruning struct {
+// Pruning controls the pruning settings.
+type Pruning struct {
 	// One of default|nothing|everything|custom.
 	// default: the last 100 states are kept in addition to every 500th state; pruning at 10 block intervals.
 	// nothing: all historic states will be saved, nothing will be deleted (i.e. archiving node).
 	// everything: all saved states will be deleted, storing only the current state; pruning at 10 block intervals.
 	// custom: allow pruning options to be manually specified through Interval, KeepEvery, KeepRecent.
 	// +kubebuilder:validation:Enum:=default;nothing;everything;custom
-	Strategy CosmosPruningStrategy `json:"strategy"`
+	Strategy PruningStrategy `json:"strategy"`
 
 	// Bock height interval at which pruned heights are removed from disk (ignored if pruning is not 'custom').
 	// If not set, defaults to 0.
@@ -392,17 +392,17 @@ type CosmosPruning struct {
 	KeepRecent *uint32 `json:"keepRecent"`
 }
 
-// CosmosPruningStrategy control pruning.
-type CosmosPruningStrategy string
+// PruningStrategy control pruning.
+type PruningStrategy string
 
 const (
-	CosmosPruningDefault    CosmosPruningStrategy = "default"
-	CosmosPruningNothing    CosmosPruningStrategy = "nothing"
-	CosmosPruningEverything CosmosPruningStrategy = "everything"
-	CosmosPruningCustom     CosmosPruningStrategy = "custom"
+	PruningDefault    PruningStrategy = "default"
+	PruningNothing    PruningStrategy = "nothing"
+	PruningEverything PruningStrategy = "everything"
+	PruningCustom     PruningStrategy = "custom"
 )
 
-type CosmosServiceSpec struct {
+type ServiceSpec struct {
 	// Maximum number of p2p services to create for tendermint peer exchange.
 	// The public endpoint is set as the "p2p.external_address" in the tendermint config.toml.
 	// If not set, defaults to 3.
@@ -412,11 +412,11 @@ type CosmosServiceSpec struct {
 
 	// Overrides for the single RPC service.
 	// +optional
-	RPCTemplate CosmosRPCServiceSpec `json:"rpcTemplate"`
+	RPCTemplate RPCServiceSpec `json:"rpcTemplate"`
 }
 
-// CosmosRPCServiceSpec allows some overrides for the created, single RPC service.
-type CosmosRPCServiceSpec struct {
+// RPCServiceSpec allows some overrides for the created, single RPC service.
+type RPCServiceSpec struct {
 	// Added to the single RPC service annotations. Some cloud providers require special annotations.
 	// +optional
 	Annotations map[string]string `json:"annotations"`
@@ -443,8 +443,8 @@ type CosmosFullNode struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   CosmosFullNodeSpec   `json:"spec,omitempty"`
-	Status CosmosFullNodeStatus `json:"status,omitempty"`
+	Spec   FullNodeSpec   `json:"spec,omitempty"`
+	Status FullNodeStatus `json:"status,omitempty"`
 }
 
 //+kubebuilder:object:root=true

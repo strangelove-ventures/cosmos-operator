@@ -17,7 +17,7 @@ func TestDownloadGenesisCommand(t *testing.T) {
 	}
 
 	t.Run("default", func(t *testing.T) {
-		var cfg cosmosv1.CosmosChainConfig
+		var cfg cosmosv1.ChainConfig
 
 		cmd, args := DownloadGenesisCommand(cfg)
 		require.Equal(t, "sh", cmd)
@@ -33,7 +33,7 @@ func TestDownloadGenesisCommand(t *testing.T) {
 	})
 
 	t.Run("download", func(t *testing.T) {
-		cfg := cosmosv1.CosmosChainConfig{
+		cfg := cosmosv1.ChainConfig{
 			GenesisURL: ptr("https://example.com/genesis.json"),
 		}
 		cmd, args := DownloadGenesisCommand(cfg)
@@ -52,7 +52,7 @@ func TestDownloadGenesisCommand(t *testing.T) {
 	})
 
 	t.Run("custom", func(t *testing.T) {
-		cfg := cosmosv1.CosmosChainConfig{
+		cfg := cosmosv1.ChainConfig{
 			// Keeping this to assert that custom script takes precedence.
 			GenesisURL:    ptr("https://example.com/genesis.json"),
 			GenesisScript: ptr("echo hi"),
