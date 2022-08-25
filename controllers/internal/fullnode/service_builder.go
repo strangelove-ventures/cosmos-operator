@@ -27,19 +27,20 @@ import (
 // interpreted as byzantine behavior if the peer previously connected to a pod that was in sync through the same
 // external address.
 func BuildServices(crd *cosmosv1.CosmosFullNode) []*corev1.Service {
-	// TODO (nix - 8/23/22) One p2p service per pod will not scale well. See https://github.com/strangelove-ventures/cosmos-operator/issues/42
-	p2ps := make([]*corev1.Service, crd.Spec.Replicas)
+	maxp2p := lo.Clamp(2, 0, int(crd.Spec.Replicas))
+	p2ps := make([]*corev1.Service, maxp2p)
 
-	for i := int32(0); i < crd.Spec.Replicas; i++ {
+	for i := range lo.Range(maxp2p) {
+		ordinal := int32(i)
 		labels := defaultLabels(crd,
 			kube.RevisionLabel, serviceRevisionHash(crd),
-			kube.InstanceLabel, instanceName(crd, i),
+			kube.InstanceLabel, instanceName(crd, ordinal),
 			kube.ComponentLabel, "p2p",
 		)
 		p2ps[i] = &corev1.Service{
 			TypeMeta: metav1.TypeMeta{Kind: "Service", APIVersion: "v1"},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      p2pServiceName(crd, i),
+				Name:      p2pServiceName(crd, ordinal),
 				Namespace: crd.Namespace,
 				Labels:    labels,
 			},
@@ -52,7 +53,7 @@ func BuildServices(crd *cosmosv1.CosmosFullNode) []*corev1.Service {
 						TargetPort: intstr.FromString("p2p"),
 					},
 				},
-				Selector:              map[string]string{kube.InstanceLabel: instanceName(crd, i)},
+				Selector:              map[string]string{kube.InstanceLabel: instanceName(crd, ordinal)},
 				Type:                  corev1.ServiceTypeLoadBalancer,
 				ExternalTrafficPolicy: corev1.ServiceExternalTrafficPolicyTypeLocal,
 			},
