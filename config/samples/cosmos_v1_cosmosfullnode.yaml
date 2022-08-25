@@ -2,8 +2,8 @@
 apiVersion: cosmos.strange.love/v1
 kind: CosmosFullNode
 metadata:
-  # name should be the chain name
-  name: cosmoshub
+  # Name should be the chain name and network environment.
+  name: cosmoshub-mainnet
 spec:
   replicas: 2
   chain:
