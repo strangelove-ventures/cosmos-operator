@@ -52,6 +52,10 @@ spec:
             port: 8081
           initialDelaySeconds: 5
           periodSeconds: 10
+        ports:
+          - containerPort: 6060
+            protocol: TCP
+            name: pprof
         resources:
           limits:
             memory: 100Mi

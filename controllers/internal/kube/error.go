@@ -1,8 +1,6 @@
 package kube
 
 import (
-	"fmt"
-
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
@@ -16,13 +14,6 @@ type ReconcileError interface {
 type reconcileError struct {
 	error
 	isTransient bool
-}
-
-func (e reconcileError) Error() string {
-	if e.isTransient {
-		return fmt.Sprintf("transient error: %v", e.error)
-	}
-	return fmt.Sprintf("unrecoverable error: %v", e.error)
 }
 
 func (e reconcileError) IsTransient() bool { return e.isTransient }
