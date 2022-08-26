@@ -8,7 +8,7 @@ require (
 	github.com/go-logr/zapr v1.2.0
 	github.com/peterbourgon/mergemap v0.0.1
 	github.com/pkg/profile v1.6.0
-	github.com/samber/lo v1.26.0
+	github.com/samber/lo v1.27.0
 	github.com/stretchr/testify v1.8.0
 	go.uber.org/zap v1.19.1
 	golang.org/x/exp v0.0.0-20220303212507-bbda1eaf7a17
