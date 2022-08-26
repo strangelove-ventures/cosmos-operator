@@ -5,10 +5,12 @@ go 1.18
 require (
 	github.com/BurntSushi/toml v1.2.0
 	github.com/go-logr/logr v1.2.3
+	github.com/go-logr/zapr v1.2.0
 	github.com/peterbourgon/mergemap v0.0.1
 	github.com/pkg/profile v1.6.0
 	github.com/samber/lo v1.27.0
 	github.com/stretchr/testify v1.8.0
+	go.uber.org/zap v1.19.1
 	golang.org/x/exp v0.0.0-20220303212507-bbda1eaf7a17
 	k8s.io/api v0.24.2
 	k8s.io/apimachinery v0.24.2
@@ -33,7 +35,6 @@ require (
 	github.com/evanphx/json-patch v4.12.0+incompatible // indirect
 	github.com/form3tech-oss/jwt-go v3.2.3+incompatible // indirect
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
-	github.com/go-logr/zapr v1.2.0 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
 	github.com/go-openapi/jsonreference v0.19.5 // indirect
 	github.com/go-openapi/swag v0.19.14 // indirect
@@ -61,7 +62,6 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
-	go.uber.org/zap v1.19.1 // indirect
 	golang.org/x/crypto v0.0.0-20220214200702-86341886e292 // indirect
 	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd // indirect
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8 // indirect

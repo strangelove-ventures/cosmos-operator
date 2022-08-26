@@ -81,7 +81,7 @@ build: generate ## Build manager binary.
 
 .PHONY: run
 run: manifests generate ## Run a controller from your host.
-	go run ./main.go
+	go run ./main.go -log-level=debug
 
 PRE_IMG ?= ghcr.io/strangelove-ventures/cosmos-operator:$(shell git describe --always --dirty)
 .PHONY: docker-prerelease
