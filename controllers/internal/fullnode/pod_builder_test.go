@@ -85,6 +85,7 @@ func TestPodBuilder(t *testing.T) {
 		require.EqualValues(t, 1025, *sc.FSGroup)
 		require.EqualValues(t, "OnRootMismatch", *sc.FSGroupChangePolicy)
 		require.True(t, *sc.RunAsNonRoot)
+		require.Equal(t, corev1.SeccompProfileTypeRuntimeDefault, sc.SeccompProfile.Type)
 
 		// Test we don't share or leak data per invocation.
 		pod = builder.Build()
@@ -204,12 +205,6 @@ func TestPodBuilder(t *testing.T) {
 		require.Equal(t, envVars, container.Env)
 
 		require.Len(t, lo.Map(pod.Spec.InitContainers, func(c corev1.Container, _ int) string { return c.Name }), 4)
-
-		chown := pod.Spec.InitContainers[0]
-		// Can't have security context for chown to succeed.
-		require.Nil(t, chown.SecurityContext)
-		require.Equal(t, wantWrkDir, chown.WorkingDir)
-		require.Equal(t, envVars, chown.Env)
 
 		for _, c := range pod.Spec.InitContainers {
 			require.Equal(t, envVars, container.Env, c.Name)
