@@ -90,7 +90,7 @@ func start(ctx context.Context) error {
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
 	flag.StringVar(&profileMode, "profile", "", "Enable profiling and save profile to working dir. (Must be one of 'cpu', or 'mem'.)")
-	flag.StringVar(&logLevel, "log-level", "info", "Logging level one of 'info', 'debug', 'trace'")
+	flag.StringVar(&logLevel, "log-level", "info", "Logging level one of 'error', 'info', 'debug'")
 	flag.StringVar(&logFormat, "log-format", "console", "Logging format one of 'console' or 'json'")
 	flag.Parse()
 
@@ -163,7 +163,7 @@ func profileOpts(mode string) []func(*profile.Profile) {
 func zapLogger(level, format string) *zap.Logger {
 	config := zap.NewProductionEncoderConfig()
 	config.EncodeTime = func(ts time.Time, encoder zapcore.PrimitiveArrayEncoder) {
-		encoder.AppendString(ts.UTC().Format("2006-01-02T15:04:05.000000Z07:00"))
+		encoder.AppendString(ts.UTC().Format(time.RFC3339))
 	}
 	enc := zapcore.NewConsoleEncoder(config)
 	if format == "json" {
