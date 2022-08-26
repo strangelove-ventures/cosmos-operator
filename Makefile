@@ -83,6 +83,12 @@ build: generate ## Build manager binary.
 run: manifests generate ## Run a controller from your host.
 	go run ./main.go
 
+PRE_IMG ?= ghcr.io/strangelove-ventures/cosmos-operator:$(shell git describe --always --dirty)
+.PHONY: docker-prerelease
+docker-prerelease: ## Build and push a prerelease docker image.
+	IMG=$(PRE_IMG) $(MAKE) docker-build docker-push
+	@echo "Pushed $(PRE_IMG)"
+
 .PHONY: docker-build
 docker-build: test ## Build docker image with the manager.
 	docker build -t ${IMG} .
@@ -105,6 +111,13 @@ install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~
 uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
 	$(KUSTOMIZE) build config/crd | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
 
+.PHONY: deploy-prerelease
+deploy-prerelease: install docker-prerelease ## Install CRDs, build docker image, and deploy a prerelease controller to the K8s cluster specified in ~/.kube/config.
+	cd config/manager && $(KUSTOMIZE) edit set image controller=$(PRE_IMG)
+	$(KUSTOMIZE) build config/default | kubectl apply -f -
+	@#Hack to reset tag to avoid git thrashing.
+	@cd config/manager && $(KUSTOMIZE) edit set image controller=ghcr.io/strangelove-ventures/cosmos-operator:latest
+
 .PHONY: deploy
 deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
@@ -113,6 +126,13 @@ deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in
 .PHONY: undeploy
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
 	$(KUSTOMIZE) build config/default | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
+
+GH_PAT ?= $(error Please set GH_PAT for you personal access token to log into ghcr)
+GH_USER ?= $(error Please set GH_USER to log into ghcr)
+DOCKER_EMAIL ?= infra@strangelove.ventures
+.PHONY: regcred
+regcred: ## Installs an image pull secret using the K8s cluster specified in ~/.kube/config.
+	@kubectl -n cosmos-operator-system create secret docker-registry regcred --docker-server=ghcr.io/strangelove-ventures/cosmos-operator --docker-username=$(GH_USER) --docker-password=$(GH_PAT) --docker-email=infra@strangelove.ventures
 
 ##@ Build Dependencies
 

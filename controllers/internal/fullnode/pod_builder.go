@@ -47,7 +47,6 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 			Annotations: make(map[string]string),
 		},
 		Spec: corev1.PodSpec{
-			InitContainers:                nil, // TODO: real chain will need init containers
 			TerminationGracePeriodSeconds: valOrDefault(tpl.TerminationGracePeriodSeconds, ptr(int64(30))),
 			Affinity:                      tpl.Affinity,
 			NodeSelector:                  tpl.NodeSelector,
@@ -61,6 +60,7 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 				RunAsNonRoot:        ptr(true),
 				FSGroup:             ptr(int64(1025)),
 				FSGroupChangePolicy: ptr(corev1.FSGroupChangeOnRootMismatch),
+				SeccompProfile:      &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
 			},
 			Containers: []corev1.Container{
 				{
