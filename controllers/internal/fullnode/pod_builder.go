@@ -13,6 +13,7 @@ import (
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 var bufPool = sync.Pool{New: func() any { return new(bytes.Buffer) }}
@@ -74,10 +75,20 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 					Env:       envVars,
 					Ports:     fullNodePorts,
 					Resources: tpl.Resources,
-					// TODO (nix - 7/27/22) - Set these values.
-					LivenessProbe:  nil,
-					ReadinessProbe: nil,
-					StartupProbe:   nil,
+					ReadinessProbe: &corev1.Probe{
+						ProbeHandler: corev1.ProbeHandler{
+							HTTPGet: &corev1.HTTPGetAction{
+								Path:   "/health",
+								Port:   intstr.FromInt(rpcPort),
+								Scheme: corev1.URISchemeHTTP,
+							},
+						},
+						InitialDelaySeconds: 1,
+						TimeoutSeconds:      10,
+						PeriodSeconds:       10,
+						SuccessThreshold:    1,
+						FailureThreshold:    3,
+					},
 
 					ImagePullPolicy: tpl.ImagePullPolicy,
 					WorkingDir:      workDir,

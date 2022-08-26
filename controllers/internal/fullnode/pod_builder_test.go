@@ -12,6 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 func defaultCRD() cosmosv1.CosmosFullNode {
@@ -299,6 +300,30 @@ func TestPodBuilder(t *testing.T) {
 		c = pod.Spec.Containers[0]
 
 		require.Equal(t, []string{"start", "--home", "/home/operator/cosmos", "--x-crisis-skip-assert-invariants", "--log_level", "debug", "--log_format", "json"}, c.Args)
+	})
+
+	t.Run("probes", func(t *testing.T) {
+		crd := defaultCRD()
+		builder := NewPodBuilder(&crd)
+		pod := builder.WithOrdinal(1).Build()
+
+		want := &corev1.Probe{
+			ProbeHandler: corev1.ProbeHandler{
+				HTTPGet: &corev1.HTTPGetAction{
+					Path:   "/health",
+					Port:   intstr.FromInt(26657),
+					Scheme: "HTTP",
+				},
+			},
+			InitialDelaySeconds: 1,
+			TimeoutSeconds:      10,
+			PeriodSeconds:       10,
+			SuccessThreshold:    1,
+			FailureThreshold:    3,
+		}
+		got := pod.Spec.Containers[0].ReadinessProbe
+
+		require.Equal(t, want, got)
 	})
 }
 
