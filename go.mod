@@ -12,10 +12,10 @@ require (
 	github.com/stretchr/testify v1.8.0
 	go.uber.org/zap v1.19.1
 	golang.org/x/exp v0.0.0-20220303212507-bbda1eaf7a17
-	k8s.io/api v0.24.0
-	k8s.io/apimachinery v0.24.0
-	k8s.io/client-go v0.24.0
-	sigs.k8s.io/controller-runtime v0.12.1
+	k8s.io/api v0.24.2
+	k8s.io/apimachinery v0.24.2
+	k8s.io/client-go v0.24.2
+	sigs.k8s.io/controller-runtime v0.12.3
 )
 
 require (
@@ -75,8 +75,8 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/apiextensions-apiserver v0.24.0 // indirect
-	k8s.io/component-base v0.24.0 // indirect
+	k8s.io/apiextensions-apiserver v0.24.2 // indirect
+	k8s.io/component-base v0.24.2 // indirect
 	k8s.io/klog/v2 v2.60.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20220328201542-3ee0da9b0b42 // indirect
 	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9 // indirect
