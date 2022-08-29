@@ -12,10 +12,14 @@ import (
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 var bufPool = sync.Pool{New: func() any { return new(bytes.Buffer) }}
+
+const healthCheckPort = 1251
 
 // PodBuilder builds corev1.Pods
 type PodBuilder struct {
@@ -63,6 +67,7 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 				SeccompProfile:      &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
 			},
 			Containers: []corev1.Container{
+				// Main start container.
 				{
 					Name:  crd.Name,
 					Image: tpl.Image,
@@ -74,13 +79,51 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 					Env:       envVars,
 					Ports:     fullNodePorts,
 					Resources: tpl.Resources,
-					// TODO (nix - 7/27/22) - Set these values.
-					LivenessProbe:  nil,
-					ReadinessProbe: nil,
-					StartupProbe:   nil,
+					ReadinessProbe: &corev1.Probe{
+						ProbeHandler: corev1.ProbeHandler{
+							HTTPGet: &corev1.HTTPGetAction{
+								Path:   "/health",
+								Port:   intstr.FromInt(rpcPort),
+								Scheme: corev1.URISchemeHTTP,
+							},
+						},
+						InitialDelaySeconds: 1,
+						TimeoutSeconds:      10,
+						PeriodSeconds:       10,
+						SuccessThreshold:    1,
+						FailureThreshold:    3,
+					},
 
 					ImagePullPolicy: tpl.ImagePullPolicy,
 					WorkingDir:      workDir,
+				},
+				// Healtcheck sidecar to ensure pod is in sync with the chain.
+				{
+					Name:    "healthcheck",
+					Image:   "ghcr.io/strangelove-ventures/ignite-health-check:v0.0.1",
+					Command: []string{"ihc"},
+					Ports:   []corev1.ContainerPort{{ContainerPort: healthCheckPort, Protocol: corev1.ProtocolTCP}},
+					Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("5m"),
+							corev1.ResourceMemory: resource.MustParse("16Mi"),
+						},
+					},
+					ReadinessProbe: &corev1.Probe{
+						ProbeHandler: corev1.ProbeHandler{
+							HTTPGet: &corev1.HTTPGetAction{
+								Path:   "/",
+								Port:   intstr.FromInt(healthCheckPort),
+								Scheme: corev1.URISchemeHTTP,
+							},
+						},
+						InitialDelaySeconds: 1,
+						TimeoutSeconds:      10,
+						PeriodSeconds:       10,
+						SuccessThreshold:    1,
+						FailureThreshold:    3,
+					},
+					ImagePullPolicy: tpl.ImagePullPolicy,
 				},
 			},
 		},
