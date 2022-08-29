@@ -12,6 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 func defaultCRD() cosmosv1.CosmosFullNode {
@@ -184,30 +185,44 @@ func TestPodBuilder(t *testing.T) {
 		builder := NewPodBuilder(&crd)
 		pod := builder.WithOrdinal(6).Build()
 
-		require.Len(t, pod.Spec.Containers, 1)
+		require.Len(t, pod.Spec.Containers, 2)
 
-		container := pod.Spec.Containers[0]
-		require.Equal(t, "osmosis", container.Name)
-		require.Empty(t, container.ImagePullPolicy)
-		require.Equal(t, crd.Spec.PodTemplate.Resources, container.Resources)
-		require.Equal(t, wantWrkDir, container.WorkingDir)
+		startContainer := pod.Spec.Containers[0]
+		require.Equal(t, "osmosis", startContainer.Name)
+		require.Empty(t, startContainer.ImagePullPolicy)
+		require.Equal(t, crd.Spec.PodTemplate.Resources, startContainer.Resources)
+		require.Equal(t, wantWrkDir, startContainer.WorkingDir)
 
-		require.Equal(t, container.Env[0].Name, "HOME")
-		require.Equal(t, container.Env[0].Value, "/home/operator")
-		require.Equal(t, container.Env[1].Name, "CHAIN_HOME")
-		require.Equal(t, container.Env[1].Value, "/home/operator/cosmos")
-		require.Equal(t, container.Env[2].Name, "GENESIS_FILE")
-		require.Equal(t, container.Env[2].Value, "/home/operator/cosmos/config/genesis.json")
-		require.Equal(t, container.Env[3].Name, "CONFIG_DIR")
-		require.Equal(t, container.Env[3].Value, "/home/operator/cosmos/config")
-		require.Equal(t, container.Env[4].Name, "DATA_DIR")
-		require.Equal(t, container.Env[4].Value, "/home/operator/cosmos/data")
-		require.Equal(t, envVars, container.Env)
+		require.Equal(t, startContainer.Env[0].Name, "HOME")
+		require.Equal(t, startContainer.Env[0].Value, "/home/operator")
+		require.Equal(t, startContainer.Env[1].Name, "CHAIN_HOME")
+		require.Equal(t, startContainer.Env[1].Value, "/home/operator/cosmos")
+		require.Equal(t, startContainer.Env[2].Name, "GENESIS_FILE")
+		require.Equal(t, startContainer.Env[2].Value, "/home/operator/cosmos/config/genesis.json")
+		require.Equal(t, startContainer.Env[3].Name, "CONFIG_DIR")
+		require.Equal(t, startContainer.Env[3].Value, "/home/operator/cosmos/config")
+		require.Equal(t, startContainer.Env[4].Name, "DATA_DIR")
+		require.Equal(t, startContainer.Env[4].Value, "/home/operator/cosmos/data")
+		require.Equal(t, envVars, startContainer.Env)
+
+		healthContainer := pod.Spec.Containers[1]
+		require.Equal(t, "healthcheck", healthContainer.Name)
+		require.Equal(t, "ghcr.io/strangelove-ventures/ignite-health-check:v0.0.1", healthContainer.Image)
+		require.Equal(t, []string{"ihc"}, healthContainer.Command)
+		require.Empty(t, healthContainer.Args)
+		require.Empty(t, healthContainer.ImagePullPolicy)
+		require.NotEmpty(t, healthContainer.Resources)
+		require.Empty(t, healthContainer.Env)
+		healthPort := corev1.ContainerPort{
+			ContainerPort: 1251,
+			Protocol:      "TCP",
+		}
+		require.Equal(t, healthPort, healthContainer.Ports[0])
 
 		require.Len(t, lo.Map(pod.Spec.InitContainers, func(c corev1.Container, _ int) string { return c.Name }), 4)
 
 		for _, c := range pod.Spec.InitContainers {
-			require.Equal(t, envVars, container.Env, c.Name)
+			require.Equal(t, envVars, startContainer.Env, c.Name)
 			require.Equal(t, wantWrkDir, c.WorkingDir)
 		}
 
@@ -299,6 +314,30 @@ func TestPodBuilder(t *testing.T) {
 		c = pod.Spec.Containers[0]
 
 		require.Equal(t, []string{"start", "--home", "/home/operator/cosmos", "--x-crisis-skip-assert-invariants", "--log_level", "debug", "--log_format", "json"}, c.Args)
+	})
+
+	t.Run("probes", func(t *testing.T) {
+		crd := defaultCRD()
+		builder := NewPodBuilder(&crd)
+		pod := builder.WithOrdinal(1).Build()
+
+		want := &corev1.Probe{
+			ProbeHandler: corev1.ProbeHandler{
+				HTTPGet: &corev1.HTTPGetAction{
+					Path:   "/health",
+					Port:   intstr.FromInt(26657),
+					Scheme: "HTTP",
+				},
+			},
+			InitialDelaySeconds: 1,
+			TimeoutSeconds:      10,
+			PeriodSeconds:       10,
+			SuccessThreshold:    1,
+			FailureThreshold:    3,
+		}
+		got := pod.Spec.Containers[0].ReadinessProbe
+
+		require.Equal(t, want, got)
 	})
 }
 
