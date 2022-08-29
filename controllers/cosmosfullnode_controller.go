@@ -202,9 +202,9 @@ func (r *CosmosFullNodeReconciler) SetupWithManager(ctx context.Context, mgr ctr
 	cbuilder := ctrl.NewControllerManagedBy(mgr).For(&cosmosv1.CosmosFullNode{})
 
 	// Watch for delete events for certain resources.
+	// Intentionally do not watch PersistentVolumeClaims in case the admin needs to manually delete/recreate a PVC.
 	for _, kind := range []*source.Kind{
 		{Type: &corev1.Pod{}},
-		{Type: &corev1.PersistentVolumeClaim{}},
 		{Type: &corev1.ConfigMap{}},
 		{Type: &corev1.Service{}},
 	} {
