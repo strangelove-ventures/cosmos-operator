@@ -58,10 +58,10 @@ spec:
             name: pprof
         resources:
           limits:
-            memory: 100Mi
+            memory: 64Mi
           requests:
-            cpu: 100m
-            memory: 100Mi
+            cpu: 50m
+            memory: 64Mi
       # TODO: Delete imagePullSecrets once open sourced.
       imagePullSecrets:
         - name: regcred
