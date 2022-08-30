@@ -97,7 +97,7 @@ template:
                   - key: app.kubernetes.io/name
                     operator: In
                     values:
-                      - <name of crd>-fullnode
+                      - <name of crd>
               topologyKey: kubernetes.io/hostname
 ```
 
