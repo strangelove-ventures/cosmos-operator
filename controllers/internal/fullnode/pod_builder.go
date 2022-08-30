@@ -232,7 +232,7 @@ const (
 	tmpDir       = workDir + "/.tmp"
 	tmpConfigDir = workDir + "/.config"
 
-	infraToolImage = "ghcr.io/strangelove-ventures/infra-toolkit"
+	infraToolImage = "ghcr.io/strangelove-ventures/infra-toolkit:v0.0.1"
 )
 
 var (
