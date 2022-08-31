@@ -344,7 +344,7 @@ func TestPodBuilder(t *testing.T) {
 			TimeoutSeconds:      10,
 			PeriodSeconds:       10,
 			SuccessThreshold:    1,
-			FailureThreshold:    3,
+			FailureThreshold:    5,
 		}
 		got := pod.Spec.Containers[0].ReadinessProbe
 

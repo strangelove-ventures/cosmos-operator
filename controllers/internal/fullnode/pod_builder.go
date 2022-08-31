@@ -91,7 +91,7 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 						TimeoutSeconds:      10,
 						PeriodSeconds:       10,
 						SuccessThreshold:    1,
-						FailureThreshold:    3,
+						FailureThreshold:    5,
 					},
 
 					ImagePullPolicy: tpl.ImagePullPolicy,
