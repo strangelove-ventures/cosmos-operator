@@ -69,7 +69,7 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 			Containers: []corev1.Container{
 				// Main start container.
 				{
-					Name:  crd.Name,
+					Name:  "node",
 					Image: tpl.Image,
 					// The following is a useful hack if you need to inspect the PV.
 					//Command: []string{"/bin/sh"},

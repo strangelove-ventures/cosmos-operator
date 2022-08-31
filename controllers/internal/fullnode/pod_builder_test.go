@@ -189,7 +189,7 @@ func TestPodBuilder(t *testing.T) {
 		require.Len(t, pod.Spec.Containers, 2)
 
 		startContainer := pod.Spec.Containers[0]
-		require.Equal(t, "osmosis", startContainer.Name)
+		require.Equal(t, "node", startContainer.Name)
 		require.Empty(t, startContainer.ImagePullPolicy)
 		require.Equal(t, crd.Spec.PodTemplate.Resources, startContainer.Resources)
 		require.Equal(t, wantWrkDir, startContainer.WorkingDir)
