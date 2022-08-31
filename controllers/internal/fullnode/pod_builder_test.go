@@ -182,6 +182,7 @@ func TestPodBuilder(t *testing.T) {
 		const wantWrkDir = "/home/operator"
 		crd.Spec.ChainConfig.Binary = "osmosisd"
 		crd.Spec.ChainConfig.SnapshotURL = ptr("https://example.com/snapshot.tar")
+		crd.Spec.PodTemplate.Image = "main-image:v1.2.3"
 		builder := NewPodBuilder(&crd)
 		pod := builder.WithOrdinal(6).Build()
 
@@ -220,6 +221,16 @@ func TestPodBuilder(t *testing.T) {
 		require.Equal(t, healthPort, healthContainer.Ports[0])
 
 		require.Len(t, lo.Map(pod.Spec.InitContainers, func(c corev1.Container, _ int) string { return c.Name }), 4)
+
+		wantInitImages := []string{
+			"main-image:v1.2.3",
+			"ghcr.io/strangelove-ventures/infra-toolkit:v0.0.1",
+			"ghcr.io/strangelove-ventures/infra-toolkit:v0.0.1",
+			"ghcr.io/strangelove-ventures/infra-toolkit:v0.0.1",
+		}
+		require.Equal(t, wantInitImages, lo.Map(pod.Spec.InitContainers, func(c corev1.Container, _ int) string {
+			return c.Image
+		}))
 
 		for _, c := range pod.Spec.InitContainers {
 			require.Equal(t, envVars, startContainer.Env, c.Name)
