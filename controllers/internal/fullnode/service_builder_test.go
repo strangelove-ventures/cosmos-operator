@@ -27,7 +27,7 @@ func TestBuildServices(t *testing.T) {
 		require.Equal(t, 4, len(svcs)) // Includes single rpc service.
 
 		p2p := svcs[0]
-		require.Equal(t, "terra-fullnode-p2p-0", p2p.Name)
+		require.Equal(t, "terra-p2p-0", p2p.Name)
 		require.Equal(t, "test", p2p.Namespace)
 
 		require.NotEmpty(t, p2p.Labels[kube.RevisionLabel])
@@ -35,10 +35,10 @@ func TestBuildServices(t *testing.T) {
 
 		wantLabels := map[string]string{
 			"app.kubernetes.io/created-by": "cosmosfullnode",
-			"app.kubernetes.io/name":       "terra-fullnode",
+			"app.kubernetes.io/name":       "terra",
 			"app.kubernetes.io/component":  "p2p",
 			"app.kubernetes.io/version":    "v6.0.0",
-			"app.kubernetes.io/instance":   "terra-fullnode-0",
+			"app.kubernetes.io/instance":   "terra-0",
 			"cosmos.strange.love/network":  "testnet",
 		}
 		require.Equal(t, wantLabels, p2p.Labels)
@@ -52,7 +52,7 @@ func TestBuildServices(t *testing.T) {
 					TargetPort: intstr.FromString("p2p"),
 				},
 			},
-			Selector:              map[string]string{"app.kubernetes.io/instance": "terra-fullnode-0"},
+			Selector:              map[string]string{"app.kubernetes.io/instance": "terra-0"},
 			Type:                  "LoadBalancer",
 			ExternalTrafficPolicy: corev1.ServiceExternalTrafficPolicyTypeLocal,
 		}
@@ -60,7 +60,7 @@ func TestBuildServices(t *testing.T) {
 		require.Equal(t, wantSpec, p2p.Spec)
 
 		p2p = svcs[1]
-		require.Equal(t, "terra-fullnode-p2p-1", p2p.Name)
+		require.Equal(t, "terra-p2p-1", p2p.Name)
 	})
 
 	t.Run("p2p max external addresses", func(t *testing.T) {
@@ -127,17 +127,17 @@ func TestBuildServices(t *testing.T) {
 		require.Equal(t, 2, len(svcs)) // Includes single p2p service.
 
 		rpc := svcs[1]
-		require.Equal(t, "terra-fullnode-rpc", rpc.Name)
+		require.Equal(t, "terra-rpc", rpc.Name)
 		require.Equal(t, "test", rpc.Namespace)
 		require.Equal(t, corev1.ServiceTypeClusterIP, rpc.Spec.Type)
-		require.Equal(t, map[string]string{"app.kubernetes.io/name": "terra-fullnode"}, rpc.Spec.Selector)
+		require.Equal(t, map[string]string{"app.kubernetes.io/name": "terra"}, rpc.Spec.Selector)
 
 		require.NotEmpty(t, rpc.Labels[kube.RevisionLabel])
 		delete(rpc.Labels, kube.RevisionLabel)
 
 		wantLabels := map[string]string{
 			"app.kubernetes.io/created-by": "cosmosfullnode",
-			"app.kubernetes.io/name":       "terra-fullnode",
+			"app.kubernetes.io/name":       "terra",
 			"app.kubernetes.io/component":  "rpc",
 			"app.kubernetes.io/version":    "v6.0.0",
 			"cosmos.strange.love/network":  "testnet",

@@ -22,18 +22,20 @@ Coming soon!
 
 ## Resource Names
 
-If you plan to have multiple network environments in the same cluster or namespace, append the network name.
+If you plan to have multiple network environments in the same cluster or namespace, append the network name and any other identifying information.
 
 Example:
 ```yaml
 apiVersion: cosmos.strange.love/v1
 kind: CosmosFullNode
 metadata:
-  name: cosmoshub-mainnet
+  name: cosmoshub-mainnet-fullnode
 spec:
   chain:
     network: mainnet # Should align with metadata.name above.
 ```
+
+Like a StatefulSet, the Operator uses the .metadata.name of the CosmosFullNode to name resources it creates and manages.
 
 ## Volumes, PVCs and StorageClass
 
@@ -97,7 +99,7 @@ template:
                   - key: app.kubernetes.io/name
                     operator: In
                     values:
-                      - <name of crd>-fullnode
+                      - <name of crd>
               topologyKey: kubernetes.io/hostname
 ```
 
