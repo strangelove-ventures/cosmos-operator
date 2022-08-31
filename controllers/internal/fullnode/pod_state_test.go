@@ -31,7 +31,7 @@ func TestPodState(t *testing.T) {
 	require.Len(t, pods, 5)
 
 	want := lo.Map([]int{0, 1, 2, 3, 4}, func(_ int, i int) string {
-		return fmt.Sprintf("agoric-fullnode-%d", i)
+		return fmt.Sprintf("agoric-%d", i)
 	})
 	got := lo.Map(pods, func(pod *corev1.Pod, _ int) string { return pod.Name })
 	require.Equal(t, want, got)

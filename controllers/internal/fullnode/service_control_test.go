@@ -50,7 +50,7 @@ func TestServiceControl_Reconcile(t *testing.T) {
 		}
 		require.Equal(t, "test", listOpt.Namespace)
 		require.Zero(t, listOpt.Limit)
-		require.Equal(t, "app.kubernetes.io/name=osmosis-fullnode", listOpt.LabelSelector.String())
+		require.Equal(t, "app.kubernetes.io/name=osmosis", listOpt.LabelSelector.String())
 		require.Equal(t, ".metadata.controller=osmosis", listOpt.FieldSelector.String())
 
 		require.Equal(t, 1, mClient.CreateCount)
