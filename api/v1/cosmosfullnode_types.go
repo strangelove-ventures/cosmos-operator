@@ -187,7 +187,23 @@ type PersistentVolumeClaimSpec struct {
 	// This field is immutable. Updating this field requires manually deleting the PVC.
 	// +optional
 	VolumeMode *corev1.PersistentVolumeMode `json:"volumeMode"`
+
+	// Determines how to handle PVCs when pods are scaled down.
+	// One of 'Retain' or 'Delete'.
+	// If 'Delete', PVCs are deleted if pods are scaled down.
+	// If 'Retain', PVCs are not deleted. The admin must delete manually or are deleted if the CRD is deleted.
+	// If not set, defaults to 'Delete'.
+	// +kubebuilder:validation:Enum:=Retain;Delete
+	// +optional
+	RetainPolicy *PVCRetainPolicy `json:"retainPolicy"`
 }
+
+type PVCRetainPolicy string
+
+const (
+	PVCRetainPolicyRetain PVCRetainPolicy = "Retain"
+	PVCRetainPolicyDelete PVCRetainPolicy = "Delete"
+)
 
 // RolloutStrategy is an update strategy that can be shared between several Cosmos CRDs.
 type RolloutStrategy struct {
