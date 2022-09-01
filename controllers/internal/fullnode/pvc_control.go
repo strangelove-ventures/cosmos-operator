@@ -67,14 +67,18 @@ func (vc PVCControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmos
 		}
 	}
 
-	for _, pvc := range diff.Deletes() {
-		log.Info("Deleting pvc", "pvcName", pvc.Name)
-		if err := vc.client.Delete(ctx, pvc, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
-			return true, kube.TransientError(fmt.Errorf("delete pvc %q: %w", pvc.Name, err))
+	var deletes int
+	if !vc.shouldRetain(crd) {
+		for _, pvc := range diff.Deletes() {
+			log.Info("Deleting pvc", "pvcName", pvc.Name)
+			if err := vc.client.Delete(ctx, pvc, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
+				return true, kube.TransientError(fmt.Errorf("delete pvc %q: %w", pvc.Name, err))
+			}
 		}
+		deletes = len(diff.Deletes())
 	}
 
-	if len(diff.Deletes())+len(diff.Creates()) > 0 {
+	if deletes+len(diff.Creates()) > 0 {
 		// Scaling happens first; then updates. So requeue to handle updates after scaling finished.
 		return true, nil
 	}
@@ -104,6 +108,13 @@ func (vc PVCControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmos
 	}
 
 	return false, nil
+}
+
+func (vc PVCControl) shouldRetain(crd *cosmosv1.CosmosFullNode) bool {
+	if policy := crd.Spec.RetentionPolicy; policy != nil {
+		return *policy == cosmosv1.RetentionPolicyRetain
+	}
+	return false
 }
 
 func findMatchingResource[T client.Object](r T, list []T) (T, bool) {

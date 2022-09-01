@@ -169,6 +169,11 @@ func (in *FullNodeSpec) DeepCopyInto(out *FullNodeSpec) {
 	in.PodTemplate.DeepCopyInto(&out.PodTemplate)
 	in.RolloutStrategy.DeepCopyInto(&out.RolloutStrategy)
 	in.VolumeClaimTemplate.DeepCopyInto(&out.VolumeClaimTemplate)
+	if in.RetentionPolicy != nil {
+		in, out := &in.RetentionPolicy, &out.RetentionPolicy
+		*out = new(RetentionPolicy)
+		**out = **in
+	}
 	in.Service.DeepCopyInto(&out.Service)
 }
 
