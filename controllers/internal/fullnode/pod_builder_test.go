@@ -76,7 +76,9 @@ func TestPodBuilder(t *testing.T) {
 
 		wantAnnotations := map[string]string{
 			"app.kubernetes.io/ordinal": "5",
-			// TODO (nix - 8/2/22) Prom metrics here
+			"prometheus.io/path":        "/metrics",
+			"prometheus.io/port":        "26660",
+			"prometheus.io/scrape":      "true",
 		}
 		require.Equal(t, wantAnnotations, pod.Annotations)
 
