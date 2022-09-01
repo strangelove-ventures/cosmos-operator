@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/samber/lo"
+	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -131,5 +132,33 @@ func TestPVCControl_Reconcile(t *testing.T) {
 		gotPVC := mClient.LastPatchObject.(*corev1.PersistentVolumeClaim)
 		require.Empty(t, gotPVC.Spec.VolumeMode)
 		require.Equal(t, updates[1].Spec.Resources, gotPVC.Spec.Resources)
+	})
+
+	t.Run("retention policy", func(t *testing.T) {
+		var (
+			mDiff = mockPVCDiffer{
+				StubDeletes: buildPVCs(2),
+			}
+			mClient mockPVCClient
+			crd     = defaultCRD()
+			control = NewPVCControl(&mClient)
+		)
+		crd.Namespace = namespace
+		crd.Spec.RetentionPolicy = ptr(cosmosv1.RetentionPolicyRetain)
+		control.diffFactory = func(_, _ string, current, want []*corev1.PersistentVolumeClaim) pvcDiffer {
+			return mDiff
+		}
+		requeue, err := control.Reconcile(ctx, nopLogger, &crd)
+		require.NoError(t, err)
+
+		require.Zero(t, mClient.DeleteCount)
+		require.False(t, requeue)
+
+		crd.Spec.RetentionPolicy = ptr(cosmosv1.RetentionPolicyDelete)
+		requeue, err = control.Reconcile(ctx, nopLogger, &crd)
+		require.NoError(t, err)
+
+		require.Equal(t, 2, mClient.DeleteCount)
+		require.True(t, requeue)
 	})
 }
