@@ -134,7 +134,7 @@ func TestPVCControl_Reconcile(t *testing.T) {
 		require.Equal(t, updates[1].Spec.Resources, gotPVC.Spec.Resources)
 	})
 
-	t.Run("retain policy", func(t *testing.T) {
+	t.Run("retention policy", func(t *testing.T) {
 		var (
 			mDiff = mockPVCDiffer{
 				StubDeletes: buildPVCs(2),
@@ -144,7 +144,7 @@ func TestPVCControl_Reconcile(t *testing.T) {
 			control = NewPVCControl(&mClient)
 		)
 		crd.Namespace = namespace
-		crd.Spec.VolumeClaimTemplate.RetainPolicy = ptr(cosmosv1.PVCRetainPolicyRetain)
+		crd.Spec.RetentionPolicy = ptr(cosmosv1.RetentionPolicyRetain)
 		control.diffFactory = func(_, _ string, current, want []*corev1.PersistentVolumeClaim) pvcDiffer {
 			return mDiff
 		}
@@ -154,7 +154,7 @@ func TestPVCControl_Reconcile(t *testing.T) {
 		require.Zero(t, mClient.DeleteCount)
 		require.False(t, requeue)
 
-		crd.Spec.VolumeClaimTemplate.RetainPolicy = ptr(cosmosv1.PVCRetainPolicyDelete)
+		crd.Spec.RetentionPolicy = ptr(cosmosv1.RetentionPolicyDelete)
 		requeue, err = control.Reconcile(ctx, nopLogger, &crd)
 		require.NoError(t, err)
 

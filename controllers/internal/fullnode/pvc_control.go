@@ -111,8 +111,8 @@ func (vc PVCControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmos
 }
 
 func (vc PVCControl) shouldRetain(crd *cosmosv1.CosmosFullNode) bool {
-	if policy := crd.Spec.VolumeClaimTemplate.RetainPolicy; policy != nil {
-		return *policy == cosmosv1.PVCRetainPolicyRetain
+	if policy := crd.Spec.RetentionPolicy; policy != nil {
+		return *policy == cosmosv1.RetentionPolicyRetain
 	}
 	return false
 }

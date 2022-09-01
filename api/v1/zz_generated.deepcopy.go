@@ -169,6 +169,11 @@ func (in *FullNodeSpec) DeepCopyInto(out *FullNodeSpec) {
 	in.PodTemplate.DeepCopyInto(&out.PodTemplate)
 	in.RolloutStrategy.DeepCopyInto(&out.RolloutStrategy)
 	in.VolumeClaimTemplate.DeepCopyInto(&out.VolumeClaimTemplate)
+	if in.RetentionPolicy != nil {
+		in, out := &in.RetentionPolicy, &out.RetentionPolicy
+		*out = new(RetentionPolicy)
+		**out = **in
+	}
 	in.Service.DeepCopyInto(&out.Service)
 }
 
@@ -209,11 +214,6 @@ func (in *PersistentVolumeClaimSpec) DeepCopyInto(out *PersistentVolumeClaimSpec
 	if in.VolumeMode != nil {
 		in, out := &in.VolumeMode, &out.VolumeMode
 		*out = new(corev1.PersistentVolumeMode)
-		**out = **in
-	}
-	if in.RetainPolicy != nil {
-		in, out := &in.RetainPolicy, &out.RetainPolicy
-		*out = new(PVCRetainPolicy)
 		**out = **in
 	}
 }

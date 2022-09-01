@@ -50,6 +50,15 @@ type FullNodeSpec struct {
 	// One PVC per replica mapped and mounted to a corresponding pod.
 	VolumeClaimTemplate PersistentVolumeClaimSpec `json:"volumeClaimTemplate"`
 
+	// Determines how to handle PVCs when pods are scaled down.
+	// One of 'Retain' or 'Delete'.
+	// If 'Delete', PVCs are deleted if pods are scaled down.
+	// If 'Retain', PVCs are not deleted. The admin must delete manually or are deleted if the CRD is deleted.
+	// If not set, defaults to 'Delete'.
+	// +kubebuilder:validation:Enum:=Retain;Delete
+	// +optional
+	RetentionPolicy *RetentionPolicy `json:"volumeRetentionPolicy"`
+
 	// Configure Operator created services. A singe rpc service is created for load balancing api, grpc, rpc, etc. requests.
 	// This allows a k8s admin to use the service in an Ingress, for example.
 	// Additionally, multiple p2p services are created for tendermint peer exchange.
@@ -187,22 +196,13 @@ type PersistentVolumeClaimSpec struct {
 	// This field is immutable. Updating this field requires manually deleting the PVC.
 	// +optional
 	VolumeMode *corev1.PersistentVolumeMode `json:"volumeMode"`
-
-	// Determines how to handle PVCs when pods are scaled down.
-	// One of 'Retain' or 'Delete'.
-	// If 'Delete', PVCs are deleted if pods are scaled down.
-	// If 'Retain', PVCs are not deleted. The admin must delete manually or are deleted if the CRD is deleted.
-	// If not set, defaults to 'Delete'.
-	// +kubebuilder:validation:Enum:=Retain;Delete
-	// +optional
-	RetainPolicy *PVCRetainPolicy `json:"retainPolicy"`
 }
 
-type PVCRetainPolicy string
+type RetentionPolicy string
 
 const (
-	PVCRetainPolicyRetain PVCRetainPolicy = "Retain"
-	PVCRetainPolicyDelete PVCRetainPolicy = "Delete"
+	RetentionPolicyRetain RetentionPolicy = "Retain"
+	RetentionPolicyDelete RetentionPolicy = "Delete"
 )
 
 // RolloutStrategy is an update strategy that can be shared between several Cosmos CRDs.
