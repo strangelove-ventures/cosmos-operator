@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"hash/fnv"
 	"path"
-	"strconv"
 	"sync"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
@@ -48,12 +47,8 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 			Labels: defaultLabels(crd,
 				kube.RevisionLabel, podRevisionHash(crd),
 			),
-			Annotations: map[string]string{
-				// Tendermint metrics
-				"prometheus.io/scrape": "true",
-				"prometheus.io/port":   strconv.Itoa(promPort),
-				"prometheus.io/path":   "/metrics",
-			},
+			// TODO: prom metrics
+			Annotations: make(map[string]string),
 		},
 		Spec: corev1.PodSpec{
 			TerminationGracePeriodSeconds: valOrDefault(tpl.TerminationGracePeriodSeconds, ptr(int64(30))),
