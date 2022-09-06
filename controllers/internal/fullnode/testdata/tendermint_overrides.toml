@@ -21,3 +21,7 @@ indexer = "null"
 
 [new_section]
 test = "value"
+
+[instrumentation]
+prometheus = true
+prometheus_listen_addr = ":26660"
