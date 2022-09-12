@@ -96,6 +96,8 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return finishResult, client.IgnoreNotFound(err)
 	}
 
+	crd.Status.ObservedGeneration = crd.Generation
+
 	// Order of operations is important. E.g. PVCs won't delete unless pods are deleted first.
 	// K8S can create pods first even if the PVC isn't ready. Pods won't be in a ready state until PVC is bound.
 

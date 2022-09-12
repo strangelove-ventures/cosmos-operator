@@ -70,6 +70,9 @@ type FullNodeSpec struct {
 type FullNodeStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+
+	// The most recent generation observed by the controller.
+	ObservedGeneration int64 `json:"observedGeneration"`
 }
 
 type FullNodeMetadata struct {

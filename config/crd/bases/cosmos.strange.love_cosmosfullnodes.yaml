@@ -1409,6 +1409,13 @@ spec:
             type: object
           status:
             description: FullNodeStatus defines the observed state of CosmosFullNode
+            properties:
+              observedGeneration:
+                description: The most recent generation observed by the controller.
+                format: int64
+                type: integer
+            required:
+            - observedGeneration
             type: object
         type: object
     served: true
