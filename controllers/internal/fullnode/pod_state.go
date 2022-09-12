@@ -8,11 +8,16 @@ import (
 // PodState creates the final state of pods given the crd.
 func PodState(crd *cosmosv1.CosmosFullNode) []*corev1.Pod {
 	var (
-		builder = NewPodBuilder(crd)
-		pods    = make([]*corev1.Pod, crd.Spec.Replicas)
+		builder   = NewPodBuilder(crd)
+		overrides = crd.Spec.InstanceOverrides
+		pods      []*corev1.Pod
 	)
 	for i := int32(0); i < crd.Spec.Replicas; i++ {
-		pods[i] = builder.WithOrdinal(i).Build()
+		pod := builder.WithOrdinal(i).Build()
+		if overrides[pod.Name].PreventPodRestart {
+			continue
+		}
+		pods = append(pods, pod)
 	}
 	return pods
 }

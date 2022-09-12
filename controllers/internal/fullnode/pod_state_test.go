@@ -14,28 +14,55 @@ import (
 func TestPodState(t *testing.T) {
 	t.Parallel()
 
-	crd := &cosmosv1.CosmosFullNode{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "agoric",
-		},
-		Spec: cosmosv1.FullNodeSpec{
-			Replicas:    5,
-			ChainConfig: cosmosv1.ChainConfig{Network: "devnet"},
-			PodTemplate: cosmosv1.PodSpec{
-				Image: "busybox:latest",
+	t.Run("happy path", func(t *testing.T) {
+		crd := &cosmosv1.CosmosFullNode{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "agoric",
 			},
-		},
-	}
+			Spec: cosmosv1.FullNodeSpec{
+				Replicas:    5,
+				ChainConfig: cosmosv1.ChainConfig{Network: "devnet"},
+				PodTemplate: cosmosv1.PodSpec{
+					Image: "busybox:latest",
+				},
+				InstanceOverrides: nil,
+			},
+		}
 
-	pods := PodState(crd)
-	require.Len(t, pods, 5)
+		pods := PodState(crd)
+		require.Equal(t, 5, len(pods))
 
-	want := lo.Map([]int{0, 1, 2, 3, 4}, func(_ int, i int) string {
-		return fmt.Sprintf("agoric-%d", i)
+		want := lo.Map([]int{0, 1, 2, 3, 4}, func(_ int, i int) string {
+			return fmt.Sprintf("agoric-%d", i)
+		})
+		got := lo.Map(pods, func(pod *corev1.Pod, _ int) string { return pod.Name })
+		require.Equal(t, want, got)
+
+		pod := NewPodBuilder(crd).WithOrdinal(0).Build()
+		require.Equal(t, pod, pods[0])
 	})
-	got := lo.Map(pods, func(pod *corev1.Pod, _ int) string { return pod.Name })
-	require.Equal(t, want, got)
 
-	pod := NewPodBuilder(crd).WithOrdinal(0).Build()
-	require.Equal(t, pod, pods[0])
+	t.Run("instance overrides", func(t *testing.T) {
+		crd := &cosmosv1.CosmosFullNode{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "agoric",
+			},
+			Spec: cosmosv1.FullNodeSpec{
+				Replicas: 6,
+				InstanceOverrides: map[string]cosmosv1.InstanceOverridesSpec{
+					"agoric-2": {PreventPodRestart: true},
+					"agoric-4": {PreventPodRestart: true},
+				},
+			},
+		}
+
+		pods := PodState(crd)
+		require.Equal(t, 4, len(pods))
+
+		want := lo.Map([]int{0, 1, 3, 5}, func(i int, _ int) string {
+			return fmt.Sprintf("agoric-%d", i)
+		})
+		got := lo.Map(pods, func(pod *corev1.Pod, _ int) string { return pod.Name })
+		require.Equal(t, want, got)
+	})
 }
