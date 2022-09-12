@@ -87,8 +87,8 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	logger.V(1).Info("Entering reconcile loop")
 
 	// Get the CRD
-	var crd cosmosv1.CosmosFullNode
-	if err := r.Get(ctx, req.NamespacedName, &crd); err != nil {
+	crd := new(cosmosv1.CosmosFullNode)
+	if err := r.Get(ctx, req.NamespacedName, crd); err != nil {
 		// Ignore not found errors because can't be fixed by an immediate requeue. We'll have to wait for next notification.
 		// Also, will get "not found" error if crd is deleted.
 		// No need to explicitly delete resources. Kube GC does so automatically because we set the controller reference
@@ -97,36 +97,37 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	crd.Status.ObservedGeneration = crd.Generation
+	defer r.updateStatus(ctx, crd)
 
 	// Order of operations is important. E.g. PVCs won't delete unless pods are deleted first.
 	// K8S can create pods first even if the PVC isn't ready. Pods won't be in a ready state until PVC is bound.
 
 	// Create or update Services.
-	err := r.serviceControl.Reconcile(ctx, logger, &crd)
+	err := r.serviceControl.Reconcile(ctx, logger, crd)
 	if err != nil {
-		return r.resultWithErr(&crd, err)
+		return r.resultWithErr(crd, err)
 	}
 
 	// Create or update ConfigMap.
-	p2pAddresses, err := fullnode.CollectP2PAddresses(ctx, &crd, r)
+	p2pAddresses, err := fullnode.CollectP2PAddresses(ctx, crd, r)
 	if err != nil {
-		return r.resultWithErr(&crd, err)
+		return r.resultWithErr(crd, err)
 	}
-	err = r.configMapControl.Reconcile(ctx, logger, &crd, p2pAddresses)
+	err = r.configMapControl.Reconcile(ctx, logger, crd, p2pAddresses)
 	if err != nil {
-		return r.resultWithErr(&crd, err)
+		return r.resultWithErr(crd, err)
 	}
 
 	// Reconcile pods.
-	podRequeue, err := r.podControl.Reconcile(ctx, logger, &crd)
+	podRequeue, err := r.podControl.Reconcile(ctx, logger, crd)
 	if err != nil {
-		return r.resultWithErr(&crd, err)
+		return r.resultWithErr(crd, err)
 	}
 
 	// Reconcile pvcs.
-	pvcRequeue, err := r.pvcControl.Reconcile(ctx, logger, &crd)
+	pvcRequeue, err := r.pvcControl.Reconcile(ctx, logger, crd)
 	if err != nil {
-		return r.resultWithErr(&crd, err)
+		return r.resultWithErr(crd, err)
 	}
 
 	if podRequeue || pvcRequeue {
@@ -135,7 +136,7 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	// Check final state and requeue if necessary.
 	if p2pAddresses.Incomplete() {
-		r.recorder.Event(&crd, eventNormal, "p2pIncomplete", "Waiting for p2p service IPs or Hostnames to be ready.")
+		r.recorder.Event(crd, eventNormal, "p2pIncomplete", "Waiting for p2p service IPs or Hostnames to be ready.")
 		logger.V(1).Info("Requeueing due to incomplete p2p external addresses")
 		// Allow more time to requeue while p2p services create their load balancers.
 		return ctrl.Result{RequeueAfter: 15 * time.Second}, nil
@@ -151,6 +152,12 @@ func (r *CosmosFullNodeReconciler) resultWithErr(crd *cosmosv1.CosmosFullNode, e
 	}
 	r.recorder.Event(crd, eventWarning, "error", err.Error())
 	return finishResult, err
+}
+
+func (r *CosmosFullNodeReconciler) updateStatus(ctx context.Context, crd *cosmosv1.CosmosFullNode) {
+	if err := r.Status().Update(ctx, crd); err != nil {
+		log.FromContext(ctx).Error(err, "Failed to update status")
+	}
 }
 
 // SetupWithManager sets up the controller with the Manager.
