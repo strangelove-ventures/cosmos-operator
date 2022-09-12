@@ -92,9 +92,9 @@ type FullNodeStatus struct {
 type FullNodePhase string
 
 const (
-	FullNodePhaseProgressing = "Progressing"
-	FullNodePhaseCompete     = "Complete"
-	FullNodePhaseError       = "Error"
+	FullNodePhaseProgressing FullNodePhase = "Progressing"
+	FullNodePhaseCompete     FullNodePhase = "Complete"
+	FullNodePhaseError       FullNodePhase = "Error"
 )
 
 type FullNodeMetadata struct {
