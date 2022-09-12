@@ -64,6 +64,13 @@ type FullNodeSpec struct {
 	// Additionally, multiple p2p services are created for tendermint peer exchange.
 	// +optional
 	Service ServiceSpec `json:"service"`
+
+	// Allows overriding an instance on a case-by-case basis. An instance is a pod/pvc combo with an ordinal.
+	// Key must be the name of the pod including the ordinal suffix.
+	// Example: cosmos-1/pvc-cosmos-1.
+	// Used for debugging.
+	// +optional
+	InstanceOverrides map[string]InstanceOverridesSpec `json:"instanceOverrides"`
 }
 
 // FullNodeStatus defines the observed state of CosmosFullNode
@@ -448,6 +455,13 @@ type RPCServiceSpec struct {
 	// +kubebuilder:validation:Enum:=Cluster;Local
 	// +optional
 	ExternalTrafficPolicy *corev1.ServiceExternalTrafficPolicyType `json:"externalTrafficPolicy"`
+}
+
+// InstanceOverridesSpec allows overriding an instance which is pod/pvc combo with an ordinal
+type InstanceOverridesSpec struct {
+	// If true, controller will not restart the pod if it's deleted. This is useful for actions such as debugging the PVC
+	// or deleting the PVC.
+	PreventPodRestart bool `json:"preventPodRestart"`
 }
 
 //+kubebuilder:object:root=true
