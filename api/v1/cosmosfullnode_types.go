@@ -461,6 +461,7 @@ type RPCServiceSpec struct {
 type InstanceOverridesSpec struct {
 	// If true, controller will not restart the pod if it's deleted. This is useful for actions such as debugging the PVC
 	// or deleting the PVC.
+	// +optional
 	PreventPodRestart bool `json:"preventPodRestart"`
 }
 
