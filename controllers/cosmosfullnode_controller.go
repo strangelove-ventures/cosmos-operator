@@ -97,6 +97,7 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	crd.Status.ObservedGeneration = crd.Generation
+	crd.Status.Phase = cosmosv1.FullNodePhaseProgressing
 	defer r.updateStatus(ctx, crd)
 
 	// Order of operations is important. E.g. PVCs won't delete unless pods are deleted first.
@@ -142,6 +143,7 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{RequeueAfter: 15 * time.Second}, nil
 	}
 
+	crd.Status.Phase = cosmosv1.FullNodePhaseCompete
 	return finishResult, nil
 }
 
@@ -150,6 +152,8 @@ func (r *CosmosFullNodeReconciler) resultWithErr(crd *cosmosv1.CosmosFullNode, e
 		r.recorder.Event(crd, eventWarning, "errorTransient", fmt.Sprintf("%v; retrying.", err))
 		return requeueResult, err
 	}
+	crd.Status.Phase = cosmosv1.FullNodePhaseError
+	crd.Status.Error = err.Error()
 	r.recorder.Event(crd, eventWarning, "error", err.Error())
 	return finishResult, err
 }
