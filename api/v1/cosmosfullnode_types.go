@@ -22,6 +22,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
+func init() {
+	SchemeBuilder.Register(&CosmosFullNode{}, &CosmosFullNodeList{})
+}
+
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
@@ -70,7 +74,28 @@ type FullNodeSpec struct {
 type FullNodeStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+
+	// The most recent generation observed by the controller.
+	ObservedGeneration int64 `json:"observedGeneration"`
+
+	// The current phase of the fullnode deployment.
+	// "Progressing" means the deployment is under way.
+	// "Complete" means the deployment is complete and reconciliation is finished.
+	// "Error" means an unrecoverable error occurred, which needs human operator attention.
+	Phase FullNodePhase `json:"phase"`
+
+	// The error message for an unrecoverable error.
+	// Phase will be "Error".
+	Error string `json:"error"`
 }
+
+type FullNodePhase string
+
+const (
+	FullNodePhaseProgressing FullNodePhase = "Progressing"
+	FullNodePhaseCompete     FullNodePhase = "Complete"
+	FullNodePhaseError       FullNodePhase = "Error"
+)
 
 type FullNodeMetadata struct {
 	// Labels are added to a resource. If there is a collision between labels the Operator creates, the Operator
@@ -469,8 +494,4 @@ type CosmosFullNodeList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []CosmosFullNode `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&CosmosFullNode{}, &CosmosFullNodeList{})
 }
