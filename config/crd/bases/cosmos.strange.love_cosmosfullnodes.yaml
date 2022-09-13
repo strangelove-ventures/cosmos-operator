@@ -244,10 +244,10 @@ spec:
                   description: InstanceOverridesSpec allows overriding an instance
                     which is pod/pvc combo with an ordinal
                   properties:
-                    preventPodRestart:
-                      description: If true, controller will not restart the pod if
-                        it's deleted. This is useful for actions such as debugging
-                        the PVC or deleting the PVC.
+                    disablePod:
+                      description: If true, controller will not create or restart
+                        the pod for this instance. This is useful for actions such
+                        as debugging the PVC or deleting the PVC.
                       type: boolean
                   type: object
                 description: 'Allows overriding an instance on a case-by-case basis.
