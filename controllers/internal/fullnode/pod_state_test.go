@@ -50,8 +50,8 @@ func TestPodState(t *testing.T) {
 			Spec: cosmosv1.FullNodeSpec{
 				Replicas: 6,
 				InstanceOverrides: map[string]cosmosv1.InstanceOverridesSpec{
-					"agoric-2": {PreventPodRestart: true},
-					"agoric-4": {PreventPodRestart: true},
+					"agoric-2": {DisablePod: true},
+					"agoric-4": {DisablePod: true},
 				},
 			},
 		}

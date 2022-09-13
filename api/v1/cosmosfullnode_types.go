@@ -484,10 +484,10 @@ type RPCServiceSpec struct {
 
 // InstanceOverridesSpec allows overriding an instance which is pod/pvc combo with an ordinal
 type InstanceOverridesSpec struct {
-	// If true, controller will not restart the pod if it's deleted. This is useful for actions such as debugging the PVC
-	// or deleting the PVC.
+	// If true, controller will not create or restart the pod for this instance.
+	// This is useful for actions such as debugging the PVC or deleting the PVC.
 	// +optional
-	PreventPodRestart bool `json:"preventPodRestart"`
+	DisablePod bool `json:"disablePod"`
 }
 
 //+kubebuilder:object:root=true
