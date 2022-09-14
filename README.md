@@ -1,4 +1,4 @@
-# cosmos-operator
+# Cosmos Operator
 Cosmos Operator manages custom resource definitions (CRDs) for full nodes (aka RPC nodes) and eventually validator nodes for blockchains created with the [Cosmos SDK](https://v1.cosmos.network/sdk).
 
 The long-term vision of the Operator is to allow you to "configure it and forget it". 
@@ -17,6 +17,14 @@ will clean up PVCs which is different from StatefulSets which never delete PVCs.
 ## Validators?
 
 Coming soon!
+
+# Release Process
+
+Releases should follow https://0ver.org.
+
+1. Create and push a git tag on branch `main`. `git tag v0.X.X && git push --tags`
+2. Triggers CICD action to build and push docker image to ghcr.
+3. When complete, view the docker image in packages.
 
 # Best Practices
 
