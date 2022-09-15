@@ -1,0 +1,6 @@
+Thanks for installing the Cosmos Operator!
+
+Chart Version: {{ .Chart.ApiVersion }}
+Operator Version: {{ .Chart.AppVersion }}
+
+View pod logs in namespace: {{ .Release.Namespace }}.

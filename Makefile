@@ -73,6 +73,15 @@ tools: ## Install dev tools.
 	@go get -d sigs.k8s.io/kind
 	@go mod tidy
 
+IMAGE_VERSION ?= $(error Please set IMAGE_VERSION, e.g. v0.1.2)
+.PHONY: helm
+helm: ## Generate helm chart
+	@cd config/manager && $(KUSTOMIZE) edit set image controller=ghcr.io/strangelove-ventures/cosmos-operator:$(IMAGE_VERSION)
+	@$(KUSTOMIZE) build config/crd > helm/charts/cosmosoperator/crds/cosmos.strange.love_cosmosfullnodes.yaml
+	@$(KUSTOMIZE) build config/default > helm/charts/cosmosoperator/templates/manifest.yaml
+	@#Hack to reset tag to avoid git thrashing.
+	@cd config/manager && $(KUSTOMIZE) edit set image controller=ghcr.io/strangelove-ventures/cosmos-operator:latest
+
 ##@ Build
 
 .PHONY: build
