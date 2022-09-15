@@ -1,3 +1,8 @@
+#!/bin/sh
+
+set -eu
+
+cat > helm/charts/cosmosoperator/Chart.yaml <<EOL
 # This Chart.yaml is generated. Do not edit. See script/gen-chart-yaml.sh.
 apiVersion: v2
 name: cosmosoperator
@@ -7,10 +12,11 @@ type: application
 # This is the chart version. This version number should be incremented each time you make changes
 # to the chart and its templates, including the app version.
 # Versions are expected to follow Semantic Versioning (https://semver.org/)
-version: 0.1.0
+version: ${CHART_VERSION}
 
 # This is the version number of the application being deployed. This version number should be
 # incremented each time you make changes to the application. Versions are not expected to
 # follow Semantic Versioning. They should reflect the version the application is using.
 # It is recommended to use it with quotes.
-appVersion: "0.1.0"
+appVersion: "${APP_VERSION}"
+EOL

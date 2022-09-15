@@ -23,8 +23,10 @@ Coming soon!
 Releases should follow https://0ver.org.
 
 1. Create and push a git tag on branch `main`. `git tag v0.X.X && git push --tags`
-2. Triggers CICD action to build and push docker image to ghcr.
-3. When complete, view the docker image in packages.
+1. Triggers CICD action to build and push docker image to ghcr.
+1. When complete, view the docker image in packages.
+1. Update the helm chart via `make helm APP_VERSION=<value> CHART_VERSION=<value>`
+1. Open PR for helm chart update. On each merge to `main`, CICD pushes helm chart artifact to ghcr.
 
 # Best Practices
 
