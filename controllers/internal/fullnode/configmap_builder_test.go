@@ -228,10 +228,11 @@ func TestBuildConfigMap(t *testing.T) {
 			custom.Spec.ChainConfig.App.GRPCWebEnableUnsafeCORS = true
 			custom.Spec.ChainConfig.App.HaltHeight = ptr(uint64(34567))
 			custom.Spec.ChainConfig.App.Pruning = &cosmosv1.Pruning{
-				Strategy:   "custom",
-				Interval:   ptr(uint32(222)),
-				KeepEvery:  ptr(uint32(333)),
-				KeepRecent: ptr(uint32(444)),
+				Strategy:        "custom",
+				Interval:        ptr(uint32(222)),
+				KeepEvery:       ptr(uint32(333)),
+				KeepRecent:      ptr(uint32(444)),
+				MinRetainBlocks: ptr(uint32(271500)),
 			}
 
 			cms, err := BuildConfigMaps(custom, nil)

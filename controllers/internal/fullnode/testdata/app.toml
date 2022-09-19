@@ -6,7 +6,7 @@ pruning = "custom"
 pruning-keep-recent = "444"
 pruning-keep-every = "333"
 pruning-interval = "222"
-
+min-retain-blocks = 271500
 
 [api]
 enable = true
