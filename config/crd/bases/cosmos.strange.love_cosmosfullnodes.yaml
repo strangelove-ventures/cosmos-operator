@@ -91,6 +91,24 @@ spec:
                               defaults to 0.
                             format: int32
                             type: integer
+                          minRetainBlocks:
+                            description: "Defines the minimum block height offset
+                              from the current block being committed, such that all
+                              blocks past this offset are pruned from Tendermint.
+                              It is used as part of the process of determining the
+                              ResponseCommit.RetainHeight value during ABCI Commit.
+                              A value of 0 indicates that no blocks should be pruned.
+                              \n This configuration value is only responsible for
+                              pruning Tendermint blocks. It has no bearing on application
+                              state pruning which is determined by the \"pruning-*\"
+                              configurations. \n Note: Tendermint block pruning is
+                              dependent on this parameter in conjunction with the
+                              unbonding (safety threshold) period, state pruning and
+                              state sync snapshot parameters to determine the correct
+                              minimum value of ResponseCommit.RetainHeight. \n If
+                              not set, defaults to 0."
+                            format: int32
+                            type: integer
                           strategy:
                             description: 'One of default|nothing|everything|custom.
                               default: the last 100 states are kept in addition to
