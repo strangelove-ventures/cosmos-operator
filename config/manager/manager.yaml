@@ -62,8 +62,5 @@ spec:
           requests:
             cpu: 50m
             memory: 64Mi
-      # TODO: Delete imagePullSecrets once open sourced.
-      imagePullSecrets:
-        - name: regcred
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10

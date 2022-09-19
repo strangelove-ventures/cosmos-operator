@@ -136,15 +136,7 @@ Create a [PAT on Github](https://docs.github.com/en/authentication/keeping-your-
 printenv GH_PAT | docker login ghcr.io -u <your GH username> --password-stdin 
 ```
 
-2. If a new cluster, install image pull secret.
-
-*If project is now open source, omit and delete this step!*
-
-```sh
-GH_USER=<your Github username> GH_PAT=<personal access token> make regred
-```
-
-3. Deploy a prerelease.
+2. Deploy a prerelease.
 
 *Warning: Make sure you're kube context is set appropriately, so you don't install in the wrong cluster!*
 
