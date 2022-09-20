@@ -437,6 +437,25 @@ type Pruning struct {
 	// If not set, defaults to 0.
 	// +optional
 	KeepRecent *uint32 `json:"keepRecent"`
+
+	// Defines the minimum block height offset from the current
+	// block being committed, such that all blocks past this offset are pruned
+	// from Tendermint. It is used as part of the process of determining the
+	// ResponseCommit.RetainHeight value during ABCI Commit. A value of 0 indicates
+	// that no blocks should be pruned.
+	//
+	// This configuration value is only responsible for pruning Tendermint blocks.
+	// It has no bearing on application state pruning which is determined by the
+	// "pruning-*" configurations.
+	//
+	// Note: Tendermint block pruning is dependent on this parameter in conjunction
+	// with the unbonding (safety threshold) period, state pruning and state sync
+	// snapshot parameters to determine the correct minimum value of
+	// ResponseCommit.RetainHeight.
+	//
+	// If not set, defaults to 0.
+	// +optional
+	MinRetainBlocks *uint32 `json:"minRetainBlocks"`
 }
 
 // PruningStrategy control pruning.

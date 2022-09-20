@@ -174,6 +174,7 @@ func addAppToml(buf *bytes.Buffer, cmData map[string]string, app cosmosv1.SDKApp
 		base["pruning-interval"] = intStr(pruning.Interval)
 		base["pruning-keep-every"] = intStr(pruning.KeepEvery)
 		base["pruning-keep-recent"] = intStr(pruning.KeepRecent)
+		base["min-retain-blocks"] = valOrDefault(pruning.MinRetainBlocks, ptr(uint32(0)))
 	}
 
 	dst := defaultApp()
