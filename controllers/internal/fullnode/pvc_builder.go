@@ -4,9 +4,11 @@ import (
 	"encoding/hex"
 	"fmt"
 	"hash/fnv"
+	"sort"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
+	"golang.org/x/exp/maps"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -18,7 +20,7 @@ var (
 // BuildPVCs outputs desired PVCs given the crd.
 func BuildPVCs(crd *cosmosv1.CosmosFullNode) []*corev1.PersistentVolumeClaim {
 	tpl := crd.Spec.VolumeClaimTemplate
-	template := corev1.PersistentVolumeClaim{
+	base := corev1.PersistentVolumeClaim{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "v1",
 			Kind:       "PersistentVolumeClaim",
@@ -40,12 +42,15 @@ func BuildPVCs(crd *cosmosv1.CosmosFullNode) []*corev1.PersistentVolumeClaim {
 
 	vols := make([]*corev1.PersistentVolumeClaim, crd.Spec.Replicas)
 	for i := int32(0); i < crd.Spec.Replicas; i++ {
-		pvc := template.DeepCopy()
+		pvc := base.DeepCopy()
 
 		name := pvcName(crd, i)
 		pvc.Name = name
 		pvc.Labels[kube.InstanceLabel] = name
 		pvc.Annotations[kube.OrdinalAnnotation] = kube.ToIntegerValue(i)
+
+		preserveMergeInto(pvc.Labels, tpl.Metadata.Labels)
+		preserveMergeInto(pvc.Annotations, tpl.Metadata.Annotations)
 
 		vols[i] = pvc
 	}
@@ -62,5 +67,12 @@ func pvcName(crd *cosmosv1.CosmosFullNode, ordinal int32) string {
 func pvcRevisionHash(crd *cosmosv1.CosmosFullNode) string {
 	h := fnv.New32()
 	mustWrite(h, mustMarshalJSON(crd.Spec.VolumeClaimTemplate))
+
+	keys := maps.Keys(crd.Spec.InstanceOverrides)
+	sort.Strings(keys)
+	for _, k := range keys {
+		mustWrite(h, mustMarshalJSON(crd.Spec.InstanceOverrides[k].VolumeClaimTemplate))
+	}
+
 	return hex.EncodeToString(h.Sum(nil))
 }

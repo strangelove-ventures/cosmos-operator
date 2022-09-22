@@ -69,6 +69,10 @@ func TestBuildPVCs(t *testing.T) {
 		crd := defaultCRD()
 		crd.Spec.Replicas = 1
 		crd.Spec.VolumeClaimTemplate = cosmosv1.PersistentVolumeClaimSpec{
+			Metadata: cosmosv1.Metadata{
+				Labels:      map[string]string{"label": "value", "app.kubernetes.io/created-by": "should not see me"},
+				Annotations: map[string]string{"annot": "value"},
+			},
 			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteMany},
 			VolumeMode:  ptr(corev1.PersistentVolumeBlock),
 		}
@@ -79,6 +83,12 @@ func TestBuildPVCs(t *testing.T) {
 		got := pvcs[0]
 		require.Equal(t, []corev1.PersistentVolumeAccessMode{corev1.ReadWriteMany}, got.Spec.AccessModes)
 		require.Equal(t, corev1.PersistentVolumeBlock, *got.Spec.VolumeMode)
+
+		require.Equal(t, "0", got.Annotations[kube.OrdinalAnnotation])
+		require.Equal(t, "value", got.Annotations["annot"])
+
+		require.Equal(t, "cosmosfullnode", got.Labels[kube.ControllerLabel])
+		require.Equal(t, "value", got.Labels["label"])
 	})
 
 	t.Run("long names", func(t *testing.T) {
@@ -121,5 +131,16 @@ func FuzzBuildPVCs(f *testing.F) {
 		pvc3 := BuildPVCs(&crd)[0]
 		require.NotEmpty(t, pvc3.Labels[kube.RevisionLabel])
 		require.NotEqual(t, pvc3.Labels[kube.RevisionLabel], pvc1.Labels[kube.RevisionLabel])
+
+		crd.Spec.InstanceOverrides = map[string]cosmosv1.InstanceOverridesSpec{
+			"osmosis-0": {VolumeClaimTemplate: &cosmosv1.PersistentVolumeClaimSpec{StorageClassName: "new"}},
+			"osmosis-1": {VolumeClaimTemplate: &cosmosv1.PersistentVolumeClaimSpec{StorageClassName: "new"}},
+		}
+		pvc4 := BuildPVCs(&crd)[0]
+		require.NotEmpty(t, pvc4.Labels[kube.RevisionLabel])
+		require.NotEqual(t, pvc3.Labels[kube.RevisionLabel], pvc4.Labels[kube.RevisionLabel])
+
+		// Test determinism because maps are involved.
+		require.Equal(t, pvc4.Labels[kube.RevisionLabel], BuildPVCs(&crd)[0].Labels[kube.RevisionLabel])
 	})
 }
