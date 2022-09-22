@@ -19,7 +19,6 @@ var (
 
 // BuildPVCs outputs desired PVCs given the crd.
 func BuildPVCs(crd *cosmosv1.CosmosFullNode) []*corev1.PersistentVolumeClaim {
-	tpl := crd.Spec.VolumeClaimTemplate
 	base := corev1.PersistentVolumeClaim{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "v1",
@@ -32,12 +31,6 @@ func BuildPVCs(crd *cosmosv1.CosmosFullNode) []*corev1.PersistentVolumeClaim {
 			),
 			Annotations: make(map[string]string),
 		},
-		Spec: corev1.PersistentVolumeClaimSpec{
-			AccessModes:      sliceOrDefault(tpl.AccessModes, defaultAccessModes),
-			Resources:        tpl.Resources,
-			StorageClassName: ptr(tpl.StorageClassName),
-			VolumeMode:       valOrDefault(tpl.VolumeMode, ptr(corev1.PersistentVolumeFilesystem)),
-		},
 	}
 
 	vols := make([]*corev1.PersistentVolumeClaim, crd.Spec.Replicas)
@@ -48,6 +41,21 @@ func BuildPVCs(crd *cosmosv1.CosmosFullNode) []*corev1.PersistentVolumeClaim {
 		pvc.Name = name
 		pvc.Labels[kube.InstanceLabel] = name
 		pvc.Annotations[kube.OrdinalAnnotation] = kube.ToIntegerValue(i)
+
+		tpl := crd.Spec.VolumeClaimTemplate
+		if override, ok := crd.Spec.InstanceOverrides[instanceName(crd, i)]; ok {
+			if overrideTpl := override.VolumeClaimTemplate; overrideTpl != nil {
+				tpl = *overrideTpl
+			}
+		}
+
+		pvc.Spec = corev1.PersistentVolumeClaimSpec{
+			AccessModes:      sliceOrDefault(tpl.AccessModes, defaultAccessModes),
+			Resources:        tpl.Resources,
+			StorageClassName: ptr(tpl.StorageClassName),
+			VolumeMode:       valOrDefault(tpl.VolumeMode, ptr(corev1.PersistentVolumeFilesystem)),
+			DataSource:       tpl.DataSource,
+		}
 
 		preserveMergeInto(pvc.Labels, tpl.Metadata.Labels)
 		preserveMergeInto(pvc.Annotations, tpl.Metadata.Annotations)

@@ -25,6 +25,9 @@ func TestBuildPVCs(t *testing.T) {
 				Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceStorage: resource.MustParse("100G")},
 			},
 		}
+		crd.Spec.InstanceOverrides = map[string]cosmosv1.InstanceOverridesSpec{
+			"juno-0": {},
+		}
 
 		pvcs := BuildPVCs(&crd)
 		require.Len(t, pvcs, 3)
@@ -75,6 +78,10 @@ func TestBuildPVCs(t *testing.T) {
 			},
 			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteMany},
 			VolumeMode:  ptr(corev1.PersistentVolumeBlock),
+			DataSource: &corev1.TypedLocalObjectReference{
+				Kind: "TestKind",
+				Name: "source-name",
+			},
 		}
 
 		pvcs := BuildPVCs(&crd)
@@ -89,6 +96,34 @@ func TestBuildPVCs(t *testing.T) {
 
 		require.Equal(t, "cosmosfullnode", got.Labels[kube.ControllerLabel])
 		require.Equal(t, "value", got.Labels["label"])
+
+		require.Equal(t, crd.Spec.VolumeClaimTemplate.DataSource, got.Spec.DataSource)
+	})
+
+	t.Run("instance override", func(t *testing.T) {
+		crd := defaultCRD()
+		crd.Name = "cosmoshub"
+		crd.Spec.Replicas = 2
+		crd.Spec.InstanceOverrides = map[string]cosmosv1.InstanceOverridesSpec{
+			"cosmoshub-0": {
+				VolumeClaimTemplate: &cosmosv1.PersistentVolumeClaimSpec{
+					StorageClassName: "override",
+				},
+			},
+			"does-not-exist": {
+				VolumeClaimTemplate: &cosmosv1.PersistentVolumeClaimSpec{
+					StorageClassName: "should never see me",
+				},
+			},
+		}
+
+		pvcs := BuildPVCs(&crd)
+		require.NotEmpty(t, pvcs)
+
+		got1, got2 := pvcs[0], pvcs[1]
+		require.NotEqual(t, got1.Spec, got2.Spec)
+
+		require.Equal(t, "override", *got1.Spec.StorageClassName)
 	})
 
 	t.Run("long names", func(t *testing.T) {
@@ -133,8 +168,8 @@ func FuzzBuildPVCs(f *testing.F) {
 		require.NotEqual(t, pvc3.Labels[kube.RevisionLabel], pvc1.Labels[kube.RevisionLabel])
 
 		crd.Spec.InstanceOverrides = map[string]cosmosv1.InstanceOverridesSpec{
-			"osmosis-0": {VolumeClaimTemplate: &cosmosv1.PersistentVolumeClaimSpec{StorageClassName: "new"}},
-			"osmosis-1": {VolumeClaimTemplate: &cosmosv1.PersistentVolumeClaimSpec{StorageClassName: "new"}},
+			"osmosis-0": {VolumeClaimTemplate: &cosmosv1.PersistentVolumeClaimSpec{StorageClassName: storageClass + "new1"}},
+			"osmosis-1": {VolumeClaimTemplate: &cosmosv1.PersistentVolumeClaimSpec{StorageClassName: storageClass + "new2"}},
 		}
 		pvc4 := BuildPVCs(&crd)[0]
 		require.NotEmpty(t, pvc4.Labels[kube.RevisionLabel])
