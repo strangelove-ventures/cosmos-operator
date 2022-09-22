@@ -190,7 +190,10 @@ func TestBuildServices(t *testing.T) {
 		crd.Spec.ChainConfig.Network = "testnet"
 		crd.Spec.PodTemplate.Image = "terra:v6.0.0"
 		crd.Spec.Service.RPCTemplate = cosmosv1.RPCServiceSpec{
-			Annotations:           map[string]string{"test": "value"},
+			Metadata: cosmosv1.Metadata{
+				Labels:      map[string]string{"label": "value", "app.kubernetes.io/name": "should not see me"},
+				Annotations: map[string]string{"test": "value"},
+			},
 			Type:                  ptr(corev1.ServiceTypeNodePort),
 			ExternalTrafficPolicy: ptr(corev1.ServiceExternalTrafficPolicyTypeLocal),
 		}
@@ -198,6 +201,10 @@ func TestBuildServices(t *testing.T) {
 
 		rpc := svcs[0]
 		require.Equal(t, map[string]string{"test": "value"}, rpc.Annotations)
+
+		require.Equal(t, "value", rpc.Labels["label"])
+		require.Equal(t, "terra", rpc.Labels["app.kubernetes.io/name"])
+
 		require.Equal(t, corev1.ServiceExternalTrafficPolicyTypeLocal, rpc.Spec.ExternalTrafficPolicy)
 		require.Equal(t, corev1.ServiceTypeNodePort, rpc.Spec.Type)
 	})

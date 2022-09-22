@@ -129,19 +129,8 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 		},
 	}
 
-	// Conditionally add custom labels and annotations, preserving key/values already set.
-	for k, v := range tpl.Metadata.Labels {
-		_, ok := pod.ObjectMeta.Labels[k]
-		if !ok {
-			pod.ObjectMeta.Labels[k] = kube.ToLabelValue(v)
-		}
-	}
-	for k, v := range tpl.Metadata.Annotations {
-		_, ok := pod.ObjectMeta.Annotations[k]
-		if !ok {
-			pod.ObjectMeta.Annotations[k] = kube.ToLabelValue(v)
-		}
-	}
+	preserveMergeInto(pod.Labels, tpl.Metadata.Labels)
+	preserveMergeInto(pod.Annotations, tpl.Metadata.Annotations)
 
 	return PodBuilder{
 		crd: crd,
