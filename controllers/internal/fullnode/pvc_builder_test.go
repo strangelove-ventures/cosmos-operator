@@ -1,6 +1,7 @@
 package fullnode
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -39,7 +40,7 @@ func TestBuildPVCs(t *testing.T) {
 		require.NotEmpty(t, lo.Uniq(revisions))
 		require.Len(t, lo.Uniq(revisions), 1)
 
-		for _, got := range pvcs {
+		for i, got := range pvcs {
 			require.Equal(t, crd.Namespace, got.Namespace)
 			require.Equal(t, "PersistentVolumeClaim", got.Kind)
 			require.Equal(t, "v1", got.APIVersion)
@@ -47,12 +48,12 @@ func TestBuildPVCs(t *testing.T) {
 			wantLabels := map[string]string{
 				"app.kubernetes.io/created-by": "cosmosfullnode",
 				"app.kubernetes.io/name":       "juno",
+				"app.kubernetes.io/instance":   fmt.Sprintf("juno-%d", i),
 				"app.kubernetes.io/version":    "v1.2.3",
 				"cosmos.strange.love/network":  "mainnet",
 			}
 			// These labels change and tested elsewhere.
 			delete(got.Labels, kube.RevisionLabel)
-			delete(got.Labels, kube.InstanceLabel)
 
 			require.Equal(t, wantLabels, got.Labels)
 

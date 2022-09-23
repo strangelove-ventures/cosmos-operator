@@ -44,7 +44,7 @@ func BuildPVCs(crd *cosmosv1.CosmosFullNode) []*corev1.PersistentVolumeClaim {
 
 		name := pvcName(crd, i)
 		pvc.Name = name
-		pvc.Labels[kube.InstanceLabel] = name
+		pvc.Labels[kube.InstanceLabel] = instanceName(crd, i)
 		pvc.Annotations[kube.OrdinalAnnotation] = kube.ToIntegerValue(i)
 
 		vols[i] = pvc
