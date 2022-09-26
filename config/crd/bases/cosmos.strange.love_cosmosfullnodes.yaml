@@ -267,6 +267,118 @@ spec:
                         the pod for this instance. This is useful for actions such
                         as debugging the PVC or deleting the PVC.
                       type: boolean
+                    volumeClaimTemplate:
+                      description: Overrides an individual instance's PVC.
+                      properties:
+                        accessModes:
+                          description: 'accessModes contain the desired access modes
+                            the volume should have. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1
+                            If not specified, defaults to ReadWriteOnce. This field
+                            is immutable. Updating this field requires manually deleting
+                            the PVC.'
+                          items:
+                            type: string
+                          type: array
+                        dataSource:
+                          description: 'Can be used to specify either: * An existing
+                            VolumeSnapshot object (snapshot.storage.k8s.io/VolumeSnapshot)
+                            * An existing PVC (PersistentVolumeClaim) If the provisioner
+                            or an external controller can support the specified data
+                            source, it will create a new volume based on the contents
+                            of the specified data source. If the AnyVolumeDataSource
+                            feature gate is enabled, this field will always have the
+                            same contents as the DataSourceRef field. If you choose
+                            an existing PVC, the PVC must be in the same availability
+                            zone.'
+                          properties:
+                            apiGroup:
+                              description: APIGroup is the group for the resource
+                                being referenced. If APIGroup is not specified, the
+                                specified Kind must be in the core API group. For
+                                any other third-party types, APIGroup is required.
+                              type: string
+                            kind:
+                              description: Kind is the type of resource being referenced
+                              type: string
+                            name:
+                              description: Name is the name of resource being referenced
+                              type: string
+                          required:
+                          - kind
+                          - name
+                          type: object
+                        metadata:
+                          description: Applied to all PVCs.
+                          properties:
+                            annotations:
+                              additionalProperties:
+                                type: string
+                              description: Annotations are added to a resource. If
+                                there is a collision between annotations the Operator
+                                creates, the Operator annotations take precedence.
+                              type: object
+                            labels:
+                              additionalProperties:
+                                type: string
+                              description: Labels are added to a resource. If there
+                                is a collision between labels the Operator creates,
+                                the Operator labels take precedence.
+                              type: object
+                          type: object
+                        resources:
+                          description: 'resources represents the minimum resources
+                            the volume should have. If RecoverVolumeExpansionFailure
+                            feature is enabled users are allowed to specify resource
+                            requirements that are lower than previous value but must
+                            still be higher than capacity recorded in the status field
+                            of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
+                            Updating the storage size is allowed but the StorageClass
+                            must support file system resizing. Only increasing storage
+                            is permitted. This field is required.'
+                          properties:
+                            limits:
+                              additionalProperties:
+                                anyOf:
+                                - type: integer
+                                - type: string
+                                pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                x-kubernetes-int-or-string: true
+                              description: 'Limits describes the maximum amount of
+                                compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                              type: object
+                            requests:
+                              additionalProperties:
+                                anyOf:
+                                - type: integer
+                                - type: string
+                                pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                x-kubernetes-int-or-string: true
+                              description: 'Requests describes the minimum amount
+                                of compute resources required. If Requests is omitted
+                                for a container, it defaults to Limits if that is
+                                explicitly specified, otherwise to an implementation-defined
+                                value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                              type: object
+                          type: object
+                        storageClassName:
+                          description: 'storageClassName is the name of the StorageClass
+                            required by the claim. For proper pod scheduling, it''s
+                            highly recommended to set "volumeBindingMode: WaitForFirstConsumer"
+                            in the StorageClass. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1
+                            For GKE, recommended storage class is "premium-rwo". This
+                            field is immutable. Updating this field requires manually
+                            deleting the PVC. This field is required.'
+                          type: string
+                        volumeMode:
+                          description: volumeMode defines what type of volume is required
+                            by the claim. Value of Filesystem is implied when not
+                            included in claim spec. This field is immutable. Updating
+                            this field requires manually deleting the PVC.
+                          type: string
+                      required:
+                      - resources
+                      - storageClassName
+                      type: object
                   type: object
                 description: 'Allows overriding an instance on a case-by-case basis.
                   An instance is a pod/pvc combo with an ordinal. Key must be the
@@ -1317,12 +1429,6 @@ spec:
                   rpcTemplate:
                     description: Overrides for the single RPC service.
                     properties:
-                      annotations:
-                        additionalProperties:
-                          type: string
-                        description: Added to the single RPC service annotations.
-                          Some cloud providers require special annotations.
-                        type: object
                       externalTrafficPolicy:
                         description: 'Sets endpoint and routing behavior. See: https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/#caveats-and-limitations-when-preserving-source-ips
                           If not set, defaults to "Cluster".'
@@ -1330,6 +1436,24 @@ spec:
                         - Cluster
                         - Local
                         type: string
+                      metadata:
+                        description: Metadata is a subset of k8s object metadata.
+                        properties:
+                          annotations:
+                            additionalProperties:
+                              type: string
+                            description: Annotations are added to a resource. If there
+                              is a collision between annotations the Operator creates,
+                              the Operator annotations take precedence.
+                            type: object
+                          labels:
+                            additionalProperties:
+                              type: string
+                            description: Labels are added to a resource. If there
+                              is a collision between labels the Operator creates,
+                              the Operator labels take precedence.
+                            type: object
+                        type: object
                       type:
                         description: Describes ingress methods for a service. If not
                           set, defaults to "ClusterIP".
@@ -1373,6 +1497,51 @@ spec:
                     items:
                       type: string
                     type: array
+                  dataSource:
+                    description: 'Can be used to specify either: * An existing VolumeSnapshot
+                      object (snapshot.storage.k8s.io/VolumeSnapshot) * An existing
+                      PVC (PersistentVolumeClaim) If the provisioner or an external
+                      controller can support the specified data source, it will create
+                      a new volume based on the contents of the specified data source.
+                      If the AnyVolumeDataSource feature gate is enabled, this field
+                      will always have the same contents as the DataSourceRef field.
+                      If you choose an existing PVC, the PVC must be in the same availability
+                      zone.'
+                    properties:
+                      apiGroup:
+                        description: APIGroup is the group for the resource being
+                          referenced. If APIGroup is not specified, the specified
+                          Kind must be in the core API group. For any other third-party
+                          types, APIGroup is required.
+                        type: string
+                      kind:
+                        description: Kind is the type of resource being referenced
+                        type: string
+                      name:
+                        description: Name is the name of resource being referenced
+                        type: string
+                    required:
+                    - kind
+                    - name
+                    type: object
+                  metadata:
+                    description: Applied to all PVCs.
+                    properties:
+                      annotations:
+                        additionalProperties:
+                          type: string
+                        description: Annotations are added to a resource. If there
+                          is a collision between annotations the Operator creates,
+                          the Operator annotations take precedence.
+                        type: object
+                      labels:
+                        additionalProperties:
+                          type: string
+                        description: Labels are added to a resource. If there is a
+                          collision between labels the Operator creates, the Operator
+                          labels take precedence.
+                        type: object
+                    type: object
                   resources:
                     description: 'resources represents the minimum resources the volume
                       should have. If RecoverVolumeExpansionFailure feature is enabled

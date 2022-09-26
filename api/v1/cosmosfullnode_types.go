@@ -104,7 +104,8 @@ const (
 	FullNodePhaseError       FullNodePhase = "Error"
 )
 
-type FullNodeMetadata struct {
+// Metadata is a subset of k8s object metadata.
+type Metadata struct {
 	// Labels are added to a resource. If there is a collision between labels the Operator creates, the Operator
 	// labels take precedence.
 	// +optional
@@ -118,7 +119,7 @@ type FullNodeMetadata struct {
 type PodSpec struct {
 	// Metadata is a subset of metav1.ObjectMeta applied to all pods.
 	// +optional
-	Metadata FullNodeMetadata `json:"metadata"`
+	Metadata Metadata `json:"metadata"`
 
 	// Image is the docker reference in "repository:tag" format. E.g. busybox:latest.
 	// This is for the main container running the chain process.
@@ -198,6 +199,10 @@ type PodSpec struct {
 // PersistentVolumeClaimSpec describes the common attributes of storage devices
 // and allows a Source for provider-specific attributes
 type PersistentVolumeClaimSpec struct {
+	// Applied to all PVCs.
+	// +optional
+	Metadata Metadata `json:"metadata"`
+
 	// storageClassName is the name of the StorageClass required by the claim.
 	// For proper pod scheduling, it's highly recommended to set "volumeBindingMode: WaitForFirstConsumer" in the StorageClass.
 	// More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1
@@ -228,6 +233,17 @@ type PersistentVolumeClaimSpec struct {
 	// This field is immutable. Updating this field requires manually deleting the PVC.
 	// +optional
 	VolumeMode *corev1.PersistentVolumeMode `json:"volumeMode"`
+
+	// Can be used to specify either:
+	// * An existing VolumeSnapshot object (snapshot.storage.k8s.io/VolumeSnapshot)
+	// * An existing PVC (PersistentVolumeClaim)
+	// If the provisioner or an external controller can support the specified data source,
+	// it will create a new volume based on the contents of the specified data source.
+	// If the AnyVolumeDataSource feature gate is enabled, this field will always have
+	// the same contents as the DataSourceRef field.
+	// If you choose an existing PVC, the PVC must be in the same availability zone.
+	// +optional
+	DataSource *corev1.TypedLocalObjectReference `json:"dataSource,omitempty" protobuf:"bytes,7,opt,name=dataSource"`
 }
 
 type RetentionPolicy string
@@ -483,9 +499,8 @@ type ServiceSpec struct {
 
 // RPCServiceSpec allows some overrides for the created, single RPC service.
 type RPCServiceSpec struct {
-	// Added to the single RPC service annotations. Some cloud providers require special annotations.
 	// +optional
-	Annotations map[string]string `json:"annotations"`
+	Metadata Metadata `json:"metadata"`
 
 	// Describes ingress methods for a service.
 	// If not set, defaults to "ClusterIP".
@@ -507,6 +522,10 @@ type InstanceOverridesSpec struct {
 	// This is useful for actions such as debugging the PVC or deleting the PVC.
 	// +optional
 	DisablePod bool `json:"disablePod"`
+
+	// Overrides an individual instance's PVC.
+	// +optional
+	VolumeClaimTemplate *PersistentVolumeClaimSpec `json:"volumeClaimTemplate"`
 }
 
 //+kubebuilder:object:root=true

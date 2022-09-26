@@ -42,3 +42,14 @@ func appName(crd *cosmosv1.CosmosFullNode) string {
 func instanceName(crd *cosmosv1.CosmosFullNode, ordinal int32) string {
 	return kube.ToLabelValue(fmt.Sprintf("%s-%d", appName(crd), ordinal))
 }
+
+// Conditionally add custom labels or annotations, preserving key/values already set on 'into'.
+// 'into' must not be nil.
+func preserveMergeInto(into map[string]string, other map[string]string) {
+	for k, v := range other {
+		_, ok := into[k]
+		if !ok {
+			into[k] = kube.ToLabelValue(v)
+		}
+	}
+}

@@ -79,9 +79,10 @@ func rpcService(crd *cosmosv1.CosmosFullNode) *corev1.Service {
 	svc := &corev1.Service{
 		TypeMeta: metav1.TypeMeta{Kind: "Service", APIVersion: "v1"},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      rpcServiceName(crd),
-			Namespace: crd.Namespace,
-			Labels:    labels,
+			Name:        rpcServiceName(crd),
+			Namespace:   crd.Namespace,
+			Labels:      labels,
+			Annotations: make(map[string]string),
 		},
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{
@@ -122,9 +123,9 @@ func rpcService(crd *cosmosv1.CosmosFullNode) *corev1.Service {
 	}
 
 	spec := crd.Spec.Service.RPCTemplate
-	if v := spec.Annotations; v != nil {
-		svc.Annotations = v
-	}
+	preserveMergeInto(svc.Labels, spec.Metadata.Labels)
+	preserveMergeInto(svc.Annotations, spec.Metadata.Annotations)
+
 	if v := spec.ExternalTrafficPolicy; v != nil {
 		svc.Spec.ExternalTrafficPolicy = *v
 	}
