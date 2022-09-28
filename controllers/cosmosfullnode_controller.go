@@ -98,6 +98,7 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	crd.Status.ObservedGeneration = crd.Generation
 	crd.Status.Phase = cosmosv1.FullNodePhaseProgressing
+	crd.Status.Error = nil
 	defer r.updateStatus(ctx, crd)
 
 	errs := &kube.ReconcileErrors{}
@@ -155,7 +156,8 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 }
 
 func (r *CosmosFullNodeReconciler) resultWithErr(crd *cosmosv1.CosmosFullNode, err kube.ReconcileError) (ctrl.Result, kube.ReconcileError) {
-	crd.Status.Error = err.Error()
+	msg := err.Error()
+	crd.Status.Error = &msg
 
 	if err.IsTransient() {
 		r.recorder.Event(crd, eventWarning, "errorTransient", fmt.Sprintf("%v; retrying.", err))
