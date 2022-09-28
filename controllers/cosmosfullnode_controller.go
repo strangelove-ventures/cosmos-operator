@@ -135,7 +135,7 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	if errs.Any() {
-		return r.resultWithErr(crd, err)
+		return r.resultWithErr(crd, errs)
 	}
 
 	if podRequeue || pvcRequeue {
