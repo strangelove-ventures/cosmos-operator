@@ -1613,9 +1613,6 @@ spec:
           status:
             description: FullNodeStatus defines the observed state of CosmosFullNode
             properties:
-              error:
-                description: The error message for any errors encountered.
-                type: string
               observedGeneration:
                 description: The most recent generation observed by the controller.
                 format: int64
@@ -1625,6 +1622,9 @@ spec:
                   means the deployment is under way. "Complete" means the deployment
                   is complete and reconciliation is finished. "Error" means an unrecoverable
                   error occurred, which needs human intervention.
+                type: string
+              status:
+                description: A generic message for the user. May contain errors.
                 type: string
             required:
             - observedGeneration

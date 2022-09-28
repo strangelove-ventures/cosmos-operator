@@ -91,9 +91,9 @@ type FullNodeStatus struct {
 	// "Error" means an unrecoverable error occurred, which needs human intervention.
 	Phase FullNodePhase `json:"phase"`
 
-	// The error message for any errors encountered.
+	// A generic message for the user. May contain errors.
 	// +optional
-	Error *string `json:"error"`
+	StatusMessage *string `json:"status"`
 }
 
 type FullNodePhase string
