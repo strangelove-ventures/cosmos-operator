@@ -1614,8 +1614,7 @@ spec:
             description: FullNodeStatus defines the observed state of CosmosFullNode
             properties:
               error:
-                description: The error message for an unrecoverable error. Phase will
-                  be "Error".
+                description: The error message for any errors encountered.
                 type: string
               observedGeneration:
                 description: The most recent generation observed by the controller.
@@ -1625,7 +1624,7 @@ spec:
                 description: The current phase of the fullnode deployment. "Progressing"
                   means the deployment is under way. "Complete" means the deployment
                   is complete and reconciliation is finished. "Error" means an unrecoverable
-                  error occurred, which needs human operator attention.
+                  error occurred, which needs human intervention.
                 type: string
             required:
             - error
