@@ -24,6 +24,8 @@ func TestReconcileError(t *testing.T) {
 }
 
 func TestReconcileErrors(t *testing.T) {
+	t.Parallel()
+
 	t.Run("transient", func(t *testing.T) {
 		errs := &ReconcileErrors{}
 		require.False(t, errs.Any())
