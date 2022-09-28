@@ -86,7 +86,7 @@ func TestNormalizeMetadata(t *testing.T) {
 	obj := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        strings.Repeat(" name ", 500),
-			Annotations: map[string]string{strings.Repeat("annot-key", 500): strings.Repeat("value", 500)},
+			Annotations: map[string]string{strings.Repeat("annot-key", 500): strings.Repeat("value", 500), "cloud.google.com/neg": `{"ingress": true}`},
 			Labels:      map[string]string{strings.Repeat("label-key", 500): strings.Repeat("value", 500)},
 		},
 	}
@@ -94,4 +94,5 @@ func TestNormalizeMetadata(t *testing.T) {
 	NormalizeMetadata(&obj.ObjectMeta)
 
 	test.RequireValidMetadata(t, obj)
+	require.Equal(t, `{"ingress": true}`, obj.Annotations["cloud.google.com/neg"])
 }
