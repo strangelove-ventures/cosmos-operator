@@ -1627,7 +1627,6 @@ spec:
                   error occurred, which needs human intervention.
                 type: string
             required:
-            - error
             - observedGeneration
             - phase
             type: object

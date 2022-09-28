@@ -92,7 +92,8 @@ type FullNodeStatus struct {
 	Phase FullNodePhase `json:"phase"`
 
 	// The error message for any errors encountered.
-	Error *string `json:"error"`
+	// +optional
+	Error string `json:"error"`
 }
 
 type FullNodePhase string

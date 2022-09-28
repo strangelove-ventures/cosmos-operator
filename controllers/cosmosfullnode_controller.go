@@ -155,8 +155,7 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 }
 
 func (r *CosmosFullNodeReconciler) resultWithErr(crd *cosmosv1.CosmosFullNode, err kube.ReconcileError) (ctrl.Result, kube.ReconcileError) {
-	errMsg := err.Error()
-	crd.Status.Error = &errMsg
+	crd.Status.Error = err.Error()
 
 	if err.IsTransient() {
 		r.recorder.Event(crd, eventWarning, "errorTransient", fmt.Sprintf("%v; retrying.", err))
