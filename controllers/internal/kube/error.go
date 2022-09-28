@@ -1,6 +1,9 @@
 package kube
 
 import (
+	"strings"
+
+	"github.com/samber/lo"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
@@ -49,4 +52,34 @@ func IgnoreAlreadyExists(err error) error {
 		return nil
 	}
 	return err
+}
+
+// ReconcileErrors is a collection of ReconcileError
+type ReconcileErrors struct {
+	errs []ReconcileError
+}
+
+func (errs *ReconcileErrors) Error() string {
+	all := lo.Map(errs.errs, func(err ReconcileError, i int) string { return err.Error() })
+	return strings.Join(all, "; ")
+}
+
+// IsTransient returns true if all errors are transient. False if at least one is not transient.
+func (errs *ReconcileErrors) IsTransient() bool {
+	for _, err := range errs.errs {
+		if !err.IsTransient() {
+			return false
+		}
+	}
+	return true
+}
+
+// Append adds the ReconcileError.
+func (errs *ReconcileErrors) Append(err ReconcileError) {
+	errs.errs = append(errs.errs, err)
+}
+
+// Any returns true if any errors were collected.
+func (errs *ReconcileErrors) Any() bool {
+	return len(errs.errs) > 0
 }

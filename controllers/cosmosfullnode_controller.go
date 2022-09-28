@@ -98,7 +98,10 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	crd.Status.ObservedGeneration = crd.Generation
 	crd.Status.Phase = cosmosv1.FullNodePhaseProgressing
+	crd.Status.StatusMessage = nil
 	defer r.updateStatus(ctx, crd)
+
+	errs := &kube.ReconcileErrors{}
 
 	// Order of operations is important. E.g. PVCs won't delete unless pods are deleted first.
 	// K8S can create pods first even if the PVC isn't ready. Pods won't be in a ready state until PVC is bound.
@@ -106,29 +109,34 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	// Create or update Services.
 	err := r.serviceControl.Reconcile(ctx, logger, crd)
 	if err != nil {
-		return r.resultWithErr(crd, err)
+		errs.Append(err)
 	}
 
-	// Create or update ConfigMap.
+	// Create or update ConfigMaps.
 	p2pAddresses, err := fullnode.CollectP2PAddresses(ctx, crd, r)
 	if err != nil {
-		return r.resultWithErr(crd, err)
+		p2pAddresses = make(fullnode.ExternalAddresses)
+		errs.Append(err)
 	}
 	err = r.configMapControl.Reconcile(ctx, logger, crd, p2pAddresses)
 	if err != nil {
-		return r.resultWithErr(crd, err)
+		errs.Append(err)
 	}
 
 	// Reconcile pods.
 	podRequeue, err := r.podControl.Reconcile(ctx, logger, crd)
 	if err != nil {
-		return r.resultWithErr(crd, err)
+		errs.Append(err)
 	}
 
 	// Reconcile pvcs.
 	pvcRequeue, err := r.pvcControl.Reconcile(ctx, logger, crd)
 	if err != nil {
-		return r.resultWithErr(crd, err)
+		errs.Append(err)
+	}
+
+	if errs.Any() {
+		return r.resultWithErr(crd, errs)
 	}
 
 	if podRequeue || pvcRequeue {
@@ -150,10 +158,14 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 func (r *CosmosFullNodeReconciler) resultWithErr(crd *cosmosv1.CosmosFullNode, err kube.ReconcileError) (ctrl.Result, kube.ReconcileError) {
 	if err.IsTransient() {
 		r.recorder.Event(crd, eventWarning, "errorTransient", fmt.Sprintf("%v; retrying.", err))
+		msg := fmt.Sprintf("Transient error: system is retrying: %v", err)
+		crd.Status.StatusMessage = &msg
 		return requeueResult, err
 	}
+
 	crd.Status.Phase = cosmosv1.FullNodePhaseError
-	crd.Status.Error = err.Error()
+	msg := fmt.Sprintf("Unrecoverable error: human intervention required: %v", err)
+	crd.Status.StatusMessage = &msg
 	r.recorder.Event(crd, eventWarning, "error", err.Error())
 	return finishResult, err
 }

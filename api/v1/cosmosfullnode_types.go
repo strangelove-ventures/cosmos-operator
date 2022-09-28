@@ -88,12 +88,12 @@ type FullNodeStatus struct {
 	// The current phase of the fullnode deployment.
 	// "Progressing" means the deployment is under way.
 	// "Complete" means the deployment is complete and reconciliation is finished.
-	// "Error" means an unrecoverable error occurred, which needs human operator attention.
+	// "Error" means an unrecoverable error occurred, which needs human intervention.
 	Phase FullNodePhase `json:"phase"`
 
-	// The error message for an unrecoverable error.
-	// Phase will be "Error".
-	Error string `json:"error"`
+	// A generic message for the user. May contain errors.
+	// +optional
+	StatusMessage *string `json:"status"`
 }
 
 type FullNodePhase string
