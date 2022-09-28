@@ -78,3 +78,8 @@ func (errs *ReconcileErrors) IsTransient() bool {
 func (errs *ReconcileErrors) Append(err ReconcileError) {
 	errs.errs = append(errs.errs, err)
 }
+
+// Any returns true if any errors were collected.
+func (errs *ReconcileErrors) Any() bool {
+	return len(errs.errs) > 0
+}
