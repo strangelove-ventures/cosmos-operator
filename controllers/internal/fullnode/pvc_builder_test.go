@@ -8,6 +8,7 @@ import (
 	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
+	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/test"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -136,7 +137,7 @@ func TestBuildPVCs(t *testing.T) {
 		require.NotEmpty(t, pvcs)
 
 		for _, got := range pvcs {
-			RequireValidMetadata(t, got)
+			test.RequireValidMetadata(t, got)
 		}
 	})
 }

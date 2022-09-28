@@ -59,6 +59,7 @@ func BuildPVCs(crd *cosmosv1.CosmosFullNode) []*corev1.PersistentVolumeClaim {
 
 		preserveMergeInto(pvc.Labels, tpl.Metadata.Labels)
 		preserveMergeInto(pvc.Annotations, tpl.Metadata.Annotations)
+		kube.NormalizeMetadata(&pvc.ObjectMeta)
 
 		vols[i] = pvc
 	}
@@ -67,7 +68,7 @@ func BuildPVCs(crd *cosmosv1.CosmosFullNode) []*corev1.PersistentVolumeClaim {
 
 func pvcName(crd *cosmosv1.CosmosFullNode, ordinal int32) string {
 	name := fmt.Sprintf("pvc-%s-%d", appName(crd), ordinal)
-	return kube.ToLabelValue(name)
+	return kube.ToName(name)
 }
 
 // Attempts to produce a deterministic hash based on the pvc template, so we can detect updates.

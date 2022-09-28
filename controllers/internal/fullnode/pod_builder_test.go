@@ -7,6 +7,7 @@ import (
 	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
+	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/test"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -174,7 +175,7 @@ func TestPodBuilder(t *testing.T) {
 
 		require.Regexp(t, `a.*-125`, pod.Name)
 
-		RequireValidMetadata(t, pod)
+		test.RequireValidMetadata(t, pod)
 	})
 
 	t.Run("containers", func(t *testing.T) {
