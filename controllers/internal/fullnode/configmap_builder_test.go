@@ -8,6 +8,7 @@ import (
 	"github.com/BurntSushi/toml"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
+	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/test"
 	"github.com/stretchr/testify/require"
 )
 
@@ -78,7 +79,7 @@ func TestBuildConfigMap(t *testing.T) {
 		require.NotEmpty(t, cms)
 
 		for _, cm := range cms {
-			RequireValidMetadata(t, cm)
+			test.RequireValidMetadata(t, cm)
 		}
 	})
 

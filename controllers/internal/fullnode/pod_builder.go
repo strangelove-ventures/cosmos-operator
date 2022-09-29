@@ -151,6 +151,7 @@ func podRevisionHash(crd *cosmosv1.CosmosFullNode) string {
 
 // Build assigns the CosmosFullNode crd as the owner and returns a fully constructed pod.
 func (b PodBuilder) Build() *corev1.Pod {
+	kube.NormalizeMetadata(&b.pod.ObjectMeta)
 	return b.pod
 }
 
@@ -161,7 +162,7 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 	name := instanceName(b.crd, ordinal)
 
 	pod.Annotations[kube.OrdinalAnnotation] = kube.ToIntegerValue(ordinal)
-	pod.Labels[kube.InstanceLabel] = kube.ToLabelValue(name)
+	pod.Labels[kube.InstanceLabel] = name
 
 	pod.Name = name
 	pod.Spec.InitContainers = initContainers(b.crd, name)

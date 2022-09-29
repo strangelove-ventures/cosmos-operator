@@ -7,10 +7,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/test"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func TestToLabelValue(t *testing.T) {
+func TestToLabelKey(t *testing.T) {
 	t.Parallel()
 
 	for _, tt := range []struct {
@@ -20,13 +23,13 @@ func TestToLabelValue(t *testing.T) {
 		{"hub-0", "hub-0"},
 		{"", ""},
 
-		{"HUB!@+=_.0", "hub_.0"},
+		{"HUB!@+=_.0", "HUB_.0"},
 		{strings.Repeat("abcde^&*", 60) + "-suffix", "abcdeabcdeabcdeabcdeabcdeabcdeaabcdeabcdeabcdeabcdeabcde-suffix"},
 
 		// Must start and end with alphanumeric character.
 		{"#..abc1-_@!", "abc1"},
 	} {
-		got := ToLabelValue(tt.Input)
+		got := ToLabelKey(tt.Input)
 
 		require.LessOrEqual(t, len(got), 63)
 		require.Equal(t, tt.Want, got, tt)
@@ -43,7 +46,7 @@ func TestToName(t *testing.T) {
 		{"hub-0", "hub-0"},
 		{"", ""},
 
-		{"HUB!@+=_.0", "hub.0"},
+		{"HUB!@+=_.0", "HUB.0"},
 		{strings.Repeat("abcde^&*", 100) + "-suffix", "abcdeabcdeabcdeabcdeabcdeabcdeabcdeabcdeabcdeabcdeabcdeabcdeabcdeabcdeabcdeabcdeabcdeabcdeabcdeabcdeabcdeabcdeabcdeabcdeabcdeaabcdeabcdeabcdeabcdeabcdeabcdeabcdeabcdeabcdeabcdeabcdeabcdeabcdeabcdeabcdeabcdeabcdeabcdeabcdeabcdeabcdeabcdeabcdeabcde-suffix"},
 
 		// Must start and end with alphanumeric character.
@@ -77,4 +80,19 @@ func TestMustToInt(t *testing.T) {
 			MustToInt(badValue)
 		})
 	}
+}
+
+func TestNormalizeMetadata(t *testing.T) {
+	obj := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        strings.Repeat(" name ", 500),
+			Annotations: map[string]string{strings.Repeat("annot-key", 500): strings.Repeat("value", 500), "cloud.google.com/neg": `{"ingress": true}`},
+			Labels:      map[string]string{strings.Repeat("label-key", 500): strings.Repeat("value", 500)},
+		},
+	}
+
+	NormalizeMetadata(&obj.ObjectMeta)
+
+	test.RequireValidMetadata(t, obj)
+	require.Equal(t, `{"ingress": true}`, obj.Annotations["cloud.google.com/neg"])
 }

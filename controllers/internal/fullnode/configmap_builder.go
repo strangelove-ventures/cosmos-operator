@@ -59,6 +59,7 @@ func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, p2p ExternalAddresses) ([]*co
 		}
 		cm.Data = data
 
+		kube.NormalizeMetadata(&cm.ObjectMeta)
 		cms[i] = &cm
 	}
 
