@@ -127,8 +127,8 @@ spec:
   instanceOverrides:
     # Key is the name of the instance which is the name of the pod.
     cosmoshub-1:
-      # If true, Operator will not create the pod. Allows you to debug PVC if pod continually crashing.
-      disablePod: true
+      # If 'All', operator will not manage pod or pvc. If 'Pod', operator will not manage pod but continue to manage pvc.
+      disable: "All|Pod"
       # This is the same as the top-level volumeClaimTemplate. However, this template only applies to this single instance.
       # Allows you to restore or tweak a PVC that has been corrupted.
       volumeClaimTemplate: {}
