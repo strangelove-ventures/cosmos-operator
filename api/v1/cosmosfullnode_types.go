@@ -518,11 +518,6 @@ type RPCServiceSpec struct {
 
 // InstanceOverridesSpec allows overriding an instance which is pod/pvc combo with an ordinal
 type InstanceOverridesSpec struct {
-	// If true, controller will not create or restart the pod for this instance.
-	// This is useful for actions such as debugging the PVC or deleting the PVC.
-	// +optional
-	DisablePod bool `json:"disablePod"`
-
 	// Disables whole or part of the instance.
 	// Used for scenarios like debugging or deleting the PVC and restoring from a dataSource.
 	// Set to "Pod" to prevent controller from creating a pod for this instance, leaving the PVC.

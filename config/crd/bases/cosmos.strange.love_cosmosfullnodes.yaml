@@ -274,11 +274,6 @@ spec:
                       - Pod
                       - All
                       type: string
-                    disablePod:
-                      description: If true, controller will not create or restart
-                        the pod for this instance. This is useful for actions such
-                        as debugging the PVC or deleting the PVC.
-                      type: boolean
                     volumeClaimTemplate:
                       description: Overrides an individual instance's PVC.
                       properties:
