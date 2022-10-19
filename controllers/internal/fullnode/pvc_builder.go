@@ -33,10 +33,13 @@ func BuildPVCs(crd *cosmosv1.CosmosFullNode) []*corev1.PersistentVolumeClaim {
 		},
 	}
 
-	vols := make([]*corev1.PersistentVolumeClaim, crd.Spec.Replicas)
+	var pvcs []*corev1.PersistentVolumeClaim
 	for i := int32(0); i < crd.Spec.Replicas; i++ {
-		pvc := base.DeepCopy()
+		if pvcDisabled(crd, i) {
+			continue
+		}
 
+		pvc := base.DeepCopy()
 		name := pvcName(crd, i)
 		pvc.Name = name
 		pvc.Labels[kube.InstanceLabel] = instanceName(crd, i)
@@ -61,9 +64,15 @@ func BuildPVCs(crd *cosmosv1.CosmosFullNode) []*corev1.PersistentVolumeClaim {
 		preserveMergeInto(pvc.Annotations, tpl.Metadata.Annotations)
 		kube.NormalizeMetadata(&pvc.ObjectMeta)
 
-		vols[i] = pvc
+		pvcs = append(pvcs, pvc)
 	}
-	return vols
+	return pvcs
+}
+
+func pvcDisabled(crd *cosmosv1.CosmosFullNode, ordinal int32) bool {
+	name := instanceName(crd, ordinal)
+	disable := crd.Spec.InstanceOverrides[name].DisableStrategy
+	return disable != nil && *disable == cosmosv1.DisableAll
 }
 
 func pvcName(crd *cosmosv1.CosmosFullNode, ordinal int32) string {
