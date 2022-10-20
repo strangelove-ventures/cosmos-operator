@@ -71,7 +71,7 @@ type FullNodeSpec struct {
 
 	// Allows overriding an instance on a case-by-case basis. An instance is a pod/pvc combo with an ordinal.
 	// Key must be the name of the pod including the ordinal suffix.
-	// Example: cosmos-1/pvc-cosmos-1.
+	// Example: cosmos-1
 	// Used for debugging.
 	// +optional
 	InstanceOverrides map[string]InstanceOverridesSpec `json:"instanceOverrides"`
@@ -518,15 +518,26 @@ type RPCServiceSpec struct {
 
 // InstanceOverridesSpec allows overriding an instance which is pod/pvc combo with an ordinal
 type InstanceOverridesSpec struct {
-	// If true, controller will not create or restart the pod for this instance.
-	// This is useful for actions such as debugging the PVC or deleting the PVC.
+	// Disables whole or part of the instance.
+	// Used for scenarios like debugging or deleting the PVC and restoring from a dataSource.
+	// Set to "Pod" to prevent controller from creating a pod for this instance, leaving the PVC.
+	// Set to "All" to prevent the controller from managing a pod and pvc. Note, the PVC may not be deleted if
+	// the RetainStrategy is set to "Retain". If you need to remove the PVC, delete manually.
+	// +kubebuilder:validation:Enum:=Pod;All
 	// +optional
-	DisablePod bool `json:"disablePod"`
+	DisableStrategy *DisableStrategy `json:"disable"`
 
 	// Overrides an individual instance's PVC.
 	// +optional
 	VolumeClaimTemplate *PersistentVolumeClaimSpec `json:"volumeClaimTemplate"`
 }
+
+type DisableStrategy string
+
+const (
+	DisableAll DisableStrategy = "All"
+	DisablePod DisableStrategy = "Pod"
+)
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status

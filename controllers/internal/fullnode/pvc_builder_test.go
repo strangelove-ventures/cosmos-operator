@@ -105,12 +105,18 @@ func TestBuildPVCs(t *testing.T) {
 	t.Run("instance override", func(t *testing.T) {
 		crd := defaultCRD()
 		crd.Name = "cosmoshub"
-		crd.Spec.Replicas = 2
+		crd.Spec.Replicas = 3
 		crd.Spec.InstanceOverrides = map[string]cosmosv1.InstanceOverridesSpec{
 			"cosmoshub-0": {
 				VolumeClaimTemplate: &cosmosv1.PersistentVolumeClaimSpec{
 					StorageClassName: "override",
 				},
+			},
+			"cosmoshub-1": {
+				DisableStrategy: ptr(cosmosv1.DisableAll),
+			},
+			"cosmoshub-2": {
+				DisableStrategy: ptr(cosmosv1.DisablePod),
 			},
 			"does-not-exist": {
 				VolumeClaimTemplate: &cosmosv1.PersistentVolumeClaimSpec{
@@ -120,11 +126,12 @@ func TestBuildPVCs(t *testing.T) {
 		}
 
 		pvcs := BuildPVCs(&crd)
-		require.NotEmpty(t, pvcs)
+		require.Equal(t, 2, len(pvcs))
 
 		got1, got2 := pvcs[0], pvcs[1]
-		require.NotEqual(t, got1.Spec, got2.Spec)
 
+		require.NotEqual(t, got1.Spec, got2.Spec)
+		require.Equal(t, []string{"pvc-cosmoshub-0", "pvc-cosmoshub-2"}, []string{got1.Name, got2.Name})
 		require.Equal(t, "override", *got1.Spec.StorageClassName)
 	})
 
