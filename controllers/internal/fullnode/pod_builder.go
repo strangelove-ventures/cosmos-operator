@@ -240,6 +240,7 @@ func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Conta
 	binary := crd.Spec.ChainConfig.Binary
 	genesisCmd, genesisArgs := DownloadGenesisCommand(crd.Spec.ChainConfig)
 
+	initCmd := fmt.Sprintf("%s init %s --chain-id %s", binary, moniker, crd.Spec.ChainConfig.ChainID)
 	required := []corev1.Container{
 		{
 			Name:    "chain-init",
@@ -250,7 +251,7 @@ func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Conta
 set -eu
 if [ ! -d "$CHAIN_HOME/data" ]; then
 	echo "Initializing chain..."
-	%s init %s --home "$CHAIN_HOME"
+	%s --home "$CHAIN_HOME"
 	# Remove because downstream containers check the presence of this file.
 	rm "$GENESIS_FILE"
 else
@@ -258,8 +259,8 @@ else
 fi
 
 echo "Initializing into tmp dir for downstream processing..."
-%s init %s --home "$HOME/.tmp"
-`, binary, moniker, binary, moniker),
+%s --home "$HOME/.tmp"
+`, initCmd, initCmd),
 			},
 			Env:             envVars,
 			ImagePullPolicy: tpl.ImagePullPolicy,

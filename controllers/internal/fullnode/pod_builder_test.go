@@ -181,6 +181,7 @@ func TestPodBuilder(t *testing.T) {
 	t.Run("containers", func(t *testing.T) {
 		crd := defaultCRD()
 		const wantWrkDir = "/home/operator"
+		crd.Spec.ChainConfig.ChainID = "osmosis-123"
 		crd.Spec.ChainConfig.Binary = "osmosisd"
 		crd.Spec.ChainConfig.SnapshotURL = ptr("https://example.com/snapshot.tar")
 		crd.Spec.PodTemplate.Image = "main-image:v1.2.3"
@@ -239,8 +240,8 @@ func TestPodBuilder(t *testing.T) {
 		}
 
 		initCont := pod.Spec.InitContainers[0]
-		require.Contains(t, initCont.Args[1], `osmosisd init osmosis-6 --home "$CHAIN_HOME"`)
-		require.Contains(t, initCont.Args[1], `osmosisd init osmosis-6 --home "$HOME/.tmp"`)
+		require.Contains(t, initCont.Args[1], `osmosisd init osmosis-6 --chain-id osmosis-123 --home "$CHAIN_HOME"`)
+		require.Contains(t, initCont.Args[1], `osmosisd init osmosis-6 --chain-id osmosis-123 --home "$HOME/.tmp"`)
 
 		mergeConfig := pod.Spec.InitContainers[2]
 		// The order of config-merge arguments is important. Rightmost takes precedence.
