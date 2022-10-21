@@ -262,11 +262,18 @@ spec:
                   description: InstanceOverridesSpec allows overriding an instance
                     which is pod/pvc combo with an ordinal
                   properties:
-                    disablePod:
-                      description: If true, controller will not create or restart
-                        the pod for this instance. This is useful for actions such
-                        as debugging the PVC or deleting the PVC.
-                      type: boolean
+                    disable:
+                      description: Disables whole or part of the instance. Used for
+                        scenarios like debugging or deleting the PVC and restoring
+                        from a dataSource. Set to "Pod" to prevent controller from
+                        creating a pod for this instance, leaving the PVC. Set to
+                        "All" to prevent the controller from managing a pod and pvc.
+                        Note, the PVC may not be deleted if the RetainStrategy is
+                        set to "Retain". If you need to remove the PVC, delete manually.
+                      enum:
+                      - Pod
+                      - All
+                      type: string
                     volumeClaimTemplate:
                       description: Overrides an individual instance's PVC.
                       properties:
@@ -382,7 +389,7 @@ spec:
                   type: object
                 description: 'Allows overriding an instance on a case-by-case basis.
                   An instance is a pod/pvc combo with an ordinal. Key must be the
-                  name of the pod including the ordinal suffix. Example: cosmos-1/pvc-cosmos-1.
+                  name of the pod including the ordinal suffix. Example: cosmos-1
                   Used for debugging.'
                 type: object
               podTemplate:

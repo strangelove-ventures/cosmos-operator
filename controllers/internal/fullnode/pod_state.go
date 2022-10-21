@@ -14,7 +14,7 @@ func PodState(crd *cosmosv1.CosmosFullNode) []*corev1.Pod {
 	)
 	for i := int32(0); i < crd.Spec.Replicas; i++ {
 		pod := builder.WithOrdinal(i).Build()
-		if overrides[pod.Name].DisablePod {
+		if disable := overrides[pod.Name].DisableStrategy; disable != nil {
 			continue
 		}
 		pods = append(pods, pod)
