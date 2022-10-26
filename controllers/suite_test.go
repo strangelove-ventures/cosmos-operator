@@ -52,9 +52,6 @@ func TestAPIs(t *testing.T) {
 	err = cosmosv1.AddToScheme(scheme.Scheme)
 	require.NoError(t, err)
 
-	err = cosmosv1.AddToScheme(scheme.Scheme)
-	Expect(err).NotTo(HaveOccurred())
-
 	//+kubebuilder:scaffold:scheme
 
 	k8sClient, err := client.New(cfg, client.Options{Scheme: scheme.Scheme})
