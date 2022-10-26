@@ -46,3 +46,29 @@ rules:
   - get
   - patch
   - update
+- apiGroups:
+  - cosmos.strange.love
+  resources:
+  - hostedsnapshots
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - cosmos.strange.love
+  resources:
+  - hostedsnapshots/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - cosmos.strange.love
+  resources:
+  - hostedsnapshots/status
+  verbs:
+  - get
+  - patch
+  - update

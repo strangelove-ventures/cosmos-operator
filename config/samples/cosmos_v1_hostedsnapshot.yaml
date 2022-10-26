@@ -1,12 +1,6 @@
 apiVersion: cosmos.strange.love/v1
 kind: HostedSnapshot
 metadata:
-  labels:
-    app.kubernetes.io/name: hostedsnapshot
-    app.kubernetes.io/instance: hostedsnapshot-sample
-    app.kubernetes.io/part-of: cosmos-operator
-    app.kuberentes.io/managed-by: kustomize
-    app.kubernetes.io/created-by: cosmos-operator
   name: hostedsnapshot-sample
 spec:
   # TODO(user): Add fields here

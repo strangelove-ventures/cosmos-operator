@@ -135,8 +135,7 @@ func start(ctx context.Context) error {
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "HostedSnapshot")
-		os.Exit(1)
+		return fmt.Errorf("unable to create HostedSnapshot controller: %w", err)
 	}
 	//+kubebuilder:scaffold:builder
 

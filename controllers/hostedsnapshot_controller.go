@@ -47,7 +47,21 @@ type HostedSnapshotReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.13.0/pkg/reconcile
 func (r *HostedSnapshotReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	logger := log.FromContext(ctx).WithName("HostedSnapshot")
+	logger.V(1).Info("Entering reconcile loop")
+
+	// Get the CRD
+	crd := new(cosmosv1.HostedSnapshot)
+	if err := r.Get(ctx, req.NamespacedName, crd); err != nil {
+		// Ignore not found errors because can't be fixed by an immediate requeue. We'll have to wait for next notification.
+		// Also, will get "not found" error if crd is deleted.
+		// No need to explicitly delete resources. Kube GC does so automatically because we set the controller reference
+		// for each resource.
+		return finishResult, client.IgnoreNotFound(err)
+	}
+
+	// TODO: delete me
+	logger.Info("Found HostedSnapshot", "name", crd.Name)
 
 	// TODO(user): your logic here
 
