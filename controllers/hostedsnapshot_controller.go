@@ -18,13 +18,14 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 
+	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
+	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-
-	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 )
 
 // HostedSnapshotReconciler reconciles a HostedSnapshot object
@@ -60,16 +61,31 @@ func (r *HostedSnapshotReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return finishResult, client.IgnoreNotFound(err)
 	}
 
-	// TODO: delete me
-	logger.Info("Found HostedSnapshot", "name", crd.Name)
+	var snapshots snapshotv1.VolumeSnapshotList
+	if err := r.List(ctx, &snapshots, client.InNamespace(crd.Namespace)); err != nil {
+		// TODO(nix): Report not found in the status object.
+		return finishResult, client.IgnoreNotFound(err)
+	}
 
-	// TODO(user): your logic here
+	logger.Info("Found Snapshots", "found", snapshots.Items)
 
-	return ctrl.Result{}, nil
+	return finishResult, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *HostedSnapshotReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *HostedSnapshotReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
+	// Index all VolumeSnapshots. Controller does not own any because it does not create them.
+	if err := mgr.GetFieldIndexer().IndexField(
+		ctx,
+		&snapshotv1.VolumeSnapshot{},
+		".metadata.name",
+		func(object client.Object) []string {
+			return []string{object.GetName()}
+		},
+	); err != nil {
+		return fmt.Errorf("VolumeSnapshot index: %w", err)
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&cosmosv1.HostedSnapshot{}).
 		Complete(r)
