@@ -3,13 +3,12 @@ package snapshot
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sort"
 	"time"
 
 	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
-	"go.uber.org/multierr"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -19,12 +18,8 @@ type Lister interface {
 }
 
 var (
-	// ErrNotFound indicates the VolumeSnapshot does not exist.
-	ErrNotFound = errors.New("not found")
 	// ErrNotReady indicates VolumeSnapshot was found but is not ready for use.
 	ErrNotReady = errors.New("not ready")
-
-	isNotFoundErr = apierrors.IsNotFound
 )
 
 // RecentVolumeSnapshot finds the most recent, ready to use VolumeSnapshot.
@@ -37,12 +32,12 @@ func RecentVolumeSnapshot(ctx context.Context, lister Lister, crd *cosmosv1.Host
 		client.InNamespace(crd.Namespace),
 		client.MatchingLabels(crd.Spec.Selector),
 	)
-
-	switch {
-	case isNotFoundErr(err):
-		return nil, multierr.Append(err, ErrNotFound)
-	case err != nil:
+	if err != nil {
 		return nil, err
+	}
+
+	if len(snapshots.Items) == 0 {
+		return nil, errors.New("no VolumeSnapshots found")
 	}
 
 	sort.Slice(snapshots.Items, func(i, j int) bool {
@@ -53,7 +48,7 @@ func RecentVolumeSnapshot(ctx context.Context, lister Lister, crd *cosmosv1.Host
 
 	found := &snapshots.Items[0]
 	if !statusIsReady(found.Status) {
-		return nil, ErrNotReady
+		return nil, fmt.Errorf("%s: %w", found.Name, ErrNotReady)
 	}
 
 	return found, nil
