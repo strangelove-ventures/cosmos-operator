@@ -3,11 +3,11 @@ package snapshot
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sort"
 	"time"
 
 	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
+	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -16,11 +16,6 @@ import (
 type Lister interface {
 	List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error
 }
-
-var (
-	// ErrNotReady indicates VolumeSnapshot was found but is not ready for use.
-	ErrNotReady = errors.New("not ready")
-)
 
 // RecentVolumeSnapshot finds the most recent, ready to use VolumeSnapshot.
 // This function may not work well given very large lists and therefore assumes a reasonable number of VolumeSnapshots.
@@ -36,21 +31,20 @@ func RecentVolumeSnapshot(ctx context.Context, lister Lister, crd *cosmosv1.Host
 		return nil, err
 	}
 
-	if len(snapshots.Items) == 0 {
-		return nil, errors.New("no VolumeSnapshots found")
+	filtered := lo.Filter(snapshots.Items, func(s snapshotv1.VolumeSnapshot, _ int) bool {
+		return statusIsReady(s.Status)
+	})
+	if len(filtered) == 0 {
+		return nil, errors.New("no ready to use VolumeSnapshots found")
 	}
 
-	sort.Slice(snapshots.Items, func(i, j int) bool {
+	sort.Slice(filtered, func(i, j int) bool {
 		lhs := statusCreationTime(snapshots.Items[i].Status)
 		rhs := statusCreationTime(snapshots.Items[j].Status)
 		return !lhs.Before(rhs)
 	})
 
-	found := &snapshots.Items[0]
-	if !statusIsReady(found.Status) {
-		return nil, fmt.Errorf("%s: %w", found.Name, ErrNotReady)
-	}
-
+	found := &filtered[0]
 	return found, nil
 }
 

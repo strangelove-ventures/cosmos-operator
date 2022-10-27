@@ -73,7 +73,7 @@ func TestRecentVolumeSnapshot(t *testing.T) {
 		require.Equal(t, snap1, *got)
 	})
 
-	t.Run("none found", func(t *testing.T) {
+	t.Run("no items", func(t *testing.T) {
 		var list snapshotv1.VolumeSnapshotList
 		lister := mockLister(func(ctx context.Context, inList client.ObjectList, opts ...client.ListOption) error {
 			ref := inList.(*snapshotv1.VolumeSnapshotList)
@@ -83,7 +83,7 @@ func TestRecentVolumeSnapshot(t *testing.T) {
 
 		_, err := RecentVolumeSnapshot(ctx, lister, crd)
 		require.Error(t, err)
-		require.EqualError(t, err, "no VolumeSnapshots found")
+		require.EqualError(t, err, "no ready to use VolumeSnapshots found")
 	})
 
 	t.Run("error", func(t *testing.T) {
@@ -97,7 +97,7 @@ func TestRecentVolumeSnapshot(t *testing.T) {
 		require.EqualError(t, err, "boom")
 	})
 
-	t.Run("not ready", func(t *testing.T) {
+	t.Run("not ready to use", func(t *testing.T) {
 		for _, tt := range []struct {
 			Status *snapshotv1.VolumeSnapshotStatus
 		}{
@@ -106,7 +106,7 @@ func TestRecentVolumeSnapshot(t *testing.T) {
 			{&snapshotv1.VolumeSnapshotStatus{ReadyToUse: ptr(false)}},
 		} {
 			var snap1 snapshotv1.VolumeSnapshot
-			snap1.Name = "not-ready-test"
+			snap1.Name = "not-ready"
 			snap1.Status = tt.Status
 
 			var list snapshotv1.VolumeSnapshotList
@@ -119,9 +119,20 @@ func TestRecentVolumeSnapshot(t *testing.T) {
 			})
 
 			_, err := RecentVolumeSnapshot(ctx, lister, crd)
-			require.Error(t, err, tt)
-			require.ErrorIs(t, err, ErrNotReady, tt)
-			require.Contains(t, err.Error(), "not-ready-test")
+			require.Error(t, err)
+			require.EqualError(t, err, "no ready to use VolumeSnapshots found")
+
+			snap2 := snap1.DeepCopy()
+			snap2.Name = "found"
+			snap2.Status = &snapshotv1.VolumeSnapshotStatus{
+				ReadyToUse: ptr(true),
+			}
+			list.Items = append(list.Items, *snap2)
+
+			got, err := RecentVolumeSnapshot(ctx, lister, crd)
+
+			require.NoError(t, err)
+			require.Equal(t, "found", got.Name)
 		}
 	})
 }
