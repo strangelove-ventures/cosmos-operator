@@ -36,6 +36,8 @@ type HostedSnapshotSpec struct {
 type HostedSnapshotStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+
+	//TODO(nix): Possible fields observedGeneration, volumeSnapshotName (which one we used), jobName (ref to job)
 }
 
 //+kubebuilder:object:root=true
