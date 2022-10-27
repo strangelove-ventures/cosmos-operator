@@ -27,6 +27,9 @@ import (
 type HostedSnapshotSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+
+	// The selector to target VolumeSnapshots.
+	Selector map[string]string `json:"selector"`
 }
 
 // HostedSnapshotStatus defines the observed state of HostedSnapshot
