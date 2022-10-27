@@ -22,6 +22,7 @@ import (
 
 	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/snapshot"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -61,13 +62,13 @@ func (r *HostedSnapshotReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return finishResult, client.IgnoreNotFound(err)
 	}
 
-	var snapshots snapshotv1.VolumeSnapshotList
-	if err := r.List(ctx, &snapshots, client.InNamespace(crd.Namespace)); err != nil {
-		// TODO(nix): Report not found in the status object.
-		return finishResult, client.IgnoreNotFound(err)
+	recent, err := snapshot.RecentVolumeSnapshot(ctx, r, crd)
+	if err != nil {
+		return finishResult, err
 	}
 
-	logger.Info("Found Snapshots", "found", snapshots.Items)
+	// TODO: Temporary, delete
+	logger.Info("Found VolumeSnapshot", "volumeSnapshot", recent.Name)
 
 	return finishResult, nil
 }
