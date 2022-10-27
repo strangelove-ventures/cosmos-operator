@@ -3,4 +3,6 @@ kind: HostedSnapshot
 metadata:
   name: hostedsnapshot-sample
 spec:
-  # TODO(user): Add fields here
+  # Selector labels for VolumeSnapshots.
+  selector:
+    target: value
