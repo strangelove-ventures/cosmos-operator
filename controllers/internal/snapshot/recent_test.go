@@ -3,10 +3,12 @@ package snapshot
 import (
 	"context"
 	"errors"
+	"math/rand"
 	"testing"
 	"time"
 
 	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
+	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -21,6 +23,7 @@ func (fn mockLister) List(ctx context.Context, list client.ObjectList, opts ...c
 
 func TestRecentVolumeSnapshot(t *testing.T) {
 	t.Parallel()
+	rand.Seed(time.Now().UnixNano())
 
 	var (
 		ctx = context.Background()
@@ -54,7 +57,7 @@ func TestRecentVolumeSnapshot(t *testing.T) {
 		snap4.Status = &snapshotv1.VolumeSnapshotStatus{} // empty
 
 		var list snapshotv1.VolumeSnapshotList
-		list.Items = append(list.Items, snap2, snap1, snap4, snap3)
+		list.Items = lo.Shuffle(append(list.Items, snap2, snap1, snap4, snap3))
 
 		lister := mockLister(func(ctx context.Context, inList client.ObjectList, opts ...client.ListOption) error {
 			require.NotNil(t, ctx)
@@ -70,7 +73,7 @@ func TestRecentVolumeSnapshot(t *testing.T) {
 
 		got, err := RecentVolumeSnapshot(ctx, lister, crd)
 		require.NoError(t, err)
-		require.Equal(t, snap1, *got)
+		require.Equal(t, snap1.Name, got.Name)
 	})
 
 	t.Run("no items", func(t *testing.T) {

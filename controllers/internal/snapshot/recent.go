@@ -39,8 +39,8 @@ func RecentVolumeSnapshot(ctx context.Context, lister Lister, crd *cosmosv1.Host
 	}
 
 	sort.Slice(filtered, func(i, j int) bool {
-		lhs := statusCreationTime(snapshots.Items[i].Status)
-		rhs := statusCreationTime(snapshots.Items[j].Status)
+		lhs := statusCreationTime(filtered[i].Status)
+		rhs := statusCreationTime(filtered[j].Status)
 		return !lhs.Before(rhs)
 	})
 
