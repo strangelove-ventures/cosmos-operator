@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sort"
+	"time"
 
 	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
@@ -36,12 +37,18 @@ func RecentVolumeSnapshot(ctx context.Context, lister Lister, crd *cosmosv1.Host
 		client.InNamespace(crd.Namespace),
 		client.MatchingLabels(crd.Spec.Selector),
 	)
-	if isNotFoundErr(err) {
+
+	switch {
+	case isNotFoundErr(err):
 		return nil, multierr.Append(err, ErrNotFound)
+	case err != nil:
+		return nil, err
 	}
 
 	sort.Slice(snapshots.Items, func(i, j int) bool {
-		return !snapshots.Items[i].CreationTimestamp.Before(&snapshots.Items[j].CreationTimestamp)
+		lhs := statusCreationTime(snapshots.Items[i].Status)
+		rhs := statusCreationTime(snapshots.Items[j].Status)
+		return !lhs.Before(rhs)
 	})
 
 	found := &snapshots.Items[0]
@@ -50,6 +57,16 @@ func RecentVolumeSnapshot(ctx context.Context, lister Lister, crd *cosmosv1.Host
 	}
 
 	return found, nil
+}
+
+func statusCreationTime(status *snapshotv1.VolumeSnapshotStatus) (zero time.Time) {
+	if status == nil {
+		return zero
+	}
+	if status.CreationTime == nil {
+		return zero
+	}
+	return status.CreationTime.Time
 }
 
 func statusIsReady(status *snapshotv1.VolumeSnapshotStatus) bool {

@@ -3,12 +3,10 @@ package snapshot
 import (
 	"context"
 	"errors"
-	"math/rand"
 	"testing"
 	"time"
 
 	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
-	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -21,8 +19,7 @@ func (fn mockLister) List(ctx context.Context, list client.ObjectList, opts ...c
 	return fn(ctx, list, opts...)
 }
 
-func TestFindRecentVolumeSnapshot(t *testing.T) {
-	rand.Seed(time.Now().UnixNano())
+func TestRecentVolumeSnapshot(t *testing.T) {
 	t.Parallel()
 
 	var (
@@ -36,23 +33,28 @@ func TestFindRecentVolumeSnapshot(t *testing.T) {
 	crd.Namespace = "testns"
 
 	t.Run("happy path", func(t *testing.T) {
+		now := metav1.Now()
 		var snap1 snapshotv1.VolumeSnapshot
 		snap1.Name = "snap1"
-		snap1.CreationTimestamp = metav1.Now()
 		snap1.Status = &snapshotv1.VolumeSnapshotStatus{
-			ReadyToUse: ptr(true),
+			CreationTime: ptr(now),
+			ReadyToUse:   ptr(true),
 		}
 
 		snap2 := *snap1.DeepCopy()
 		snap2.Name = "snap2"
-		snap2.CreationTimestamp = metav1.NewTime(time.Now().Add(-time.Hour))
+		snap2.Status.CreationTime = ptr(metav1.NewTime(now.Add(-time.Hour)))
 
 		snap3 := *snap1.DeepCopy()
 		snap3.Name = "snap3"
-		snap3.CreationTimestamp = metav1.NewTime(time.Now().Add(-time.Minute))
+		snap3.Status = nil
+
+		snap4 := *snap1.DeepCopy()
+		snap4.Name = "snap4"
+		snap4.Status = &snapshotv1.VolumeSnapshotStatus{} // empty
 
 		var list snapshotv1.VolumeSnapshotList
-		list.Items = lo.Shuffle(append(list.Items, snap1, snap2, snap3))
+		list.Items = append(list.Items, snap2, snap1, snap4, snap3)
 
 		lister := mockLister(func(ctx context.Context, inList client.ObjectList, opts ...client.ListOption) error {
 			require.NotNil(t, ctx)
@@ -69,6 +71,19 @@ func TestFindRecentVolumeSnapshot(t *testing.T) {
 		got, err := RecentVolumeSnapshot(ctx, lister, crd)
 		require.NoError(t, err)
 		require.Equal(t, snap1, *got)
+	})
+
+	t.Run("error", func(t *testing.T) {
+		isNotFoundErr = func(err error) bool { return false }
+
+		lister := mockLister(func(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
+			return errors.New("boom")
+		})
+
+		_, err := RecentVolumeSnapshot(ctx, lister, crd)
+
+		require.Error(t, err)
+		require.EqualError(t, err, "boom")
 	})
 
 	t.Run("not found", func(t *testing.T) {
