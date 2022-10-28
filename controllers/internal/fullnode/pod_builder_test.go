@@ -66,7 +66,8 @@ func TestPodBuilder(t *testing.T) {
 		delete(pod.Labels, kube.RevisionLabel)
 		wantLabels := map[string]string{
 			"app.kubernetes.io/instance":   "osmosis-5",
-			"app.kubernetes.io/created-by": "cosmosfullnode",
+			"app.kubernetes.io/component":  "CosmosFullNode",
+			"app.kubernetes.io/created-by": "cosmos-operator",
 			"app.kubernetes.io/name":       "osmosis",
 			"app.kubernetes.io/version":    "v1.2.3",
 			"cosmos.strange.love/network":  "mainnet",

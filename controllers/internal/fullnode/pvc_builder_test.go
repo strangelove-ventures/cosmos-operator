@@ -50,7 +50,8 @@ func TestBuildPVCs(t *testing.T) {
 			require.Equal(t, "v1", got.APIVersion)
 
 			wantLabels := map[string]string{
-				"app.kubernetes.io/created-by": "cosmosfullnode",
+				"app.kubernetes.io/created-by": "cosmos-operator",
+				"app.kubernetes.io/component":  "CosmosFullNode",
 				"app.kubernetes.io/name":       "juno",
 				"app.kubernetes.io/instance":   fmt.Sprintf("juno-%d", i),
 				"app.kubernetes.io/version":    "v1.2.3",
@@ -96,7 +97,7 @@ func TestBuildPVCs(t *testing.T) {
 		require.Equal(t, "0", got.Annotations[kube.OrdinalAnnotation])
 		require.Equal(t, "value", got.Annotations["annot"])
 
-		require.Equal(t, "cosmosfullnode", got.Labels[kube.ControllerLabel])
+		require.Equal(t, "cosmos-operator", got.Labels[kube.ControllerLabel])
 		require.Equal(t, "value", got.Labels["label"])
 
 		require.Equal(t, crd.Spec.VolumeClaimTemplate.DataSource, got.Spec.DataSource)

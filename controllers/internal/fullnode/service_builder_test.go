@@ -35,7 +35,7 @@ func TestBuildServices(t *testing.T) {
 		delete(p2p.Labels, kube.RevisionLabel)
 
 		wantLabels := map[string]string{
-			"app.kubernetes.io/created-by": "cosmosfullnode",
+			"app.kubernetes.io/created-by": "cosmos-operator",
 			"app.kubernetes.io/name":       "terra",
 			"app.kubernetes.io/component":  "p2p",
 			"app.kubernetes.io/version":    "v6.0.0",
@@ -137,7 +137,7 @@ func TestBuildServices(t *testing.T) {
 		delete(rpc.Labels, kube.RevisionLabel)
 
 		wantLabels := map[string]string{
-			"app.kubernetes.io/created-by": "cosmosfullnode",
+			"app.kubernetes.io/created-by": "cosmos-operator",
 			"app.kubernetes.io/name":       "terra",
 			"app.kubernetes.io/component":  "rpc",
 			"app.kubernetes.io/version":    "v6.0.0",
