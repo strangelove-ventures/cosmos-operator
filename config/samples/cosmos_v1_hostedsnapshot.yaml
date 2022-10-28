@@ -1,0 +1,6 @@
+apiVersion: cosmos.strange.love/v1
+kind: HostedSnapshot
+metadata:
+  name: hostedsnapshot-sample
+spec:
+  # TODO(user): Add fields here

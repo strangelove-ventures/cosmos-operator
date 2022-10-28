@@ -131,6 +131,12 @@ func start(ctx context.Context) error {
 	).SetupWithManager(ctx, mgr); err != nil {
 		return fmt.Errorf("unable to create CosmosFullNode controller: %w", err)
 	}
+	if err = (&controllers.HostedSnapshotReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		return fmt.Errorf("unable to create HostedSnapshot controller: %w", err)
+	}
 	//+kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
