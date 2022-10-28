@@ -30,6 +30,10 @@ type HostedSnapshotSpec struct {
 
 	// The selector to target VolumeSnapshots.
 	Selector map[string]string `json:"selector"`
+
+	// The StorageClass to use when creating a temporary PVC for archiving and uploading the data archive to its
+	// hosted location.
+	StorageClass string `json:"storageClass"`
 }
 
 // HostedSnapshotStatus defines the observed state of HostedSnapshot

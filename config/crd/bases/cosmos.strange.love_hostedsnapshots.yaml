@@ -40,8 +40,13 @@ spec:
                   type: string
                 description: The selector to target VolumeSnapshots.
                 type: object
+              storageClass:
+                description: The StorageClass to use when creating a temporary PVC
+                  for archiving and uploading the data archive to its hosted location.
+                type: string
             required:
             - selector
+            - storageClass
             type: object
           status:
             description: HostedSnapshotStatus defines the observed state of HostedSnapshot
