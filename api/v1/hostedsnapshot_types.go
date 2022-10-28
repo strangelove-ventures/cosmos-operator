@@ -33,7 +33,7 @@ type HostedSnapshotSpec struct {
 
 	// The StorageClass to use when creating a temporary PVC for archiving and uploading the data archive to its
 	// hosted location.
-	StorageClass string `json:"storageClass"`
+	StorageClassName string `json:"storageClassName"`
 }
 
 // HostedSnapshotStatus defines the observed state of HostedSnapshot
