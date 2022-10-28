@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/go-logr/zapr"
+	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
 	"github.com/pkg/profile"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -54,6 +55,7 @@ var (
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+	utilruntime.Must(snapshotv1.AddToScheme(scheme))
 
 	utilruntime.Must(cosmosv1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
@@ -134,7 +136,7 @@ func start(ctx context.Context) error {
 	if err = (&controllers.HostedSnapshotReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
+	}).SetupWithManager(ctx, mgr); err != nil {
 		return fmt.Errorf("unable to create HostedSnapshot controller: %w", err)
 	}
 	//+kubebuilder:scaffold:builder

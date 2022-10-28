@@ -18,13 +18,15 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 
+	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
+	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/snapshot"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-
-	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 )
 
 // HostedSnapshotReconciler reconciles a HostedSnapshot object
@@ -39,10 +41,6 @@ type HostedSnapshotReconciler struct {
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
-// the HostedSnapshot object against the actual cluster state, and then
-// perform operations to make the cluster state reflect the state specified by
-// the user.
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.13.0/pkg/reconcile
@@ -60,16 +58,31 @@ func (r *HostedSnapshotReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return finishResult, client.IgnoreNotFound(err)
 	}
 
-	// TODO: delete me
-	logger.Info("Found HostedSnapshot", "name", crd.Name)
+	recent, err := snapshot.RecentVolumeSnapshot(ctx, r, crd)
+	if err != nil {
+		return finishResult, err
+	}
 
-	// TODO(user): your logic here
+	// TODO: Temporary, delete
+	logger.Info("Found VolumeSnapshot", "volumeSnapshot", recent.Name)
 
-	return ctrl.Result{}, nil
+	return finishResult, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *HostedSnapshotReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *HostedSnapshotReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
+	// Index all VolumeSnapshots. Controller does not own any because it does not create them.
+	if err := mgr.GetFieldIndexer().IndexField(
+		ctx,
+		&snapshotv1.VolumeSnapshot{},
+		".metadata.name",
+		func(object client.Object) []string {
+			return []string{object.GetName()}
+		},
+	); err != nil {
+		return fmt.Errorf("VolumeSnapshot index: %w", err)
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&cosmosv1.HostedSnapshot{}).
 		Complete(r)

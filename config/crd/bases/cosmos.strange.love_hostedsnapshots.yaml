@@ -34,6 +34,14 @@ spec:
             type: object
           spec:
             description: HostedSnapshotSpec defines the desired state of HostedSnapshot
+            properties:
+              selector:
+                additionalProperties:
+                  type: string
+                description: The selector to target VolumeSnapshots.
+                type: object
+            required:
+            - selector
             type: object
           status:
             description: HostedSnapshotStatus defines the observed state of HostedSnapshot
