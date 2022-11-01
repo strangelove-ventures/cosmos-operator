@@ -70,8 +70,10 @@ func (r *HostedSnapshotReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return finishResult, err
 	}
 
+	// TODO: Temporary, demonstrating the above.
 	for _, pvc := range pvcs {
 		logger.Info("Creating pvc", "pvcName", pvc.Name)
+		// TODO: set owner
 		err = r.Create(ctx, pvc)
 		if err != nil {
 			return finishResult, err
