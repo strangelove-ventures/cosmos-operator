@@ -3,7 +3,7 @@ module github.com/strangelove-ventures/cosmos-operator
 go 1.18
 
 require (
-	github.com/BurntSushi/toml v1.2.0
+	github.com/BurntSushi/toml v1.2.1
 	github.com/go-logr/logr v1.2.3
 	github.com/go-logr/zapr v1.2.3
 	github.com/kubernetes-csi/external-snapshotter/client/v6 v6.1.0
