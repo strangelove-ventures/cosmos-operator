@@ -31,7 +31,7 @@ type mockClient[T client.Object] struct {
 	UpdateCount      int
 }
 
-func (m *mockClient[T]) Get(ctx context.Context, key client.ObjectKey, obj client.Object) error {
+func (m *mockClient[T]) Get(ctx context.Context, key client.ObjectKey, obj client.Object, _ ...client.GetOption) error {
 	if ctx == nil {
 		panic("nil context")
 	}
