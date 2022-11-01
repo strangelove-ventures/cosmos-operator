@@ -43,6 +43,8 @@ spec:
               storageClassName:
                 description: The StorageClass to use when creating a temporary PVC
                   for archiving and uploading the data archive to its hosted location.
+                  On GKE, the storage class must be the same as the originating PVC's
+                  storage class.
                 type: string
             required:
             - selector

@@ -32,7 +32,7 @@ type HostedSnapshotSpec struct {
 	Selector map[string]string `json:"selector"`
 
 	// The StorageClass to use when creating a temporary PVC for archiving and uploading the data archive to its
-	// hosted location.
+	// hosted location. On GKE, the storage class must be the same as the originating PVC's storage class.
 	StorageClassName string `json:"storageClassName"`
 }
 
