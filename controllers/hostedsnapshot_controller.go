@@ -65,8 +65,18 @@ func (r *HostedSnapshotReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return finishResult, err
 	}
 
-	// TODO: Temporary, delete
-	logger.Info("Found VolumeSnapshot", "volumeSnapshot", recent.Name)
+	pvcs, err := snapshot.BuildPVCs(crd, recent)
+	if err != nil {
+		return finishResult, err
+	}
+
+	for _, pvc := range pvcs {
+		logger.Info("Creating pvc", "pvcName", pvc.Name)
+		err = r.Create(ctx, pvc)
+		if err != nil {
+			return finishResult, err
+		}
+	}
 
 	return finishResult, nil
 }
