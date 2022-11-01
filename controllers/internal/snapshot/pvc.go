@@ -20,6 +20,7 @@ func BuildPVCs(crd *cosmosv1.HostedSnapshot, vs *snapshotv1.VolumeSnapshot) ([]*
 	pvc := corev1.PersistentVolumeClaim{
 		Spec: corev1.PersistentVolumeClaimSpec{
 			StorageClassName: ptr(crd.Spec.StorageClassName),
+			AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteMany},
 			DataSource: &corev1.TypedLocalObjectReference{
 				APIGroup: ptr(vs.GroupVersionKind().Group),
 				Kind:     vs.Kind,
