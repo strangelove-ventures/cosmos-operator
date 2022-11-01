@@ -30,7 +30,7 @@ spec:
       maxInboundPeers: 10
       maxOutboundPeers: 10
       corsAllowedOrigins: ["*"]
-      tomlOverrides: |-
+      overrides: |-
         # Set config.toml overrides here. Such as:
         [tx_index]
         indexer = "null"
@@ -48,7 +48,7 @@ spec:
         keepRecent: 5000
         minRetainBlocks: 10000
       haltHeight: 12345678
-      tomlOverrides: |-
+      overrides: |-
         # Set app.toml overrides here. Such as:
         [rosetta]
         enable = true
