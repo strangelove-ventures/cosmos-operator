@@ -9,7 +9,7 @@ require (
 	github.com/kubernetes-csi/external-snapshotter/client/v6 v6.1.0
 	github.com/peterbourgon/mergemap v0.0.1
 	github.com/pkg/profile v1.6.0
-	github.com/samber/lo v1.28.2
+	github.com/samber/lo v1.33.0
 	github.com/stretchr/testify v1.8.1
 	go.uber.org/zap v1.23.0
 	golang.org/x/exp v0.0.0-20220921164117-439092de6870
