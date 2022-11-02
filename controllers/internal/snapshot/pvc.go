@@ -49,5 +49,5 @@ func findStorage(vs *snapshotv1.VolumeSnapshot) (zero resource.Quantity, _ error
 }
 
 func pvcName(crd *cosmosv1.HostedSnapshot) string {
-	return kube.ToName("pvc-" + crd.Name)
+	return kube.ToName("pvc-snapshot-" + crd.Name)
 }
