@@ -53,7 +53,7 @@ type HostedSnapshotSpec struct {
 	// Working directory will be /home/operator.
 	// The chain directory will be /home/operator/cosmos and set as env var $CHAIN_HOME.
 	// If not set, pod's restart policy defaults to Never.
-	PodTemplate corev1.PodSpec `json:"template"`
+	PodTemplate corev1.PodTemplateSpec `json:"podTemplate"`
 }
 
 // HostedSnapshotStatus defines the observed state of HostedSnapshot
