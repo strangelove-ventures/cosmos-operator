@@ -47,7 +47,7 @@ type HostedSnapshotReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.13.0/pkg/reconcile
 func (r *HostedSnapshotReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := log.FromContext(ctx).WithName("HostedSnapshot")
+	logger := log.FromContext(ctx)
 	logger.V(1).Info("Entering reconcile loop")
 
 	// Get the CRD
@@ -65,22 +65,33 @@ func (r *HostedSnapshotReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return finishResult, err
 	}
 
-	pvcs, err := snapshot.BuildPVCs(crd, recent)
-	if err != nil {
+	if err = r.createPVCs(ctx, crd, recent); err != nil {
 		return finishResult, err
 	}
 
-	// TODO: Temporary, demonstrating the above.
+	return finishResult, nil
+}
+
+func (r *HostedSnapshotReconciler) createPVCs(ctx context.Context, crd *cosmosv1.HostedSnapshot, vs *snapshotv1.VolumeSnapshot) error {
+	pvcs, err := snapshot.BuildPVCs(crd, vs)
+	if err != nil {
+		return fmt.Errorf("build pvcs: %w", err)
+	}
+
+	logger := log.FromContext(ctx)
 	for _, pvc := range pvcs {
 		logger.Info("Creating pvc", "pvcName", pvc.Name)
-		// TODO: set owner
 		err = r.Create(ctx, pvc)
 		if err != nil {
-			return finishResult, err
+			return err
+		}
+		err = ctrl.SetControllerReference(crd, pvc, r.Client.Scheme())
+		if err != nil {
+			return err
 		}
 	}
 
-	return finishResult, nil
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
