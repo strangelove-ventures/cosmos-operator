@@ -17,6 +17,7 @@ limitations under the License.
 package v1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -34,6 +35,25 @@ type HostedSnapshotSpec struct {
 	// The StorageClass to use when creating a temporary PVC for archiving and uploading the data archive to its
 	// hosted location. On GKE, the storage class must be the same as the originating PVC's storage class.
 	StorageClassName string `json:"storageClassName"`
+
+	// jobTTLSecondsAfterFinished limits the lifetime of a Job that has finished
+	// execution (either Complete or Failed). If this field is set,
+	// ttlSecondsAfterFinished after the Job finishes, it is eligible to be
+	// automatically deleted. When the Job is being deleted, its lifecycle
+	// guarantees (e.g. finalizers) will be honored. If this field is set to zero,
+	// the Job becomes eligible to be deleted immediately after it finishes.
+	// If not set, default is 15 minutes to allow some time to inspect logs.
+	// +optional
+	JobTTLSecondsAfterFinished *int32 `json:"jobTTLSecondsAfterFinished"`
+
+	// Specification of the desired behavior of the job's pod.
+	// You should include container commands and args to perform the upload of data to a remote location like an
+	// object store such as S3 or GCS.
+	// Volumes will be injected and mounted into every container in the spec.
+	// Working directory will be /home/operator.
+	// The chain directory will be /home/operator/cosmos and set as env var $CHAIN_HOME.
+	// If not set, pod's restart policy defaults to Never.
+	PodTemplate corev1.PodSpec `json:"template"`
 }
 
 // HostedSnapshotStatus defines the observed state of HostedSnapshot
