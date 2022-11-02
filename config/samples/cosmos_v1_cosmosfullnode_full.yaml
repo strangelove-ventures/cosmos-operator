@@ -16,7 +16,7 @@ spec:
     binary: gaiad
     skipInvariants: true
     genesisURL: "https://github.com/cosmos/mainnet/raw/master/genesis.cosmoshub-4.json.gz"
-    genesisScript: "arbitrary script to download gensis file. e.g. curl https://url-to-genesis.com | jq '.genesis' > $GENESIS_FILE"
+    genesisScript: "arbitrary script to download genesis file. e.g. curl https://url-to-genesis.com | jq '.genesis' > $GENESIS_FILE"
     # Get latest snapshot at: https://www.polkachu.com/tendermint_snapshots/cosmos
     snapshotURL: "https://snapshots1.polkachu.com/snapshots/cosmos/cosmos_11701512.tar.lz4"
     snapshotScript: "arbitrary script to download snapshot from internet"
@@ -30,7 +30,7 @@ spec:
       maxInboundPeers: 10
       maxOutboundPeers: 10
       corsAllowedOrigins: ["*"]
-      tomlOverrides: |-
+      overrides: |-
         # Set config.toml overrides here. Such as:
         [tx_index]
         indexer = "null"
@@ -48,7 +48,7 @@ spec:
         keepRecent: 5000
         minRetainBlocks: 10000
       haltHeight: 12345678
-      tomlOverrides: |-
+      overrides: |-
         # Set app.toml overrides here. Such as:
         [rosetta]
         enable = true
