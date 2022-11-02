@@ -39,6 +39,7 @@ type HostedSnapshotReconciler struct {
 //+kubebuilder:rbac:groups=cosmos.strange.love,resources=hostedsnapshots/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=cosmos.strange.love,resources=hostedsnapshots/finalizers,verbs=update
 //+kubebuilder:rbac:groups=snapshot.storage.k8s.io,resources=volumesnapshots,verbs=get;list;watch
+//+kubebuilder:rbac:groups="",resources=persistentvolumeclaims,verbs=get;list;watch;create;delete
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -64,8 +65,20 @@ func (r *HostedSnapshotReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return finishResult, err
 	}
 
-	// TODO: Temporary, delete
-	logger.Info("Found VolumeSnapshot", "volumeSnapshot", recent.Name)
+	pvcs, err := snapshot.BuildPVCs(crd, recent)
+	if err != nil {
+		return finishResult, err
+	}
+
+	// TODO: Temporary, demonstrating the above.
+	for _, pvc := range pvcs {
+		logger.Info("Creating pvc", "pvcName", pvc.Name)
+		// TODO: set owner
+		err = r.Create(ctx, pvc)
+		if err != nil {
+			return finishResult, err
+		}
+	}
 
 	return finishResult, nil
 }

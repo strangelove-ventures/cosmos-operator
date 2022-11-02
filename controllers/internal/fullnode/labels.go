@@ -24,7 +24,8 @@ func defaultLabels(crd *cosmosv1.CosmosFullNode, kvPairs ...string) map[string]s
 		panic(errors.New("key/value pairs must be even"))
 	}
 	labels := map[string]string{
-		kube.ControllerLabel: "cosmosfullnode",
+		kube.ControllerLabel: "cosmos-operator",
+		kube.ComponentLabel:  "CosmosFullNode",
 		kube.NameLabel:       appName(crd),
 		kube.VersionLabel:    kube.ParseImageVersion(crd.Spec.PodTemplate.Image),
 		networkLabel:         crd.Spec.ChainConfig.Network,
