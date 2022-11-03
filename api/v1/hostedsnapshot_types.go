@@ -32,19 +32,14 @@ type HostedSnapshotSpec struct {
 	// The selector to target VolumeSnapshots.
 	Selector map[string]string `json:"selector"`
 
-	// The StorageClass to use when creating a temporary PVC for archiving and uploading the data archive to its
-	// hosted location. On GKE, the storage class must be the same as the originating PVC's storage class.
+	// The StorageClass to use when creating a temporary PVC for processing the data.
+	// On GKE, the StorageClass must be the same as the PVC's StorageClass from which the
+	// VolumeSnapshot was created.
 	StorageClassName string `json:"storageClassName"`
 
-	// jobTTLSecondsAfterFinished limits the lifetime of a Job that has finished
-	// execution (either Complete or Failed). If this field is set,
-	// ttlSecondsAfterFinished after the Job finishes, it is eligible to be
-	// automatically deleted. When the Job is being deleted, its lifecycle
-	// guarantees (e.g. finalizers) will be honored. If this field is set to zero,
-	// the Job becomes eligible to be deleted immediately after it finishes.
-	// If not set, default is 15 minutes to allow some time to inspect logs.
+	// Specification of the desired behavior of the job.
 	// +optional
-	JobTTLSecondsAfterFinished *int32 `json:"jobTTLSecondsAfterFinished"`
+	JobTemplate JobTemplateSpec `json:"jobTemplate"`
 
 	// Specification of the desired behavior of the job's pod.
 	// You should include container commands and args to perform the upload of data to a remote location like an
@@ -54,6 +49,34 @@ type HostedSnapshotSpec struct {
 	// The chain directory will be /home/operator/cosmos and set as env var $CHAIN_HOME.
 	// If not set, pod's restart policy defaults to Never.
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate"`
+}
+
+// JobTemplateSpec is a subset of batchv1.JobSpec.
+type JobTemplateSpec struct {
+	// Specifies the duration in seconds relative to the startTime that the job
+	// may be continuously active before the system tries to terminate it; value
+	// must be positive integer.
+	// Defaults to 12 hours.
+	// +kubebuilder:validation:Minimum:=1
+	// +optional
+	ActiveDeadlineSeconds *int64 `json:"activeDeadlineSeconds"`
+
+	// Specifies the number of retries before marking this job failed.
+	// Defaults to 5.
+	// +kubebuilder:validation:Minimum:=0
+	// +optional
+	BackoffLimit *int32 `json:"backoffLimit"`
+
+	// Limits the lifetime of a Job that has finished
+	// execution (either Complete or Failed). If this field is set,
+	// ttlSecondsAfterFinished after the Job finishes, it is eligible to be
+	// automatically deleted. When the Job is being deleted, its lifecycle
+	// guarantees (e.g. finalizers) will be honored. If this field is set to zero,
+	// the Job becomes eligible to be deleted immediately after it finishes.
+	// Defaults to 15 minutes to allow some time to inspect logs.
+	// +kubebuilder:validation:Minimum:=0
+	// +optional
+	TTLSecondsAfterFinished *int32 `json:"ttlSecondsAfterFinished"`
 }
 
 // HostedSnapshotStatus defines the observed state of HostedSnapshot

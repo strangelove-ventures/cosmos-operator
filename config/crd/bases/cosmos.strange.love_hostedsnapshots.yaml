@@ -35,17 +35,35 @@ spec:
           spec:
             description: HostedSnapshotSpec defines the desired state of HostedSnapshot
             properties:
-              jobTTLSecondsAfterFinished:
-                description: jobTTLSecondsAfterFinished limits the lifetime of a Job
-                  that has finished execution (either Complete or Failed). If this
-                  field is set, ttlSecondsAfterFinished after the Job finishes, it
-                  is eligible to be automatically deleted. When the Job is being deleted,
-                  its lifecycle guarantees (e.g. finalizers) will be honored. If this
-                  field is set to zero, the Job becomes eligible to be deleted immediately
-                  after it finishes. If not set, default is 15 minutes to allow some
-                  time to inspect logs.
-                format: int32
-                type: integer
+              jobTemplate:
+                description: Specification of the desired behavior of the job.
+                properties:
+                  activeDeadlineSeconds:
+                    description: Specifies the duration in seconds relative to the
+                      startTime that the job may be continuously active before the
+                      system tries to terminate it; value must be positive integer.
+                      Defaults to 12 hours.
+                    format: int64
+                    minimum: 1
+                    type: integer
+                  backoffLimit:
+                    description: Specifies the number of retries before marking this
+                      job failed. Defaults to 5.
+                    format: int32
+                    minimum: 0
+                    type: integer
+                  ttlSecondsAfterFinished:
+                    description: Limits the lifetime of a Job that has finished execution
+                      (either Complete or Failed). If this field is set, ttlSecondsAfterFinished
+                      after the Job finishes, it is eligible to be automatically deleted.
+                      When the Job is being deleted, its lifecycle guarantees (e.g.
+                      finalizers) will be honored. If this field is set to zero, the
+                      Job becomes eligible to be deleted immediately after it finishes.
+                      Defaults to 15 minutes to allow some time to inspect logs.
+                    format: int32
+                    minimum: 0
+                    type: integer
+                type: object
               podTemplate:
                 description: Specification of the desired behavior of the job's pod.
                   You should include container commands and args to perform the upload
@@ -7189,9 +7207,8 @@ spec:
                 type: object
               storageClassName:
                 description: The StorageClass to use when creating a temporary PVC
-                  for archiving and uploading the data archive to its hosted location.
-                  On GKE, the storage class must be the same as the originating PVC's
-                  storage class.
+                  for processing the data. On GKE, the StorageClass must be the same
+                  as the PVC's StorageClass from which the VolumeSnapshot was created.
                 type: string
             required:
             - podTemplate
