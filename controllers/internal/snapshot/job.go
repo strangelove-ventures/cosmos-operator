@@ -8,11 +8,16 @@ import (
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // BuildJobs returns jobs to compress and upload data to an object storage.
 func BuildJobs(crd *cosmosv1.HostedSnapshot) []*batchv1.Job {
 	job := batchv1.Job{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Job",
+			APIVersion: batchv1.SchemeGroupVersion.String(),
+		},
 		Spec: batchv1.JobSpec{
 			// Set defaults
 			ActiveDeadlineSeconds:   ptr(int64(12 * time.Hour.Seconds())),

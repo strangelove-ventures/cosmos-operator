@@ -8,6 +8,7 @@ import (
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // BuildPVCs builds PVCs given the crd and VolumeSnapshot.
@@ -18,6 +19,10 @@ func BuildPVCs(crd *cosmosv1.HostedSnapshot, vs *snapshotv1.VolumeSnapshot) ([]*
 	}
 
 	pvc := corev1.PersistentVolumeClaim{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "PersistentVolumeClaim",
+			APIVersion: "v1",
+		},
 		Spec: corev1.PersistentVolumeClaimSpec{
 			StorageClassName: ptr(crd.Spec.StorageClassName),
 			AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteMany},
