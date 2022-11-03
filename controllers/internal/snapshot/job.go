@@ -14,16 +14,25 @@ import (
 func BuildJobs(crd *cosmosv1.HostedSnapshot) []*batchv1.Job {
 	job := batchv1.Job{
 		Spec: batchv1.JobSpec{
-			BackoffLimit: ptr(int32(5)),
-			Template:     crd.Spec.PodTemplate,
+			// Set defaults
+			ActiveDeadlineSeconds:   ptr(int64(12 * time.Hour.Seconds())),
+			BackoffLimit:            ptr(int32(5)),
+			TTLSecondsAfterFinished: ptr(int32(15 * time.Minute.Seconds())),
+
+			Template: crd.Spec.PodTemplate,
 		},
 	}
 	job.Labels = defaultLabels(crd)
 	job.Namespace = crd.Namespace
 	job.Name = jobName(crd)
 
-	job.Spec.TTLSecondsAfterFinished = ptr(int32(15 * time.Minute.Seconds()))
-	if v := crd.Spec.JobTTLSecondsAfterFinished; v != nil {
+	if v := crd.Spec.JobTemplate.ActiveDeadlineSeconds; v != nil {
+		job.Spec.ActiveDeadlineSeconds = v
+	}
+	if v := crd.Spec.JobTemplate.BackoffLimit; v != nil {
+		job.Spec.BackoffLimit = v
+	}
+	if v := crd.Spec.JobTemplate.TTLSecondsAfterFinished; v != nil {
 		job.Spec.TTLSecondsAfterFinished = v
 	}
 

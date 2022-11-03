@@ -18,7 +18,11 @@ func TestBuildJobs(t *testing.T) {
 				Namespace: "test",
 			},
 			Spec: cosmosv1.HostedSnapshotSpec{
-				JobTTLSecondsAfterFinished: ptr(int32(10)),
+				JobTemplate: cosmosv1.JobTemplateSpec{
+					ActiveDeadlineSeconds:   ptr(int64(20)),
+					BackoffLimit:            ptr(int32(1)),
+					TTLSecondsAfterFinished: ptr(int32(10)),
+				},
 				PodTemplate: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						RestartPolicy: corev1.RestartPolicyAlways,
@@ -40,9 +44,28 @@ func TestBuildJobs(t *testing.T) {
 		}
 		require.Equal(t, wantLabels, got.Labels)
 
+		require.EqualValues(t, 20, *got.Spec.ActiveDeadlineSeconds)
+		require.EqualValues(t, 1, *got.Spec.BackoffLimit)
 		require.EqualValues(t, 10, *got.Spec.TTLSecondsAfterFinished)
+
 		require.Nil(t, got.Spec.Parallelism)
 		require.Equal(t, corev1.RestartPolicyAlways, got.Spec.Template.Spec.RestartPolicy)
+	})
+
+	t.Run("defaults", func(t *testing.T) {
+		var crd cosmosv1.HostedSnapshot
+
+		jobs := BuildJobs(&crd)
+		require.Len(t, jobs, 1)
+
+		got := jobs[0]
+
+		require.EqualValues(t, 900, *got.Spec.TTLSecondsAfterFinished)
+		require.EqualValues(t, 5, *got.Spec.BackoffLimit)
+		require.EqualValues(t, 43_200, *got.Spec.ActiveDeadlineSeconds)
+
+		require.Equal(t, corev1.RestartPolicyNever, got.Spec.Template.Spec.RestartPolicy)
+		require.Len(t, got.Spec.Template.Spec.Volumes, 1)
 	})
 
 	t.Run("volumes", func(t *testing.T) {
@@ -102,18 +125,5 @@ func TestBuildJobs(t *testing.T) {
 			require.Equal(t, envVar.Name, "CHAIN_HOME")
 			require.Equal(t, envVar.Value, "/home/operator/cosmos")
 		}
-	})
-
-	t.Run("defaults", func(t *testing.T) {
-		var crd cosmosv1.HostedSnapshot
-
-		jobs := BuildJobs(&crd)
-		require.Len(t, jobs, 1)
-
-		got := jobs[0]
-
-		require.EqualValues(t, 900, *got.Spec.TTLSecondsAfterFinished)
-		require.Equal(t, corev1.RestartPolicyNever, got.Spec.Template.Spec.RestartPolicy)
-		require.Len(t, got.Spec.Template.Spec.Volumes, 1)
 	})
 }
