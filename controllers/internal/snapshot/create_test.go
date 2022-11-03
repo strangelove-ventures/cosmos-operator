@@ -2,6 +2,7 @@ package snapshot
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 
@@ -73,10 +74,34 @@ func TestCreator_Create(t *testing.T) {
 	})
 
 	t.Run("builder error", func(t *testing.T) {
-		t.Fatal("TODO")
+		var (
+			crd     cosmosv1.HostedSnapshot
+			mClient mockCreateClient
+		)
+		crd.Name = "create-test"
+		creator := NewCreator(&mClient, func() ([]*corev1.Pod, error) {
+			return nil, errors.New("boom")
+		})
+		err := creator.Create(ctx, &crd)
+		require.Error(t, err)
+		require.EqualError(t, err, "build resources: boom")
 	})
 
 	t.Run("create error", func(t *testing.T) {
-		t.Fatal("TODO")
+		var (
+			crd     cosmosv1.HostedSnapshot
+			mClient mockCreateClient
+			pods    = []*corev1.Pod{new(corev1.Pod), new(corev1.Pod)}
+		)
+
+		creator := NewCreator(&mClient, func() ([]*corev1.Pod, error) {
+			return pods, nil
+		})
+
+		mClient.Err = errors.New("boom")
+		err := creator.Create(ctx, &crd)
+
+		require.Error(t, err)
+		require.EqualError(t, err, "boom")
 	})
 }

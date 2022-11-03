@@ -35,7 +35,7 @@ func NewCreator[T client.Object](client CreateClient, builder func() ([]T, error
 func (c Creator[T]) Create(ctx context.Context, crd *cosmosv1.HostedSnapshot) error {
 	resources, err := c.builder()
 	if err != nil {
-		return fmt.Errorf("failed to build: %w", err)
+		return fmt.Errorf("build resources: %w", err)
 	}
 
 	logger := log.FromContext(ctx)
