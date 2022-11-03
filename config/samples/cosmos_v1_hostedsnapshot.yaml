@@ -7,3 +7,16 @@ spec:
   selector:
     target: value
   storageClassName: standard
+  # All jobTemplate values are optional.
+  jobTemplate:
+    activeDeadlineSeconds: 3600
+    backoffLimit: 1
+    ttlSecondsAfterFinished: 30
+  # Some podTemplate values are required.
+  podTemplate:
+    spec:
+      containers:
+      - name: test
+        image: busybox:stable
+        command:
+          - ls $CHAIN_HOME
