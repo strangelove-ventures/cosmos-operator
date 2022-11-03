@@ -73,6 +73,20 @@ func TestCreator_Create(t *testing.T) {
 		}
 	})
 
+	t.Run("no resources", func(t *testing.T) {
+		var (
+			crd     cosmosv1.HostedSnapshot
+			mClient mockCreateClient
+		)
+		creator := NewCreator(&mClient, func() ([]*corev1.Pod, error) {
+			return nil, nil
+		})
+		err := creator.Create(ctx, &crd)
+
+		require.NoError(t, err)
+		require.Empty(t, mClient.GotObjects)
+	})
+
 	t.Run("builder error", func(t *testing.T) {
 		var (
 			crd     cosmosv1.HostedSnapshot
