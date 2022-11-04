@@ -74,6 +74,7 @@ func (r *HostedSnapshotReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return requeueSnapshot, client.IgnoreNotFound(err)
 	}
 
+	// TODO(nix): Clean up the following into private method.
 	// Find most recent VolumeSnapshot.
 	recent, err := snapshot.RecentVolumeSnapshot(ctx, r, crd)
 	if err != nil {

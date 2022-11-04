@@ -18,7 +18,9 @@ spec:
       - name: test
         image: busybox:stable
         command:
-          - ls $CHAIN_HOME
+          - ls
+        args:
+          - "/home/operator/cosmos"
   # required
   volumeClaimTemplate:
     storageClassName: premium-rwo
