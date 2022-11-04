@@ -7205,15 +7205,29 @@ spec:
                   type: string
                 description: The selector to target VolumeSnapshots.
                 type: object
-              storageClassName:
-                description: The StorageClass to use when creating a temporary PVC
-                  for processing the data. On GKE, the StorageClass must be the same
-                  as the PVC's StorageClass from which the VolumeSnapshot was created.
-                type: string
+              volumeClaimTemplate:
+                description: Specification for the PVC associated with the job.
+                properties:
+                  accessModes:
+                    description: 'The desired access modes the volume should have.
+                      More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1
+                      Defaults to ReadWriteOnce.'
+                    items:
+                      type: string
+                    type: array
+                  storageClassName:
+                    description: The StorageClass to use when creating a temporary
+                      PVC for processing the data. On GKE, the StorageClass must be
+                      the same as the PVC's StorageClass from which the VolumeSnapshot
+                      was created.
+                    type: string
+                required:
+                - storageClassName
+                type: object
             required:
             - podTemplate
             - selector
-            - storageClassName
+            - volumeClaimTemplate
             type: object
           status:
             description: HostedSnapshotStatus defines the observed state of HostedSnapshot

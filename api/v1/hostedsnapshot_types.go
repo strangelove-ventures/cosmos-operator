@@ -32,11 +32,6 @@ type HostedSnapshotSpec struct {
 	// The selector to target VolumeSnapshots.
 	Selector map[string]string `json:"selector"`
 
-	// The StorageClass to use when creating a temporary PVC for processing the data.
-	// On GKE, the StorageClass must be the same as the PVC's StorageClass from which the
-	// VolumeSnapshot was created.
-	StorageClassName string `json:"storageClassName"`
-
 	// Specification of the desired behavior of the job.
 	// +optional
 	JobTemplate JobTemplateSpec `json:"jobTemplate"`
@@ -49,6 +44,9 @@ type HostedSnapshotSpec struct {
 	// The chain directory will be /home/operator/cosmos and set as env var $CHAIN_HOME.
 	// If not set, pod's restart policy defaults to Never.
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate"`
+
+	// Specification for the PVC associated with the job.
+	VolumeClaimTemplate SnapshotVolumeClaimTemplate `json:"volumeClaimTemplate"`
 }
 
 // JobTemplateSpec is a subset of batchv1.JobSpec.
@@ -77,6 +75,20 @@ type JobTemplateSpec struct {
 	// +kubebuilder:validation:Minimum:=0
 	// +optional
 	TTLSecondsAfterFinished *int32 `json:"ttlSecondsAfterFinished"`
+}
+
+// SnapshotVolumeClaimTemplate is a subset of a PersistentVolumeClaimTemplate
+type SnapshotVolumeClaimTemplate struct {
+	// The StorageClass to use when creating a temporary PVC for processing the data.
+	// On GKE, the StorageClass must be the same as the PVC's StorageClass from which the
+	// VolumeSnapshot was created.
+	StorageClassName string `json:"storageClassName"`
+
+	// The desired access modes the volume should have.
+	// More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1
+	// Defaults to ReadWriteOnce.
+	// +optional
+	AccessModes []corev1.PersistentVolumeAccessMode `json:"accessModes"`
 }
 
 // HostedSnapshotStatus defines the observed state of HostedSnapshot

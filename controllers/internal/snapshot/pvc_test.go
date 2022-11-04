@@ -15,7 +15,10 @@ func TestBuildPVCs(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
 		crd := cosmosv1.HostedSnapshot{
 			Spec: cosmosv1.HostedSnapshotSpec{
-				StorageClassName: "primo",
+				VolumeClaimTemplate: cosmosv1.SnapshotVolumeClaimTemplate{
+					StorageClassName: "primo",
+					AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOncePod},
+				},
 			},
 		}
 		crd.Name = "my-test"
@@ -48,7 +51,7 @@ func TestBuildPVCs(t *testing.T) {
 		require.Equal(t, "VolumeSnapshot", got.Spec.DataSource.Kind)
 		require.Equal(t, "snapshot.storage.k8s.io", *got.Spec.DataSource.APIGroup)
 		require.Equal(t, "primo", *got.Spec.StorageClassName)
-		require.Equal(t, corev1.ReadWriteMany, got.Spec.AccessModes[0])
+		require.Equal(t, corev1.ReadWriteOncePod, got.Spec.AccessModes[0])
 
 		require.EqualValues(t, "10Gi", got.Spec.Resources.Requests.Storage().String())
 

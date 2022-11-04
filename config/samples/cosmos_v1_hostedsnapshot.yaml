@@ -3,16 +3,15 @@ kind: HostedSnapshot
 metadata:
   name: hostedsnapshot-sample
 spec:
-  # Selector labels for VolumeSnapshots.
+  # required
   selector:
     target: value
-  storageClassName: standard
-  # All jobTemplate values are optional.
+  # optional
   jobTemplate:
     activeDeadlineSeconds: 3600
     backoffLimit: 1
     ttlSecondsAfterFinished: 30
-  # Some podTemplate values are required.
+  # required
   podTemplate:
     spec:
       containers:
@@ -20,3 +19,8 @@ spec:
         image: busybox:stable
         command:
           - ls $CHAIN_HOME
+  # required
+  volumeClaimTemplate:
+    storageClassName: premium-rwo
+    accessModes:
+      - ReadWriteOnce
