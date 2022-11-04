@@ -42,7 +42,7 @@ func (c Creator[T]) Create(ctx context.Context, crd *cosmosv1.HostedSnapshot) er
 	for _, r := range resources {
 		gk := r.GetObjectKind().GroupVersionKind().GroupKind().String()
 		logger.Info("Creating resource", "groupKind", gk, "resourceName", r.GetName())
-		if err := c.client.Create(ctx, r); err != nil {
+		if err = c.client.Create(ctx, r); err != nil {
 			return err
 		}
 		err = ctrl.SetControllerReference(crd, r, c.client.Scheme())
