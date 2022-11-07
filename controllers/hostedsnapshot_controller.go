@@ -97,9 +97,10 @@ func (r *HostedSnapshotReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		r.reportErr(logger, crd, err)
 		return requeueSnapshot, nil
 	}
-	crd.Status.Jobs = snapshot.AddJobStatus(crd.Status.Jobs, batchv1.JobStatus{})
 
-	return requeueSnapshot, nil
+	crd.Status.Jobs = snapshot.AddJobStatus(crd.Status.Jobs, batchv1.JobStatus{})
+	// Requeue quickly so we get updated job status on the next reconcile.
+	return ctrl.Result{RequeueAfter: time.Second}, nil
 }
 
 func (r *HostedSnapshotReconciler) createResources(ctx context.Context, crd *cosmosv1.HostedSnapshot) error {
