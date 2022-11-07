@@ -70,6 +70,7 @@ func BuildJobs(crd *cosmosv1.HostedSnapshot) []*batchv1.Job {
 	return []*batchv1.Job{&job}
 }
 
+// jobName returns the job's name created by the controller.
 func jobName(crd *cosmosv1.HostedSnapshot) string {
 	return kube.ToName(fmt.Sprintf("snapshot-%s", crd.Name))
 }

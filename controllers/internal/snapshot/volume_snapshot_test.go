@@ -61,7 +61,7 @@ func TestRecentVolumeSnapshot(t *testing.T) {
 
 		lister := mockLister(func(ctx context.Context, inList client.ObjectList, opts ...client.ListOption) error {
 			require.NotNil(t, ctx)
-			require.NotNil(t, list)
+			require.NotNil(t, inList)
 			require.Equal(t, 2, len(opts))
 			require.Equal(t, client.InNamespace("testns"), opts[0])
 			require.Equal(t, client.MatchingLabels{"test": "selector"}, opts[1])
