@@ -106,7 +106,7 @@ type HostedSnapshotStatus struct {
 
 	// Last 5 jobs created by the controller. Most recent jobs are first.
 	// +optional
-	Jobs []*batchv1.JobStatus `json:"jobs"`
+	Jobs []batchv1.JobStatus `json:"jobs"`
 }
 
 //+kubebuilder:object:root=true
