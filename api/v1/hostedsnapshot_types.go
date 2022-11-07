@@ -17,6 +17,7 @@ limitations under the License.
 package v1
 
 import (
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -96,7 +97,16 @@ type HostedSnapshotStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	//TODO(nix): Possible fields observedGeneration, volumeSnapshotName (which one we used), jobName (ref to job)
+	// The most recent generation observed by the controller.
+	ObservedGeneration int64 `json:"observedGeneration"`
+
+	// A generic message for the user. May contain errors.
+	// +optional
+	StatusMessage *string `json:"status"`
+
+	// Last 5 jobs created by the controller. Most recent jobs are first.
+	// +optional
+	Jobs []*batchv1.JobStatus `json:"jobs"`
 }
 
 //+kubebuilder:object:root=true
