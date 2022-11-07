@@ -31,6 +31,15 @@ rules:
   - list
   - watch
 - apiGroups:
+  - batch
+  resources:
+  - jobs
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+- apiGroups:
   - cosmos.strange.love
   resources:
   - cosmosfullnodes
