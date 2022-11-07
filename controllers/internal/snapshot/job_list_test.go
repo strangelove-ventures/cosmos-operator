@@ -7,36 +7,34 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 )
 
-func TestJobList_Add(t *testing.T) {
-	var list JobList
-	list.Add(batchv1.JobStatus{})
+func TestAddJobStatus(t *testing.T) {
+	t.Parallel()
 
-	require.Len(t, list.ToSlice(), 1)
+	list := AddJobStatus(nil, batchv1.JobStatus{})
+	require.Len(t, list, 1)
 
 	for i := 0; i < 15; i++ {
-		list.Add(batchv1.JobStatus{})
+		list = AddJobStatus(list, batchv1.JobStatus{})
 	}
 
-	require.Len(t, list.ToSlice(), 5)
+	require.Len(t, list, 5)
 
 	status := batchv1.JobStatus{Active: 1}
-	list.Add(status)
+	list = AddJobStatus(list, status)
 
-	require.Equal(t, status, list.ToSlice()[0])
+	require.Equal(t, status, list[0])
 }
 
 func TestJobList_Update(t *testing.T) {
-	var list JobList
-	list.Update(batchv1.JobStatus{})
+	t.Parallel()
 
-	require.Empty(t, list.ToSlice())
+	list := UpdateJobStatus(nil, batchv1.JobStatus{})
 
-	list.Add(batchv1.JobStatus{})
-	list.Add(batchv1.JobStatus{})
+	require.Empty(t, list)
 
 	status := batchv1.JobStatus{Active: 1}
-	list.Update(status)
+	list = UpdateJobStatus(make([]batchv1.JobStatus, 2), status)
 
-	require.Len(t, list.ToSlice(), 2)
-	require.Equal(t, status, list.ToSlice()[0])
+	require.Len(t, list, 2)
+	require.Equal(t, status, list[0])
 }
