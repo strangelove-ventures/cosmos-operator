@@ -3,7 +3,26 @@ kind: HostedSnapshot
 metadata:
   name: hostedsnapshot-sample
 spec:
-  # Selector labels for VolumeSnapshots.
+  # required
   selector:
     target: value
-  storageClassName: standard
+  # optional
+  jobTemplate:
+    activeDeadlineSeconds: 3600
+    backoffLimit: 1
+    ttlSecondsAfterFinished: 30
+  # required
+  podTemplate:
+    spec:
+      containers:
+      - name: test
+        image: busybox:stable
+        command:
+          - ls
+        args:
+          - "/home/operator/cosmos"
+  # required
+  volumeClaimTemplate:
+    storageClassName: premium-rwo
+    accessModes:
+      - ReadWriteOnce

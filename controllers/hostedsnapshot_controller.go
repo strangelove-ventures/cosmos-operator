@@ -19,21 +19,36 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"time"
 
+	"github.com/go-logr/logr"
 	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/snapshot"
-	"k8s.io/apimachinery/pkg/runtime"
+	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-// HostedSnapshotReconciler reconciles a HostedSnapshot object
+// HostedSnapshotReconciler reconciles a HostedSnapshot object.
 type HostedSnapshotReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	recorder record.EventRecorder
 }
+
+// NewHostedSnapshot returns a valid controller.
+func NewHostedSnapshot(client client.Client, recorder record.EventRecorder) *HostedSnapshotReconciler {
+	return &HostedSnapshotReconciler{
+		Client:   client,
+		recorder: recorder,
+	}
+}
+
+// Requeue on a period interval to detect when it's time to run a snapshot job.
+var requeueSnapshot = ctrl.Result{RequeueAfter: 60 * time.Second}
 
 //+kubebuilder:rbac:groups=cosmos.strange.love,resources=hostedsnapshots,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=cosmos.strange.love,resources=hostedsnapshots/status,verbs=get;update;patch
@@ -47,40 +62,46 @@ type HostedSnapshotReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.13.0/pkg/reconcile
 func (r *HostedSnapshotReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := log.FromContext(ctx).WithName("HostedSnapshot")
+	logger := log.FromContext(ctx)
 	logger.V(1).Info("Entering reconcile loop")
 
-	// Get the CRD
 	crd := new(cosmosv1.HostedSnapshot)
 	if err := r.Get(ctx, req.NamespacedName, crd); err != nil {
 		// Ignore not found errors because can't be fixed by an immediate requeue. We'll have to wait for next notification.
 		// Also, will get "not found" error if crd is deleted.
 		// No need to explicitly delete resources. Kube GC does so automatically because we set the controller reference
 		// for each resource.
-		return finishResult, client.IgnoreNotFound(err)
+		return requeueSnapshot, client.IgnoreNotFound(err)
 	}
 
+	// TODO(nix): Clean up the following into private method.
+	// Find most recent VolumeSnapshot.
 	recent, err := snapshot.RecentVolumeSnapshot(ctx, r, crd)
 	if err != nil {
-		return finishResult, err
+		r.reportErr(logger, crd, err)
+		return requeueSnapshot, nil
 	}
+	logger.V(1).Info("Found VolumeSnapshot", "name", recent.Name)
 
-	pvcs, err := snapshot.BuildPVCs(crd, recent)
-	if err != nil {
-		return finishResult, err
-	}
-
-	// TODO: Temporary, demonstrating the above.
-	for _, pvc := range pvcs {
-		logger.Info("Creating pvc", "pvcName", pvc.Name)
-		// TODO: set owner
-		err = r.Create(ctx, pvc)
-		if err != nil {
-			return finishResult, err
+	// Create PVC from VolumeSnapshot and job that uses PVC.
+	if err = snapshot.NewCreator(r, func() ([]*corev1.PersistentVolumeClaim, error) {
+		return snapshot.BuildPVCs(crd, recent)
+	}).Create(ctx, crd); err != nil {
+		r.reportErr(logger, crd, err)
+	} else {
+		if err = snapshot.NewCreator(r, func() ([]*batchv1.Job, error) {
+			return snapshot.BuildJobs(crd), nil
+		}).Create(ctx, crd); err != nil {
+			r.reportErr(logger, crd, err)
 		}
 	}
 
-	return finishResult, nil
+	return requeueSnapshot, nil
+}
+
+func (r *HostedSnapshotReconciler) reportErr(logger logr.Logger, crd *cosmosv1.HostedSnapshot, err error) {
+	logger.Error(err, "An error occurred")
+	r.recorder.Event(crd, eventWarning, "error", err.Error())
 }
 
 // SetupWithManager sets up the controller with the Manager.
