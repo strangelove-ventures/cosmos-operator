@@ -100,6 +100,11 @@ func (r *HostedSnapshotReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	// Delete any existing PVCs so we can create new ones.
 	r.deletePVCs(ctx, crd)
 
+	// Check if we need to fire new job/pvc combos.
+	if !snapshot.ReadyForSnapshot(crd, time.Now()) {
+		return requeueResult, nil
+	}
+
 	// Create new jobs and pvcs.
 	err = r.createResources(ctx, crd)
 	if err != nil {

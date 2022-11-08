@@ -12,13 +12,13 @@ func ReadyForSnapshot(crd *cosmosv1.HostedSnapshot, now time.Time) bool {
 	if len(history) == 0 {
 		return true
 	}
-	// JobHistory should always have most recent first.
-	status := history[0]
 
 	dur := crd.Spec.Interval.Duration
 	if dur <= 0 {
 		dur = 24 * time.Hour
 	}
 
+	// JobHistory should always have most recent first.
+	status := history[0]
 	return now.Sub(status.StartTime.Time) >= dur
 }
