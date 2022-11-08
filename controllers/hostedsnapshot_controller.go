@@ -23,7 +23,7 @@ import (
 
 	"github.com/go-logr/logr"
 	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
-	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/snapshot"
 	batchv1 "k8s.io/api/batch/v1"

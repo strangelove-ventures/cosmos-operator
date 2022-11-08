@@ -1,7 +1,7 @@
 package snapshot
 
 import (
-	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
 )
 

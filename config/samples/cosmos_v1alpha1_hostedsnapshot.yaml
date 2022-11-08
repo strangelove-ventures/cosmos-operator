@@ -1,4 +1,4 @@
-apiVersion: cosmos.strange.love/v1
+apiVersion: cosmos.strange.love/v1alpha1
 kind: HostedSnapshot
 metadata:
   name: hostedsnapshot-sample

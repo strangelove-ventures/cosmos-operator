@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	"github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -53,7 +54,7 @@ func TestCreator_Create(t *testing.T) {
 
 	t.Run("happy path", func(t *testing.T) {
 		var (
-			crd     cosmosv1.HostedSnapshot
+			crd     v1alpha1.HostedSnapshot
 			mClient mockCreateClient
 			pods    = []*corev1.Pod{new(corev1.Pod), new(corev1.Pod)}
 		)
@@ -75,7 +76,7 @@ func TestCreator_Create(t *testing.T) {
 
 	t.Run("no resources", func(t *testing.T) {
 		var (
-			crd     cosmosv1.HostedSnapshot
+			crd     v1alpha1.HostedSnapshot
 			mClient mockCreateClient
 		)
 		creator := NewCreator(&mClient, func() ([]*corev1.Pod, error) {
@@ -89,7 +90,7 @@ func TestCreator_Create(t *testing.T) {
 
 	t.Run("builder error", func(t *testing.T) {
 		var (
-			crd     cosmosv1.HostedSnapshot
+			crd     v1alpha1.HostedSnapshot
 			mClient mockCreateClient
 		)
 		crd.Name = "create-test"
@@ -103,7 +104,7 @@ func TestCreator_Create(t *testing.T) {
 
 	t.Run("create error", func(t *testing.T) {
 		var (
-			crd     cosmosv1.HostedSnapshot
+			crd     v1alpha1.HostedSnapshot
 			mClient mockCreateClient
 			pods    = []*corev1.Pod{new(corev1.Pod), new(corev1.Pod)}
 		)

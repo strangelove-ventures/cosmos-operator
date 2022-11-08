@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
 	"github.com/stretchr/testify/require"
 )
 

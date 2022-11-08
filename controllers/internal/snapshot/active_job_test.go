@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
 	"github.com/stretchr/testify/require"
 	batchv1 "k8s.io/api/batch/v1"

@@ -3,7 +3,7 @@ package snapshot
 import (
 	"time"
 
-	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
 )
 
 // ReadyForSnapshot returns true if enough time has passed to create a new snapshot.
