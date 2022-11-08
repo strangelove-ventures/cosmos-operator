@@ -93,7 +93,8 @@ func (r *HostedSnapshotReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	// Update status if job still active and requeue.
 	if found {
 		crd.Status.JobHistory = snapshot.UpdateJobStatus(crd.Status.JobHistory, active.Status)
-		return requeueSnapshot, nil
+		// Requeue more quickly to minimize races where job is deleted before we can grab final status.
+		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 	}
 
 	// Create job and pvc.
