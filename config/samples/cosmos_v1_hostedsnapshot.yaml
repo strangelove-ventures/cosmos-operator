@@ -3,6 +3,8 @@ kind: HostedSnapshot
 metadata:
   name: hostedsnapshot-sample
 spec:
+  # optional
+  interval: 24h
   # required
   selector:
     target: value

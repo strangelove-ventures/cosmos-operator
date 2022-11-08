@@ -255,6 +255,7 @@ func (in *HostedSnapshotSpec) DeepCopyInto(out *HostedSnapshotSpec) {
 			(*out)[key] = val
 		}
 	}
+	out.Interval = in.Interval
 	in.JobTemplate.DeepCopyInto(&out.JobTemplate)
 	in.PodTemplate.DeepCopyInto(&out.PodTemplate)
 	in.VolumeClaimTemplate.DeepCopyInto(&out.VolumeClaimTemplate)
