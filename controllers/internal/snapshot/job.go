@@ -1,11 +1,9 @@
 package snapshot
 
 import (
-	"fmt"
 	"time"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
-	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,9 +25,9 @@ func BuildJobs(crd *cosmosv1.HostedSnapshot) []*batchv1.Job {
 			Template: crd.Spec.PodTemplate,
 		},
 	}
-	job.Labels = defaultLabels(crd)
+	job.Labels = defaultLabels()
 	job.Namespace = crd.Namespace
-	job.Name = jobName(crd)
+	job.Name = ResourceName(crd)
 
 	if v := crd.Spec.JobTemplate.ActiveDeadlineSeconds; v != nil {
 		job.Spec.ActiveDeadlineSeconds = v
@@ -45,7 +43,7 @@ func BuildJobs(crd *cosmosv1.HostedSnapshot) []*batchv1.Job {
 	job.Spec.Template.Spec.Volumes = append(job.Spec.Template.Spec.Volumes, corev1.Volume{
 		Name: volName,
 		VolumeSource: corev1.VolumeSource{PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-			ClaimName: PVCName(crd),
+			ClaimName: ResourceName(crd),
 		}},
 	})
 
@@ -68,9 +66,4 @@ func BuildJobs(crd *cosmosv1.HostedSnapshot) []*batchv1.Job {
 	}
 
 	return []*batchv1.Job{&job}
-}
-
-// jobName returns the job's name created by the controller.
-func jobName(crd *cosmosv1.HostedSnapshot) string {
-	return kube.ToName(fmt.Sprintf("snapshot-%s", crd.Name))
 }

@@ -19,7 +19,7 @@ var isNotFoundErr = kube.IsNotFound
 // be found.
 func FindActiveJob(ctx context.Context, getter Getter, crd *cosmosv1.HostedSnapshot) (bool, *batchv1.Job, error) {
 	job := new(batchv1.Job)
-	job.Name = jobName(crd)
+	job.Name = ResourceName(crd)
 	job.Namespace = crd.Namespace
 	err := getter.Get(ctx, client.ObjectKeyFromObject(job), job)
 	switch {
