@@ -41,7 +41,7 @@ func (c Creator[T]) Create(ctx context.Context, crd *cosmosv1.HostedSnapshot) er
 	logger := log.FromContext(ctx)
 	for _, r := range resources {
 		gk := r.GetObjectKind().GroupVersionKind().GroupKind().String()
-		logger.Info("Creating resource", "groupKind", gk, "resourceName", r.GetName())
+		logger.Info("Creating resource", "groupKind", gk, "resource", r.GetName())
 		if err = c.client.Create(ctx, r); err != nil {
 			return err
 		}

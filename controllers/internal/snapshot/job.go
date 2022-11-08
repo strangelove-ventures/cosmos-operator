@@ -45,7 +45,7 @@ func BuildJobs(crd *cosmosv1.HostedSnapshot) []*batchv1.Job {
 	job.Spec.Template.Spec.Volumes = append(job.Spec.Template.Spec.Volumes, corev1.Volume{
 		Name: volName,
 		VolumeSource: corev1.VolumeSource{PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-			ClaimName: pvcName(crd),
+			ClaimName: PVCName(crd),
 		}},
 	})
 

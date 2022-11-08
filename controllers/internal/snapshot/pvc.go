@@ -37,7 +37,7 @@ func BuildPVCs(crd *cosmosv1.HostedSnapshot, vs *snapshotv1.VolumeSnapshot) ([]*
 		},
 	}
 	pvc.Namespace = crd.Namespace
-	pvc.Name = pvcName(crd)
+	pvc.Name = PVCName(crd)
 	pvc.Labels = defaultLabels(crd)
 
 	return []*corev1.PersistentVolumeClaim{&pvc}, nil
@@ -53,6 +53,7 @@ func findStorage(vs *snapshotv1.VolumeSnapshot) (zero resource.Quantity, _ error
 	return *vs.Status.RestoreSize, nil
 }
 
-func pvcName(crd *cosmosv1.HostedSnapshot) string {
+// PVCName is the name of the pvc.
+func PVCName(crd *cosmosv1.HostedSnapshot) string {
 	return kube.ToName("pvc-snapshot-" + crd.Name)
 }

@@ -24,6 +24,7 @@ import (
 	"github.com/go-logr/logr"
 	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/snapshot"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -72,7 +73,7 @@ func (r *HostedSnapshotReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		// Also, will get "not found" error if crd is deleted.
 		// No need to explicitly delete resources. Kube GC does so automatically because we set the controller reference
 		// for each resource.
-		return requeueSnapshot, client.IgnoreNotFound(err)
+		return requeueSnapshot, kube.IgnoreNotFound(err)
 	}
 
 	crd.Status.ObservedGeneration = crd.Generation
@@ -88,10 +89,16 @@ func (r *HostedSnapshotReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	// Update status if job still active and requeue.
 	if found {
+		// Delete PVC only. Job controller will delete job via TTLSecondsAfterFinished.
+		if kube.IsJobFinished(active) {
+			r.deletePVCs(ctx, crd)
+		}
+
 		crd.Status.JobHistory = snapshot.UpdateJobStatus(crd.Status.JobHistory, active.Status)
 		return requeueSnapshot, nil
 	}
 
+	// Create job and pvc.
 	err = r.createResources(ctx, crd)
 	if err != nil {
 		r.reportErr(logger, crd, err)
@@ -114,9 +121,17 @@ func (r *HostedSnapshotReconciler) createResources(ctx context.Context, crd *cos
 	logger.V(1).Info("Found VolumeSnapshot", "name", recent.Name)
 
 	// Create PVCs.
-	if err = snapshot.NewCreator(r, func() ([]*corev1.PersistentVolumeClaim, error) {
+	err = snapshot.NewCreator(r, func() ([]*corev1.PersistentVolumeClaim, error) {
 		return snapshot.BuildPVCs(crd, recent)
-	}).Create(ctx, crd); err != nil {
+	}).Create(ctx, crd)
+
+	switch {
+	case kube.IsAlreadyExists(err):
+		// Ideally, this should not happen. But there may be races where we do not detect the job is finished.
+		// So we delete the PVCs and try again.
+		r.deletePVCs(ctx, crd)
+		return err
+	case err != nil:
 		return err
 	}
 
@@ -124,6 +139,20 @@ func (r *HostedSnapshotReconciler) createResources(ctx context.Context, crd *cos
 	return snapshot.NewCreator(r, func() ([]*batchv1.Job, error) {
 		return snapshot.BuildJobs(crd), nil
 	}).Create(ctx, crd)
+}
+
+// Any PVCs still mounted by pods (even completed ones) will not fully delete until the pod is deleted.
+func (r *HostedSnapshotReconciler) deletePVCs(ctx context.Context, crd *cosmosv1.HostedSnapshot) {
+	logger := log.FromContext(ctx)
+
+	var pvc corev1.PersistentVolumeClaim
+	pvc.Name = snapshot.PVCName(crd)
+	pvc.Namespace = crd.Namespace
+
+	logger.Info("Deleting PVC", "resource", pvc.Name)
+	if err := r.Delete(ctx, &pvc); kube.IgnoreNotFound(err) != nil {
+		r.reportErr(logger, crd, err)
+	}
 }
 
 func (r *HostedSnapshotReconciler) reportErr(logger logr.Logger, crd *cosmosv1.HostedSnapshot, err error) {
