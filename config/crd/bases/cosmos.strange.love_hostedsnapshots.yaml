@@ -7232,9 +7232,9 @@ spec:
           status:
             description: HostedSnapshotStatus defines the observed state of HostedSnapshot
             properties:
-              jobs:
-                description: Last 5 jobs created by the controller. Most recent jobs
-                  are first.
+              jobHistory:
+                description: Last 5 job statuses created by the controller ordered
+                  by more recent jobs.
                 items:
                   description: JobStatus represents the current state of a Job.
                   properties:

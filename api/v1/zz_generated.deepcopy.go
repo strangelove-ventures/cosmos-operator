@@ -278,8 +278,8 @@ func (in *HostedSnapshotStatus) DeepCopyInto(out *HostedSnapshotStatus) {
 		*out = new(string)
 		**out = **in
 	}
-	if in.Jobs != nil {
-		in, out := &in.Jobs, &out.Jobs
+	if in.JobHistory != nil {
+		in, out := &in.JobHistory, &out.JobHistory
 		*out = make([]batchv1.JobStatus, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])

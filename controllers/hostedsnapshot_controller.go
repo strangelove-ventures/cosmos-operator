@@ -88,7 +88,7 @@ func (r *HostedSnapshotReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	// Update status if job still active and requeue.
 	if found {
-		crd.Status.Jobs = snapshot.UpdateJobStatus(crd.Status.Jobs, active.Status)
+		crd.Status.JobHistory = snapshot.UpdateJobStatus(crd.Status.JobHistory, active.Status)
 		return requeueSnapshot, nil
 	}
 
@@ -98,7 +98,7 @@ func (r *HostedSnapshotReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return requeueSnapshot, nil
 	}
 
-	crd.Status.Jobs = snapshot.AddJobStatus(crd.Status.Jobs, batchv1.JobStatus{})
+	crd.Status.JobHistory = snapshot.AddJobStatus(crd.Status.JobHistory, batchv1.JobStatus{})
 	// Requeue quickly so we get updated job status on the next reconcile.
 	return ctrl.Result{RequeueAfter: time.Second}, nil
 }
