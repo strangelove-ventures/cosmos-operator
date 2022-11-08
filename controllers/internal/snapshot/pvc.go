@@ -5,7 +5,6 @@ import (
 
 	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
-	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,8 +36,8 @@ func BuildPVCs(crd *cosmosv1.HostedSnapshot, vs *snapshotv1.VolumeSnapshot) ([]*
 		},
 	}
 	pvc.Namespace = crd.Namespace
-	pvc.Name = pvcName(crd)
-	pvc.Labels = defaultLabels(crd)
+	pvc.Name = ResourceName(crd)
+	pvc.Labels = defaultLabels()
 
 	return []*corev1.PersistentVolumeClaim{&pvc}, nil
 }
@@ -51,8 +50,4 @@ func findStorage(vs *snapshotv1.VolumeSnapshot) (zero resource.Quantity, _ error
 		return zero, fmt.Errorf("%s %s: missing status.restoreSize", vs.Kind, vs.Name)
 	}
 	return *vs.Status.RestoreSize, nil
-}
-
-func pvcName(crd *cosmosv1.HostedSnapshot) string {
-	return kube.ToName("pvc-snapshot-" + crd.Name)
 }

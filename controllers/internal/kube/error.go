@@ -54,6 +54,12 @@ func IgnoreAlreadyExists(err error) error {
 	return err
 }
 
+// IsAlreadyExists determines if the error indicates that a specified resource already exists.
+// It supports wrapped errors and returns false when the error is nil.
+func IsAlreadyExists(err error) bool {
+	return apierrors.IsAlreadyExists(err)
+}
+
 // ReconcileErrors is a collection of ReconcileError
 type ReconcileErrors struct {
 	errs []ReconcileError

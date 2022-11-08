@@ -24,13 +24,17 @@ import (
 	"github.com/go-logr/logr"
 	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/snapshot"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 // HostedSnapshotReconciler reconciles a HostedSnapshot object.
@@ -72,7 +76,7 @@ func (r *HostedSnapshotReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		// Also, will get "not found" error if crd is deleted.
 		// No need to explicitly delete resources. Kube GC does so automatically because we set the controller reference
 		// for each resource.
-		return requeueSnapshot, client.IgnoreNotFound(err)
+		return requeueSnapshot, kube.IgnoreNotFound(err)
 	}
 
 	crd.Status.ObservedGeneration = crd.Generation
@@ -86,12 +90,17 @@ func (r *HostedSnapshotReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return requeueSnapshot, nil
 	}
 
-	// Update status if job still active and requeue.
+	// Update status if job still present and requeue.
 	if found {
 		crd.Status.JobHistory = snapshot.UpdateJobStatus(crd.Status.JobHistory, active.Status)
-		return requeueSnapshot, nil
+		// Requeue quickly to minimize races where job is deleted before we can grab final status.
+		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 	}
 
+	// Delete any existing PVCs so we can create new ones.
+	r.deletePVCs(ctx, crd)
+
+	// Create new jobs and pvcs.
 	err = r.createResources(ctx, crd)
 	if err != nil {
 		r.reportErr(logger, crd, err)
@@ -126,6 +135,24 @@ func (r *HostedSnapshotReconciler) createResources(ctx context.Context, crd *cos
 	}).Create(ctx, crd)
 }
 
+func (r *HostedSnapshotReconciler) deletePVCs(ctx context.Context, crd *cosmosv1.HostedSnapshot) {
+	logger := log.FromContext(ctx)
+
+	var pvc corev1.PersistentVolumeClaim
+	pvc.Namespace = crd.Namespace
+	pvc.Name = snapshot.ResourceName(crd)
+
+	err := r.Delete(ctx, &pvc)
+	switch {
+	case kube.IsNotFound(err):
+		return
+	case err != nil:
+		r.reportErr(logger, crd, err)
+	default:
+		logger.Info("Deleted PVC", "resource", pvc.Name)
+	}
+}
+
 func (r *HostedSnapshotReconciler) reportErr(logger logr.Logger, crd *cosmosv1.HostedSnapshot, err error) {
 	logger.Error(err, "An error occurred")
 	msg := err.Error()
@@ -153,7 +180,17 @@ func (r *HostedSnapshotReconciler) SetupWithManager(ctx context.Context, mgr ctr
 		return fmt.Errorf("VolumeSnapshot index: %w", err)
 	}
 
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&cosmosv1.HostedSnapshot{}).
-		Complete(r)
+	cbuilder := ctrl.NewControllerManagedBy(mgr).For(&cosmosv1.HostedSnapshot{})
+
+	// Watch for delete events for jobs.
+	cbuilder.Watches(
+		&source.Kind{Type: &batchv1.Job{}},
+		&handler.EnqueueRequestForObject{},
+		builder.WithPredicates(
+			snapshot.LabelSelectorPredicate(),
+			snapshot.DeletePredicate(),
+		),
+	)
+
+	return cbuilder.Complete(r)
 }
