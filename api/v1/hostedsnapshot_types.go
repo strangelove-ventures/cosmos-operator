@@ -55,7 +55,8 @@ type JobTemplateSpec struct {
 	// Specifies the duration in seconds relative to the startTime that the job
 	// may be continuously active before the system tries to terminate it; value
 	// must be positive integer.
-	// Defaults to 12 hours.
+	// Do not set too short or you will run into PVC/VolumeSnapshot provisioning rate limits.
+	// Defaults to 24 hours.
 	// +kubebuilder:validation:Minimum:=1
 	// +optional
 	ActiveDeadlineSeconds *int64 `json:"activeDeadlineSeconds"`

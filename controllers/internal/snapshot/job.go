@@ -18,7 +18,7 @@ func BuildJobs(crd *cosmosv1.HostedSnapshot) []*batchv1.Job {
 		},
 		Spec: batchv1.JobSpec{
 			// Set defaults
-			ActiveDeadlineSeconds:   ptr(int64(12 * time.Hour.Seconds())),
+			ActiveDeadlineSeconds:   ptr(int64(24 * time.Hour.Seconds())),
 			BackoffLimit:            ptr(int32(5)),
 			TTLSecondsAfterFinished: ptr(int32(15 * time.Minute.Seconds())),
 

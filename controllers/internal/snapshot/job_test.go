@@ -62,7 +62,7 @@ func TestBuildJobs(t *testing.T) {
 
 		require.EqualValues(t, 900, *got.Spec.TTLSecondsAfterFinished)
 		require.EqualValues(t, 5, *got.Spec.BackoffLimit)
-		require.EqualValues(t, 43_200, *got.Spec.ActiveDeadlineSeconds)
+		require.EqualValues(t, 86_400, *got.Spec.ActiveDeadlineSeconds)
 
 		require.Equal(t, corev1.RestartPolicyNever, got.Spec.Template.Spec.RestartPolicy)
 		require.Len(t, got.Spec.Template.Spec.Volumes, 1)
