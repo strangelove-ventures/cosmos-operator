@@ -15,7 +15,7 @@ spec:
     singular: hostedsnapshot
   scope: Namespaced
   versions:
-  - name: v1
+  - name: v1alpha1
     schema:
       openAPIV3Schema:
         description: HostedSnapshot is the Schema for the hostedsnapshots API
