@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"testing"
 
-	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	cosmosalpha "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -41,7 +41,7 @@ func (m *mockCreateClient) Create(ctx context.Context, obj client.Object, opts .
 
 func (m *mockCreateClient) Scheme() *runtime.Scheme {
 	scheme := runtime.NewScheme()
-	if err := cosmosv1.AddToScheme(scheme); err != nil {
+	if err := cosmosalpha.AddToScheme(scheme); err != nil {
 		panic(err)
 	}
 	return scheme

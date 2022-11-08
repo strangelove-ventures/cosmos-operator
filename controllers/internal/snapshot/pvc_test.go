@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
-	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
+	cosmosalpha "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -13,9 +13,9 @@ import (
 
 func TestBuildPVCs(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
-		crd := cosmosv1.HostedSnapshot{
-			Spec: cosmosv1.HostedSnapshotSpec{
-				VolumeClaimTemplate: cosmosv1.SnapshotVolumeClaimTemplate{
+		crd := cosmosalpha.HostedSnapshot{
+			Spec: cosmosalpha.HostedSnapshotSpec{
+				VolumeClaimTemplate: cosmosalpha.SnapshotVolumeClaimTemplate{
 					StorageClassName: "primo",
 					AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOncePod},
 				},
@@ -69,7 +69,7 @@ func TestBuildPVCs(t *testing.T) {
 			{nil},
 			{&snapshotv1.VolumeSnapshotStatus{}},
 		} {
-			crd := cosmosv1.HostedSnapshot{}
+			crd := cosmosalpha.HostedSnapshot{}
 
 			vs := snapshotv1.VolumeSnapshot{
 				Status: tt.Status,

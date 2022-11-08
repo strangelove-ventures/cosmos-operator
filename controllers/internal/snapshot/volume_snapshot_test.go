@@ -9,7 +9,7 @@ import (
 
 	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
 	"github.com/samber/lo"
-	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
+	cosmosalpha "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -27,8 +27,8 @@ func TestRecentVolumeSnapshot(t *testing.T) {
 
 	var (
 		ctx = context.Background()
-		crd = &cosmosv1.HostedSnapshot{
-			Spec: cosmosv1.HostedSnapshotSpec{
+		crd = &cosmosalpha.HostedSnapshot{
+			Spec: cosmosalpha.HostedSnapshotSpec{
 				Selector: map[string]string{"test": "selector"},
 			},
 		}

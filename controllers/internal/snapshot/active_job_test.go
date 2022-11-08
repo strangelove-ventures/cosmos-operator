@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
+	cosmosalpha "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
 	"github.com/stretchr/testify/require"
 	batchv1 "k8s.io/api/batch/v1"
@@ -23,7 +23,7 @@ func TestFindActiveJob(t *testing.T) {
 
 	var (
 		ctx = context.Background()
-		crd cosmosv1.HostedSnapshot
+		crd cosmosalpha.HostedSnapshot
 	)
 	crd.Namespace = "test-ns"
 	crd.Name = "test"

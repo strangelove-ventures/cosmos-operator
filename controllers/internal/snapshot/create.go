@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
+	cosmosalpha "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -32,7 +32,7 @@ func NewCreator[T client.Object](client CreateClient, builder func() ([]T, error
 }
 
 // Create builds the resources, creates them, and assigns owner reference.
-func (c Creator[T]) Create(ctx context.Context, crd *cosmosv1.HostedSnapshot) error {
+func (c Creator[T]) Create(ctx context.Context, crd *cosmosalpha.HostedSnapshot) error {
 	resources, err := c.builder()
 	if err != nil {
 		return fmt.Errorf("build resources: %w", err)

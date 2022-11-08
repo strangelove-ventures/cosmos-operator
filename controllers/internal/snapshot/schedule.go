@@ -3,11 +3,11 @@ package snapshot
 import (
 	"time"
 
-	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
+	cosmosalpha "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
 )
 
 // ReadyForSnapshot returns true if enough time has passed to create a new snapshot.
-func ReadyForSnapshot(crd *cosmosv1.HostedSnapshot, now time.Time) bool {
+func ReadyForSnapshot(crd *cosmosalpha.HostedSnapshot, now time.Time) bool {
 	history := crd.Status.JobHistory
 	if len(history) == 0 {
 		return true

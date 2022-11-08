@@ -8,7 +8,7 @@ import (
 
 	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
 	"github.com/samber/lo"
-	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
+	cosmosalpha "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -20,7 +20,7 @@ type Lister interface {
 // RecentVolumeSnapshot finds the most recent, ready to use VolumeSnapshot.
 // This function may not work well given very large lists and therefore assumes a reasonable number of VolumeSnapshots.
 // If you must search among many VolumeSnapshots, consider refactoring to use Limit and Continue features of listing.
-func RecentVolumeSnapshot(ctx context.Context, lister Lister, crd *cosmosv1.HostedSnapshot) (*snapshotv1.VolumeSnapshot, error) {
+func RecentVolumeSnapshot(ctx context.Context, lister Lister, crd *cosmosalpha.HostedSnapshot) (*snapshotv1.VolumeSnapshot, error) {
 	var snapshots snapshotv1.VolumeSnapshotList
 	err := lister.List(ctx,
 		&snapshots,
