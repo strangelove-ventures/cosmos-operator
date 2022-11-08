@@ -90,14 +90,17 @@ func (r *HostedSnapshotReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return requeueSnapshot, nil
 	}
 
-	// Update status if job still active and requeue.
+	// Update status if job still present and requeue.
 	if found {
 		crd.Status.JobHistory = snapshot.UpdateJobStatus(crd.Status.JobHistory, active.Status)
-		// Requeue more quickly to minimize races where job is deleted before we can grab final status.
+		// Requeue quickly to minimize races where job is deleted before we can grab final status.
 		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 	}
 
-	// Create job and pvc.
+	// Delete any existing PVCs so we can create new ones.
+	r.deletePVCs(ctx, crd)
+
+	// Create new jobs and pvcs.
 	err = r.createResources(ctx, crd)
 	if err != nil {
 		r.reportErr(logger, crd, err)
@@ -130,6 +133,24 @@ func (r *HostedSnapshotReconciler) createResources(ctx context.Context, crd *cos
 	return snapshot.NewCreator(r, func() ([]*batchv1.Job, error) {
 		return snapshot.BuildJobs(crd), nil
 	}).Create(ctx, crd)
+}
+
+func (r *HostedSnapshotReconciler) deletePVCs(ctx context.Context, crd *cosmosv1.HostedSnapshot) {
+	logger := log.FromContext(ctx)
+
+	var pvc corev1.PersistentVolumeClaim
+	pvc.Namespace = crd.Namespace
+	pvc.Name = snapshot.ResourceName(crd)
+
+	err := r.Delete(ctx, &pvc)
+	switch {
+	case kube.IsNotFound(err):
+		return
+	case err != nil:
+		r.reportErr(logger, crd, err)
+	default:
+		logger.Info("Deleted PVC", "resource", pvc.Name)
+	}
 }
 
 func (r *HostedSnapshotReconciler) reportErr(logger logr.Logger, crd *cosmosv1.HostedSnapshot, err error) {
@@ -167,7 +188,7 @@ func (r *HostedSnapshotReconciler) SetupWithManager(ctx context.Context, mgr ctr
 		&handler.EnqueueRequestForObject{},
 		builder.WithPredicates(
 			snapshot.LabelSelectorPredicate(),
-			snapshot.DeletePVCPredicate(ctx, r),
+			snapshot.DeletePredicate(),
 		),
 	)
 
