@@ -94,7 +94,7 @@ func TestBuildJobs(t *testing.T) {
 		gotVol, err := lo.Last(got.Spec.Template.Spec.Volumes)
 		require.NoError(t, err)
 		require.Equal(t, "snapshot", gotVol.Name)
-		require.Equal(t, "pvc-snapshot-cosmoshub", gotVol.VolumeSource.PersistentVolumeClaim.ClaimName)
+		require.Equal(t, "snapshot-cosmoshub", gotVol.VolumeSource.PersistentVolumeClaim.ClaimName)
 
 		for _, c := range got.Spec.Template.Spec.Containers {
 			gotMount, err := lo.Last(c.VolumeMounts)
