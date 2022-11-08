@@ -55,6 +55,7 @@ var requeueSnapshot = ctrl.Result{RequeueAfter: 60 * time.Second}
 //+kubebuilder:rbac:groups=cosmos.strange.love,resources=hostedsnapshots/finalizers,verbs=update
 //+kubebuilder:rbac:groups=snapshot.storage.k8s.io,resources=volumesnapshots,verbs=get;list;watch
 //+kubebuilder:rbac:groups="",resources=persistentvolumeclaims,verbs=get;list;watch;create;delete
+//+kubebuilder:rbac:groups="batch",resources=jobs,verbs=get;list;watch;create
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -74,34 +75,68 @@ func (r *HostedSnapshotReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return requeueSnapshot, client.IgnoreNotFound(err)
 	}
 
-	// TODO(nix): Clean up the following into private method.
-	// Find most recent VolumeSnapshot.
-	recent, err := snapshot.RecentVolumeSnapshot(ctx, r, crd)
+	crd.Status.ObservedGeneration = crd.Generation
+	crd.Status.StatusMessage = nil
+	defer r.updateStatus(ctx, crd)
+
+	// Find active job, if any.
+	found, active, err := snapshot.FindActiveJob(ctx, r, crd)
 	if err != nil {
 		r.reportErr(logger, crd, err)
 		return requeueSnapshot, nil
 	}
+
+	// Update status if job still active and requeue.
+	if found {
+		crd.Status.JobHistory = snapshot.UpdateJobStatus(crd.Status.JobHistory, active.Status)
+		return requeueSnapshot, nil
+	}
+
+	err = r.createResources(ctx, crd)
+	if err != nil {
+		r.reportErr(logger, crd, err)
+		return requeueSnapshot, nil
+	}
+
+	crd.Status.JobHistory = snapshot.AddJobStatus(crd.Status.JobHistory, batchv1.JobStatus{})
+	// Requeue quickly so we get updated job status on the next reconcile.
+	return ctrl.Result{RequeueAfter: time.Second}, nil
+}
+
+func (r *HostedSnapshotReconciler) createResources(ctx context.Context, crd *cosmosv1.HostedSnapshot) error {
+	logger := log.FromContext(ctx)
+
+	// Find most recent VolumeSnapshot.
+	recent, err := snapshot.RecentVolumeSnapshot(ctx, r, crd)
+	if err != nil {
+		return err
+	}
 	logger.V(1).Info("Found VolumeSnapshot", "name", recent.Name)
 
-	// Create PVC from VolumeSnapshot and job that uses PVC.
+	// Create PVCs.
 	if err = snapshot.NewCreator(r, func() ([]*corev1.PersistentVolumeClaim, error) {
 		return snapshot.BuildPVCs(crd, recent)
 	}).Create(ctx, crd); err != nil {
-		r.reportErr(logger, crd, err)
-	} else {
-		if err = snapshot.NewCreator(r, func() ([]*batchv1.Job, error) {
-			return snapshot.BuildJobs(crd), nil
-		}).Create(ctx, crd); err != nil {
-			r.reportErr(logger, crd, err)
-		}
+		return err
 	}
 
-	return requeueSnapshot, nil
+	// Create jobs.
+	return snapshot.NewCreator(r, func() ([]*batchv1.Job, error) {
+		return snapshot.BuildJobs(crd), nil
+	}).Create(ctx, crd)
 }
 
 func (r *HostedSnapshotReconciler) reportErr(logger logr.Logger, crd *cosmosv1.HostedSnapshot, err error) {
 	logger.Error(err, "An error occurred")
-	r.recorder.Event(crd, eventWarning, "error", err.Error())
+	msg := err.Error()
+	r.recorder.Event(crd, eventWarning, "error", msg)
+	crd.Status.StatusMessage = &msg
+}
+
+func (r *HostedSnapshotReconciler) updateStatus(ctx context.Context, crd *cosmosv1.HostedSnapshot) {
+	if err := r.Status().Update(ctx, crd); err != nil {
+		log.FromContext(ctx).Error(err, "Failed to update status")
+	}
 }
 
 // SetupWithManager sets up the controller with the Manager.
