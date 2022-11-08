@@ -35,6 +35,11 @@ spec:
           spec:
             description: HostedSnapshotSpec defines the desired state of HostedSnapshot
             properties:
+              interval:
+                description: Interval at which the controller runs snapshot job with
+                  pvc. Expressed as a duration string, e.g. 1.5h, 24h, 12h. Defaults
+                  to 24h.
+                type: string
               jobTemplate:
                 description: Specification of the desired behavior of the job.
                 properties:

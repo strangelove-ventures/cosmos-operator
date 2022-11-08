@@ -33,6 +33,12 @@ type HostedSnapshotSpec struct {
 	// The selector to target VolumeSnapshots.
 	Selector map[string]string `json:"selector"`
 
+	// Interval at which the controller runs snapshot job with pvc.
+	// Expressed as a duration string, e.g. 1.5h, 24h, 12h.
+	// Defaults to 24h.
+	// +optional
+	Interval metav1.Duration `json:"interval"`
+
 	// Specification of the desired behavior of the job.
 	// +optional
 	JobTemplate JobTemplateSpec `json:"jobTemplate"`
