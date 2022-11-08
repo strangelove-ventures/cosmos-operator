@@ -23,7 +23,7 @@ import (
 
 	"github.com/go-logr/logr"
 	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
-	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
+	cosmosalpha "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/snapshot"
 	batchv1 "k8s.io/api/batch/v1"
@@ -70,7 +70,7 @@ func (r *HostedSnapshotReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	logger := log.FromContext(ctx)
 	logger.V(1).Info("Entering reconcile loop")
 
-	crd := new(cosmosv1.HostedSnapshot)
+	crd := new(cosmosalpha.HostedSnapshot)
 	if err := r.Get(ctx, req.NamespacedName, crd); err != nil {
 		// Ignore not found errors because can't be fixed by an immediate requeue. We'll have to wait for next notification.
 		// Also, will get "not found" error if crd is deleted.
@@ -117,7 +117,7 @@ func (r *HostedSnapshotReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	return ctrl.Result{RequeueAfter: time.Second}, nil
 }
 
-func (r *HostedSnapshotReconciler) createResources(ctx context.Context, crd *cosmosv1.HostedSnapshot) error {
+func (r *HostedSnapshotReconciler) createResources(ctx context.Context, crd *cosmosalpha.HostedSnapshot) error {
 	logger := log.FromContext(ctx)
 
 	// Find most recent VolumeSnapshot.
@@ -140,7 +140,7 @@ func (r *HostedSnapshotReconciler) createResources(ctx context.Context, crd *cos
 	}).Create(ctx, crd)
 }
 
-func (r *HostedSnapshotReconciler) deletePVCs(ctx context.Context, crd *cosmosv1.HostedSnapshot) {
+func (r *HostedSnapshotReconciler) deletePVCs(ctx context.Context, crd *cosmosalpha.HostedSnapshot) {
 	logger := log.FromContext(ctx)
 
 	var pvc corev1.PersistentVolumeClaim
@@ -158,14 +158,14 @@ func (r *HostedSnapshotReconciler) deletePVCs(ctx context.Context, crd *cosmosv1
 	}
 }
 
-func (r *HostedSnapshotReconciler) reportErr(logger logr.Logger, crd *cosmosv1.HostedSnapshot, err error) {
+func (r *HostedSnapshotReconciler) reportErr(logger logr.Logger, crd *cosmosalpha.HostedSnapshot, err error) {
 	logger.Error(err, "An error occurred")
 	msg := err.Error()
 	r.recorder.Event(crd, eventWarning, "error", msg)
 	crd.Status.StatusMessage = &msg
 }
 
-func (r *HostedSnapshotReconciler) updateStatus(ctx context.Context, crd *cosmosv1.HostedSnapshot) {
+func (r *HostedSnapshotReconciler) updateStatus(ctx context.Context, crd *cosmosalpha.HostedSnapshot) {
 	if err := r.Status().Update(ctx, crd); err != nil {
 		log.FromContext(ctx).Error(err, "Failed to update status")
 	}
@@ -185,7 +185,7 @@ func (r *HostedSnapshotReconciler) SetupWithManager(ctx context.Context, mgr ctr
 		return fmt.Errorf("VolumeSnapshot index: %w", err)
 	}
 
-	cbuilder := ctrl.NewControllerManagedBy(mgr).For(&cosmosv1.HostedSnapshot{})
+	cbuilder := ctrl.NewControllerManagedBy(mgr).For(&cosmosalpha.HostedSnapshot{})
 
 	// Watch for delete events for jobs.
 	cbuilder.Watches(
