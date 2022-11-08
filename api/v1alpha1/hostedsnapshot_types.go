@@ -17,11 +17,14 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"github.com/strangelove-ventures/cosmos-operator/api/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+func init() {
+	SchemeBuilder.Register(&HostedSnapshot{}, &HostedSnapshotList{})
+}
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
@@ -136,8 +139,4 @@ type HostedSnapshotList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []HostedSnapshot `json:"items"`
-}
-
-func init() {
-	v1.SchemeBuilder.Register(&HostedSnapshot{}, &HostedSnapshotList{})
 }
