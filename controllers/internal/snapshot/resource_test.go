@@ -9,7 +9,7 @@ import (
 )
 
 func TestResourceName(t *testing.T) {
-	var crd cosmosalpha.HostedSnapshot
+	var crd cosmosalpha.StatefulJob
 	crd.Name = "test"
 
 	require.Equal(t, "snapshot-test", ResourceName(&crd))

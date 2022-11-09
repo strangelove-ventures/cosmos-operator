@@ -27,8 +27,8 @@ func TestRecentVolumeSnapshot(t *testing.T) {
 
 	var (
 		ctx = context.Background()
-		crd = &cosmosalpha.HostedSnapshot{
-			Spec: cosmosalpha.HostedSnapshotSpec{
+		crd = &cosmosalpha.StatefulJob{
+			Spec: cosmosalpha.StatefulJobSpec{
 				Selector: map[string]string{"test": "selector"},
 			},
 		}

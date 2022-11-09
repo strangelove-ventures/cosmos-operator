@@ -137,9 +137,9 @@ func start(ctx context.Context) error {
 	}
 	if err = controllers.NewHostedSnapshot(
 		mgr.GetClient(),
-		mgr.GetEventRecorderFor("HostedSnapshot"),
+		mgr.GetEventRecorderFor("StatefulJob"),
 	).SetupWithManager(ctx, mgr); err != nil {
-		return fmt.Errorf("unable to create HostedSnapshot controller: %w", err)
+		return fmt.Errorf("unable to create StatefulJob controller: %w", err)
 	}
 	//+kubebuilder:scaffold:builder
 

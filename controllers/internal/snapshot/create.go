@@ -32,7 +32,7 @@ func NewCreator[T client.Object](client CreateClient, builder func() ([]T, error
 }
 
 // Create builds the resources, creates them, and assigns owner reference.
-func (c Creator[T]) Create(ctx context.Context, crd *cosmosalpha.HostedSnapshot) error {
+func (c Creator[T]) Create(ctx context.Context, crd *cosmosalpha.StatefulJob) error {
 	resources, err := c.builder()
 	if err != nil {
 		return fmt.Errorf("build resources: %w", err)

@@ -6,6 +6,6 @@ import (
 )
 
 // ResourceName is the name of all resources created by the controller.
-func ResourceName(crd *cosmosalpha.HostedSnapshot) string {
+func ResourceName(crd *cosmosalpha.StatefulJob) string {
 	return kube.ToName("snapshot-" + crd.Name)
 }

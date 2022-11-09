@@ -7,7 +7,7 @@ import (
 )
 
 // ReadyForSnapshot returns true if enough time has passed to create a new snapshot.
-func ReadyForSnapshot(crd *cosmosalpha.HostedSnapshot, now time.Time) bool {
+func ReadyForSnapshot(crd *cosmosalpha.StatefulJob, now time.Time) bool {
 	history := crd.Status.JobHistory
 	if len(history) == 0 {
 		return true

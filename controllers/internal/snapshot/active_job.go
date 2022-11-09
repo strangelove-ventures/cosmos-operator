@@ -17,7 +17,7 @@ var isNotFoundErr = kube.IsNotFound
 
 // FindActiveJob finds the currently active job in any state. A job is considered inactive if it cannot
 // be found.
-func FindActiveJob(ctx context.Context, getter Getter, crd *cosmosalpha.HostedSnapshot) (bool, *batchv1.Job, error) {
+func FindActiveJob(ctx context.Context, getter Getter, crd *cosmosalpha.StatefulJob) (bool, *batchv1.Job, error) {
 	job := new(batchv1.Job)
 	job.Name = ResourceName(crd)
 	job.Namespace = crd.Namespace

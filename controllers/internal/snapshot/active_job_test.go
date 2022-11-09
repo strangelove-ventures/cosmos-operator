@@ -23,7 +23,7 @@ func TestFindActiveJob(t *testing.T) {
 
 	var (
 		ctx = context.Background()
-		crd cosmosalpha.HostedSnapshot
+		crd cosmosalpha.StatefulJob
 	)
 	crd.Namespace = "test-ns"
 	crd.Name = "test"

@@ -12,12 +12,12 @@ import (
 
 func TestBuildJobs(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
-		crd := cosmosalpha.HostedSnapshot{
+		crd := cosmosalpha.StatefulJob{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "axelar",
 				Namespace: "test",
 			},
-			Spec: cosmosalpha.HostedSnapshotSpec{
+			Spec: cosmosalpha.StatefulJobSpec{
 				JobTemplate: cosmosalpha.JobTemplateSpec{
 					ActiveDeadlineSeconds:   ptr(int64(20)),
 					BackoffLimit:            ptr(int32(1)),
@@ -40,7 +40,7 @@ func TestBuildJobs(t *testing.T) {
 
 		wantLabels := map[string]string{
 			"app.kubernetes.io/created-by": "cosmos-operator",
-			"app.kubernetes.io/component":  "HostedSnapshot",
+			"app.kubernetes.io/component":  "StatefulJob",
 		}
 		require.Equal(t, wantLabels, got.Labels)
 
@@ -53,7 +53,7 @@ func TestBuildJobs(t *testing.T) {
 	})
 
 	t.Run("defaults", func(t *testing.T) {
-		var crd cosmosalpha.HostedSnapshot
+		var crd cosmosalpha.StatefulJob
 
 		jobs := BuildJobs(&crd)
 		require.Len(t, jobs, 1)
@@ -72,11 +72,11 @@ func TestBuildJobs(t *testing.T) {
 		container := corev1.Container{
 			VolumeMounts: make([]corev1.VolumeMount, 1),
 		}
-		crd := cosmosalpha.HostedSnapshot{
+		crd := cosmosalpha.StatefulJob{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "cosmoshub",
 			},
-			Spec: cosmosalpha.HostedSnapshotSpec{
+			Spec: cosmosalpha.StatefulJobSpec{
 				PodTemplate: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						Volumes:    make([]corev1.Volume, 2),
@@ -105,8 +105,8 @@ func TestBuildJobs(t *testing.T) {
 	})
 
 	t.Run("env vars", func(t *testing.T) {
-		crd := cosmosalpha.HostedSnapshot{
-			Spec: cosmosalpha.HostedSnapshotSpec{
+		crd := cosmosalpha.StatefulJob{
+			Spec: cosmosalpha.StatefulJobSpec{
 				PodTemplate: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						Containers: make([]corev1.Container, 2),

@@ -10,7 +10,7 @@ import (
 )
 
 // BuildJobs returns jobs to compress and upload data to an object storage.
-func BuildJobs(crd *cosmosalpha.HostedSnapshot) []*batchv1.Job {
+func BuildJobs(crd *cosmosalpha.StatefulJob) []*batchv1.Job {
 	job := batchv1.Job{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Job",

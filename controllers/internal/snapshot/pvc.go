@@ -11,7 +11,7 @@ import (
 )
 
 // BuildPVCs builds PVCs given the crd and VolumeSnapshot.
-func BuildPVCs(crd *cosmosalpha.HostedSnapshot, vs *snapshotv1.VolumeSnapshot) ([]*corev1.PersistentVolumeClaim, error) {
+func BuildPVCs(crd *cosmosalpha.StatefulJob, vs *snapshotv1.VolumeSnapshot) ([]*corev1.PersistentVolumeClaim, error) {
 	storage, err := findStorage(vs)
 	if err != nil {
 		return nil, err
