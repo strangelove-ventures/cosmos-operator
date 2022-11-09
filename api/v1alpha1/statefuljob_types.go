@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1
+package v1alpha1
 
 import (
 	batchv1 "k8s.io/api/batch/v1"
@@ -22,11 +22,15 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+func init() {
+	SchemeBuilder.Register(&StatefulJob{}, &StatefulJobList{})
+}
+
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// HostedSnapshotSpec defines the desired state of HostedSnapshot
-type HostedSnapshotSpec struct {
+// StatefulJobSpec defines the desired state of StatefulJob
+type StatefulJobSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
@@ -53,7 +57,7 @@ type HostedSnapshotSpec struct {
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate"`
 
 	// Specification for the PVC associated with the job.
-	VolumeClaimTemplate SnapshotVolumeClaimTemplate `json:"volumeClaimTemplate"`
+	VolumeClaimTemplate StatefulJobVolumeClaimTemplate `json:"volumeClaimTemplate"`
 }
 
 // JobTemplateSpec is a subset of batchv1.JobSpec.
@@ -85,8 +89,8 @@ type JobTemplateSpec struct {
 	TTLSecondsAfterFinished *int32 `json:"ttlSecondsAfterFinished"`
 }
 
-// SnapshotVolumeClaimTemplate is a subset of a PersistentVolumeClaimTemplate
-type SnapshotVolumeClaimTemplate struct {
+// StatefulJobVolumeClaimTemplate is a subset of a PersistentVolumeClaimTemplate
+type StatefulJobVolumeClaimTemplate struct {
 	// The StorageClass to use when creating a temporary PVC for processing the data.
 	// On GKE, the StorageClass must be the same as the PVC's StorageClass from which the
 	// VolumeSnapshot was created.
@@ -99,8 +103,8 @@ type SnapshotVolumeClaimTemplate struct {
 	AccessModes []corev1.PersistentVolumeAccessMode `json:"accessModes"`
 }
 
-// HostedSnapshotStatus defines the observed state of HostedSnapshot
-type HostedSnapshotStatus struct {
+// StatefulJobStatus defines the observed state of StatefulJob
+type StatefulJobStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
@@ -119,24 +123,20 @@ type HostedSnapshotStatus struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
-// HostedSnapshot is the Schema for the hostedsnapshots API
-type HostedSnapshot struct {
+// StatefulJob is the Schema for the statefuljobs API
+type StatefulJob struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   HostedSnapshotSpec   `json:"spec,omitempty"`
-	Status HostedSnapshotStatus `json:"status,omitempty"`
+	Spec   StatefulJobSpec   `json:"spec,omitempty"`
+	Status StatefulJobStatus `json:"status,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 
-// HostedSnapshotList contains a list of HostedSnapshot
-type HostedSnapshotList struct {
+// StatefulJobList contains a list of StatefulJob
+type StatefulJobList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []HostedSnapshot `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&HostedSnapshot{}, &HostedSnapshotList{})
+	Items           []StatefulJob `json:"items"`
 }

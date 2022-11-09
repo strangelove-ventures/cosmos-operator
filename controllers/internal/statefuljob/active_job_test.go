@@ -1,11 +1,11 @@
-package snapshot
+package statefuljob
 
 import (
 	"context"
 	"errors"
 	"testing"
 
-	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	cosmosalpha "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
 	"github.com/stretchr/testify/require"
 	batchv1 "k8s.io/api/batch/v1"
@@ -23,7 +23,7 @@ func TestFindActiveJob(t *testing.T) {
 
 	var (
 		ctx = context.Background()
-		crd cosmosv1.HostedSnapshot
+		crd cosmosalpha.StatefulJob
 	)
 	crd.Namespace = "test-ns"
 	crd.Name = "test"
@@ -35,7 +35,7 @@ func TestFindActiveJob(t *testing.T) {
 		getter := mockGetter(func(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
 			require.NotNil(t, ctx)
 			require.Equal(t, "test-ns", key.Namespace)
-			require.Equal(t, "snapshot-test", key.Name)
+			require.Equal(t, "stateful-job-test", key.Name)
 			require.Empty(t, opts)
 
 			ref := obj.(*batchv1.Job)

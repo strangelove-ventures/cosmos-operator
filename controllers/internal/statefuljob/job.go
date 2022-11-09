@@ -1,16 +1,16 @@
-package snapshot
+package statefuljob
 
 import (
 	"time"
 
-	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	cosmosalpha "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // BuildJobs returns jobs to compress and upload data to an object storage.
-func BuildJobs(crd *cosmosv1.HostedSnapshot) []*batchv1.Job {
+func BuildJobs(crd *cosmosalpha.StatefulJob) []*batchv1.Job {
 	job := batchv1.Job{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Job",

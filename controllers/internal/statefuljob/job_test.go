@@ -1,10 +1,10 @@
-package snapshot
+package statefuljob
 
 import (
 	"testing"
 
 	"github.com/samber/lo"
-	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	cosmosalpha "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -12,13 +12,13 @@ import (
 
 func TestBuildJobs(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
-		crd := cosmosv1.HostedSnapshot{
+		crd := cosmosalpha.StatefulJob{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "axelar",
 				Namespace: "test",
 			},
-			Spec: cosmosv1.HostedSnapshotSpec{
-				JobTemplate: cosmosv1.JobTemplateSpec{
+			Spec: cosmosalpha.StatefulJobSpec{
+				JobTemplate: cosmosalpha.JobTemplateSpec{
 					ActiveDeadlineSeconds:   ptr(int64(20)),
 					BackoffLimit:            ptr(int32(1)),
 					TTLSecondsAfterFinished: ptr(int32(10)),
@@ -36,11 +36,11 @@ func TestBuildJobs(t *testing.T) {
 		got := jobs[0]
 
 		require.Equal(t, "test", got.Namespace)
-		require.Equal(t, "snapshot-axelar", got.Name)
+		require.Equal(t, "stateful-job-axelar", got.Name)
 
 		wantLabels := map[string]string{
 			"app.kubernetes.io/created-by": "cosmos-operator",
-			"app.kubernetes.io/component":  "HostedSnapshot",
+			"app.kubernetes.io/component":  "StatefulJob",
 		}
 		require.Equal(t, wantLabels, got.Labels)
 
@@ -53,7 +53,7 @@ func TestBuildJobs(t *testing.T) {
 	})
 
 	t.Run("defaults", func(t *testing.T) {
-		var crd cosmosv1.HostedSnapshot
+		var crd cosmosalpha.StatefulJob
 
 		jobs := BuildJobs(&crd)
 		require.Len(t, jobs, 1)
@@ -72,11 +72,11 @@ func TestBuildJobs(t *testing.T) {
 		container := corev1.Container{
 			VolumeMounts: make([]corev1.VolumeMount, 1),
 		}
-		crd := cosmosv1.HostedSnapshot{
+		crd := cosmosalpha.StatefulJob{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "cosmoshub",
 			},
-			Spec: cosmosv1.HostedSnapshotSpec{
+			Spec: cosmosalpha.StatefulJobSpec{
 				PodTemplate: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						Volumes:    make([]corev1.Volume, 2),
@@ -94,7 +94,7 @@ func TestBuildJobs(t *testing.T) {
 		gotVol, err := lo.Last(got.Spec.Template.Spec.Volumes)
 		require.NoError(t, err)
 		require.Equal(t, "snapshot", gotVol.Name)
-		require.Equal(t, "snapshot-cosmoshub", gotVol.VolumeSource.PersistentVolumeClaim.ClaimName)
+		require.Equal(t, "stateful-job-cosmoshub", gotVol.VolumeSource.PersistentVolumeClaim.ClaimName)
 
 		for _, c := range got.Spec.Template.Spec.Containers {
 			gotMount, err := lo.Last(c.VolumeMounts)
@@ -105,8 +105,8 @@ func TestBuildJobs(t *testing.T) {
 	})
 
 	t.Run("env vars", func(t *testing.T) {
-		crd := cosmosv1.HostedSnapshot{
-			Spec: cosmosv1.HostedSnapshotSpec{
+		crd := cosmosalpha.StatefulJob{
+			Spec: cosmosalpha.StatefulJobSpec{
 				PodTemplate: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						Containers: make([]corev1.Container, 2),

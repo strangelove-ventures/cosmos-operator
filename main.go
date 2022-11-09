@@ -44,6 +44,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	cosmosv1alpha1 "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
 	"github.com/strangelove-ventures/cosmos-operator/controllers"
 	//+kubebuilder:scaffold:imports
 )
@@ -58,6 +59,7 @@ func init() {
 	utilruntime.Must(snapshotv1.AddToScheme(scheme))
 
 	utilruntime.Must(cosmosv1.AddToScheme(scheme))
+	utilruntime.Must(cosmosv1alpha1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 
@@ -133,11 +135,11 @@ func start(ctx context.Context) error {
 	).SetupWithManager(ctx, mgr); err != nil {
 		return fmt.Errorf("unable to create CosmosFullNode controller: %w", err)
 	}
-	if err = controllers.NewHostedSnapshot(
+	if err = controllers.NewStatefulJob(
 		mgr.GetClient(),
-		mgr.GetEventRecorderFor("HostedSnapshot"),
+		mgr.GetEventRecorderFor("StatefulJob"),
 	).SetupWithManager(ctx, mgr); err != nil {
-		return fmt.Errorf("unable to create HostedSnapshot controller: %w", err)
+		return fmt.Errorf("unable to create StatefulJob controller: %w", err)
 	}
 	//+kubebuilder:scaffold:builder
 

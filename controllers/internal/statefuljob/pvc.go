@@ -1,17 +1,17 @@
-package snapshot
+package statefuljob
 
 import (
 	"fmt"
 
 	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
-	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	cosmosalpha "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // BuildPVCs builds PVCs given the crd and VolumeSnapshot.
-func BuildPVCs(crd *cosmosv1.HostedSnapshot, vs *snapshotv1.VolumeSnapshot) ([]*corev1.PersistentVolumeClaim, error) {
+func BuildPVCs(crd *cosmosalpha.StatefulJob, vs *snapshotv1.VolumeSnapshot) ([]*corev1.PersistentVolumeClaim, error) {
 	storage, err := findStorage(vs)
 	if err != nil {
 		return nil, err
