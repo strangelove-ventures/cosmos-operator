@@ -7,6 +7,6 @@ import (
 func defaultLabels() map[string]string {
 	return map[string]string{
 		kube.ControllerLabel: "cosmos-operator",
-		kube.ComponentLabel:  "HostedSnapshot",
+		kube.ComponentLabel:  "StatefulJob",
 	}
 }
