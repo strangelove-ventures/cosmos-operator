@@ -19,7 +19,7 @@ resources:
   controller: true
   domain: strange.love
   group: cosmos
-  kind: HostedSnapshot
+  kind: StatefulJob
   path: github.com/strangelove-ventures/cosmos-operator/api/v1alpha1
   version: v1alpha1
 version: "3"

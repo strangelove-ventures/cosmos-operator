@@ -1,4 +1,4 @@
-package snapshot
+package statefuljob
 
 import (
 	"context"
@@ -20,7 +20,7 @@ type Lister interface {
 // RecentVolumeSnapshot finds the most recent, ready to use VolumeSnapshot.
 // This function may not work well given very large lists and therefore assumes a reasonable number of VolumeSnapshots.
 // If you must search among many VolumeSnapshots, consider refactoring to use Limit and Continue features of listing.
-func RecentVolumeSnapshot(ctx context.Context, lister Lister, crd *cosmosalpha.HostedSnapshot) (*snapshotv1.VolumeSnapshot, error) {
+func RecentVolumeSnapshot(ctx context.Context, lister Lister, crd *cosmosalpha.StatefulJob) (*snapshotv1.VolumeSnapshot, error) {
 	var snapshots snapshotv1.VolumeSnapshotList
 	err := lister.List(ctx,
 		&snapshots,

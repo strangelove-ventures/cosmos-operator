@@ -1,4 +1,4 @@
-package snapshot
+package statefuljob
 
 import (
 	"strings"
@@ -9,11 +9,13 @@ import (
 )
 
 func TestResourceName(t *testing.T) {
-	var crd cosmosalpha.HostedSnapshot
+	var crd cosmosalpha.StatefulJob
 	crd.Name = "test"
 
-	require.Equal(t, "snapshot-test", ResourceName(&crd))
+	require.Equal(t, "stateful-job-test", ResourceName(&crd))
 
 	crd.Name = strings.Repeat("long", 100)
-	require.LessOrEqual(t, 253, len(ResourceName(&crd)))
+	name := ResourceName(&crd)
+	require.LessOrEqual(t, 253, len(name))
+	require.Contains(t, name, "stateful-job-")
 }

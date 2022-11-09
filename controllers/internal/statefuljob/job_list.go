@@ -1,4 +1,4 @@
-package snapshot
+package statefuljob
 
 import batchv1 "k8s.io/api/batch/v1"
 

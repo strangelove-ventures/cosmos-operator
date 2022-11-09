@@ -135,11 +135,11 @@ func start(ctx context.Context) error {
 	).SetupWithManager(ctx, mgr); err != nil {
 		return fmt.Errorf("unable to create CosmosFullNode controller: %w", err)
 	}
-	if err = controllers.NewHostedSnapshot(
+	if err = controllers.NewStatefulJob(
 		mgr.GetClient(),
-		mgr.GetEventRecorderFor("HostedSnapshot"),
+		mgr.GetEventRecorderFor("StatefulJob"),
 	).SetupWithManager(ctx, mgr); err != nil {
-		return fmt.Errorf("unable to create HostedSnapshot controller: %w", err)
+		return fmt.Errorf("unable to create StatefulJob controller: %w", err)
 	}
 	//+kubebuilder:scaffold:builder
 

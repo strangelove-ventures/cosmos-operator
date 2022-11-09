@@ -25,7 +25,7 @@ import (
 	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
 	cosmosalpha "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
-	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/snapshot"
+	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/statefuljob"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
@@ -37,26 +37,25 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-// HostedSnapshotReconciler reconciles a HostedSnapshot object.
-type HostedSnapshotReconciler struct {
+// StatefulJobReconciler reconciles a StatefulJob object.
+type StatefulJobReconciler struct {
 	client.Client
 	recorder record.EventRecorder
 }
 
-// NewHostedSnapshot returns a valid controller.
-func NewHostedSnapshot(client client.Client, recorder record.EventRecorder) *HostedSnapshotReconciler {
-	return &HostedSnapshotReconciler{
+// NewStatefulJob returns a valid controller.
+func NewStatefulJob(client client.Client, recorder record.EventRecorder) *StatefulJobReconciler {
+	return &StatefulJobReconciler{
 		Client:   client,
 		recorder: recorder,
 	}
 }
 
-// Requeue on a period interval to detect when it's time to run a snapshot job.
-var requeueSnapshot = ctrl.Result{RequeueAfter: 60 * time.Second}
+var requeueStatefulJob = ctrl.Result{RequeueAfter: 60 * time.Second}
 
-//+kubebuilder:rbac:groups=cosmos.strange.love,resources=hostedsnapshots,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=cosmos.strange.love,resources=hostedsnapshots/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=cosmos.strange.love,resources=hostedsnapshots/finalizers,verbs=update
+//+kubebuilder:rbac:groups=cosmos.strange.love,resources=statefuljobs,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=cosmos.strange.love,resources=statefuljobs/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=cosmos.strange.love,resources=statefuljobs/finalizers,verbs=update
 //+kubebuilder:rbac:groups=snapshot.storage.k8s.io,resources=volumesnapshots,verbs=get;list;watch
 //+kubebuilder:rbac:groups="",resources=persistentvolumeclaims,verbs=get;list;watch;create;delete
 //+kubebuilder:rbac:groups="batch",resources=jobs,verbs=get;list;watch;create
@@ -66,17 +65,17 @@ var requeueSnapshot = ctrl.Result{RequeueAfter: 60 * time.Second}
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.13.0/pkg/reconcile
-func (r *HostedSnapshotReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *StatefulJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 	logger.V(1).Info("Entering reconcile loop")
 
-	crd := new(cosmosalpha.HostedSnapshot)
+	crd := new(cosmosalpha.StatefulJob)
 	if err := r.Get(ctx, req.NamespacedName, crd); err != nil {
 		// Ignore not found errors because can't be fixed by an immediate requeue. We'll have to wait for next notification.
 		// Also, will get "not found" error if crd is deleted.
 		// No need to explicitly delete resources. Kube GC does so automatically because we set the controller reference
 		// for each resource.
-		return requeueSnapshot, kube.IgnoreNotFound(err)
+		return requeueStatefulJob, kube.IgnoreNotFound(err)
 	}
 
 	crd.Status.ObservedGeneration = crd.Generation
@@ -84,15 +83,15 @@ func (r *HostedSnapshotReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	defer r.updateStatus(ctx, crd)
 
 	// Find active job, if any.
-	found, active, err := snapshot.FindActiveJob(ctx, r, crd)
+	found, active, err := statefuljob.FindActiveJob(ctx, r, crd)
 	if err != nil {
 		r.reportErr(logger, crd, err)
-		return requeueSnapshot, nil
+		return requeueStatefulJob, nil
 	}
 
 	// Update status if job still present and requeue.
 	if found {
-		crd.Status.JobHistory = snapshot.UpdateJobStatus(crd.Status.JobHistory, active.Status)
+		crd.Status.JobHistory = statefuljob.UpdateJobStatus(crd.Status.JobHistory, active.Status)
 		// Requeue quickly to minimize races where job is deleted before we can grab final status.
 		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 	}
@@ -101,7 +100,7 @@ func (r *HostedSnapshotReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	r.deletePVCs(ctx, crd)
 
 	// Check if we need to fire new job/pvc combos.
-	if !snapshot.ReadyForSnapshot(crd, time.Now()) {
+	if !statefuljob.ReadyForSnapshot(crd, time.Now()) {
 		return requeueResult, nil
 	}
 
@@ -109,43 +108,43 @@ func (r *HostedSnapshotReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	err = r.createResources(ctx, crd)
 	if err != nil {
 		r.reportErr(logger, crd, err)
-		return requeueSnapshot, nil
+		return requeueStatefulJob, nil
 	}
 
-	crd.Status.JobHistory = snapshot.AddJobStatus(crd.Status.JobHistory, batchv1.JobStatus{})
+	crd.Status.JobHistory = statefuljob.AddJobStatus(crd.Status.JobHistory, batchv1.JobStatus{})
 	// Requeue quickly so we get updated job status on the next reconcile.
 	return ctrl.Result{RequeueAfter: time.Second}, nil
 }
 
-func (r *HostedSnapshotReconciler) createResources(ctx context.Context, crd *cosmosalpha.HostedSnapshot) error {
+func (r *StatefulJobReconciler) createResources(ctx context.Context, crd *cosmosalpha.StatefulJob) error {
 	logger := log.FromContext(ctx)
 
 	// Find most recent VolumeSnapshot.
-	recent, err := snapshot.RecentVolumeSnapshot(ctx, r, crd)
+	recent, err := statefuljob.RecentVolumeSnapshot(ctx, r, crd)
 	if err != nil {
 		return err
 	}
 	logger.V(1).Info("Found VolumeSnapshot", "name", recent.Name)
 
 	// Create PVCs.
-	if err = snapshot.NewCreator(r, func() ([]*corev1.PersistentVolumeClaim, error) {
-		return snapshot.BuildPVCs(crd, recent)
+	if err = statefuljob.NewCreator(r, func() ([]*corev1.PersistentVolumeClaim, error) {
+		return statefuljob.BuildPVCs(crd, recent)
 	}).Create(ctx, crd); err != nil {
 		return err
 	}
 
 	// Create jobs.
-	return snapshot.NewCreator(r, func() ([]*batchv1.Job, error) {
-		return snapshot.BuildJobs(crd), nil
+	return statefuljob.NewCreator(r, func() ([]*batchv1.Job, error) {
+		return statefuljob.BuildJobs(crd), nil
 	}).Create(ctx, crd)
 }
 
-func (r *HostedSnapshotReconciler) deletePVCs(ctx context.Context, crd *cosmosalpha.HostedSnapshot) {
+func (r *StatefulJobReconciler) deletePVCs(ctx context.Context, crd *cosmosalpha.StatefulJob) {
 	logger := log.FromContext(ctx)
 
 	var pvc corev1.PersistentVolumeClaim
 	pvc.Namespace = crd.Namespace
-	pvc.Name = snapshot.ResourceName(crd)
+	pvc.Name = statefuljob.ResourceName(crd)
 
 	err := r.Delete(ctx, &pvc)
 	switch {
@@ -158,21 +157,21 @@ func (r *HostedSnapshotReconciler) deletePVCs(ctx context.Context, crd *cosmosal
 	}
 }
 
-func (r *HostedSnapshotReconciler) reportErr(logger logr.Logger, crd *cosmosalpha.HostedSnapshot, err error) {
+func (r *StatefulJobReconciler) reportErr(logger logr.Logger, crd *cosmosalpha.StatefulJob, err error) {
 	logger.Error(err, "An error occurred")
 	msg := err.Error()
 	r.recorder.Event(crd, eventWarning, "error", msg)
 	crd.Status.StatusMessage = &msg
 }
 
-func (r *HostedSnapshotReconciler) updateStatus(ctx context.Context, crd *cosmosalpha.HostedSnapshot) {
+func (r *StatefulJobReconciler) updateStatus(ctx context.Context, crd *cosmosalpha.StatefulJob) {
 	if err := r.Status().Update(ctx, crd); err != nil {
 		log.FromContext(ctx).Error(err, "Failed to update status")
 	}
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *HostedSnapshotReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
+func (r *StatefulJobReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
 	// Index all VolumeSnapshots. Controller does not own any because it does not create them.
 	if err := mgr.GetFieldIndexer().IndexField(
 		ctx,
@@ -185,15 +184,15 @@ func (r *HostedSnapshotReconciler) SetupWithManager(ctx context.Context, mgr ctr
 		return fmt.Errorf("VolumeSnapshot index: %w", err)
 	}
 
-	cbuilder := ctrl.NewControllerManagedBy(mgr).For(&cosmosalpha.HostedSnapshot{})
+	cbuilder := ctrl.NewControllerManagedBy(mgr).For(&cosmosalpha.StatefulJob{})
 
 	// Watch for delete events for jobs.
 	cbuilder.Watches(
 		&source.Kind{Type: &batchv1.Job{}},
 		&handler.EnqueueRequestForObject{},
 		builder.WithPredicates(
-			snapshot.LabelSelectorPredicate(),
-			snapshot.DeletePredicate(),
+			statefuljob.LabelSelectorPredicate(),
+			statefuljob.DeletePredicate(),
 		),
 	)
 

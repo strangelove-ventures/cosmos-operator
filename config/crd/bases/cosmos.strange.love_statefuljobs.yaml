@@ -5,20 +5,20 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.9.0
   creationTimestamp: null
-  name: hostedsnapshots.cosmos.strange.love
+  name: statefuljobs.cosmos.strange.love
 spec:
   group: cosmos.strange.love
   names:
-    kind: HostedSnapshot
-    listKind: HostedSnapshotList
-    plural: hostedsnapshots
-    singular: hostedsnapshot
+    kind: StatefulJob
+    listKind: StatefulJobList
+    plural: statefuljobs
+    singular: statefuljob
   scope: Namespaced
   versions:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: HostedSnapshot is the Schema for the hostedsnapshots API
+        description: StatefulJob is the Schema for the statefuljobs API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -33,7 +33,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: HostedSnapshotSpec defines the desired state of HostedSnapshot
+            description: StatefulJobSpec defines the desired state of StatefulJob
             properties:
               interval:
                 description: Interval at which the controller runs snapshot job with
@@ -7236,7 +7236,7 @@ spec:
             - volumeClaimTemplate
             type: object
           status:
-            description: HostedSnapshotStatus defines the observed state of HostedSnapshot
+            description: StatefulJobStatus defines the observed state of StatefulJob
             properties:
               jobHistory:
                 description: Last 5 job statuses created by the controller ordered

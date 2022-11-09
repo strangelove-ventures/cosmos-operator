@@ -68,7 +68,7 @@ rules:
 - apiGroups:
   - cosmos.strange.love
   resources:
-  - hostedsnapshots
+  - statefuljobs
   verbs:
   - create
   - delete
@@ -80,13 +80,13 @@ rules:
 - apiGroups:
   - cosmos.strange.love
   resources:
-  - hostedsnapshots/finalizers
+  - statefuljobs/finalizers
   verbs:
   - update
 - apiGroups:
   - cosmos.strange.love
   resources:
-  - hostedsnapshots/status
+  - statefuljobs/status
   verbs:
   - get
   - patch

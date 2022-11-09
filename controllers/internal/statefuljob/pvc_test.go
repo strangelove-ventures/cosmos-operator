@@ -1,4 +1,4 @@
-package snapshot
+package statefuljob
 
 import (
 	"testing"
@@ -13,9 +13,9 @@ import (
 
 func TestBuildPVCs(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
-		crd := cosmosalpha.HostedSnapshot{
-			Spec: cosmosalpha.HostedSnapshotSpec{
-				VolumeClaimTemplate: cosmosalpha.SnapshotVolumeClaimTemplate{
+		crd := cosmosalpha.StatefulJob{
+			Spec: cosmosalpha.StatefulJobSpec{
+				VolumeClaimTemplate: cosmosalpha.StatefulJobVolumeClaimTemplate{
 					StorageClassName: "primo",
 					AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOncePod},
 				},
@@ -44,7 +44,7 @@ func TestBuildPVCs(t *testing.T) {
 
 		got := pvcs[0]
 
-		require.Equal(t, "snapshot-my-test", got.Name)
+		require.Equal(t, "stateful-job-my-test", got.Name)
 		require.Equal(t, "test", got.Namespace)
 
 		require.Equal(t, "my-snapshot", got.Spec.DataSource.Name)
@@ -57,7 +57,7 @@ func TestBuildPVCs(t *testing.T) {
 
 		wantLabels := map[string]string{
 			"app.kubernetes.io/created-by": "cosmos-operator",
-			"app.kubernetes.io/component":  "HostedSnapshot",
+			"app.kubernetes.io/component":  "StatefulJob",
 		}
 		require.Equal(t, wantLabels, got.Labels)
 	})
@@ -69,7 +69,7 @@ func TestBuildPVCs(t *testing.T) {
 			{nil},
 			{&snapshotv1.VolumeSnapshotStatus{}},
 		} {
-			crd := cosmosalpha.HostedSnapshot{}
+			crd := cosmosalpha.StatefulJob{}
 
 			vs := snapshotv1.VolumeSnapshot{
 				Status: tt.Status,

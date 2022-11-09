@@ -1,7 +1,7 @@
 apiVersion: cosmos.strange.love/v1alpha1
-kind: HostedSnapshot
+kind: StatefulJob
 metadata:
-  name: hostedsnapshot-sample
+  name: statefuljob-sample
 spec:
   # optional
   interval: 24h
