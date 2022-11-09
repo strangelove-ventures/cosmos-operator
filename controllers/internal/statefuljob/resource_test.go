@@ -15,5 +15,7 @@ func TestResourceName(t *testing.T) {
 	require.Equal(t, "stateful-job-test", ResourceName(&crd))
 
 	crd.Name = strings.Repeat("long", 100)
-	require.LessOrEqual(t, 253, len(ResourceName(&crd)))
+	name := ResourceName(&crd)
+	require.LessOrEqual(t, 253, len(name))
+	require.Contains(t, name, "stateful-job-")
 }
