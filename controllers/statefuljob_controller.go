@@ -25,7 +25,7 @@ import (
 	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
 	cosmosalpha "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
-	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/snapshot"
+	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/statefuljob"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
@@ -84,7 +84,7 @@ func (r *StatefulJobReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	defer r.updateStatus(ctx, crd)
 
 	// Find active job, if any.
-	found, active, err := snapshot.FindActiveJob(ctx, r, crd)
+	found, active, err := statefuljob.FindActiveJob(ctx, r, crd)
 	if err != nil {
 		r.reportErr(logger, crd, err)
 		return requeueSnapshot, nil
@@ -92,7 +92,7 @@ func (r *StatefulJobReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	// Update status if job still present and requeue.
 	if found {
-		crd.Status.JobHistory = snapshot.UpdateJobStatus(crd.Status.JobHistory, active.Status)
+		crd.Status.JobHistory = statefuljob.UpdateJobStatus(crd.Status.JobHistory, active.Status)
 		// Requeue quickly to minimize races where job is deleted before we can grab final status.
 		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 	}
@@ -101,7 +101,7 @@ func (r *StatefulJobReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	r.deletePVCs(ctx, crd)
 
 	// Check if we need to fire new job/pvc combos.
-	if !snapshot.ReadyForSnapshot(crd, time.Now()) {
+	if !statefuljob.ReadyForSnapshot(crd, time.Now()) {
 		return requeueResult, nil
 	}
 
@@ -112,7 +112,7 @@ func (r *StatefulJobReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return requeueSnapshot, nil
 	}
 
-	crd.Status.JobHistory = snapshot.AddJobStatus(crd.Status.JobHistory, batchv1.JobStatus{})
+	crd.Status.JobHistory = statefuljob.AddJobStatus(crd.Status.JobHistory, batchv1.JobStatus{})
 	// Requeue quickly so we get updated job status on the next reconcile.
 	return ctrl.Result{RequeueAfter: time.Second}, nil
 }
@@ -121,22 +121,22 @@ func (r *StatefulJobReconciler) createResources(ctx context.Context, crd *cosmos
 	logger := log.FromContext(ctx)
 
 	// Find most recent VolumeSnapshot.
-	recent, err := snapshot.RecentVolumeSnapshot(ctx, r, crd)
+	recent, err := statefuljob.RecentVolumeSnapshot(ctx, r, crd)
 	if err != nil {
 		return err
 	}
 	logger.V(1).Info("Found VolumeSnapshot", "name", recent.Name)
 
 	// Create PVCs.
-	if err = snapshot.NewCreator(r, func() ([]*corev1.PersistentVolumeClaim, error) {
-		return snapshot.BuildPVCs(crd, recent)
+	if err = statefuljob.NewCreator(r, func() ([]*corev1.PersistentVolumeClaim, error) {
+		return statefuljob.BuildPVCs(crd, recent)
 	}).Create(ctx, crd); err != nil {
 		return err
 	}
 
 	// Create jobs.
-	return snapshot.NewCreator(r, func() ([]*batchv1.Job, error) {
-		return snapshot.BuildJobs(crd), nil
+	return statefuljob.NewCreator(r, func() ([]*batchv1.Job, error) {
+		return statefuljob.BuildJobs(crd), nil
 	}).Create(ctx, crd)
 }
 
@@ -145,7 +145,7 @@ func (r *StatefulJobReconciler) deletePVCs(ctx context.Context, crd *cosmosalpha
 
 	var pvc corev1.PersistentVolumeClaim
 	pvc.Namespace = crd.Namespace
-	pvc.Name = snapshot.ResourceName(crd)
+	pvc.Name = statefuljob.ResourceName(crd)
 
 	err := r.Delete(ctx, &pvc)
 	switch {
@@ -192,8 +192,8 @@ func (r *StatefulJobReconciler) SetupWithManager(ctx context.Context, mgr ctrl.M
 		&source.Kind{Type: &batchv1.Job{}},
 		&handler.EnqueueRequestForObject{},
 		builder.WithPredicates(
-			snapshot.LabelSelectorPredicate(),
-			snapshot.DeletePredicate(),
+			statefuljob.LabelSelectorPredicate(),
+			statefuljob.DeletePredicate(),
 		),
 	)
 

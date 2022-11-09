@@ -1,4 +1,4 @@
-package snapshot
+package statefuljob
 
 import (
 	cosmosalpha "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"

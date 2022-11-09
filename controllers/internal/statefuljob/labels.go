@@ -1,4 +1,4 @@
-package snapshot
+package statefuljob
 
 import (
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
