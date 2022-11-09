@@ -43,16 +43,15 @@ type StatefulJobReconciler struct {
 	recorder record.EventRecorder
 }
 
-// NewHostedSnapshot returns a valid controller.
-func NewHostedSnapshot(client client.Client, recorder record.EventRecorder) *StatefulJobReconciler {
+// NewStatefulJob returns a valid controller.
+func NewStatefulJob(client client.Client, recorder record.EventRecorder) *StatefulJobReconciler {
 	return &StatefulJobReconciler{
 		Client:   client,
 		recorder: recorder,
 	}
 }
 
-// Requeue on a period interval to detect when it's time to run a snapshot job.
-var requeueSnapshot = ctrl.Result{RequeueAfter: 60 * time.Second}
+var requeueStatefulJob = ctrl.Result{RequeueAfter: 60 * time.Second}
 
 //+kubebuilder:rbac:groups=cosmos.strange.love,resources=statefuljobs,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=cosmos.strange.love,resources=statefuljobs/status,verbs=get;update;patch
@@ -76,7 +75,7 @@ func (r *StatefulJobReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		// Also, will get "not found" error if crd is deleted.
 		// No need to explicitly delete resources. Kube GC does so automatically because we set the controller reference
 		// for each resource.
-		return requeueSnapshot, kube.IgnoreNotFound(err)
+		return requeueStatefulJob, kube.IgnoreNotFound(err)
 	}
 
 	crd.Status.ObservedGeneration = crd.Generation
@@ -87,7 +86,7 @@ func (r *StatefulJobReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	found, active, err := statefuljob.FindActiveJob(ctx, r, crd)
 	if err != nil {
 		r.reportErr(logger, crd, err)
-		return requeueSnapshot, nil
+		return requeueStatefulJob, nil
 	}
 
 	// Update status if job still present and requeue.
@@ -109,7 +108,7 @@ func (r *StatefulJobReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	err = r.createResources(ctx, crd)
 	if err != nil {
 		r.reportErr(logger, crd, err)
-		return requeueSnapshot, nil
+		return requeueStatefulJob, nil
 	}
 
 	crd.Status.JobHistory = statefuljob.AddJobStatus(crd.Status.JobHistory, batchv1.JobStatus{})

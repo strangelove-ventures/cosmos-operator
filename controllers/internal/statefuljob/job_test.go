@@ -36,7 +36,7 @@ func TestBuildJobs(t *testing.T) {
 		got := jobs[0]
 
 		require.Equal(t, "test", got.Namespace)
-		require.Equal(t, "snapshot-axelar", got.Name)
+		require.Equal(t, "stateful-job-axelar", got.Name)
 
 		wantLabels := map[string]string{
 			"app.kubernetes.io/created-by": "cosmos-operator",
@@ -94,7 +94,7 @@ func TestBuildJobs(t *testing.T) {
 		gotVol, err := lo.Last(got.Spec.Template.Spec.Volumes)
 		require.NoError(t, err)
 		require.Equal(t, "snapshot", gotVol.Name)
-		require.Equal(t, "snapshot-cosmoshub", gotVol.VolumeSource.PersistentVolumeClaim.ClaimName)
+		require.Equal(t, "stateful-job-cosmoshub", gotVol.VolumeSource.PersistentVolumeClaim.ClaimName)
 
 		for _, c := range got.Spec.Template.Spec.Containers {
 			gotMount, err := lo.Last(c.VolumeMounts)

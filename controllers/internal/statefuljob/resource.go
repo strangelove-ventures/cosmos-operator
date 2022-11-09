@@ -7,5 +7,5 @@ import (
 
 // ResourceName is the name of all resources created by the controller.
 func ResourceName(crd *cosmosalpha.StatefulJob) string {
-	return kube.ToName("snapshot-" + crd.Name)
+	return kube.ToName("stateful-job-" + crd.Name)
 }

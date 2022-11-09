@@ -35,7 +35,7 @@ func TestFindActiveJob(t *testing.T) {
 		getter := mockGetter(func(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
 			require.NotNil(t, ctx)
 			require.Equal(t, "test-ns", key.Namespace)
-			require.Equal(t, "snapshot-test", key.Name)
+			require.Equal(t, "stateful-job-test", key.Name)
 			require.Empty(t, opts)
 
 			ref := obj.(*batchv1.Job)

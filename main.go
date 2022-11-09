@@ -135,7 +135,7 @@ func start(ctx context.Context) error {
 	).SetupWithManager(ctx, mgr); err != nil {
 		return fmt.Errorf("unable to create CosmosFullNode controller: %w", err)
 	}
-	if err = controllers.NewHostedSnapshot(
+	if err = controllers.NewStatefulJob(
 		mgr.GetClient(),
 		mgr.GetEventRecorderFor("StatefulJob"),
 	).SetupWithManager(ctx, mgr); err != nil {
