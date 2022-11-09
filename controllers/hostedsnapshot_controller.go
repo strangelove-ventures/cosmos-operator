@@ -37,15 +37,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-// HostedSnapshotReconciler reconciles a StatefulJob object.
-type HostedSnapshotReconciler struct {
+// StatefulJobReconciler reconciles a StatefulJob object.
+type StatefulJobReconciler struct {
 	client.Client
 	recorder record.EventRecorder
 }
 
 // NewHostedSnapshot returns a valid controller.
-func NewHostedSnapshot(client client.Client, recorder record.EventRecorder) *HostedSnapshotReconciler {
-	return &HostedSnapshotReconciler{
+func NewHostedSnapshot(client client.Client, recorder record.EventRecorder) *StatefulJobReconciler {
+	return &StatefulJobReconciler{
 		Client:   client,
 		recorder: recorder,
 	}
@@ -54,9 +54,9 @@ func NewHostedSnapshot(client client.Client, recorder record.EventRecorder) *Hos
 // Requeue on a period interval to detect when it's time to run a snapshot job.
 var requeueSnapshot = ctrl.Result{RequeueAfter: 60 * time.Second}
 
-//+kubebuilder:rbac:groups=cosmos.strange.love,resources=hostedsnapshots,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=cosmos.strange.love,resources=hostedsnapshots/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=cosmos.strange.love,resources=hostedsnapshots/finalizers,verbs=update
+//+kubebuilder:rbac:groups=cosmos.strange.love,resources=statefuljobs,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=cosmos.strange.love,resources=statefuljobs/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=cosmos.strange.love,resources=statefuljobs/finalizers,verbs=update
 //+kubebuilder:rbac:groups=snapshot.storage.k8s.io,resources=volumesnapshots,verbs=get;list;watch
 //+kubebuilder:rbac:groups="",resources=persistentvolumeclaims,verbs=get;list;watch;create;delete
 //+kubebuilder:rbac:groups="batch",resources=jobs,verbs=get;list;watch;create
@@ -66,7 +66,7 @@ var requeueSnapshot = ctrl.Result{RequeueAfter: 60 * time.Second}
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.13.0/pkg/reconcile
-func (r *HostedSnapshotReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *StatefulJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 	logger.V(1).Info("Entering reconcile loop")
 
@@ -117,7 +117,7 @@ func (r *HostedSnapshotReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	return ctrl.Result{RequeueAfter: time.Second}, nil
 }
 
-func (r *HostedSnapshotReconciler) createResources(ctx context.Context, crd *cosmosalpha.StatefulJob) error {
+func (r *StatefulJobReconciler) createResources(ctx context.Context, crd *cosmosalpha.StatefulJob) error {
 	logger := log.FromContext(ctx)
 
 	// Find most recent VolumeSnapshot.
@@ -140,7 +140,7 @@ func (r *HostedSnapshotReconciler) createResources(ctx context.Context, crd *cos
 	}).Create(ctx, crd)
 }
 
-func (r *HostedSnapshotReconciler) deletePVCs(ctx context.Context, crd *cosmosalpha.StatefulJob) {
+func (r *StatefulJobReconciler) deletePVCs(ctx context.Context, crd *cosmosalpha.StatefulJob) {
 	logger := log.FromContext(ctx)
 
 	var pvc corev1.PersistentVolumeClaim
@@ -158,21 +158,21 @@ func (r *HostedSnapshotReconciler) deletePVCs(ctx context.Context, crd *cosmosal
 	}
 }
 
-func (r *HostedSnapshotReconciler) reportErr(logger logr.Logger, crd *cosmosalpha.StatefulJob, err error) {
+func (r *StatefulJobReconciler) reportErr(logger logr.Logger, crd *cosmosalpha.StatefulJob, err error) {
 	logger.Error(err, "An error occurred")
 	msg := err.Error()
 	r.recorder.Event(crd, eventWarning, "error", msg)
 	crd.Status.StatusMessage = &msg
 }
 
-func (r *HostedSnapshotReconciler) updateStatus(ctx context.Context, crd *cosmosalpha.StatefulJob) {
+func (r *StatefulJobReconciler) updateStatus(ctx context.Context, crd *cosmosalpha.StatefulJob) {
 	if err := r.Status().Update(ctx, crd); err != nil {
 		log.FromContext(ctx).Error(err, "Failed to update status")
 	}
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *HostedSnapshotReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
+func (r *StatefulJobReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
 	// Index all VolumeSnapshots. Controller does not own any because it does not create them.
 	if err := mgr.GetFieldIndexer().IndexField(
 		ctx,
