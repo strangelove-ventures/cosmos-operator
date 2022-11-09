@@ -49,7 +49,7 @@ Strangelove uses it to compress and upload snapshots of chain data.
 
 Currently, it is alpha and will likely have backwards breaking changes. At this time, we do not recommend using it in production.
 
-View [an example](./config/samples/cosmos_v1_hostedsnapshot.yaml).
+View [an example](./config/samples/cosmos_v1alpha1_statefuljob.yaml).
 
 # Install in Your Cluster
 
