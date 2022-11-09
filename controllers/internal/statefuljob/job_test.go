@@ -79,8 +79,9 @@ func TestBuildJobs(t *testing.T) {
 			Spec: cosmosalpha.StatefulJobSpec{
 				PodTemplate: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
-						Volumes:    make([]corev1.Volume, 2),
-						Containers: append(make([]corev1.Container, 2), container),
+						Volumes:        make([]corev1.Volume, 2),
+						InitContainers: make([]corev1.Container, 1),
+						Containers:     append(make([]corev1.Container, 2), container),
 					},
 				},
 			},
@@ -96,7 +97,7 @@ func TestBuildJobs(t *testing.T) {
 		require.Equal(t, "snapshot", gotVol.Name)
 		require.Equal(t, "stateful-job-cosmoshub", gotVol.VolumeSource.PersistentVolumeClaim.ClaimName)
 
-		for _, c := range got.Spec.Template.Spec.Containers {
+		for _, c := range append(got.Spec.Template.Spec.InitContainers, got.Spec.Template.Spec.Containers...) {
 			gotMount, err := lo.Last(c.VolumeMounts)
 			require.NoError(t, err)
 			require.Equal(t, "snapshot", gotMount.Name)
@@ -119,7 +120,7 @@ func TestBuildJobs(t *testing.T) {
 		require.Len(t, jobs, 1)
 		got := jobs[0]
 
-		for _, c := range got.Spec.Template.Spec.Containers {
+		for _, c := range append(got.Spec.Template.Spec.InitContainers, got.Spec.Template.Spec.Containers...) {
 			envVar, err := lo.Last(c.Env)
 			require.NoError(t, err)
 			require.Equal(t, envVar.Name, "CHAIN_HOME")
