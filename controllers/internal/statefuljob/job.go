@@ -65,5 +65,10 @@ func BuildJobs(crd *cosmosalpha.StatefulJob) []*batchv1.Job {
 		job.Spec.Template.Spec.Containers[i].Env = append(job.Spec.Template.Spec.Containers[i].Env, envVar)
 	}
 
+	for i := range job.Spec.Template.Spec.InitContainers {
+		job.Spec.Template.Spec.InitContainers[i].VolumeMounts = append(job.Spec.Template.Spec.InitContainers[i].VolumeMounts, mount)
+		job.Spec.Template.Spec.InitContainers[i].Env = append(job.Spec.Template.Spec.InitContainers[i].Env, envVar)
+	}
+
 	return []*batchv1.Job{&job}
 }
