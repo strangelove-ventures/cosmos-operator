@@ -82,8 +82,9 @@ Status: v1alpha1, experimental only
 
 Currently, StatefulJob is alpha and will likely have backwards breaking changes. At this time, **we do not recommend using it in production**.
 
-The StatefulJob is a means to process persistent data from a recent [VolumeSnapshot](https://kubernetes.io/docs/concepts/storage/volume-snapshots/) of a PVC created from a CosmosFullNode. 
-It periodically creates a job and PVC using the most recent VolumeSnapshot as its data source. It mounts the PVC as a volume into all of the job's pods. 
+The StatefulJob is a means to process persistent data from a recent [VolumeSnapshot](https://kubernetes.io/docs/concepts/storage/volume-snapshots/).
+It periodically creates a job and PVC using the most recent VolumeSnapshot as its data source. It mounts the PVC as volume "snapshot" into the job's pod.
+The user must configure container volume mounts.
 It's similar to a CronJob but does not offer advanced scheduling via a crontab. 
 
 Strangelove uses it to compress and upload snapshots of chain data.
