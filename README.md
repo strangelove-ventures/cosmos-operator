@@ -31,30 +31,58 @@ thus minimizing human intervention and human error.
 
 ## CosmosFullNode
 
-API Version: v1
+Status: v1, stable
+
+CosmosFullNode is the flagship CRD. Its purpose is to deploy highly-available, fault-tolerant RPC nodes. 
+It will eventually support validator sentries, persistent peers, and seeds, but is currently only suitable for RPC.
 
 The CosmosFullNode controller acts like a hybrid between a StatefulSet and a Deployment.
-Like a StatefulSet, each pod has a corresponding persistent volume to manage persisted blockchain data.
+Like a StatefulSet, each pod has a corresponding persistent volume to manage blockchain data.
 But, you can also configure rolling updates similar to a Deployment.
 
-CosmosFullNode gives you more control over individual pod and pvc pairs than a StatefulSet.
-
-CosmosFullNode is v1 and stable. Future changes should not be backwards breaking. 
-As of this writing, Strangelove has been running CosmosFullNode in production for several weeks.
+As of this writing, Strangelove has been running CosmosFullNode in production for many weeks.
 
 View a [minimal example](./config/samples/cosmos_v1_cosmosfullnode.yaml) or a [full example](./config/samples/cosmos_v1_cosmosfullnode_full.yaml).
 
+### Roadmap
+
+Disclaimer: Strangelove has not committed to these enhancements. They represent ideas that may or may not come to fruition.
+
+* Scheduled upgrades. Set a halt height and image version. The controller performs a rolling update with the new image version after the committed halt height.
+* Quicker p2p discovery using private peers. 
+* Advanced readiness probe behavior. (The tendermint rpc status endpoint is not always reliable.)
+* Automatic rollout for PVC resizing. (Currently human intervention required to restart pods after PVC resized.)
+* Automatic PVC resizing. The controller increases PVC size once storage reaches a configured threshold; e.g. 80% full. (This may be a different CRD.)
+* Bootstrap config using the chain registry. Query the chain registry and set config based on the registry.
+* Validate p2p such as peers, seeds, etc. and filter out non-responsive peers.
+* HPA support.
+* Automatic upgrades. Controller monitors governance and performs upgrade without any human intervention.
+* Corrupt data recovery. Detect when a PVC may have corrupted data. Restore data from a recent VolumeSnapshot.
+* Safe, automatic backups. Create periodic VolumeSnapshots of PVCs while minimizing chance of data corruption while creating the snapshot.
+
+### Why not a StatefulSet?
+
+CosmosFullNode gives you more control over individual pod and pvc pairs vs. a StatefulSet. You can configure pod/pvc 
+pairs differently using the `instanceOverrides` feature. For example, data may become corrupt and the human operator needs 
+to tweak or restore data.
+
+Additionally, each pod requires slightly different config (such as peer settings in config.toml). Therefore, a blanket 
+template as found in StatefulSet will not suffice.
+
+In summary, we wanted precise control over resources so using an existing controller such as StatefulSet, Deployment, 
+ReplicaSet, etc. was not a good fit.
+
 ## StatefulJob
 
-API Version: v1alpha1
+Status: v1alpha1, experimental only
+
+Currently, StatefulJob is alpha and will likely have backwards breaking changes. At this time, **we do not recommend using it in production**.
 
 The StatefulJob is a means to process persistent data from a recent [VolumeSnapshot](https://kubernetes.io/docs/concepts/storage/volume-snapshots/) of a PVC created from a CosmosFullNode. 
 It periodically creates a job and PVC using the most recent VolumeSnapshot as its data source. It mounts the PVC as a volume into all of the job's pods. 
 It's similar to a CronJob but does not offer advanced scheduling via a crontab. 
 
 Strangelove uses it to compress and upload snapshots of chain data.
-
-Currently, it is alpha and will likely have backwards breaking changes. At this time, we do not recommend using it in production.
 
 View [an example](./config/samples/cosmos_v1alpha1_statefuljob.yaml).
 
