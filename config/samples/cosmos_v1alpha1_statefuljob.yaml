@@ -23,6 +23,9 @@ spec:
           - ls
         args:
           - "/home/operator/cosmos"
+        volumeMounts:
+          - mountPath: /home/operator/cosmos
+            name: snapshot # StatefulJob always injects volume "snapshot" into pod spec.
   # required
   volumeClaimTemplate:
     storageClassName: premium-rwo
