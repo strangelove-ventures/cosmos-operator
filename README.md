@@ -46,9 +46,13 @@ View a [minimal example](./config/samples/cosmos_v1_cosmosfullnode.yaml) or a [f
 
 ### Roadmap
 
-Disclaimer: Strangelove has not committed to these enhancements. They represent ideas that may or may not come to fruition.
+Disclaimer: Strangelove has not committed to these enhancements. They represent ideas that may or may not come to fruition. 
+Currently, is no timeline for any of these potential features.
 
 * Scheduled upgrades. Set a halt height and image version. The controller performs a rolling update with the new image version after the committed halt height.
+* Support configuration suitable for validator sentries.
+* Reliable, persistent peer support.
+* Support configuration suitable for seeds.
 * Quicker p2p discovery using private peers. 
 * Advanced readiness probe behavior. (The tendermint rpc status endpoint is not always reliable.)
 * Automatic rollout for PVC resizing. (Currently human intervention required to restart pods after PVC resized.)
