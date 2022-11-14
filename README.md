@@ -58,7 +58,7 @@ Disclaimer: Strangelove has not committed to these enhancements. They represent 
 * HPA support.
 * Automatic upgrades. Controller monitors governance and performs upgrade without any human intervention.
 * Corrupt data recovery. Detect when a PVC may have corrupted data. Restore data from a recent VolumeSnapshot.
-* Safe, automatic backups. Create periodic VolumeSnapshots of PVCs while minimizing chance of data corruption while creating the snapshot.
+* Safe, automatic backups. Create periodic VolumeSnapshots of PVCs while minimizing chance of data corruption during snapshot creation.
 
 ### Why not a StatefulSet?
 
@@ -88,12 +88,11 @@ View [an example](./config/samples/cosmos_v1alpha1_statefuljob.yaml).
 
 # Install in Your Cluster
 
-TODO: One liner to find latest image tag.
-
 View [images here](https://github.com/strangelove-ventures/cosmos-operator/pkgs/container/cosmos-operator).
 
 ```sh
-make deploy IMG=ghcr.io/strangelove-ventures/cosmos-operator:<version>
+
+make deploy IMG="ghcr.io/strangelove-ventures/cosmos-operator:$(git describe --tags --abbrev=0)"
 ```
 
 TODO: Helm chart
