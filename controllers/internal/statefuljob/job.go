@@ -39,9 +39,8 @@ func BuildJobs(crd *cosmosalpha.StatefulJob) []*batchv1.Job {
 		job.Spec.TTLSecondsAfterFinished = v
 	}
 
-	const volName = "snapshot"
 	job.Spec.Template.Spec.Volumes = append(job.Spec.Template.Spec.Volumes, corev1.Volume{
-		Name: volName,
+		Name: "snapshot",
 		VolumeSource: corev1.VolumeSource{PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 			ClaimName: ResourceName(crd),
 		}},
@@ -49,25 +48,6 @@ func BuildJobs(crd *cosmosalpha.StatefulJob) []*batchv1.Job {
 
 	if job.Spec.Template.Spec.RestartPolicy == "" {
 		job.Spec.Template.Spec.RestartPolicy = corev1.RestartPolicyNever
-	}
-
-	const chainHome = "/home/operator/cosmos"
-	var (
-		mount = corev1.VolumeMount{
-			Name:      volName,
-			MountPath: chainHome,
-		}
-		envVar = corev1.EnvVar{Name: "CHAIN_HOME", Value: chainHome}
-	)
-
-	for i := range job.Spec.Template.Spec.Containers {
-		job.Spec.Template.Spec.Containers[i].VolumeMounts = append(job.Spec.Template.Spec.Containers[i].VolumeMounts, mount)
-		job.Spec.Template.Spec.Containers[i].Env = append(job.Spec.Template.Spec.Containers[i].Env, envVar)
-	}
-
-	for i := range job.Spec.Template.Spec.InitContainers {
-		job.Spec.Template.Spec.InitContainers[i].VolumeMounts = append(job.Spec.Template.Spec.InitContainers[i].VolumeMounts, mount)
-		job.Spec.Template.Spec.InitContainers[i].Env = append(job.Spec.Template.Spec.InitContainers[i].Env, envVar)
 	}
 
 	return []*batchv1.Job{&job}

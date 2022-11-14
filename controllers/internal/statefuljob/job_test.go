@@ -69,9 +69,6 @@ func TestBuildJobs(t *testing.T) {
 	})
 
 	t.Run("volumes", func(t *testing.T) {
-		container := corev1.Container{
-			VolumeMounts: make([]corev1.VolumeMount, 1),
-		}
 		crd := cosmosalpha.StatefulJob{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "cosmoshub",
@@ -79,9 +76,7 @@ func TestBuildJobs(t *testing.T) {
 			Spec: cosmosalpha.StatefulJobSpec{
 				PodTemplate: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
-						Volumes:        make([]corev1.Volume, 2),
-						InitContainers: make([]corev1.Container, 1),
-						Containers:     append(make([]corev1.Container, 2), container),
+						Volumes: make([]corev1.Volume, 2),
 					},
 				},
 			},
@@ -96,35 +91,5 @@ func TestBuildJobs(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "snapshot", gotVol.Name)
 		require.Equal(t, "stateful-job-cosmoshub", gotVol.VolumeSource.PersistentVolumeClaim.ClaimName)
-
-		for _, c := range append(got.Spec.Template.Spec.InitContainers, got.Spec.Template.Spec.Containers...) {
-			gotMount, err := lo.Last(c.VolumeMounts)
-			require.NoError(t, err)
-			require.Equal(t, "snapshot", gotMount.Name)
-			require.Equal(t, "/home/operator/cosmos", gotMount.MountPath)
-		}
-	})
-
-	t.Run("env vars", func(t *testing.T) {
-		crd := cosmosalpha.StatefulJob{
-			Spec: cosmosalpha.StatefulJobSpec{
-				PodTemplate: corev1.PodTemplateSpec{
-					Spec: corev1.PodSpec{
-						Containers: make([]corev1.Container, 2),
-					},
-				},
-			},
-		}
-
-		jobs := BuildJobs(&crd)
-		require.Len(t, jobs, 1)
-		got := jobs[0]
-
-		for _, c := range append(got.Spec.Template.Spec.InitContainers, got.Spec.Template.Spec.Containers...) {
-			envVar, err := lo.Last(c.Env)
-			require.NoError(t, err)
-			require.Equal(t, envVar.Name, "CHAIN_HOME")
-			require.Equal(t, envVar.Value, "/home/operator/cosmos")
-		}
 	})
 }
