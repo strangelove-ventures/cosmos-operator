@@ -9,6 +9,8 @@ import (
 )
 
 func TestResourceName(t *testing.T) {
+	t.Parallel()
+
 	var crd cosmosalpha.StatefulJob
 	crd.Name = "test"
 
