@@ -44,7 +44,7 @@ func TestBuildPVCs(t *testing.T) {
 
 		got := pvcs[0]
 
-		require.Equal(t, "stateful-job-my-test", got.Name)
+		require.Equal(t, "my-test", got.Name)
 		require.Equal(t, "test", got.Namespace)
 
 		require.Equal(t, "my-snapshot", got.Spec.DataSource.Name)
