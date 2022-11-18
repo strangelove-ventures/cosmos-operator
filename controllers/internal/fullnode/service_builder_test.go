@@ -90,32 +90,6 @@ func TestBuildServices(t *testing.T) {
 		require.Equal(t, 1, len(got))
 	})
 
-	t.Run("p2p max external addresses", func(t *testing.T) {
-		crd := defaultCRD()
-		crd.Spec.Replicas = 10
-
-		for i := 0; i < 5; i++ {
-			crd.Spec.Service.MaxP2PExternalAddresses = ptr(int32(i))
-			svcs := BuildServices(&crd)
-
-			got := lo.Filter(svcs, func(s *corev1.Service, _ int) bool {
-				return s.Labels[kube.ComponentLabel] == "p2p"
-			})
-
-			require.Equal(t, i, len(got))
-		}
-
-		crd.Spec.Replicas = 1
-		crd.Spec.Service.MaxP2PExternalAddresses = ptr(int32(2))
-
-		svcs := BuildServices(&crd)
-		got := lo.Filter(svcs, func(s *corev1.Service, _ int) bool {
-			return s.Labels[kube.ComponentLabel] == "p2p"
-		})
-
-		require.Equal(t, 1, len(got))
-	})
-
 	t.Run("rpc service", func(t *testing.T) {
 		crd := defaultCRD()
 		crd.Spec.Replicas = 1
