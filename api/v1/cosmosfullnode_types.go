@@ -487,7 +487,7 @@ const (
 type ServiceSpec struct {
 	// Maximum number of p2p services to create for tendermint peer exchange.
 	// The public endpoint is set as the "p2p.external_address" in the tendermint config.toml.
-	// If not set, defaults to 3.
+	// If not set, defaults to 1.
 	// +kubebuilder:validation:Minimum:=0
 	// +optional
 	MaxP2PExternalAddresses *int32 `json:"maxP2PExternalAddresses"`

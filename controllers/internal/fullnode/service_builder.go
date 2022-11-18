@@ -15,7 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-const maxP2PServiceDefault = 3
+const maxP2PServiceDefault = 1
 
 // BuildServices returns a list of services given the crd.
 //

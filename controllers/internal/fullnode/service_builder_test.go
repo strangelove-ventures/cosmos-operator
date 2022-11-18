@@ -25,7 +25,7 @@ func TestBuildServices(t *testing.T) {
 		crd.Spec.PodTemplate.Image = "terra:v6.0.0"
 		svcs := BuildServices(&crd)
 
-		require.Equal(t, 4, len(svcs)) // Includes single rpc service.
+		require.Equal(t, 2, len(svcs)) // Includes single rpc service.
 
 		p2p := svcs[0]
 		require.Equal(t, "terra-p2p-0", p2p.Name)
@@ -59,9 +59,6 @@ func TestBuildServices(t *testing.T) {
 		}
 
 		require.Equal(t, wantSpec, p2p.Spec)
-
-		p2p = svcs[1]
-		require.Equal(t, "terra-p2p-1", p2p.Name)
 	})
 
 	t.Run("p2p max external addresses", func(t *testing.T) {
