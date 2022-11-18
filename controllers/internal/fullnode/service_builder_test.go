@@ -25,7 +25,7 @@ func TestBuildServices(t *testing.T) {
 		crd.Spec.PodTemplate.Image = "terra:v6.0.0"
 		svcs := BuildServices(&crd)
 
-		require.Equal(t, 4, len(svcs)) // Includes single rpc service.
+		require.Equal(t, 2, len(svcs)) // Includes single rpc service.
 
 		p2p := svcs[0]
 		require.Equal(t, "terra-p2p-0", p2p.Name)
@@ -59,35 +59,6 @@ func TestBuildServices(t *testing.T) {
 		}
 
 		require.Equal(t, wantSpec, p2p.Spec)
-
-		p2p = svcs[1]
-		require.Equal(t, "terra-p2p-1", p2p.Name)
-	})
-
-	t.Run("p2p max external addresses", func(t *testing.T) {
-		crd := defaultCRD()
-		crd.Spec.Replicas = 10
-
-		for i := 0; i < 5; i++ {
-			crd.Spec.Service.MaxP2PExternalAddresses = ptr(int32(i))
-			svcs := BuildServices(&crd)
-
-			got := lo.Filter(svcs, func(s *corev1.Service, _ int) bool {
-				return s.Labels[kube.ComponentLabel] == "p2p"
-			})
-
-			require.Equal(t, i, len(got))
-		}
-
-		crd.Spec.Replicas = 1
-		crd.Spec.Service.MaxP2PExternalAddresses = ptr(int32(2))
-
-		svcs := BuildServices(&crd)
-		got := lo.Filter(svcs, func(s *corev1.Service, _ int) bool {
-			return s.Labels[kube.ComponentLabel] == "p2p"
-		})
-
-		require.Equal(t, 1, len(got))
 	})
 
 	t.Run("p2p max external addresses", func(t *testing.T) {
