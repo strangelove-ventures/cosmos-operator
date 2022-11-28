@@ -11,6 +11,24 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestTendermintStatus_LatestBlockHeight(t *testing.T) {
+	for _, tt := range []struct {
+		Height string
+		Want   uint64
+	}{
+		{"", 0},
+		{"huh", 0},
+		{"-1", 0},
+		{"1", 1},
+		{"1234567", 1234567},
+	} {
+		var status TendermintStatus
+		status.Result.SyncInfo.LatestBlockHeight = tt.Height
+
+		require.Equal(t, tt.Want, status.LatestBlockHeight(), tt)
+	}
+}
+
 func TestTendermintClient_Status(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
 		// This context ensures we're not comparing instances of context.Background().

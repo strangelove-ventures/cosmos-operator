@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 )
 
@@ -52,6 +53,12 @@ type TendermintStatus struct {
 			VotingPower string `json:"voting_power"`
 		} `json:"validator_info"`
 	} `json:"result"`
+}
+
+// LatestBlockHeight parses the latest block height string. If the string is malformed, returns 0.
+func (status TendermintStatus) LatestBlockHeight() uint64 {
+	h, _ := strconv.ParseUint(status.Result.SyncInfo.LatestBlockHeight, 10, 64)
+	return h
 }
 
 // TendermintClient knows how to make requests to the Tendermint RPC endpoints.
