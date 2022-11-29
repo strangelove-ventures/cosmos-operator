@@ -75,6 +75,18 @@ type FullNodeSpec struct {
 	// Used for debugging.
 	// +optional
 	InstanceOverrides map[string]InstanceOverridesSpec `json:"instanceOverrides"`
+
+	// VolumeSnapshot creates recurring VolumeSnapshots of a PVC.
+	// A VolumeSnapshot is a CRD (installed in GKE by default).
+	// See: https://kubernetes.io/docs/concepts/storage/volume-snapshots/
+	// This enables recurring, consistent backups.
+	// To prevent data corruption, the pod is temporarily deleted while the snapshot takes place which could take
+	// several minutes.
+	// Therefore, if you enable VolumeSnapshots, you must use replica count >= 2 to prevent downtime.
+	// Only 1 VolumeSnapshot is created at a time, so at most only 1 pod is temporarily deleted.
+	// Multiple, parallel VolumeSnapshots are not supported.
+	// +optional
+	VolumeSnapshot *VolumeSnapshotSpec `json:"volumeSnapshot"`
 }
 
 // FullNodeStatus defines the observed state of CosmosFullNode
@@ -538,6 +550,19 @@ const (
 	DisableAll DisableStrategy = "All"
 	DisablePod DisableStrategy = "Pod"
 )
+
+// VolumeSnapshotSpec controls how to create backups via VolumeSnapshots.
+type VolumeSnapshotSpec struct {
+	// A crontab schedule. See https://crontab.guru for format.
+	// Some kubernetes providers rate limit VolumeSnapshot creation. Therefore, setting a crontab that's
+	// too frequent may result in rate limiting errors.
+	Schedule string `json:"schedule"`
+
+	// The number of recent VolumeSnapshots to keep.
+	// Default is 3.
+	// +optional
+	Limit int32 `json:"limit"`
+}
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
