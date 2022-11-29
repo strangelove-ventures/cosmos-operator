@@ -13,7 +13,7 @@ import (
 
 // TendermintStatus is the response from the /status RPC endpoint.
 type TendermintStatus struct {
-	JsonRPC string `json:"jsonrpc"`
+	JSONRPC string `json:"jsonrpc"`
 	ID      int    `json:"id"`
 	Result  struct {
 		NodeInfo struct {
