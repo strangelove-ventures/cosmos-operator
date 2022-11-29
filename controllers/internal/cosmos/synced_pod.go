@@ -27,9 +27,9 @@ func SyncedPod(ctx context.Context, client TendermintStatuser, candidates []*cor
 	)
 
 	for i := range candidates {
-		idx := i
+		i := i
 		eg.Go(func() error {
-			pod := candidates[idx]
+			pod := candidates[i]
 			cctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 			defer cancel()
 			host := fmt.Sprintf("http://%s:26657", pod.Status.PodIP)
@@ -41,7 +41,7 @@ func SyncedPod(ctx context.Context, client TendermintStatuser, candidates []*cor
 			if h == 0 {
 				return fmt.Errorf("pod %s: tendermint status returned 0 for height", pod.Name)
 			}
-			heights[idx] = h
+			heights[i] = h
 			return nil
 		})
 	}
