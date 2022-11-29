@@ -12,6 +12,8 @@ import (
 )
 
 func TestTendermintStatus_LatestBlockHeight(t *testing.T) {
+	t.Parallel()
+
 	for _, tt := range []struct {
 		Height string
 		Want   uint64
@@ -30,6 +32,8 @@ func TestTendermintStatus_LatestBlockHeight(t *testing.T) {
 }
 
 func TestTendermintClient_Status(t *testing.T) {
+	t.Parallel()
+
 	t.Run("happy path", func(t *testing.T) {
 		// This context ensures we're not comparing instances of context.Background().
 		cctx, cancel := context.WithCancel(context.Background())
