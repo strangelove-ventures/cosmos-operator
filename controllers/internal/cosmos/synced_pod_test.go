@@ -87,6 +87,20 @@ func TestSyncedPod(t *testing.T) {
 		require.Error(t, err)
 	})
 
+	t.Run("no ip assigned yet", func(t *testing.T) {
+		client := mockStatuser(func(ctx context.Context, rpcHost string) (TendermintStatus, error) {
+			panic("should not be called")
+		})
+
+		pod := pod1.DeepCopy()
+		pod.Status.PodIP = ""
+
+		_, err := SyncedPod(ctx, client, []*corev1.Pod{pod})
+
+		require.Error(t, err)
+		require.EqualError(t, err, "pod pod-1: ip not assigned yet")
+	})
+
 	t.Run("no candidates", func(t *testing.T) {
 		client := mockStatuser(func(ctx context.Context, rpcHost string) (TendermintStatus, error) {
 			panic("should not be called")

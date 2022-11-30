@@ -30,9 +30,13 @@ func SyncedPod(ctx context.Context, client TendermintStatuser, candidates []*cor
 		i := i
 		eg.Go(func() error {
 			pod := candidates[i]
+			ip := pod.Status.PodIP
+			if ip == "" {
+				return fmt.Errorf("pod %s: ip not assigned yet", pod.Name)
+			}
 			cctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 			defer cancel()
-			host := fmt.Sprintf("http://%s:26657", pod.Status.PodIP)
+			host := fmt.Sprintf("http://%s:26657", ip)
 			resp, err := client.Status(cctx, host)
 			if err != nil {
 				return fmt.Errorf("pod %s: %w", pod.Name, err)
