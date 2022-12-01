@@ -144,9 +144,6 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return requeueResult, nil
 	}
 
-	// TODO(nix): Temporary
-	r.findVolumeSnapshotCandidate(ctx, crd)
-
 	// Check final state and requeue if necessary.
 	if p2pAddresses.Incomplete() {
 		r.recorder.Event(crd, eventNormal, "p2pIncomplete", "Waiting for p2p service IPs or Hostnames to be ready.")
