@@ -1,6 +1,7 @@
 package kube
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/samber/lo"
@@ -88,4 +89,13 @@ func (errs *ReconcileErrors) Append(err ReconcileError) {
 // Any returns true if any errors were collected.
 func (errs *ReconcileErrors) Any() bool {
 	return len(errs.errs) > 0
+}
+
+// Errors unpacks multiple errors from ReconcileErrors
+func Errors(err ReconcileError) []ReconcileError {
+	errs := new(ReconcileErrors)
+	if errors.As(err, &errs) {
+		return errs.errs
+	}
+	return []ReconcileError{err}
 }

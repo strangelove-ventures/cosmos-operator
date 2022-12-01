@@ -49,3 +49,24 @@ func TestReconcileErrors(t *testing.T) {
 		require.False(t, errs.IsTransient())
 	})
 }
+
+func TestErrors(t *testing.T) {
+	t.Run("single error", func(t *testing.T) {
+		err := TransientError(errors.New("boom"))
+		got := Errors(err)
+
+		require.Len(t, got, 1)
+		require.Equal(t, err, got[0])
+	})
+
+	t.Run("multiple errors", func(t *testing.T) {
+		errs := &ReconcileErrors{}
+		errs.Append(TransientError(errors.New("1")))
+		errs.Append(UnrecoverableError(errors.New("2")))
+		got := Errors(errs)
+
+		require.Len(t, got, 2)
+		require.EqualError(t, got[0], "1")
+		require.EqualError(t, got[1], "2")
+	})
+}
