@@ -99,9 +99,7 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return finishResult, client.IgnoreNotFound(err)
 	}
 
-	crd.Status.ObservedGeneration = crd.Generation
-	crd.Status.Phase = cosmosv1.FullNodePhaseProgressing
-	crd.Status.StatusMessage = nil
+	fullnode.ResetStatus(crd)
 	defer r.updateStatus(ctx, crd)
 
 	errs := &kube.ReconcileErrors{}
