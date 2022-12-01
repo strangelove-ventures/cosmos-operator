@@ -106,6 +106,16 @@ type FullNodeStatus struct {
 	// A generic message for the user. May contain errors.
 	// +optional
 	StatusMessage *string `json:"status"`
+
+	// Status related to recurring volume snapshots.
+	// +optional
+	VolumeSnapshot *VolumeSnapshotStatus `json:"volumeSnapshot"`
+}
+
+type VolumeSnapshotStatus struct {
+	// The date the user first configured recurring volume snapshots.
+	// Used as a reference when calculating the next time to create a snapshot.
+	ActivatedAt metav1.Time `json:"activatedAt"`
 }
 
 type FullNodePhase string

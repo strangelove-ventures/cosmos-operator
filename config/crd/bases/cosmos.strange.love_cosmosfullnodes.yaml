@@ -1658,6 +1658,18 @@ spec:
               status:
                 description: A generic message for the user. May contain errors.
                 type: string
+              volumeSnapshot:
+                description: Status related to recurring volume snapshots.
+                properties:
+                  activatedAt:
+                    description: The date the user first configured recurring volume
+                      snapshots. Used as a reference when calculating the next time
+                      to create a snapshot.
+                    format: date-time
+                    type: string
+                required:
+                - activatedAt
+                type: object
             required:
             - observedGeneration
             - phase
