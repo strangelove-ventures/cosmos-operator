@@ -62,7 +62,7 @@ latest-snapshot: ## Get latest snapshot from polkachu. Must set CHAIN_NAME flag 
 
 .PHONY: test
 test: manifests generate ## Run unit tests.
-	@go test -short -cover -timeout=60s ./...
+	go test -race -short -cover -timeout=60s ./...
 
 .PHONY: tools
 tools: ## Install dev tools.
