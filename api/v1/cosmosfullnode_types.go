@@ -563,7 +563,8 @@ const (
 
 // VolumeSnapshotSpec controls how to create backups via VolumeSnapshots.
 type VolumeSnapshotSpec struct {
-	// A crontab schedule. See https://crontab.guru for format.
+	// A crontab schedule using the standard as described in https://en.wikipedia.org/wiki/Cron.
+	// See https://crontab.guru for format.
 	// Some kubernetes providers rate limit VolumeSnapshot creation. Therefore, setting a crontab that's
 	// too frequent may result in rate limiting errors.
 	Schedule string `json:"schedule"`

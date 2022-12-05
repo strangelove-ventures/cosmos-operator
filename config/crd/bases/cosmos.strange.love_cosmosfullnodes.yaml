@@ -1628,8 +1628,9 @@ spec:
                     format: int32
                     type: integer
                   schedule:
-                    description: A crontab schedule. See https://crontab.guru for
-                      format. Some kubernetes providers rate limit VolumeSnapshot
+                    description: A crontab schedule using the standard as described
+                      in https://en.wikipedia.org/wiki/Cron. See https://crontab.guru
+                      for format. Some kubernetes providers rate limit VolumeSnapshot
                       creation. Therefore, setting a crontab that's too frequent may
                       result in rate limiting errors.
                     type: string
