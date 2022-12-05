@@ -24,7 +24,7 @@ func TestResetStatus(t *testing.T) {
 		require.Equal(t, createdAt, crd.Status.CreatedAt)
 	})
 
-	t.Run("createAt not set", func(t *testing.T) {
+	t.Run("createdAt not set", func(t *testing.T) {
 		var crd cosmosalpha.ScheduledVolumeSnapshot
 		ResetStatus(&crd)
 
