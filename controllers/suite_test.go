@@ -54,7 +54,6 @@ func TestAPIs(t *testing.T) {
 	require.NoError(t, err)
 
 	err = cosmosv1alpha1.AddToScheme(scheme.Scheme)
-	Expect(err).NotTo(HaveOccurred())
 
 	//+kubebuilder:scaffold:scheme
 
