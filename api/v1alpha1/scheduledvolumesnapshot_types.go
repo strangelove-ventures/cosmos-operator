@@ -20,6 +20,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+func init() {
+	SchemeBuilder.Register(&ScheduledVolumeSnapshot{}, &ScheduledVolumeSnapshotList{})
+}
+
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
@@ -87,8 +91,4 @@ type ScheduledVolumeSnapshotList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []ScheduledVolumeSnapshot `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&ScheduledVolumeSnapshot{}, &ScheduledVolumeSnapshotList{})
 }
