@@ -56,6 +56,13 @@ type ScheduledVolumeSnapshotStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
+	// The most recent generation observed by the controller.
+	ObservedGeneration int64 `json:"observedGeneration"`
+
+	// A generic message for the user. May contain errors.
+	// +optional
+	StatusMessage *string `json:"status"`
+
 	// The date when the CRD was created.
 	// Used as a reference when calculating the next time to create a snapshot.
 	CreatedAt metav1.Time `json:"createdAt"`
