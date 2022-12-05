@@ -26,6 +26,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	cosmosv1alpha1 "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -51,6 +52,9 @@ func TestAPIs(t *testing.T) {
 
 	err = cosmosv1.AddToScheme(scheme.Scheme)
 	require.NoError(t, err)
+
+	err = cosmosv1alpha1.AddToScheme(scheme.Scheme)
+	Expect(err).NotTo(HaveOccurred())
 
 	//+kubebuilder:scaffold:scheme
 
