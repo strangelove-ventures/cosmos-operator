@@ -84,7 +84,7 @@ var (
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.12.1/pkg/reconcile
 func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
-	logger.V(1).Info("Entering reconcile loop")
+	logger.V(1).Info("Entering reconcile loop", "request", req.NamespacedName)
 
 	// Get the CRD
 	crd := new(cosmosv1.CosmosFullNode)
@@ -175,7 +175,7 @@ func (r *CosmosFullNodeReconciler) updateStatus(ctx context.Context, crd *cosmos
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *CosmosFullNodeReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
+func (r *CosmosFullNodeReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager, events <-chan event.GenericEvent) error {
 	// Index pods.
 	err := mgr.GetFieldIndexer().IndexField(
 		ctx,
@@ -237,6 +237,11 @@ func (r *CosmosFullNodeReconciler) SetupWithManager(ctx context.Context, mgr ctr
 			}),
 		)
 	}
+
+	cbuilder.Watches(
+		&source.Channel{Source: events},
+		&handler.EnqueueRequestForObject{},
+	)
 
 	return cbuilder.Complete(r)
 }

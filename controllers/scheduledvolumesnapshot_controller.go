@@ -19,19 +19,28 @@ package controllers
 import (
 	"context"
 
+	cosmosv1alpha1 "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/volsnapshot"
-	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-
-	cosmosv1alpha1 "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
 )
 
 // ScheduledVolumeSnapshotReconciler reconciles a ScheduledVolumeSnapshot object
 type ScheduledVolumeSnapshotReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	recorder record.EventRecorder
+	events   chan<- event.GenericEvent
+}
+
+func NewScheduledVolumeSnapshotReconciler(
+	client client.Client,
+	recorder record.EventRecorder,
+	events chan<- event.GenericEvent,
+) *ScheduledVolumeSnapshotReconciler {
+	return &ScheduledVolumeSnapshotReconciler{Client: client, recorder: recorder, events: events}
 }
 
 //+kubebuilder:rbac:groups=cosmos.strange.love,resources=scheduledvolumesnapshots,verbs=get;list;watch;create;update;patch;delete
@@ -41,7 +50,8 @@ type ScheduledVolumeSnapshotReconciler struct {
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 func (r *ScheduledVolumeSnapshotReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	logger := log.FromContext(ctx)
+	logger.V(1).Info("Entering reconcile loop", "request", req.NamespacedName)
 
 	// Get the CRD
 	crd := new(cosmosv1alpha1.ScheduledVolumeSnapshot)
@@ -55,6 +65,10 @@ func (r *ScheduledVolumeSnapshotReconciler) Reconcile(ctx context.Context, req c
 
 	volsnapshot.ResetStatus(crd)
 	defer r.updateStatus(ctx, crd)
+
+	// TODO: remove me
+	logger.V(1).Info("Sending generic event")
+	r.events <- event.GenericEvent{Object: crd}
 
 	return finishResult, nil
 }
