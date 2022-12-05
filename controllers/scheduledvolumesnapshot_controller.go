@@ -18,6 +18,8 @@ package controllers
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	cosmosv1alpha1 "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/volsnapshot"
@@ -63,7 +65,26 @@ func (r *ScheduledVolumeSnapshotReconciler) Reconcile(ctx context.Context, req c
 	volsnapshot.ResetStatus(crd)
 	defer r.updateStatus(ctx, crd)
 
+	dur, err := volsnapshot.DurationUntilNext(crd, time.Now())
+	if err != nil {
+		logger.Error(err, "Failed to find duration until next snapshot")
+		r.reportError(crd, err)
+		return finishResult, nil // Fatal error; do not requeue.
+	}
+
+	if dur > 0 {
+		logger.V(1).Info("Requeuing for next snapshot", "duration", dur.String())
+		return ctrl.Result{RequeueAfter: dur}, nil
+	}
+
+	logger.Info("Time to make a snapshot")
+
 	return finishResult, nil
+}
+
+func (r *ScheduledVolumeSnapshotReconciler) reportError(crd *cosmosv1alpha1.ScheduledVolumeSnapshot, err error) {
+	r.recorder.Event(crd, eventWarning, "error", err.Error())
+	crd.Status.StatusMessage = ptr(fmt.Sprint("Error:", err))
 }
 
 func (r *ScheduledVolumeSnapshotReconciler) updateStatus(ctx context.Context, crd *cosmosv1alpha1.ScheduledVolumeSnapshot) {

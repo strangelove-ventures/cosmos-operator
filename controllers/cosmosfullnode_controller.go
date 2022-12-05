@@ -156,14 +156,12 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 func (r *CosmosFullNodeReconciler) resultWithErr(crd *cosmosv1.CosmosFullNode, err kube.ReconcileError) (ctrl.Result, kube.ReconcileError) {
 	if err.IsTransient() {
 		r.recorder.Event(crd, eventWarning, "errorTransient", fmt.Sprintf("%v; retrying.", err))
-		msg := fmt.Sprintf("Transient error: system is retrying: %v", err)
-		crd.Status.StatusMessage = &msg
+		crd.Status.StatusMessage = ptr(fmt.Sprintf("Transient error: system is retrying: %v", err))
 		return requeueResult, err
 	}
 
 	crd.Status.Phase = cosmosv1.FullNodePhaseError
-	msg := fmt.Sprintf("Unrecoverable error: human intervention required: %v", err)
-	crd.Status.StatusMessage = &msg
+	crd.Status.StatusMessage = ptr(fmt.Sprintf("Unrecoverable error: human intervention required: %v", err))
 	r.recorder.Event(crd, eventWarning, "error", err.Error())
 	return finishResult, err
 }
