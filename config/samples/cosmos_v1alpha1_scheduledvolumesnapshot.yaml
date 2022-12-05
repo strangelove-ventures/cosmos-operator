@@ -2,11 +2,7 @@ apiVersion: cosmos.strange.love/v1alpha1
 kind: ScheduledVolumeSnapshot
 metadata:
   labels:
-    app.kubernetes.io/name: scheduledvolumesnapshot
-    app.kubernetes.io/instance: scheduledvolumesnapshot-sample
-    app.kubernetes.io/part-of: cosmos-operator
-    app.kuberentes.io/managed-by: kustomize
-    app.kubernetes.io/created-by: cosmos-operator
   name: scheduledvolumesnapshot-sample
 spec:
-  # TODO(user): Add fields here
+  schedule: "0 * * * *" # hourly
+
