@@ -19,9 +19,12 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"time"
 
+	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/cosmos"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/fullnode"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
 	corev1 "k8s.io/api/core/v1"
@@ -141,6 +144,9 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return requeueResult, nil
 	}
 
+	// TODO(nix): Temporary
+	r.findVolumeSnapshotCandidate(ctx, crd)
+
 	// Check final state and requeue if necessary.
 	if p2pAddresses.Incomplete() {
 		r.recorder.Event(crd, eventNormal, "p2pIncomplete", "Waiting for p2p service IPs or Hostnames to be ready.")
@@ -170,6 +176,41 @@ func (r *CosmosFullNodeReconciler) updateStatus(ctx context.Context, crd *cosmos
 	if err := r.Status().Update(ctx, crd); err != nil {
 		log.FromContext(ctx).Error(err, "Failed to update status")
 	}
+}
+
+var httpClient = &http.Client{Timeout: 60 * time.Second}
+
+// TODO(nix): Temporary private method to demonstrate VolumeSnapshot functionality.
+func (r *CosmosFullNodeReconciler) findVolumeSnapshotCandidate(ctx context.Context, crd *cosmosv1.CosmosFullNode) {
+	if crd.Spec.VolumeSnapshot == nil {
+		return
+	}
+	logger := log.FromContext(ctx)
+	var pods corev1.PodList
+	if err := r.List(ctx, &pods,
+		client.InNamespace(crd.Namespace),
+		client.MatchingFields{kube.ControllerOwnerField: crd.Name},
+	); err != nil {
+		logger.Error(err, "Failed to list pods for VolumeSnapshot")
+		return
+	}
+
+	if len(pods.Items) == 0 {
+		return
+	}
+
+	c := cosmos.NewTendermintClient(httpClient)
+	found, err := cosmos.SyncedPod(ctx, c, ptrSlice(pods.Items))
+	if err != nil {
+		logger.Error(err, "Failed find candidate for VolumeSnapshot")
+		return
+	}
+	logger.Info("Found VolumeSnapshot candidate", "pod", found.Name)
+}
+
+// TODO(nix): Delete. Only used to demonstrate above.
+func ptrSlice[T any](s []T) []*T {
+	return lo.Map(s, func(element T, _ int) *T { return &element })
 }
 
 // SetupWithManager sets up the controller with the Manager.
