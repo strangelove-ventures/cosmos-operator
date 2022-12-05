@@ -175,7 +175,7 @@ func (r *CosmosFullNodeReconciler) updateStatus(ctx context.Context, crd *cosmos
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *CosmosFullNodeReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager, events <-chan event.GenericEvent) error {
+func (r *CosmosFullNodeReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
 	// Index pods.
 	err := mgr.GetFieldIndexer().IndexField(
 		ctx,
@@ -237,11 +237,6 @@ func (r *CosmosFullNodeReconciler) SetupWithManager(ctx context.Context, mgr ctr
 			}),
 		)
 	}
-
-	cbuilder.Watches(
-		&source.Channel{Source: events},
-		&handler.EnqueueRequestForObject{},
-	)
 
 	return cbuilder.Complete(r)
 }

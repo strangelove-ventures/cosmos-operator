@@ -24,7 +24,6 @@ import (
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -32,15 +31,13 @@ import (
 type ScheduledVolumeSnapshotReconciler struct {
 	client.Client
 	recorder record.EventRecorder
-	events   chan<- event.GenericEvent
 }
 
 func NewScheduledVolumeSnapshotReconciler(
 	client client.Client,
 	recorder record.EventRecorder,
-	events chan<- event.GenericEvent,
 ) *ScheduledVolumeSnapshotReconciler {
-	return &ScheduledVolumeSnapshotReconciler{Client: client, recorder: recorder, events: events}
+	return &ScheduledVolumeSnapshotReconciler{Client: client, recorder: recorder}
 }
 
 //+kubebuilder:rbac:groups=cosmos.strange.love,resources=scheduledvolumesnapshots,verbs=get;list;watch;create;update;patch;delete
@@ -65,10 +62,6 @@ func (r *ScheduledVolumeSnapshotReconciler) Reconcile(ctx context.Context, req c
 
 	volsnapshot.ResetStatus(crd)
 	defer r.updateStatus(ctx, crd)
-
-	// TODO: remove me
-	logger.V(1).Info("Sending generic event")
-	r.events <- event.GenericEvent{Object: crd}
 
 	return finishResult, nil
 }

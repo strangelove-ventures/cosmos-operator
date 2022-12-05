@@ -29,8 +29,6 @@ import (
 	"github.com/pkg/profile"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"sigs.k8s.io/controller-runtime/pkg/event"
-
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -130,12 +128,10 @@ func start(ctx context.Context) error {
 		return fmt.Errorf("unable to start manager: %w", err)
 	}
 
-	events := make(chan event.GenericEvent, 1)
-
 	if err = controllers.NewFullNode(
 		mgr.GetClient(),
 		mgr.GetEventRecorderFor("CosmosFullNode"),
-	).SetupWithManager(ctx, mgr, events); err != nil {
+	).SetupWithManager(ctx, mgr); err != nil {
 		return fmt.Errorf("unable to create CosmosFullNode controller: %w", err)
 	}
 
@@ -149,7 +145,6 @@ func start(ctx context.Context) error {
 	if err = controllers.NewScheduledVolumeSnapshotReconciler(
 		mgr.GetClient(),
 		mgr.GetEventRecorderFor("ScheduledVolumeSnapshot"),
-		events,
 	).SetupWithManager(mgr); err != nil {
 		return fmt.Errorf("unable to create ScheduledVolumeSnapshot controller: %w", err)
 	}
