@@ -19,8 +19,8 @@ type SyncedPodFinder struct {
 	tendermint TendermintStatuser
 }
 
-func NewSyncedPodFinder(statuser TendermintStatuser) *SyncedPodFinder {
-	return &SyncedPodFinder{tendermint: statuser}
+func NewSyncedPodFinder(status TendermintStatuser) *SyncedPodFinder {
+	return &SyncedPodFinder{tendermint: status}
 }
 
 // SyncedPod returns the pod with the largest block height.

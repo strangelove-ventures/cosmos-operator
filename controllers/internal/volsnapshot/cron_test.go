@@ -10,6 +10,8 @@ import (
 )
 
 func TestDurationUntilNext(t *testing.T) {
+	t.Parallel()
+
 	t.Run("happy path - first snapshot", func(t *testing.T) {
 		var crd cosmosalpha.ScheduledVolumeSnapshot
 		createdAt := time.Date(2022, time.December, 1, 0, 0, 0, 0, time.UTC)
