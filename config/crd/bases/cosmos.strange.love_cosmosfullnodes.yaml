@@ -1611,32 +1611,6 @@ spec:
                 - Retain
                 - Delete
                 type: string
-              volumeSnapshot:
-                description: 'VolumeSnapshot creates recurring VolumeSnapshots of
-                  a PVC. A VolumeSnapshot is a CRD (installed in GKE by default).
-                  See: https://kubernetes.io/docs/concepts/storage/volume-snapshots/
-                  This enables recurring, consistent backups. To prevent data corruption,
-                  the pod is temporarily deleted while the snapshot takes place which
-                  could take several minutes. Therefore, if you enable VolumeSnapshots,
-                  you must use replica count >= 2 to prevent downtime. Only 1 VolumeSnapshot
-                  is created at a time, so at most only 1 pod is temporarily deleted.
-                  Multiple, parallel VolumeSnapshots are not supported.'
-                properties:
-                  limit:
-                    description: The number of recent VolumeSnapshots to keep. Default
-                      is 3.
-                    format: int32
-                    type: integer
-                  schedule:
-                    description: A crontab schedule using the standard as described
-                      in https://en.wikipedia.org/wiki/Cron. See https://crontab.guru
-                      for format. Some kubernetes providers rate limit VolumeSnapshot
-                      creation. Therefore, setting a crontab that's too frequent may
-                      result in rate limiting errors.
-                    type: string
-                required:
-                - schedule
-                type: object
             required:
             - chain
             - podTemplate
@@ -1659,18 +1633,6 @@ spec:
               status:
                 description: A generic message for the user. May contain errors.
                 type: string
-              volumeSnapshot:
-                description: Status related to recurring volume snapshots.
-                properties:
-                  activatedAt:
-                    description: The date the user first configured recurring volume
-                      snapshots. Used as a reference when calculating the next time
-                      to create a snapshot.
-                    format: date-time
-                    type: string
-                required:
-                - activatedAt
-                type: object
             required:
             - observedGeneration
             - phase

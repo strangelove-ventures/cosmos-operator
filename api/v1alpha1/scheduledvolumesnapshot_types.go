@@ -24,18 +24,41 @@ import (
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
 // ScheduledVolumeSnapshotSpec defines the desired state of ScheduledVolumeSnapshot
+// Creates recurring VolumeSnapshots of a PVC managed by a CosmosFullNode.
+// A VolumeSnapshot is a CRD (installed in GKE by default).
+// See: https://kubernetes.io/docs/concepts/storage/volume-snapshots/
+// This enables recurring, consistent backups.
+// To prevent data corruption, a pod is temporarily deleted while the snapshot takes place which could take
+// several minutes.
+// Therefore, if you create a ScheduledVolumeSnapshot, you must use replica count >= 2 to prevent downtime.
+// If <= 1 pod in a ready state, the controller will not temporarily delete the pod. The controller makes every
+// effort to prevent downtime.
+// Only 1 VolumeSnapshot is created at a time, so at most only 1 pod is temporarily deleted.
+// Multiple, parallel VolumeSnapshots are not supported.
 type ScheduledVolumeSnapshotSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of ScheduledVolumeSnapshot. Edit scheduledvolumesnapshot_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	// A crontab schedule using the standard as described in https://en.wikipedia.org/wiki/Cron.
+	// See https://crontab.guru for format.
+	// Kubernetes providers rate limit VolumeSnapshot creation. Therefore, setting a crontab that's
+	// too frequent may result in rate limiting errors.
+	Schedule string `json:"schedule"`
+
+	// The number of recent VolumeSnapshots to keep.
+	// Default is 3.
+	// +optional
+	Limit int32 `json:"limit"`
 }
 
 // ScheduledVolumeSnapshotStatus defines the observed state of ScheduledVolumeSnapshot
 type ScheduledVolumeSnapshotStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+
+	// The date when the CRD was created.
+	// Used as a reference when calculating the next time to create a snapshot.
+	CreatedAt metav1.Time `json:"createdAt"`
 }
 
 //+kubebuilder:object:root=true
