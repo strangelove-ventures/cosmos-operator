@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 
+	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/volsnapshot"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -49,9 +50,26 @@ type ScheduledVolumeSnapshotReconciler struct {
 func (r *ScheduledVolumeSnapshotReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
 
-	// TODO(user): your logic here
+	// Get the CRD
+	crd := new(cosmosv1alpha1.ScheduledVolumeSnapshot)
+	if err := r.Get(ctx, req.NamespacedName, crd); err != nil {
+		// Ignore not found errors because can't be fixed by an immediate requeue. We'll have to wait for next notification.
+		// Also, will get "not found" error if crd is deleted.
+		// No need to explicitly delete resources. Kube GC does so automatically because we set the controller reference
+		// for each resource.
+		return finishResult, client.IgnoreNotFound(err)
+	}
 
-	return ctrl.Result{}, nil
+	volsnapshot.ResetStatus(crd)
+	defer r.updateStatus(ctx, crd)
+
+	return finishResult, nil
+}
+
+func (r *ScheduledVolumeSnapshotReconciler) updateStatus(ctx context.Context, crd *cosmosv1alpha1.ScheduledVolumeSnapshot) {
+	if err := r.Status().Update(ctx, crd); err != nil {
+		log.FromContext(ctx).Error(err, "Failed to update status")
+	}
 }
 
 // SetupWithManager sets up the controller with the Manager.
