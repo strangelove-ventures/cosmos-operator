@@ -19,10 +19,14 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"time"
 
 	cosmosv1alpha1 "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
+	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/cosmos"
+	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/volsnapshot"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -32,14 +36,22 @@ import (
 // ScheduledVolumeSnapshotReconciler reconciles a ScheduledVolumeSnapshot object
 type ScheduledVolumeSnapshotReconciler struct {
 	client.Client
-	recorder record.EventRecorder
+	recorder           record.EventRecorder
+	volSnapshotControl *volsnapshot.VolumeSnapshotControl
 }
+
+var tendermintHTTP = &http.Client{Timeout: 60 * time.Second}
 
 func NewScheduledVolumeSnapshotReconciler(
 	client client.Client,
 	recorder record.EventRecorder,
 ) *ScheduledVolumeSnapshotReconciler {
-	return &ScheduledVolumeSnapshotReconciler{Client: client, recorder: recorder}
+	tmClient := cosmos.NewTendermintClient(tendermintHTTP)
+	return &ScheduledVolumeSnapshotReconciler{
+		Client:             client,
+		recorder:           recorder,
+		volSnapshotControl: volsnapshot.NewVolumeSnapshotControl(client, cosmos.NewSyncedPodFinder(tmClient)),
+	}
 }
 
 //+kubebuilder:rbac:groups=cosmos.strange.love,resources=scheduledvolumesnapshots,verbs=get;list;watch;create;update;patch;delete
@@ -79,7 +91,14 @@ func (r *ScheduledVolumeSnapshotReconciler) Reconcile(ctx context.Context, req c
 		return ctrl.Result{RequeueAfter: dur}, nil
 	}
 
-	logger.Info("Time to make a snapshot")
+	candidate, err := r.volSnapshotControl.FindCandidate(ctx, crd)
+	if err != nil {
+		logger.Error(err, "Failed to find candidate for volume snapshot")
+		r.reportError(crd, err)
+		return finishResult, err // Treating as transient so retry with a backoff.
+	}
+
+	logger.Info("Found candidate", "candidate", fmt.Sprintf("%+v", candidate))
 
 	return finishResult, nil
 }
@@ -96,7 +115,18 @@ func (r *ScheduledVolumeSnapshotReconciler) updateStatus(ctx context.Context, cr
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *ScheduledVolumeSnapshotReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *ScheduledVolumeSnapshotReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
+	// Purposefully index pods owned by a CosmosFullNode.
+	err := mgr.GetFieldIndexer().IndexField(
+		ctx,
+		&corev1.Pod{},
+		controllerOwnerField,
+		kube.IndexOwner[*corev1.Pod]("CosmosFullNode"), // Intentional. This controller does not own any pods.
+	)
+	if err != nil {
+		return fmt.Errorf("pod index field %s: %w", controllerOwnerField, err)
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&cosmosv1alpha1.ScheduledVolumeSnapshot{}).
 		Complete(r)

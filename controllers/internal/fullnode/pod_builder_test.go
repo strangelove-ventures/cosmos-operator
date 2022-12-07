@@ -385,3 +385,10 @@ func FuzzPodBuilderBuild(f *testing.F) {
 		require.NotEqual(t, pod3.Labels[kube.RevisionLabel], pod4.Labels[kube.RevisionLabel])
 	})
 }
+
+func TestPVCName(t *testing.T) {
+	crd := defaultCRD()
+	builder := NewPodBuilder(&crd)
+	pod := builder.WithOrdinal(5).Build()
+	require.Equal(t, "pvc-osmosis-5", PVCName(pod))
+}

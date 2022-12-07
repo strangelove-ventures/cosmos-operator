@@ -1,7 +1,11 @@
 package volsnapshot
 
-// ptr returns the pointer for any type.
-// In k8s, many specs require a pointer to a scalar.
+import "github.com/samber/lo"
+
 func ptr[T any](v T) *T {
 	return &v
+}
+
+func ptrSlice[T any](s []T) []*T {
+	return lo.Map(s, func(element T, _ int) *T { return &element })
 }
