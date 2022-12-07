@@ -62,7 +62,7 @@ type ObjectRef struct {
 	// Name of the object, metadata.name
 	Name string `json:"name"`
 	// Namespace of the object, metadata.namespace
-	Namespace string `json:"object"`
+	Namespace string `json:"namespace"`
 }
 
 // ScheduledVolumeSnapshotStatus defines the observed state of ScheduledVolumeSnapshot

@@ -65,12 +65,12 @@ spec:
                   name:
                     description: Name of the object, metadata.name
                     type: string
-                  object:
+                  namespace:
                     description: Namespace of the object, metadata.namespace
                     type: string
                 required:
                 - name
-                - object
+                - namespace
                 type: object
             required:
             - schedule

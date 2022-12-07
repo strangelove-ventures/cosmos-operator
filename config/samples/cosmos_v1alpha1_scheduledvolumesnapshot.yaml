@@ -1,8 +1,11 @@
 apiVersion: cosmos.strange.love/v1alpha1
 kind: ScheduledVolumeSnapshot
 metadata:
-  labels:
   name: scheduledvolumesnapshot-sample
 spec:
+  # SourceRef must be a CosmosFullNode
+  sourceRef:
+    namespace: strangelove
+    name: cosmoshub
   schedule: "0 * * * *" # hourly
 
