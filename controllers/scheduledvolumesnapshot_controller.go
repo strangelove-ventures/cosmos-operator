@@ -102,8 +102,8 @@ func (r *ScheduledVolumeSnapshotReconciler) Reconcile(ctx context.Context, req c
 }
 
 func (r *ScheduledVolumeSnapshotReconciler) reportError(crd *cosmosv1alpha1.ScheduledVolumeSnapshot, err error) {
-	r.recorder.Event(crd, eventWarning, "error", err.Error())
-	crd.Status.StatusMessage = ptr(fmt.Sprint("Error:", err))
+	r.recorder.Event(crd, eventWarning, "Error", err.Error())
+	crd.Status.StatusMessage = ptr(fmt.Sprint("Error: ", err))
 }
 
 func (r *ScheduledVolumeSnapshotReconciler) updateStatus(ctx context.Context, crd *cosmosv1alpha1.ScheduledVolumeSnapshot) {
@@ -116,7 +116,6 @@ func (r *ScheduledVolumeSnapshotReconciler) updateStatus(ctx context.Context, cr
 func (r *ScheduledVolumeSnapshotReconciler) SetupWithManager(_ context.Context, mgr ctrl.Manager) error {
 	// We do not have to index Pods by CosmosFullNode because the CosmosFullNodeReconciler already does so.
 	// If we repeat it here, the manager returns an error.
-
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&cosmosv1alpha1.ScheduledVolumeSnapshot{}).
 		Complete(r)
