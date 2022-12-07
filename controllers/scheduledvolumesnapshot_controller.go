@@ -24,9 +24,7 @@ import (
 
 	cosmosv1alpha1 "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/cosmos"
-	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/volsnapshot"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -115,17 +113,9 @@ func (r *ScheduledVolumeSnapshotReconciler) updateStatus(ctx context.Context, cr
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *ScheduledVolumeSnapshotReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
-	// Purposefully index pods owned by a CosmosFullNode.
-	err := mgr.GetFieldIndexer().IndexField(
-		ctx,
-		&corev1.Pod{},
-		controllerOwnerField,
-		kube.IndexOwner[*corev1.Pod]("CosmosFullNode"), // Intentional. This controller does not own any pods.
-	)
-	if err != nil {
-		return fmt.Errorf("pod index field %s: %w", controllerOwnerField, err)
-	}
+func (r *ScheduledVolumeSnapshotReconciler) SetupWithManager(_ context.Context, mgr ctrl.Manager) error {
+	// We do not have to index Pods by CosmosFullNode because the CosmosFullNodeReconciler already does so.
+	// If we repeat it here, the manager returns an error.
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&cosmosv1alpha1.ScheduledVolumeSnapshot{}).
