@@ -59,8 +59,22 @@ spec:
                   Therefore, setting a crontab that's too frequent may result in rate
                   limiting errors.
                 type: string
+              sourceRef:
+                description: Reference to the source CosmosFullNode.
+                properties:
+                  name:
+                    description: Name of the object, metadata.name
+                    type: string
+                  object:
+                    description: Namespace of the object, metadata.namespace
+                    type: string
+                required:
+                - name
+                - object
+                type: object
             required:
             - schedule
+            - sourceRef
             type: object
           status:
             description: ScheduledVolumeSnapshotStatus defines the observed state
