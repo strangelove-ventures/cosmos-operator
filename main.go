@@ -145,7 +145,7 @@ func start(ctx context.Context) error {
 	if err = controllers.NewScheduledVolumeSnapshotReconciler(
 		mgr.GetClient(),
 		mgr.GetEventRecorderFor("ScheduledVolumeSnapshot"),
-	).SetupWithManager(mgr); err != nil {
+	).SetupWithManager(ctx, mgr); err != nil {
 		return fmt.Errorf("unable to create ScheduledVolumeSnapshot controller: %w", err)
 	}
 
