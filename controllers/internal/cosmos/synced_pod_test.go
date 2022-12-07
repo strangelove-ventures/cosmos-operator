@@ -61,8 +61,8 @@ func TestSyncedPod(t *testing.T) {
 			}
 			return status, nil
 		})
-
-		got, err := SyncedPod(ctx, client, lo.Shuffle([]*corev1.Pod{pod1, pod2, errorPod}))
+		finder := NewSyncedPodFinder(client)
+		got, err := finder.SyncedPod(ctx, lo.Shuffle([]*corev1.Pod{pod1, pod2, errorPod}))
 
 		require.NoError(t, err)
 		require.Equal(t, "pod-2", got.Name)
@@ -81,8 +81,8 @@ func TestSyncedPod(t *testing.T) {
 			}
 			return status, nil
 		})
-
-		_, err := SyncedPod(ctx, client, lo.Shuffle([]*corev1.Pod{pod1, pod2}))
+		finder := NewSyncedPodFinder(client)
+		_, err := finder.SyncedPod(ctx, lo.Shuffle([]*corev1.Pod{pod1, pod2}))
 
 		require.Error(t, err)
 	})
@@ -95,7 +95,8 @@ func TestSyncedPod(t *testing.T) {
 		pod := pod1.DeepCopy()
 		pod.Status.PodIP = ""
 
-		_, err := SyncedPod(ctx, client, []*corev1.Pod{pod})
+		finder := NewSyncedPodFinder(client)
+		_, err := finder.SyncedPod(ctx, []*corev1.Pod{pod})
 
 		require.Error(t, err)
 		require.EqualError(t, err, "pod pod-1: ip not assigned yet")
@@ -106,7 +107,8 @@ func TestSyncedPod(t *testing.T) {
 			panic("should not be called")
 		})
 
-		_, err := SyncedPod(ctx, client, nil)
+		finder := NewSyncedPodFinder(client)
+		_, err := finder.SyncedPod(ctx, nil)
 
 		require.Error(t, err)
 		require.EqualError(t, err, "missing candidates")

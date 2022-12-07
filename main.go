@@ -29,7 +29,6 @@ import (
 	"github.com/pkg/profile"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -135,12 +134,21 @@ func start(ctx context.Context) error {
 	).SetupWithManager(ctx, mgr); err != nil {
 		return fmt.Errorf("unable to create CosmosFullNode controller: %w", err)
 	}
+
 	if err = controllers.NewStatefulJob(
 		mgr.GetClient(),
 		mgr.GetEventRecorderFor("StatefulJob"),
 	).SetupWithManager(ctx, mgr); err != nil {
 		return fmt.Errorf("unable to create StatefulJob controller: %w", err)
 	}
+
+	if err = controllers.NewScheduledVolumeSnapshotReconciler(
+		mgr.GetClient(),
+		mgr.GetEventRecorderFor("ScheduledVolumeSnapshot"),
+	).SetupWithManager(mgr); err != nil {
+		return fmt.Errorf("unable to create ScheduledVolumeSnapshot controller: %w", err)
+	}
+
 	//+kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {

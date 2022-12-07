@@ -14,9 +14,18 @@ type TendermintStatuser interface {
 	Status(ctx context.Context, rpcHost string) (TendermintStatus, error)
 }
 
+// SyncedPodFinder queries tendermint for block heights.
+type SyncedPodFinder struct {
+	tendermint TendermintStatuser
+}
+
+func NewSyncedPodFinder(status TendermintStatuser) *SyncedPodFinder {
+	return &SyncedPodFinder{tendermint: status}
+}
+
 // SyncedPod returns the pod with the largest block height.
 // If > 1 pod have the same largest height, returns the first pod with that height.
-func SyncedPod(ctx context.Context, client TendermintStatuser, candidates []*corev1.Pod) (*corev1.Pod, error) {
+func (finder SyncedPodFinder) SyncedPod(ctx context.Context, candidates []*corev1.Pod) (*corev1.Pod, error) {
 	if len(candidates) == 0 {
 		return nil, errors.New("missing candidates")
 	}
@@ -37,7 +46,7 @@ func SyncedPod(ctx context.Context, client TendermintStatuser, candidates []*cor
 			cctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 			defer cancel()
 			host := fmt.Sprintf("http://%s:26657", ip)
-			resp, err := client.Status(cctx, host)
+			resp, err := finder.tendermint.Status(cctx, host)
 			if err != nil {
 				return fmt.Errorf("pod %s: %w", pod.Name, err)
 			}

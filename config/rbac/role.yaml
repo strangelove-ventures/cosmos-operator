@@ -68,6 +68,32 @@ rules:
 - apiGroups:
   - cosmos.strange.love
   resources:
+  - scheduledvolumesnapshots
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - cosmos.strange.love
+  resources:
+  - scheduledvolumesnapshots/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - cosmos.strange.love
+  resources:
+  - scheduledvolumesnapshots/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - cosmos.strange.love
+  resources:
   - statefuljobs
   verbs:
   - create

@@ -22,4 +22,13 @@ resources:
   kind: StatefulJob
   path: github.com/strangelove-ventures/cosmos-operator/api/v1alpha1
   version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: strange.love
+  group: cosmos
+  kind: ScheduledVolumeSnapshot
+  path: github.com/strangelove-ventures/cosmos-operator/api/v1alpha1
+  version: v1alpha1
 version: "3"

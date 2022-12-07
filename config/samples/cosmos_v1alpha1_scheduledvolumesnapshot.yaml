@@ -1,0 +1,8 @@
+apiVersion: cosmos.strange.love/v1alpha1
+kind: ScheduledVolumeSnapshot
+metadata:
+  labels:
+  name: scheduledvolumesnapshot-sample
+spec:
+  schedule: "0 * * * *" # hourly
+
