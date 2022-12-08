@@ -2,7 +2,7 @@ package volsnapshot
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"time"
 
 	cosmosalpha "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
@@ -43,9 +43,14 @@ func (control VolumeSnapshotControl) FindCandidate(ctx context.Context, crd *cos
 		return Candidate{}, err
 	}
 
-	avail := len(kube.AvailablePods(ptrSlice(pods.Items), 0, time.Now()))
-	if avail < 2 {
-		return Candidate{}, errors.New("2 or more pods must be in a ready state to prevent downtime")
+	avail := int32(len(kube.AvailablePods(ptrSlice(pods.Items), 0, time.Now())))
+	minAvail := crd.Spec.MinAvailable
+	if minAvail == 0 {
+		minAvail = 2
+	}
+
+	if avail < minAvail {
+		return Candidate{}, fmt.Errorf("%d or more pods must be in a ready state to prevent downtime", minAvail)
 	}
 
 	pod, err := control.finder.SyncedPod(ctx, ptrSlice(pods.Items))

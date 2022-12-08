@@ -85,6 +85,26 @@ func TestVolumeSnapshotControl_FindCandidate(t *testing.T) {
 		require.Equal(t, ".metadata.controller=cosmoshub", listOpt.FieldSelector.String())
 	})
 
+	t.Run("custom min available", func(t *testing.T) {
+		var pod corev1.Pod
+		pod.Name = "found-me"
+		pod.Status.Conditions = []corev1.PodCondition{readyCondition}
+		var mClient mockClientReader
+		mClient.PodItems = []corev1.Pod{pod}
+
+		control := NewVolumeSnapshotControl(&mClient, mockPodFinder(func(ctx context.Context, candidates []*corev1.Pod) (*corev1.Pod, error) {
+			return &pod, nil
+		}))
+
+		availCRD := crd.DeepCopy()
+		availCRD.Spec.MinAvailable = 1
+
+		got, err := control.FindCandidate(ctx, availCRD)
+
+		require.NoError(t, err)
+		require.Equal(t, "found-me", got.PodName)
+	})
+
 	t.Run("list error", func(t *testing.T) {
 		var mClient mockClientReader
 		mClient.ListErr = errors.New("no list for you")
