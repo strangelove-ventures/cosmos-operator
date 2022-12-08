@@ -51,6 +51,17 @@ spec:
                 description: The number of recent VolumeSnapshots to keep. Default
                   is 3.
                 format: int32
+                minimum: 0
+                type: integer
+              minAvailable:
+                description: 'Minimum number of pods that must be in a ready state
+                  before creating a VolumeSnapshot. Controller gracefully deletes
+                  a pod while taking a snapshot. Then creates the pod once snapshot
+                  is complete. This way, the snapshot has the highest possible data
+                  integrity. Defaults to 2. Warning: If set to 1, you will experience
+                  downtime.'
+                format: int32
+                minimum: 1
                 type: integer
               schedule:
                 description: A crontab schedule using the standard as described in

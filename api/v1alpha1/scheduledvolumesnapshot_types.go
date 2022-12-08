@@ -52,9 +52,19 @@ type ScheduledVolumeSnapshotSpec struct {
 	// too frequent may result in rate limiting errors.
 	Schedule string `json:"schedule"`
 
+	// Minimum number of pods that must be in a ready state before creating a VolumeSnapshot.
+	// Controller gracefully deletes a pod while taking a snapshot. Then creates the pod once snapshot is complete.
+	// This way, the snapshot has the highest possible data integrity.
+	// Defaults to 2.
+	// Warning: If set to 1, you will experience downtime.
+	// +optional
+	// +kubebuilder:validation:Minimum:=1
+	MinAvailable int32 `json:"minAvailable"`
+
 	// The number of recent VolumeSnapshots to keep.
 	// Default is 3.
 	// +optional
+	// +kubebuilder:validation:Minimum:=0
 	Limit int32 `json:"limit"`
 }
 
