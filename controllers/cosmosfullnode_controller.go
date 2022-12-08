@@ -19,7 +19,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"time"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
@@ -172,8 +171,6 @@ func (r *CosmosFullNodeReconciler) updateStatus(ctx context.Context, crd *cosmos
 		log.FromContext(ctx).Error(err, "Failed to update status")
 	}
 }
-
-var httpClient = &http.Client{Timeout: 60 * time.Second}
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *CosmosFullNodeReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
