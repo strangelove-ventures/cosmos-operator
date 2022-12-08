@@ -2,6 +2,7 @@ package volsnapshot
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -12,17 +13,22 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// Lister is a subset of client.Client.
+type Lister interface {
+	List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error
+}
+
 type PodFinder interface {
 	SyncedPod(ctx context.Context, candidates []*corev1.Pod) (*corev1.Pod, error)
 }
 
 // VolumeSnapshotControl manages VolumeSnapshots
 type VolumeSnapshotControl struct {
-	client client.Reader
+	client Lister
 	finder PodFinder
 }
 
-func NewVolumeSnapshotControl(client client.Reader, finder PodFinder) *VolumeSnapshotControl {
+func NewVolumeSnapshotControl(client Lister, finder PodFinder) *VolumeSnapshotControl {
 	return &VolumeSnapshotControl{client: client, finder: finder}
 }
 
@@ -43,6 +49,10 @@ func (control VolumeSnapshotControl) FindCandidate(ctx context.Context, crd *cos
 		return Candidate{}, err
 	}
 
+	if len(pods.Items) == 0 {
+		return Candidate{}, errors.New("list operation returned no pods")
+	}
+
 	avail := int32(len(kube.AvailablePods(ptrSlice(pods.Items), 0, time.Now())))
 	minAvail := crd.Spec.MinAvailable
 	if minAvail <= 0 {
@@ -50,7 +60,7 @@ func (control VolumeSnapshotControl) FindCandidate(ctx context.Context, crd *cos
 	}
 
 	if avail < minAvail {
-		return Candidate{}, fmt.Errorf("%d or more pods must be in a ready state to prevent downtime, found %d available", minAvail, avail)
+		return Candidate{}, fmt.Errorf("%d or more pods must be ready to prevent downtime, found %d ready", minAvail, avail)
 	}
 
 	pod, err := control.finder.SyncedPod(ctx, ptrSlice(pods.Items))

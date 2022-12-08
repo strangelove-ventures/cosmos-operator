@@ -9,4 +9,3 @@ spec:
     name: cosmoshub
   schedule: "0 * * * *" # hourly
   minAvailable: 2 # optional
-

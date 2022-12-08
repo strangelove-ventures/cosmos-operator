@@ -20,10 +20,6 @@ type mockClientReader struct {
 	ListErr  error
 }
 
-func (m *mockClientReader) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
-	panic("implement me")
-}
-
 func (m *mockClientReader) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
 	if ctx == nil {
 		panic("nil context")
@@ -141,12 +137,13 @@ func TestVolumeSnapshotControl_FindCandidate(t *testing.T) {
 		readyPod.Status.Conditions = []corev1.PodCondition{readyCondition}
 
 		for _, tt := range []struct {
-			Pods []corev1.Pod
+			Pods    []corev1.Pod
+			WantErr string
 		}{
-			{nil},
-			{make([]corev1.Pod, 0)},
-			{make([]corev1.Pod, 3)},      // no pods ready
-			{[]corev1.Pod{readyPod, {}}}, // 1 pod ready
+			{nil, "list operation returned no pods"},
+			{make([]corev1.Pod, 0), "list operation returned no pods"},
+			{make([]corev1.Pod, 3), "2 or more pods must be ready to prevent downtime, found 0 ready"},      // no pods ready
+			{[]corev1.Pod{readyPod, {}}, "2 or more pods must be ready to prevent downtime, found 1 ready"}, // 1 pod ready
 		} {
 			var mClient mockClientReader
 			mClient.PodItems = tt.Pods
@@ -158,7 +155,7 @@ func TestVolumeSnapshotControl_FindCandidate(t *testing.T) {
 			_, err := control.FindCandidate(ctx, &crd)
 
 			require.Error(t, err, tt)
-			require.Contains(t, err.Error(), "2 or more pods must be in a ready state to prevent downtime", tt)
+			require.EqualError(t, err, tt.WantErr, tt)
 		}
 	})
 }

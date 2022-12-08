@@ -52,8 +52,9 @@ type ScheduledVolumeSnapshotSpec struct {
 	// too frequent may result in rate limiting errors.
 	Schedule string `json:"schedule"`
 
-	// Minimum number of pods that must be in a ready state before creating a VolumeSnapshot.
-	// Controller gracefully deletes a pod while taking a snapshot. Then creates the pod once snapshot is complete.
+	// Minimum number of CosmosFullNode pods that must be ready before creating a VolumeSnapshot.
+	// This controller gracefully deletes a pod while taking a snapshot. Then recreates the pod once the
+	// snapshot is complete.
 	// This way, the snapshot has the highest possible data integrity.
 	// Defaults to 2.
 	// Warning: If set to 1, you will experience downtime.
