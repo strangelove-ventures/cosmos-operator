@@ -93,7 +93,7 @@ func (r *ScheduledVolumeSnapshotReconciler) Reconcile(ctx context.Context, req c
 	if err != nil {
 		logger.Error(err, "Failed to find candidate for volume snapshot")
 		r.reportError(crd, err)
-		return finishResult, err // Treating as transient so retry with a backoff.
+		return ctrl.Result{RequeueAfter: 60 * time.Second}, nil
 	}
 
 	logger.Info("Found candidate", "candidate", fmt.Sprintf("%+v", candidate))
