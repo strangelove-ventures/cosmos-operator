@@ -5,7 +5,8 @@ metadata:
 spec:
   # SourceRef must be a CosmosFullNode
   sourceRef:
-    namespace: strangelove
+    namespace: default
     name: cosmoshub
   schedule: "0 * * * *" # hourly
+  minAvailable: 2 # optional
 
