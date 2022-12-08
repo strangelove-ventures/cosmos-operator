@@ -45,12 +45,12 @@ func (control VolumeSnapshotControl) FindCandidate(ctx context.Context, crd *cos
 
 	avail := int32(len(kube.AvailablePods(ptrSlice(pods.Items), 0, time.Now())))
 	minAvail := crd.Spec.MinAvailable
-	if minAvail == 0 {
+	if minAvail <= 0 {
 		minAvail = 2
 	}
 
 	if avail < minAvail {
-		return Candidate{}, fmt.Errorf("%d or more pods must be in a ready state to prevent downtime", minAvail)
+		return Candidate{}, fmt.Errorf("%d or more pods must be in a ready state to prevent downtime, found %d available", minAvail, avail)
 	}
 
 	pod, err := control.finder.SyncedPod(ctx, ptrSlice(pods.Items))

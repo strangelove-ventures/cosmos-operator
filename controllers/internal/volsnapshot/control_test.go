@@ -158,7 +158,7 @@ func TestVolumeSnapshotControl_FindCandidate(t *testing.T) {
 			_, err := control.FindCandidate(ctx, &crd)
 
 			require.Error(t, err, tt)
-			require.EqualError(t, err, "2 or more pods must be in a ready state to prevent downtime", tt)
+			require.Contains(t, err.Error(), "2 or more pods must be in a ready state to prevent downtime", tt)
 		}
 	})
 }
