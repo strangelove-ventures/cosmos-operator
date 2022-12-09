@@ -3,28 +3,45 @@ package volsnapshot
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
+	"time"
 
+	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	cosmosalpha "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/fullnode"
+	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type mockClientReader struct {
-	GotOpts []client.ListOption
+type mockClient struct {
+	GotListOpts []client.ListOption
+	PodItems    []corev1.Pod
+	ListErr     error
 
-	PodItems []corev1.Pod
-	ListErr  error
+	GotCreateObj client.Object
+	CreateErr    error
 }
 
-func (m *mockClientReader) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
+func (m *mockClient) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
 	if ctx == nil {
 		panic("nil context")
 	}
-	m.GotOpts = opts
+	if len(opts) > 0 {
+		panic(fmt.Errorf("expected 0 opts, got %d", len(opts)))
+	}
+	m.GotCreateObj = obj
+	return m.CreateErr
+}
+
+func (m *mockClient) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
+	if ctx == nil {
+		panic("nil context")
+	}
+	m.GotListOpts = opts
 	list.(*corev1.PodList).Items = m.PodItems
 	return m.ListErr
 }
@@ -35,7 +52,13 @@ func (fn mockPodFinder) SyncedPod(ctx context.Context, candidates []*corev1.Pod)
 	return fn(ctx, candidates)
 }
 
+var panicFinder = mockPodFinder(func(ctx context.Context, candidates []*corev1.Pod) (*corev1.Pod, error) {
+	panic("should not be called")
+})
+
 func TestVolumeSnapshotControl_FindCandidate(t *testing.T) {
+	t.Parallel()
+
 	var (
 		ctx            = context.Background()
 		readyCondition = corev1.PodCondition{Type: corev1.PodReady, Status: corev1.ConditionTrue}
@@ -50,7 +73,7 @@ func TestVolumeSnapshotControl_FindCandidate(t *testing.T) {
 		for i := range pods {
 			pods[i].Status.Conditions = []corev1.PodCondition{readyCondition}
 		}
-		var mClient mockClientReader
+		var mClient mockClient
 		mClient.PodItems = pods
 
 		var fullnodeCRD cosmosv1.CosmosFullNode
@@ -74,9 +97,9 @@ func TestVolumeSnapshotControl_FindCandidate(t *testing.T) {
 		require.NotEmpty(t, got.PodLabels)
 		require.Equal(t, candidate.Labels, got.PodLabels)
 
-		require.Len(t, mClient.GotOpts, 2)
+		require.Len(t, mClient.GotListOpts, 2)
 		var listOpt client.ListOptions
-		for _, opt := range mClient.GotOpts {
+		for _, opt := range mClient.GotListOpts {
 			opt.ApplyToList(&listOpt)
 		}
 		require.Equal(t, "strangelove", listOpt.Namespace)
@@ -88,7 +111,7 @@ func TestVolumeSnapshotControl_FindCandidate(t *testing.T) {
 		var pod corev1.Pod
 		pod.Name = "found-me"
 		pod.Status.Conditions = []corev1.PodCondition{readyCondition}
-		var mClient mockClientReader
+		var mClient mockClient
 		mClient.PodItems = []corev1.Pod{pod}
 
 		control := NewVolumeSnapshotControl(&mClient, mockPodFinder(func(ctx context.Context, candidates []*corev1.Pod) (*corev1.Pod, error) {
@@ -105,11 +128,9 @@ func TestVolumeSnapshotControl_FindCandidate(t *testing.T) {
 	})
 
 	t.Run("list error", func(t *testing.T) {
-		var mClient mockClientReader
+		var mClient mockClient
 		mClient.ListErr = errors.New("no list for you")
-		control := NewVolumeSnapshotControl(&mClient, mockPodFinder(func(ctx context.Context, candidates []*corev1.Pod) (*corev1.Pod, error) {
-			panic("should not be called")
-		}))
+		control := NewVolumeSnapshotControl(&mClient, panicFinder)
 
 		_, err := control.FindCandidate(ctx, &crd)
 
@@ -122,7 +143,7 @@ func TestVolumeSnapshotControl_FindCandidate(t *testing.T) {
 		for i := range pods {
 			pods[i].Status.Conditions = []corev1.PodCondition{readyCondition}
 		}
-		var mClient mockClientReader
+		var mClient mockClient
 		mClient.PodItems = pods
 
 		control := NewVolumeSnapshotControl(&mClient, mockPodFinder(func(ctx context.Context, candidates []*corev1.Pod) (*corev1.Pod, error) {
@@ -148,17 +169,75 @@ func TestVolumeSnapshotControl_FindCandidate(t *testing.T) {
 			{make([]corev1.Pod, 3), "2 or more pods must be ready to prevent downtime, found 0 ready"},      // no pods ready
 			{[]corev1.Pod{readyPod, {}}, "2 or more pods must be ready to prevent downtime, found 1 ready"}, // 1 pod ready
 		} {
-			var mClient mockClientReader
+			var mClient mockClient
 			mClient.PodItems = tt.Pods
 
-			control := NewVolumeSnapshotControl(&mClient, mockPodFinder(func(ctx context.Context, candidates []*corev1.Pod) (*corev1.Pod, error) {
-				panic("should not be called")
-			}))
+			control := NewVolumeSnapshotControl(&mClient, panicFinder)
 
 			_, err := control.FindCandidate(ctx, &crd)
 
 			require.Error(t, err, tt)
 			require.EqualError(t, err, tt.WantErr, tt)
 		}
+	})
+}
+
+func TestVolumeSnapshotControl_CreateSnapshot(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	t.Run("happy path", func(t *testing.T) {
+		var mClient mockClient
+		control := NewVolumeSnapshotControl(&mClient, panicFinder)
+		control.now = func() time.Time {
+			// Use time.Local to ensure we format with UTC.
+			return time.Date(2022, time.September, 1, 2, 3, 0, 0, time.Local)
+		}
+
+		var crd cosmosalpha.ScheduledVolumeSnapshot
+		crd.Name = "my-snapshot"
+		crd.Namespace = "strangelove"
+		crd.Spec.VolumeSnapshotClassName = "my-snap-class"
+
+		candidate := Candidate{
+			PodLabels: map[string]string{
+				"test":               "labels",
+				kube.ControllerLabel: "should not see me",
+				kube.ComponentLabel:  "should not see me",
+			},
+			PodName: "chain-1",
+			PVCName: "pvc-chain-1",
+		}
+		err := control.CreateSnapshot(ctx, &crd, candidate)
+
+		require.NoError(t, err)
+		require.NotNil(t, mClient.GotCreateObj)
+
+		got := mClient.GotCreateObj.(*snapshotv1.VolumeSnapshot)
+		require.Equal(t, "strangelove", got.Namespace)
+		const wantName = "my-snapshot-202209010203"
+		require.Equal(t, wantName, got.Name)
+
+		require.Equal(t, "my-snap-class", *got.Spec.VolumeSnapshotClassName)
+		require.Equal(t, "pvc-chain-1", *got.Spec.Source.PersistentVolumeClaimName)
+		require.Nil(t, got.Spec.Source.VolumeSnapshotContentName)
+
+		wantLabels := map[string]string{
+			"test":               "labels",
+			kube.ControllerLabel: "cosmos-operator",
+			kube.ComponentLabel:  "ScheduledVolumeSnapshot",
+		}
+		require.Equal(t, wantLabels, got.Labels)
+
+		require.Equal(t, &cosmosalpha.VolumeSnapshotStatus{Name: wantName}, crd.Status.LastSnapshot)
+	})
+
+	t.Run("nil pod labels", func(t *testing.T) {
+		t.Fatal("TODO")
+	})
+
+	t.Run("create error", func(t *testing.T) {
+		t.Fatal("TODO")
 	})
 }

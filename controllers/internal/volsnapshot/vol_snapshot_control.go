@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
 	cosmosalpha "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/fullnode"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
@@ -13,8 +14,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// Lister is a subset of client.Client.
-type Lister interface {
+// Client is a subset of client.Client.
+type Client interface {
+	Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error
 	List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error
 }
 
@@ -24,12 +26,17 @@ type PodFinder interface {
 
 // VolumeSnapshotControl manages VolumeSnapshots
 type VolumeSnapshotControl struct {
-	client Lister
+	client Client
 	finder PodFinder
+	now    func() time.Time
 }
 
-func NewVolumeSnapshotControl(client Lister, finder PodFinder) *VolumeSnapshotControl {
-	return &VolumeSnapshotControl{client: client, finder: finder}
+func NewVolumeSnapshotControl(client Client, finder PodFinder) *VolumeSnapshotControl {
+	return &VolumeSnapshotControl{
+		client: client,
+		finder: finder,
+		now:    time.Now,
+	}
 }
 
 // Candidate is a target instance of a CosmosFullNode from which to make a snapshot.
@@ -74,4 +81,35 @@ func (control VolumeSnapshotControl) FindCandidate(ctx context.Context, crd *cos
 		PodName:   pod.Name,
 		PVCName:   fullnode.PVCName(pod),
 	}, nil
+}
+
+// CreateSnapshot creates VolumeSnapshot from the Candidate.PVCName and updates crd.status to reflect the created VolumeSnapshot.
+// Any error returned is considered transient and can be retried.
+func (control VolumeSnapshotControl) CreateSnapshot(ctx context.Context, crd *cosmosalpha.ScheduledVolumeSnapshot, candidate Candidate) error {
+	snapshot := snapshotv1.VolumeSnapshot{
+		Spec: snapshotv1.VolumeSnapshotSpec{
+			Source: snapshotv1.VolumeSnapshotSource{
+				PersistentVolumeClaimName: ptr(candidate.PVCName),
+			},
+			VolumeSnapshotClassName: ptr(crd.Spec.VolumeSnapshotClassName),
+		},
+	}
+	snapshot.Namespace = crd.Namespace
+	ts := control.now().Format("200601021504")
+	name := fmt.Sprintf("%s-%s", crd.Name, ts)
+	snapshot.Name = name
+	snapshot.Labels = candidate.PodLabels
+	if snapshot.Labels == nil {
+		snapshot.Labels = make(map[string]string)
+	}
+	snapshot.Labels[kube.ComponentLabel] = "ScheduledVolumeSnapshot"
+	snapshot.Labels[kube.ControllerLabel] = "cosmos-operator"
+
+	if err := control.client.Create(ctx, &snapshot); err != nil {
+		panic("TODO")
+	}
+
+	crd.Status.LastSnapshot = &cosmosalpha.VolumeSnapshotStatus{Name: name}
+
+	return nil
 }
