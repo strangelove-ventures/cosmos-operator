@@ -80,7 +80,7 @@ func (r *ScheduledVolumeSnapshotReconciler) Reconcile(ctx context.Context, req c
 	dur, err := volsnapshot.DurationUntilNext(crd, time.Now())
 	if err != nil {
 		logger.Error(err, "Failed to find duration until next snapshot")
-		r.reportError(crd, err)
+		r.reportError(crd, "FindNextSnapshotTimeError", err)
 		return finishResult, nil // Fatal error; do not requeue.
 	}
 
@@ -92,17 +92,22 @@ func (r *ScheduledVolumeSnapshotReconciler) Reconcile(ctx context.Context, req c
 	candidate, err := r.volSnapshotControl.FindCandidate(ctx, crd)
 	if err != nil {
 		logger.Error(err, "Failed to find candidate for volume snapshot")
-		r.reportError(crd, err)
+		r.reportError(crd, "FindCandidateError", err)
 		return ctrl.Result{RequeueAfter: 60 * time.Second}, nil
 	}
 
-	logger.Info("Found candidate", "candidate", fmt.Sprintf("%+v", candidate))
+	logger.Info("Creating VolumeSnapshot", "candidate", fmt.Sprintf("%+v", candidate))
+	if err = r.volSnapshotControl.CreateSnapshot(ctx, crd, candidate); err != nil {
+		logger.Error(err, "Failed to create volume snapshot")
+		r.reportError(crd, "CreateVolumeSnapshotError", err)
+		return ctrl.Result{RequeueAfter: 60 * time.Second}, nil
+	}
 
 	return finishResult, nil
 }
 
-func (r *ScheduledVolumeSnapshotReconciler) reportError(crd *cosmosv1alpha1.ScheduledVolumeSnapshot, err error) {
-	r.recorder.Event(crd, eventWarning, "Error", err.Error())
+func (r *ScheduledVolumeSnapshotReconciler) reportError(crd *cosmosv1alpha1.ScheduledVolumeSnapshot, reason string, err error) {
+	r.recorder.Event(crd, eventWarning, reason, err.Error())
 	crd.Status.StatusMessage = ptr(fmt.Sprint("Error: ", err))
 }
 
