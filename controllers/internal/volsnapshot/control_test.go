@@ -53,15 +53,16 @@ func TestVolumeSnapshotControl_FindCandidate(t *testing.T) {
 		var mClient mockClientReader
 		mClient.PodItems = pods
 
+		var fullnodeCRD cosmosv1.CosmosFullNode
+		fullnodeCRD.Name = "osmosis"
+		// Purposefully using PodBuilder to cross-test any breaking changes in PodBuilder which affects
+		// finding the PVC name.
+		candidate := fullnode.NewPodBuilder(&fullnodeCRD).WithOrdinal(1).Build()
+
 		control := NewVolumeSnapshotControl(&mClient, mockPodFinder(func(ctx context.Context, candidates []*corev1.Pod) (*corev1.Pod, error) {
 			require.NotNil(t, ctx)
 			require.Equal(t, ptrSlice(pods), candidates)
 
-			// Purposefully using PodBuilder to cross-test any breaking changes in PodBuilder which affects
-			// finding the PVC name.
-			var fullnodeCRD cosmosv1.CosmosFullNode
-			fullnodeCRD.Name = "osmosis"
-			candidate := fullnode.NewPodBuilder(&fullnodeCRD).WithOrdinal(1).Build()
 			return candidate, nil
 		}))
 
@@ -70,6 +71,8 @@ func TestVolumeSnapshotControl_FindCandidate(t *testing.T) {
 
 		require.Equal(t, "osmosis-1", got.PodName)
 		require.Equal(t, "pvc-osmosis-1", got.PVCName)
+		require.NotEmpty(t, got.PodLabels)
+		require.Equal(t, candidate.Labels, got.PodLabels)
 
 		require.Len(t, mClient.GotOpts, 2)
 		var listOpt client.ListOptions
