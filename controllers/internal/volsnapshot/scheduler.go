@@ -39,33 +39,34 @@ func (s Scheduler) CalcNext(ctx context.Context, crd *cosmosalpha.ScheduledVolum
 	if err != nil {
 		return 0, kube.UnrecoverableError(fmt.Errorf("invalid spec.schedule: %w", err))
 	}
-
 	refDate := crd.Status.CreatedAt.Time
-	//if crd.Status.LastSnapshot != nil {
-	//	refDate = ts
-	//}
+
+	if lastSnapshot := crd.Status.LastSnapshot; lastSnapshot != nil {
+		var isComplete bool
+		refDate, isComplete, err = s.refDateFromLastSnapshot(ctx, crd)
+		if err != nil {
+			return 0, kube.TransientError(err)
+		}
+		if !isComplete {
+			// Requeue and wait for completion.
+			return 10 * time.Second, nil
+		}
+	}
 
 	next := sched.Next(refDate)
 	return lo.Max([]time.Duration{next.Sub(s.now()), 0}), nil
 }
 
-func (s Scheduler) refDateFromLastSnapshot(ctx context.Context, sched cron.Schedule, crd *cosmosalpha.ScheduledVolumeSnapshot) (time.Time, error) {
+func (s Scheduler) refDateFromLastSnapshot(ctx context.Context, crd *cosmosalpha.ScheduledVolumeSnapshot) (_ time.Time, isComplete bool, _ error) {
 	var snapshot snapshotv1.VolumeSnapshot
 	snapshot.Name = crd.Status.LastSnapshot.Name
 	snapshot.Namespace = crd.Namespace
 
+	if err := s.getter.Get(ctx, client.ObjectKeyFromObject(&snapshot), &snapshot); err != nil {
+		return time.Time{}, false, err
+	}
+	crd.Status.LastSnapshot.Status = snapshot.Status
 	refDate := crd.Status.LastSnapshot.StartedAt.Time
 
-	err := s.getter.Get(ctx, client.ObjectKeyFromObject(&snapshot), &snapshot)
-	switch {
-	case kube.IsNotFound(err):
-		return sched.Next(refDate), nil
-	case err != nil:
-		return time.Time{}, err
-	}
-
-	if kube.VolumeSnapshotIsReady(snapshot.Status) {
-		return crd.Status.
-	}
-	return 10*time.Second, nil
+	return refDate, kube.VolumeSnapshotIsReady(snapshot.Status), nil
 }

@@ -116,14 +116,14 @@ func TestScheduler_CalcNext(t *testing.T) {
 			},
 		}
 
-		volStatus := &snapshotv1.VolumeSnapshotStatus{ReadyToUse: ptr(true)}
+		readyStatus := &snapshotv1.VolumeSnapshotStatus{ReadyToUse: ptr(true)}
 		sched := NewScheduler(mockGet(func(_ context.Context, key client.ObjectKey, obj client.Object, _ ...client.GetOption) error {
 			require.Equal(t, "strangelove", key.Namespace)
 			require.Equal(t, "my-snapshot-123", key.Name)
 
 			ref := obj.(*snapshotv1.VolumeSnapshot)
 			*ref = snapshotv1.VolumeSnapshot{
-				Status: volStatus,
+				Status: readyStatus,
 			}
 			return nil
 		}))
@@ -132,7 +132,7 @@ func TestScheduler_CalcNext(t *testing.T) {
 		got, err := sched.CalcNext(ctx, &crd)
 		require.NoError(t, err)
 		require.Zero(t, got)
-		require.Equal(t, volStatus, crd.Status.LastSnapshot)
+		require.Equal(t, readyStatus, crd.Status.LastSnapshot.Status)
 	})
 
 	t.Run("happy path - currently running snapshot", func(t *testing.T) {
