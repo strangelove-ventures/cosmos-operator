@@ -43,16 +43,37 @@ type ScheduledVolumeSnapshotSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
+	// Reference to the source CosmosFullNode.
+	SourceRef ObjectRef `json:"sourceRef"`
+
 	// A crontab schedule using the standard as described in https://en.wikipedia.org/wiki/Cron.
 	// See https://crontab.guru for format.
 	// Kubernetes providers rate limit VolumeSnapshot creation. Therefore, setting a crontab that's
 	// too frequent may result in rate limiting errors.
 	Schedule string `json:"schedule"`
 
+	// Minimum number of CosmosFullNode pods that must be ready before creating a VolumeSnapshot.
+	// This controller gracefully deletes a pod while taking a snapshot. Then recreates the pod once the
+	// snapshot is complete.
+	// This way, the snapshot has the highest possible data integrity.
+	// Defaults to 2.
+	// Warning: If set to 1, you will experience downtime.
+	// +optional
+	// +kubebuilder:validation:Minimum:=1
+	MinAvailable int32 `json:"minAvailable"`
+
 	// The number of recent VolumeSnapshots to keep.
 	// Default is 3.
 	// +optional
+	// +kubebuilder:validation:Minimum:=0
 	Limit int32 `json:"limit"`
+}
+
+type ObjectRef struct {
+	// Name of the object, metadata.name
+	Name string `json:"name"`
+	// Namespace of the object, metadata.namespace
+	Namespace string `json:"namespace"`
 }
 
 // ScheduledVolumeSnapshotStatus defines the observed state of ScheduledVolumeSnapshot

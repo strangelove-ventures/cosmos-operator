@@ -19,9 +19,11 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"time"
 
 	cosmosv1alpha1 "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
+	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/cosmos"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/volsnapshot"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -32,19 +34,29 @@ import (
 // ScheduledVolumeSnapshotReconciler reconciles a ScheduledVolumeSnapshot object
 type ScheduledVolumeSnapshotReconciler struct {
 	client.Client
-	recorder record.EventRecorder
+	recorder           record.EventRecorder
+	volSnapshotControl *volsnapshot.VolumeSnapshotControl
 }
+
+var tendermintHTTP = &http.Client{Timeout: 60 * time.Second}
 
 func NewScheduledVolumeSnapshotReconciler(
 	client client.Client,
 	recorder record.EventRecorder,
 ) *ScheduledVolumeSnapshotReconciler {
-	return &ScheduledVolumeSnapshotReconciler{Client: client, recorder: recorder}
+	tmClient := cosmos.NewTendermintClient(tendermintHTTP)
+	return &ScheduledVolumeSnapshotReconciler{
+		Client:             client,
+		recorder:           recorder,
+		volSnapshotControl: volsnapshot.NewVolumeSnapshotControl(client, cosmos.NewSyncedPodFinder(tmClient)),
+	}
 }
 
 //+kubebuilder:rbac:groups=cosmos.strange.love,resources=scheduledvolumesnapshots,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=cosmos.strange.love,resources=scheduledvolumesnapshots/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=cosmos.strange.love,resources=scheduledvolumesnapshots/finalizers,verbs=update
+//+kubebuilder:rbac:groups=cosmos.strange.love,resources=cosmosfullnodes/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -77,14 +89,21 @@ func (r *ScheduledVolumeSnapshotReconciler) Reconcile(ctx context.Context, req c
 		return ctrl.Result{RequeueAfter: dur}, nil
 	}
 
-	logger.Info("Time to make a snapshot")
+	candidate, err := r.volSnapshotControl.FindCandidate(ctx, crd)
+	if err != nil {
+		logger.Error(err, "Failed to find candidate for volume snapshot")
+		r.reportError(crd, err)
+		return ctrl.Result{RequeueAfter: 60 * time.Second}, nil
+	}
+
+	logger.Info("Found candidate", "candidate", fmt.Sprintf("%+v", candidate))
 
 	return finishResult, nil
 }
 
 func (r *ScheduledVolumeSnapshotReconciler) reportError(crd *cosmosv1alpha1.ScheduledVolumeSnapshot, err error) {
-	r.recorder.Event(crd, eventWarning, "error", err.Error())
-	crd.Status.StatusMessage = ptr(fmt.Sprint("Error:", err))
+	r.recorder.Event(crd, eventWarning, "Error", err.Error())
+	crd.Status.StatusMessage = ptr(fmt.Sprint("Error: ", err))
 }
 
 func (r *ScheduledVolumeSnapshotReconciler) updateStatus(ctx context.Context, crd *cosmosv1alpha1.ScheduledVolumeSnapshot) {
@@ -94,7 +113,9 @@ func (r *ScheduledVolumeSnapshotReconciler) updateStatus(ctx context.Context, cr
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *ScheduledVolumeSnapshotReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *ScheduledVolumeSnapshotReconciler) SetupWithManager(_ context.Context, mgr ctrl.Manager) error {
+	// We do not have to index Pods by CosmosFullNode because the CosmosFullNodeReconciler already does so.
+	// If we repeat it here, the manager returns an error.
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&cosmosv1alpha1.ScheduledVolumeSnapshot{}).
 		Complete(r)

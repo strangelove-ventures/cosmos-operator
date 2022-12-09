@@ -19,7 +19,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"time"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
@@ -77,6 +76,7 @@ var (
 //+kubebuilder:rbac:groups=cosmos.strange.love,resources=cosmosfullnodes/finalizers,verbs=update
 // Generate RBAC roles to watch and update resources. IMPORTANT!!!! All resource names must be lowercase or cluster role will not work.
 //+kubebuilder:rbac:groups="",resources=pods;persistentvolumeclaims;services;configmaps,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups="",resources=events,verbs=create;update;patch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -144,7 +144,7 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	// Check final state and requeue if necessary.
 	if p2pAddresses.Incomplete() {
-		r.recorder.Event(crd, eventNormal, "p2pIncomplete", "Waiting for p2p service IPs or Hostnames to be ready.")
+		r.recorder.Event(crd, eventNormal, "P2PIncomplete", "Waiting for p2p service IPs or Hostnames to be ready.")
 		logger.V(1).Info("Requeueing due to incomplete p2p external addresses")
 		// Allow more time to requeue while p2p services create their load balancers.
 		return ctrl.Result{RequeueAfter: 15 * time.Second}, nil
@@ -156,14 +156,14 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 func (r *CosmosFullNodeReconciler) resultWithErr(crd *cosmosv1.CosmosFullNode, err kube.ReconcileError) (ctrl.Result, kube.ReconcileError) {
 	if err.IsTransient() {
-		r.recorder.Event(crd, eventWarning, "errorTransient", fmt.Sprintf("%v; retrying.", err))
+		r.recorder.Event(crd, eventWarning, "ErrorTransient", fmt.Sprintf("%v; retrying.", err))
 		crd.Status.StatusMessage = ptr(fmt.Sprintf("Transient error: system is retrying: %v", err))
 		return requeueResult, err
 	}
 
 	crd.Status.Phase = cosmosv1.FullNodePhaseError
 	crd.Status.StatusMessage = ptr(fmt.Sprintf("Unrecoverable error: human intervention required: %v", err))
-	r.recorder.Event(crd, eventWarning, "error", err.Error())
+	r.recorder.Event(crd, eventWarning, "Error", err.Error())
 	return finishResult, err
 }
 
@@ -172,8 +172,6 @@ func (r *CosmosFullNodeReconciler) updateStatus(ctx context.Context, crd *cosmos
 		log.FromContext(ctx).Error(err, "Failed to update status")
 	}
 }
-
-var httpClient = &http.Client{Timeout: 60 * time.Second}
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *CosmosFullNodeReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {

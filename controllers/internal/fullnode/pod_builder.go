@@ -332,3 +332,13 @@ func startCommandArgs(cfg cosmosv1.ChainConfig) []string {
 func willRestoreFromSnapshot(crd *cosmosv1.CosmosFullNode) bool {
 	return crd.Spec.ChainConfig.SnapshotURL != nil || crd.Spec.ChainConfig.SnapshotScript != nil
 }
+
+// PVCName returns the primary PVC holding the chain data associated with the pod.
+func PVCName(pod *corev1.Pod) string {
+	if vols := pod.Spec.Volumes; len(vols) > 0 {
+		if claim := pod.Spec.Volumes[0].PersistentVolumeClaim; claim != nil {
+			return claim.ClaimName
+		}
+	}
+	return ""
+}
