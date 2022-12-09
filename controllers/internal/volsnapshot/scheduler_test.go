@@ -145,6 +145,7 @@ func TestScheduler_CalcNext(t *testing.T) {
 
 	t.Run("get error - does not exist", func(t *testing.T) {
 		// This would only happen if something or someone deleted the snapshot while it's running.
+		t.Fatal("TODO")
 	})
 
 	t.Run("invalid schedule", func(t *testing.T) {
