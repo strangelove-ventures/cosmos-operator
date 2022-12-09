@@ -83,9 +83,14 @@ spec:
                 - name
                 - namespace
                 type: object
+              volumeSnapshotClassName:
+                description: The name of the VolumeSnapshotClass to use when creating
+                  snapshots.
+                type: string
             required:
             - schedule
             - sourceRef
+            - volumeSnapshotClassName
             type: object
           status:
             description: ScheduledVolumeSnapshotStatus defines the observed state
@@ -96,6 +101,15 @@ spec:
                   when calculating the next time to create a snapshot.
                 format: date-time
                 type: string
+              lastSnapshot:
+                description: The most recent volume snapshot created by the controller.
+                properties:
+                  name:
+                    description: The name of the created VolumeSnapshot.
+                    type: string
+                required:
+                - name
+                type: object
               observedGeneration:
                 description: The most recent generation observed by the controller.
                 format: int64

@@ -52,6 +52,9 @@ type ScheduledVolumeSnapshotSpec struct {
 	// too frequent may result in rate limiting errors.
 	Schedule string `json:"schedule"`
 
+	// The name of the VolumeSnapshotClass to use when creating snapshots.
+	VolumeSnapshotClassName string `json:"volumeSnapshotClassName"`
+
 	// Minimum number of CosmosFullNode pods that must be ready before creating a VolumeSnapshot.
 	// This controller gracefully deletes a pod while taking a snapshot. Then recreates the pod once the
 	// snapshot is complete.
@@ -91,6 +94,15 @@ type ScheduledVolumeSnapshotStatus struct {
 	// The date when the CRD was created.
 	// Used as a reference when calculating the next time to create a snapshot.
 	CreatedAt metav1.Time `json:"createdAt"`
+
+	// The most recent volume snapshot created by the controller.
+	// +optional
+	LastSnapshot *VolumeSnapshotStatus `json:"lastSnapshot"`
+}
+
+type VolumeSnapshotStatus struct {
+	// The name of the created VolumeSnapshot.
+	Name string `json:"name"`
 }
 
 //+kubebuilder:object:root=true
