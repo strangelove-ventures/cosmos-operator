@@ -106,7 +106,7 @@ func (control VolumeSnapshotControl) CreateSnapshot(ctx context.Context, crd *co
 	snapshot.Labels[kube.ControllerLabel] = "cosmos-operator"
 
 	if err := control.client.Create(ctx, &snapshot); err != nil {
-		panic("TODO")
+		return err
 	}
 
 	crd.Status.LastSnapshot = &cosmosalpha.VolumeSnapshotStatus{Name: name}

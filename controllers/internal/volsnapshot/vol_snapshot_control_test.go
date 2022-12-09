@@ -234,10 +234,32 @@ func TestVolumeSnapshotControl_CreateSnapshot(t *testing.T) {
 	})
 
 	t.Run("nil pod labels", func(t *testing.T) {
-		t.Fatal("TODO")
+		var mClient mockClient
+		control := NewVolumeSnapshotControl(&mClient, panicFinder)
+		var crd cosmosalpha.ScheduledVolumeSnapshot
+
+		err := control.CreateSnapshot(ctx, &crd, Candidate{})
+
+		require.NoError(t, err)
+		require.NotNil(t, mClient.GotCreateObj)
+
+		got := mClient.GotCreateObj.(*snapshotv1.VolumeSnapshot)
+
+		wantLabels := map[string]string{
+			kube.ControllerLabel: "cosmos-operator",
+			kube.ComponentLabel:  "ScheduledVolumeSnapshot",
+		}
+		require.Equal(t, wantLabels, got.Labels)
 	})
 
 	t.Run("create error", func(t *testing.T) {
-		t.Fatal("TODO")
+		var mClient mockClient
+		mClient.CreateErr = errors.New("boom")
+		control := NewVolumeSnapshotControl(&mClient, panicFinder)
+		var crd cosmosalpha.ScheduledVolumeSnapshot
+		err := control.CreateSnapshot(ctx, &crd, Candidate{})
+
+		require.Error(t, err)
+		require.EqualError(t, err, "boom")
 	})
 }
