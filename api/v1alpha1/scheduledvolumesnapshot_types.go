@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -103,6 +104,13 @@ type ScheduledVolumeSnapshotStatus struct {
 type VolumeSnapshotStatus struct {
 	// The name of the created VolumeSnapshot.
 	Name string `json:"name"`
+
+	// The time the controller created the VolumeSnapshot.
+	StartedAt metav1.Time `json:"startedAt"`
+
+	// The last VolumeSnapshot's status
+	// +optional
+	Status *snapshotv1.VolumeSnapshotStatus `json:"status"`
 }
 
 //+kubebuilder:object:root=true

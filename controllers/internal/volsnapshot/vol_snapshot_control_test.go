@@ -14,6 +14,7 @@ import (
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -190,9 +191,10 @@ func TestVolumeSnapshotControl_CreateSnapshot(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
 		var mClient mockClient
 		control := NewVolumeSnapshotControl(&mClient, panicFinder)
+		// Use time.Local to ensure we format with UTC.
+		now := time.Date(2022, time.September, 1, 2, 3, 0, 0, time.Local)
 		control.now = func() time.Time {
-			// Use time.Local to ensure we format with UTC.
-			return time.Date(2022, time.September, 1, 2, 3, 0, 0, time.Local)
+			return now
 		}
 
 		var crd cosmosalpha.ScheduledVolumeSnapshot
@@ -216,7 +218,7 @@ func TestVolumeSnapshotControl_CreateSnapshot(t *testing.T) {
 
 		got := mClient.GotCreateObj.(*snapshotv1.VolumeSnapshot)
 		require.Equal(t, "strangelove", got.Namespace)
-		const wantName = "my-snapshot-202209010203"
+		const wantName = "my-snapshot-202209010803"
 		require.Equal(t, wantName, got.Name)
 
 		require.Equal(t, "my-snap-class", *got.Spec.VolumeSnapshotClassName)
@@ -230,7 +232,11 @@ func TestVolumeSnapshotControl_CreateSnapshot(t *testing.T) {
 		}
 		require.Equal(t, wantLabels, got.Labels)
 
-		require.Equal(t, &cosmosalpha.VolumeSnapshotStatus{Name: wantName}, crd.Status.LastSnapshot)
+		wantStatus := &cosmosalpha.VolumeSnapshotStatus{
+			Name:      wantName,
+			StartedAt: metav1.NewTime(now),
+		}
+		require.Equal(t, wantStatus, crd.Status.LastSnapshot)
 	})
 
 	t.Run("nil pod labels", func(t *testing.T) {

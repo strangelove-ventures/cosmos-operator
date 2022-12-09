@@ -11,6 +11,7 @@ import (
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/fullnode"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -95,7 +96,7 @@ func (control VolumeSnapshotControl) CreateSnapshot(ctx context.Context, crd *co
 		},
 	}
 	snapshot.Namespace = crd.Namespace
-	ts := control.now().Format("200601021504")
+	ts := control.now().UTC().Format("200601021504")
 	name := fmt.Sprintf("%s-%s", crd.Name, ts)
 	snapshot.Name = name
 	snapshot.Labels = candidate.PodLabels
@@ -109,7 +110,10 @@ func (control VolumeSnapshotControl) CreateSnapshot(ctx context.Context, crd *co
 		return err
 	}
 
-	crd.Status.LastSnapshot = &cosmosalpha.VolumeSnapshotStatus{Name: name}
+	crd.Status.LastSnapshot = &cosmosalpha.VolumeSnapshotStatus{
+		Name:      name,
+		StartedAt: metav1.NewTime(control.now()),
+	}
 
 	return nil
 }
