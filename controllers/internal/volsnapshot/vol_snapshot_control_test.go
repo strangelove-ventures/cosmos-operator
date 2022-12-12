@@ -192,7 +192,7 @@ func TestVolumeSnapshotControl_CreateSnapshot(t *testing.T) {
 		var mClient mockClient
 		control := NewVolumeSnapshotControl(&mClient, panicFinder)
 		// Use time.Local to ensure we format with UTC.
-		now := time.Date(2022, time.September, 1, 2, 3, 0, 0, time.Local)
+		now := time.Date(2022, time.September, 1, 2, 3, 0, 0, time.UTC)
 		control.now = func() time.Time {
 			return now
 		}
@@ -218,7 +218,7 @@ func TestVolumeSnapshotControl_CreateSnapshot(t *testing.T) {
 
 		got := mClient.GotCreateObj.(*snapshotv1.VolumeSnapshot)
 		require.Equal(t, "strangelove", got.Namespace)
-		const wantName = "my-snapshot-202209010803"
+		const wantName = "my-snapshot-202209010203"
 		require.Equal(t, wantName, got.Name)
 
 		require.Equal(t, "my-snap-class", *got.Spec.VolumeSnapshotClassName)
