@@ -58,7 +58,7 @@ func NewScheduledVolumeSnapshotReconciler(
 //+kubebuilder:rbac:groups=cosmos.strange.love,resources=scheduledvolumesnapshots/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=cosmos.strange.love,resources=scheduledvolumesnapshots/finalizers,verbs=update
 //+kubebuilder:rbac:groups=cosmos.strange.love,resources=cosmosfullnodes/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=snapshot.storage.k8s.io,resources=volumesnapshots,verbs=get;create
+//+kubebuilder:rbac:groups=snapshot.storage.k8s.io,resources=volumesnapshots,verbs=get;create;delete
 //+kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
