@@ -102,7 +102,7 @@ func (r *ScheduledVolumeSnapshotReconciler) Reconcile(ctx context.Context, req c
 		return ctrl.Result{RequeueAfter: 60 * time.Second}, nil
 	}
 
-	logger.Info("Creating VolumeSnapshot", "candidate", fmt.Sprintf("%+v", candidate))
+	logger.Info("Creating VolumeSnapshot", "candidatePod", candidate.PodName, "candidatePVC", candidate.PVCName)
 	if err = r.volSnapshotControl.CreateSnapshot(ctx, crd, candidate); err != nil {
 		logger.Error(err, "Failed to create volume snapshot")
 		r.reportError(crd, "CreateVolumeSnapshotError", err)
