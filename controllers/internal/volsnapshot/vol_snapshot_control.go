@@ -97,7 +97,7 @@ func (control VolumeSnapshotControl) CreateSnapshot(ctx context.Context, crd *co
 	}
 	snapshot.Namespace = crd.Namespace
 	ts := control.now().UTC().Format("200601021504")
-	name := fmt.Sprintf("%s-%s", crd.Name, ts)
+	name := kube.ToName(fmt.Sprintf("%s-%s", crd.Name, ts))
 	snapshot.Name = name
 	snapshot.Labels = candidate.PodLabels
 	if snapshot.Labels == nil {
