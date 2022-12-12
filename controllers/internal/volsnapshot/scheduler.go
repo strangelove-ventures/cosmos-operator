@@ -39,34 +39,57 @@ func (s Scheduler) CalcNext(ctx context.Context, crd *cosmosalpha.ScheduledVolum
 	if err != nil {
 		return 0, kube.UnrecoverableError(fmt.Errorf("invalid spec.schedule: %w", err))
 	}
-	refDate := crd.Status.CreatedAt.Time
 
-	if lastSnapshot := crd.Status.LastSnapshot; lastSnapshot != nil {
-		var isComplete bool
-		refDate, isComplete, err = s.refDateFromLastSnapshot(ctx, crd)
-		if err != nil {
-			return 0, kube.TransientError(err)
-		}
-		if !isComplete {
-			// Requeue and wait for completion.
-			return 10 * time.Second, nil
+	var (
+		refDate = s.refDate(crd)
+		next    = sched.Next(refDate)
+		dur     = lo.Max([]time.Duration{next.Sub(s.now()), 0})
+	)
+
+	isReady, err := s.snapshotReady(ctx, crd)
+	switch {
+	case kube.IsNotFound(err):
+		// Hopefully rare case. Means something or someone deleted the VolumeSnapshot before controller could detect
+		// it was ready for use. Assume snapshot completed if not found.
+		return dur, nil
+	case err != nil:
+		return 0, kube.TransientError(err)
+	}
+
+	if !isReady {
+		// If not ready for use, indicate a requeue in the near future to check again.
+		return 10 * time.Second, nil
+	}
+
+	return dur, nil
+}
+
+func (s Scheduler) refDate(crd *cosmosalpha.ScheduledVolumeSnapshot) time.Time {
+	if snapStatus := crd.Status.LastSnapshot; snapStatus != nil {
+		return snapStatus.StartedAt.Time
+	}
+	return crd.Status.CreatedAt.Time
+}
+
+func (s Scheduler) snapshotReady(ctx context.Context, crd *cosmosalpha.ScheduledVolumeSnapshot) (bool, error) {
+	if crd.Status.LastSnapshot == nil {
+		return true, nil
+	}
+
+	if existing := crd.Status.LastSnapshot.Status; existing != nil {
+		// Prevent calling API if we already know snapshot is ready.
+		if kube.VolumeSnapshotIsReady(existing) {
+			return true, nil
 		}
 	}
 
-	next := sched.Next(refDate)
-	return lo.Max([]time.Duration{next.Sub(s.now()), 0}), nil
-}
-
-func (s Scheduler) refDateFromLastSnapshot(ctx context.Context, crd *cosmosalpha.ScheduledVolumeSnapshot) (_ time.Time, isComplete bool, _ error) {
 	var snapshot snapshotv1.VolumeSnapshot
 	snapshot.Name = crd.Status.LastSnapshot.Name
 	snapshot.Namespace = crd.Namespace
 
 	if err := s.getter.Get(ctx, client.ObjectKeyFromObject(&snapshot), &snapshot); err != nil {
-		return time.Time{}, false, err
+		return false, err
 	}
 	crd.Status.LastSnapshot.Status = snapshot.Status
-	refDate := crd.Status.LastSnapshot.StartedAt.Time
-
-	return refDate, kube.VolumeSnapshotIsReady(snapshot.Status), nil
+	return kube.VolumeSnapshotIsReady(snapshot.Status), nil
 }
