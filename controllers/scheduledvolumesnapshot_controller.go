@@ -94,6 +94,7 @@ func (r *ScheduledVolumeSnapshotReconciler) Reconcile(ctx context.Context, req c
 		return ctrl.Result{RequeueAfter: dur}, nil
 	}
 
+	logger.Info("Finding snapshot candidate")
 	candidate, err := r.volSnapshotControl.FindCandidate(ctx, crd)
 	if err != nil {
 		logger.Error(err, "Failed to find candidate for volume snapshot")
