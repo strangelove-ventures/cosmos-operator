@@ -91,7 +91,7 @@ func (r *ScheduledVolumeSnapshotReconciler) Reconcile(ctx context.Context, req c
 	}
 
 	if dur > 0 {
-		logger.V(1).Info("Requeuing for next snapshot", "duration", dur.String())
+		logger.Info("Requeuing for next snapshot", "duration", dur.String())
 		return ctrl.Result{RequeueAfter: dur}, nil
 	}
 
