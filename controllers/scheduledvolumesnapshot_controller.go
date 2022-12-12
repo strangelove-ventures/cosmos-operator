@@ -35,6 +35,7 @@ import (
 type ScheduledVolumeSnapshotReconciler struct {
 	client.Client
 	recorder           record.EventRecorder
+	scheduler          *volsnapshot.Scheduler
 	volSnapshotControl *volsnapshot.VolumeSnapshotControl
 }
 
@@ -48,6 +49,7 @@ func NewScheduledVolumeSnapshotReconciler(
 	return &ScheduledVolumeSnapshotReconciler{
 		Client:             client,
 		recorder:           recorder,
+		scheduler:          volsnapshot.NewScheduler(client),
 		volSnapshotControl: volsnapshot.NewVolumeSnapshotControl(client, cosmos.NewSyncedPodFinder(tmClient)),
 	}
 }
@@ -77,11 +79,14 @@ func (r *ScheduledVolumeSnapshotReconciler) Reconcile(ctx context.Context, req c
 	volsnapshot.ResetStatus(crd)
 	defer r.updateStatus(ctx, crd)
 
-	dur, err := volsnapshot.DurationUntilNext(crd, time.Now())
-	if err != nil {
-		logger.Error(err, "Failed to find duration until next snapshot")
-		r.reportError(crd, "FindNextSnapshotTimeError", err)
-		return finishResult, nil // Fatal error; do not requeue.
+	dur, schedErr := r.scheduler.CalcNext(ctx, crd)
+	if schedErr != nil {
+		logger.Error(schedErr, "Failed to find duration until next snapshot")
+		r.reportError(crd, "FindNextSnapshotTimeError", schedErr)
+		if schedErr.IsTransient() {
+			return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+		}
+		return finishResult, nil // Fatal error. Do not requeue.
 	}
 
 	if dur > 0 {
