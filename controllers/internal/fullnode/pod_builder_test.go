@@ -367,6 +367,12 @@ gaiad start --home /home/operator/cosmos`
 		const wantBody2 = `sleep 60
 gaiad start --home /home/operator/cosmos`
 		require.Equal(t, []string{"-c", wantBody2}, c.Args)
+
+		cmdCrd.Spec.ChainSpec.PrivvalSleepSeconds = ptr(int32(0))
+		pod = NewPodBuilder(&cmdCrd).WithOrdinal(1).Build()
+		c = pod.Spec.Containers[0]
+
+		require.Equal(t, []string{"gaiad"}, c.Command)
 	})
 
 	t.Run("probes", func(t *testing.T) {
