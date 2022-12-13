@@ -3,9 +3,13 @@ kind: ScheduledVolumeSnapshot
 metadata:
   name: scheduledvolumesnapshot-sample
 spec:
+  # Required
   # SourceRef must be a CosmosFullNode
   sourceRef:
     namespace: default
     name: cosmoshub
   schedule: "0 * * * *" # hourly
+  volumeSnapshotClassName: cosmos-snapshot
+
+  # Optional
   minAvailable: 2 # optional

@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -51,6 +52,9 @@ type ScheduledVolumeSnapshotSpec struct {
 	// Kubernetes providers rate limit VolumeSnapshot creation. Therefore, setting a crontab that's
 	// too frequent may result in rate limiting errors.
 	Schedule string `json:"schedule"`
+
+	// The name of the VolumeSnapshotClass to use when creating snapshots.
+	VolumeSnapshotClassName string `json:"volumeSnapshotClassName"`
 
 	// Minimum number of CosmosFullNode pods that must be ready before creating a VolumeSnapshot.
 	// This controller gracefully deletes a pod while taking a snapshot. Then recreates the pod once the
@@ -91,6 +95,22 @@ type ScheduledVolumeSnapshotStatus struct {
 	// The date when the CRD was created.
 	// Used as a reference when calculating the next time to create a snapshot.
 	CreatedAt metav1.Time `json:"createdAt"`
+
+	// The most recent volume snapshot created by the controller.
+	// +optional
+	LastSnapshot *VolumeSnapshotStatus `json:"lastSnapshot"`
+}
+
+type VolumeSnapshotStatus struct {
+	// The name of the created VolumeSnapshot.
+	Name string `json:"name"`
+
+	// The time the controller created the VolumeSnapshot.
+	StartedAt metav1.Time `json:"startedAt"`
+
+	// The last VolumeSnapshot's status
+	// +optional
+	Status *snapshotv1.VolumeSnapshotStatus `json:"status"`
 }
 
 //+kubebuilder:object:root=true

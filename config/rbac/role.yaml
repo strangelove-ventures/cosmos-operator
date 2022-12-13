@@ -138,6 +138,8 @@ rules:
   resources:
   - volumesnapshots
   verbs:
+  - create
+  - delete
   - get
   - list
   - watch

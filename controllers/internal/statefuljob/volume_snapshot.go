@@ -9,6 +9,7 @@ import (
 	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
 	"github.com/samber/lo"
 	cosmosalpha "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
+	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -32,7 +33,7 @@ func RecentVolumeSnapshot(ctx context.Context, lister Lister, crd *cosmosalpha.S
 	}
 
 	filtered := lo.Filter(snapshots.Items, func(s snapshotv1.VolumeSnapshot, _ int) bool {
-		return statusIsReady(s.Status)
+		return kube.VolumeSnapshotIsReady(s.Status)
 	})
 	if len(filtered) == 0 {
 		return nil, errors.New("no ready to use VolumeSnapshots found")
@@ -56,14 +57,4 @@ func statusCreationTime(status *snapshotv1.VolumeSnapshotStatus) (zero time.Time
 		return zero
 	}
 	return status.CreationTime.Time
-}
-
-func statusIsReady(status *snapshotv1.VolumeSnapshotStatus) bool {
-	if status == nil {
-		return false
-	}
-	if status.ReadyToUse == nil {
-		return false
-	}
-	return *status.ReadyToUse
 }

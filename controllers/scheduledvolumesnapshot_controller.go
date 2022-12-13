@@ -35,6 +35,7 @@ import (
 type ScheduledVolumeSnapshotReconciler struct {
 	client.Client
 	recorder           record.EventRecorder
+	scheduler          *volsnapshot.Scheduler
 	volSnapshotControl *volsnapshot.VolumeSnapshotControl
 }
 
@@ -48,6 +49,7 @@ func NewScheduledVolumeSnapshotReconciler(
 	return &ScheduledVolumeSnapshotReconciler{
 		Client:             client,
 		recorder:           recorder,
+		scheduler:          volsnapshot.NewScheduler(client),
 		volSnapshotControl: volsnapshot.NewVolumeSnapshotControl(client, cosmos.NewSyncedPodFinder(tmClient)),
 	}
 }
@@ -56,6 +58,7 @@ func NewScheduledVolumeSnapshotReconciler(
 //+kubebuilder:rbac:groups=cosmos.strange.love,resources=scheduledvolumesnapshots/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=cosmos.strange.love,resources=scheduledvolumesnapshots/finalizers,verbs=update
 //+kubebuilder:rbac:groups=cosmos.strange.love,resources=cosmosfullnodes/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=snapshot.storage.k8s.io,resources=volumesnapshots,verbs=get;create;delete
 //+kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
@@ -77,32 +80,41 @@ func (r *ScheduledVolumeSnapshotReconciler) Reconcile(ctx context.Context, req c
 	volsnapshot.ResetStatus(crd)
 	defer r.updateStatus(ctx, crd)
 
-	dur, err := volsnapshot.DurationUntilNext(crd, time.Now())
-	if err != nil {
-		logger.Error(err, "Failed to find duration until next snapshot")
-		r.reportError(crd, err)
-		return finishResult, nil // Fatal error; do not requeue.
+	dur, schedErr := r.scheduler.CalcNext(ctx, crd)
+	if schedErr != nil {
+		logger.Error(schedErr, "Failed to find duration until next snapshot")
+		r.reportError(crd, "FindNextSnapshotTimeError", schedErr)
+		if schedErr.IsTransient() {
+			return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+		}
+		return finishResult, nil // Fatal error. Do not requeue.
 	}
 
 	if dur > 0 {
-		logger.V(1).Info("Requeuing for next snapshot", "duration", dur.String())
+		logger.Info("Requeuing for next snapshot", "duration", dur.String())
 		return ctrl.Result{RequeueAfter: dur}, nil
 	}
 
+	logger.Info("Finding snapshot candidate")
 	candidate, err := r.volSnapshotControl.FindCandidate(ctx, crd)
 	if err != nil {
 		logger.Error(err, "Failed to find candidate for volume snapshot")
-		r.reportError(crd, err)
+		r.reportError(crd, "FindCandidateError", err)
 		return ctrl.Result{RequeueAfter: 60 * time.Second}, nil
 	}
 
-	logger.Info("Found candidate", "candidate", fmt.Sprintf("%+v", candidate))
+	logger.Info("Creating VolumeSnapshot", "candidatePod", candidate.PodName, "candidatePVC", candidate.PVCName)
+	if err = r.volSnapshotControl.CreateSnapshot(ctx, crd, candidate); err != nil {
+		logger.Error(err, "Failed to create volume snapshot")
+		r.reportError(crd, "CreateVolumeSnapshotError", err)
+		return ctrl.Result{RequeueAfter: 60 * time.Second}, nil
+	}
 
 	return finishResult, nil
 }
 
-func (r *ScheduledVolumeSnapshotReconciler) reportError(crd *cosmosv1alpha1.ScheduledVolumeSnapshot, err error) {
-	r.recorder.Event(crd, eventWarning, "Error", err.Error())
+func (r *ScheduledVolumeSnapshotReconciler) reportError(crd *cosmosv1alpha1.ScheduledVolumeSnapshot, reason string, err error) {
+	r.recorder.Event(crd, eventWarning, reason, err.Error())
 	crd.Status.StatusMessage = ptr(fmt.Sprint("Error: ", err))
 }
 
