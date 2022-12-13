@@ -81,7 +81,6 @@ func (r *ScheduledVolumeSnapshotReconciler) Reconcile(ctx context.Context, req c
 	defer r.updateStatus(ctx, crd)
 
 	switch crd.Status.Phase {
-
 	case cosmosv1alpha1.SnapshotPhaseWaiting:
 		dur, err := r.scheduler.CalcNext(crd)
 		if err != nil {
