@@ -7,6 +7,7 @@ import (
 	"time"
 
 	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
+	"github.com/samber/lo"
 	cosmosalpha "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/fullnode"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
@@ -94,10 +95,8 @@ func (control VolumeSnapshotControl) CreateSnapshot(ctx context.Context, crd *co
 	ts := control.now().UTC().Format("200601021504")
 	name := kube.ToName(fmt.Sprintf("%s-%s", crd.Name, ts))
 	snapshot.Name = name
-	snapshot.Labels = candidate.PodLabels
-	if snapshot.Labels == nil {
-		snapshot.Labels = make(map[string]string)
-	}
+
+	snapshot.Labels = lo.Assign(candidate.PodLabels)
 	snapshot.Labels[kube.ComponentLabel] = "ScheduledVolumeSnapshot"
 	snapshot.Labels[kube.ControllerLabel] = "cosmos-operator"
 

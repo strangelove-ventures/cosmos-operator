@@ -202,14 +202,15 @@ func TestVolumeSnapshotControl_CreateSnapshot(t *testing.T) {
 		crd.Namespace = "strangelove"
 		crd.Spec.VolumeSnapshotClassName = "my-snap-class"
 
+		labels := map[string]string{
+			"test":               "labels",
+			kube.ControllerLabel: "should not see me",
+			kube.ComponentLabel:  "should not see me",
+		}
 		candidate := Candidate{
-			PodLabels: map[string]string{
-				"test":               "labels",
-				kube.ControllerLabel: "should not see me",
-				kube.ComponentLabel:  "should not see me",
-			},
-			PodName: "chain-1",
-			PVCName: "pvc-chain-1",
+			PodLabels: labels,
+			PodName:   "chain-1",
+			PVCName:   "pvc-chain-1",
 		}
 		err := control.CreateSnapshot(ctx, &crd, candidate)
 
