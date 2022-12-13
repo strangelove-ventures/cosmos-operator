@@ -347,6 +347,28 @@ func TestPodBuilder(t *testing.T) {
 		require.Equal(t, []string{"start", "--home", "/home/operator/cosmos", "--x-crisis-skip-assert-invariants", "--log_level", "debug", "--log_format", "json"}, c.Args)
 	})
 
+	t.Run("sentry start container command ", func(t *testing.T) {
+		cmdCrd := defaultCRD()
+		cmdCrd.Spec.ChainSpec.Binary = "gaiad"
+		cmdCrd.Spec.Type = cosmosv1.FullNodeSentry
+
+		pod := NewPodBuilder(&cmdCrd).WithOrdinal(1).Build()
+		c := pod.Spec.Containers[0]
+
+		require.Equal(t, []string{"sh"}, c.Command)
+		const wantBody1 = `sleep 10
+gaiad start --home /home/operator/cosmos`
+		require.Equal(t, []string{"-c", wantBody1}, c.Args)
+
+		cmdCrd.Spec.ChainSpec.PrivvalSleepSeconds = ptr(int32(60))
+		pod = NewPodBuilder(&cmdCrd).WithOrdinal(1).Build()
+		c = pod.Spec.Containers[0]
+
+		const wantBody2 = `sleep 60
+gaiad start --home /home/operator/cosmos`
+		require.Equal(t, []string{"-c", wantBody2}, c.Args)
+	})
+
 	t.Run("probes", func(t *testing.T) {
 		crd := defaultCRD()
 		builder := NewPodBuilder(&crd)

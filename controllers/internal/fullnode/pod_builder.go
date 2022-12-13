@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"hash/fnv"
 	"path"
+	"strings"
 	"sync"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
@@ -36,6 +37,8 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 	}
 
 	tpl := crd.Spec.PodTemplate
+
+	startCmd, startArgs := startCmdAndArgs(crd)
 
 	pod := corev1.Pod{
 		TypeMeta: metav1.TypeMeta{
@@ -74,8 +77,8 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 					// The following is a useful hack if you need to inspect the PV.
 					//Command: []string{"/bin/sh"},
 					//Args:    []string{"-c", `trap : TERM INT; sleep infinity & wait`},
-					Command:   []string{crd.Spec.ChainSpec.Binary},
-					Args:      startCommandArgs(crd.Spec.ChainSpec),
+					Command:   []string{startCmd},
+					Args:      startArgs,
 					Env:       envVars,
 					Ports:     buildPorts(crd.Spec.Type),
 					Resources: tpl.Resources,
@@ -314,6 +317,25 @@ config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CON
 	}
 
 	return required
+}
+
+func startCmdAndArgs(crd *cosmosv1.CosmosFullNode) (string, []string) {
+	var (
+		binary             = crd.Spec.ChainSpec.Binary
+		args               = startCommandArgs(crd.Spec.ChainSpec)
+		privvalSleep int32 = 10
+	)
+	if v := crd.Spec.ChainSpec.PrivvalSleepSeconds; v != nil {
+		privvalSleep = *v
+	}
+
+	if crd.Spec.Type == cosmosv1.FullNodeSentry && privvalSleep > 0 {
+		shellBody := fmt.Sprintf(`sleep %d
+%s %s`, privvalSleep, binary, strings.Join(args, " "))
+		return "sh", []string{"-c", shellBody}
+	}
+
+	return binary, args
 }
 
 func startCommandArgs(cfg cosmosv1.ChainSpec) []string {
