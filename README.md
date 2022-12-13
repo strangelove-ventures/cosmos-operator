@@ -27,7 +27,7 @@ thus minimizing human intervention and human error.
 * CosmosFullNode: The controller requires [heighliner](https://github.com/strangelove-ventures/heighliner) images. If you build your own image, you will need a shell `sh` and set the uid:gid to 1025:1025.
 * CosmosFullNode: May not work with all chains built with the Cosmos SDK. (Some chains diverge from common conventions.)
 
-# CRDs
+# Flagship CRD
 
 ## CosmosFullNode
 
@@ -42,7 +42,9 @@ But, you can also configure rolling updates similar to a Deployment.
 
 As of this writing, Strangelove has been running CosmosFullNode in production for many weeks.
 
-View a [minimal example](./config/samples/cosmos_v1_cosmosfullnode.yaml) or a [full example](./config/samples/cosmos_v1_cosmosfullnode_full.yaml).
+[Minimal example yaml](./config/samples/cosmos_v1_cosmosfullnode.yaml)
+
+[Full example yaml](./config/samples/cosmos_v1_cosmosfullnode_full.yaml)
 
 ### Roadmap
 
@@ -62,7 +64,7 @@ Currently, is no timeline for any of these potential features.
 * HPA support.
 * Automatic upgrades. Controller monitors governance and performs upgrade without any human intervention.
 * Corrupt data recovery. Detect when a PVC may have corrupted data. Restore data from a recent VolumeSnapshot.
-* Safe, automatic backups. Create periodic VolumeSnapshots of PVCs while minimizing chance of data corruption during snapshot creation.
+* ~~Safe, automatic backups. Create periodic VolumeSnapshots of PVCs while minimizing chance of data corruption during snapshot creation.~~ Done
 
 ### Why not a StatefulSet?
 
@@ -76,20 +78,43 @@ template as found in StatefulSet will not suffice.
 In summary, we wanted precise control over resources so using an existing controller such as StatefulSet, Deployment, 
 ReplicaSet, etc. was not a good fit.
 
+# Support CRDs
+
 ## StatefulJob
 
-Status: v1alpha1, experimental only
+Status: v1alpha1
 
-Currently, StatefulJob is alpha and will likely have backwards breaking changes. At this time, **we do not recommend using it in production**.
+**Warning: May have backwards breaking changes!**
 
-The StatefulJob is a means to process persistent data from a recent [VolumeSnapshot](https://kubernetes.io/docs/concepts/storage/volume-snapshots/).
+A StatefulJob is a means to process persistent data from a recent [VolumeSnapshot](https://kubernetes.io/docs/concepts/storage/volume-snapshots/).
 It periodically creates a job and PVC using the most recent VolumeSnapshot as its data source. It mounts the PVC as volume "snapshot" into the job's pod.
 The user must configure container volume mounts.
 It's similar to a CronJob but does not offer advanced scheduling via a crontab. 
 
 Strangelove uses it to compress and upload snapshots of chain data.
 
-View [an example](./config/samples/cosmos_v1alpha1_statefuljob.yaml).
+[Example yaml](./config/samples/cosmos_v1alpha1_statefuljob.yaml)
+
+## ScheduledVolumeSnapshot
+
+Status: v1alpha1
+
+**Warning: May have backwards breaking changes!**
+
+A ScheduledVolumeSnapshot creates [VolumeSnapshots]([VolumeSnapshot](https://kubernetes.io/docs/concepts/storage/volume-snapshots/))
+from a CosmosFullNode PVC on a recurring schedule described by a [crontab](https://en.wikipedia.org/wiki/Cron). The controller
+chooses a candidate pod/pvc combo from a source CosmosFullNode. This allows you to create reliable, scheduled backups
+of blockchain state.
+
+**Warning: Backups may include private keys and secrets.** For validators, we strongly recommend using [Horcrux](https://github.com/strangelove-ventures/horcrux),
+[TMKMS](https://github.com/iqlusioninc/tmkms), or another tendermint remote signer.
+
+To minimize data corruption, the operator temporarily deletes the CosmosFullNode pod writing to the PVC while taking the snapshot. Deleting the pod allows the process to
+exit gracefully. Once the snapshot is complete, the operator re-creates the pod. Therefore, use of this CRD may affect
+availability of the source CosmosFullNode. At least 2 CosmosFullNode replicas is necessary to prevent downtime; 3
+replicas recommended. In the future, this behavior may be configurable.
+
+[Example yaml](./config/samples/cosmos_v1alpha1_scheduledvolumesnapshot.yaml)
 
 # Install in Your Cluster
 
