@@ -70,6 +70,7 @@ func configMapRevisionHash(crd *cosmosv1.CosmosFullNode, addresses ExternalAddre
 	h := fnv.New32()
 	mustWrite(h, mustMarshalJSON(crd.Spec.ChainSpec))
 	mustWrite(h, mustMarshalJSON(crd.Spec.PodTemplate.Image))
+	mustWrite(h, mustMarshalJSON(crd.Spec.Type))
 
 	vals := lo.MapToSlice(addresses, func(v, k string) string {
 		return v + k
@@ -111,7 +112,7 @@ func addTendermintToml(buf *bytes.Buffer, cmData map[string]string, crd *cosmosv
 	)
 
 	if crd.Spec.Type == cosmosv1.FullNodeSentry {
-		base["priv_validator_laddr"] = "tcp://0.0.0.0:1234"
+		base["priv_validator_laddr"] = fmt.Sprintf("tcp://0.0.0.0:%d", privvalPort)
 	}
 	if v := spec.LogLevel; v != nil {
 		base["log_level"] = v

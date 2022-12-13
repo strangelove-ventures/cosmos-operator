@@ -358,5 +358,11 @@ func FuzzBuildConfigMaps(f *testing.F) {
 		cms4, err := BuildConfigMaps(&crd, ExternalAddresses{"test": "value"})
 		require.NoError(t, err)
 		require.NotEqual(t, cms3[0].Labels[kube.RevisionLabel], cms4[0].Labels[kube.RevisionLabel])
+
+		crd.Spec.Type = cosmosv1.FullNodeSentry
+
+		cms5, err := BuildConfigMaps(&crd, ExternalAddresses{"test": "value"})
+		require.NoError(t, err)
+		require.NotEqual(t, cms4[0].Labels[kube.RevisionLabel], cms5[0].Labels[kube.RevisionLabel])
 	})
 }
