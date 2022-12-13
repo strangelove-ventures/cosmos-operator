@@ -1,5 +1,6 @@
 log_format = "json"
 log_level = "debug"
+priv_validator_laddr = ""
 
 [p2p]
 laddr = "tcp://0.0.0.0:26656"

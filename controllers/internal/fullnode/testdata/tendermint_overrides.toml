@@ -1,5 +1,6 @@
 log_format = "json"
 log_level = "info"
+priv_validator_laddr = ""
 new_base = "new base value"
 
 [p2p]
