@@ -39,6 +39,15 @@ type FullNodeSpec struct {
 	// +kubebuilder:validation:Minimum:=0
 	Replicas int32 `json:"replicas"`
 
+	// Different flavors of the fullnode's configuration.
+	// 'Sentry' configures the fullnode as a validator sentry, requiring a remote signer such as Horcrux or TMKMS.
+	// The remote signer is out of scope for the operator and must be deployed separately. Each pod exposes a privval port
+	// for use with the remote signer.
+	// If not set, configures node for RPC.
+	// +kubebuilder:validation:Enum:=Sentry
+	// +optional
+	Type FullNodeType `json:"type"`
+
 	// Blockchain-specific configuration.
 	ChainConfig ChainConfig `json:"chain"`
 
@@ -88,6 +97,13 @@ type FullNodeSpec struct {
 	// +optional
 	VolumeSnapshot *VolumeSnapshotSpec `json:"volumeSnapshot"`
 }
+
+type FullNodeType string
+
+const (
+	FullNodeRPC    FullNodeType = ""
+	FullNodeSentry FullNodeType = "Sentry"
+)
 
 // FullNodeStatus defines the observed state of CosmosFullNode
 type FullNodeStatus struct {
@@ -361,6 +377,15 @@ type ChainConfig struct {
 	// $DATA_DIR: The directory for the database files.
 	// +optional
 	SnapshotScript *string `json:"snapshotScript"`
+
+	// If configured as a Sentry, invokes sleep command with this value before running chain start command.
+	// Currently, tendermint requires the privval laddr to be available immediately without any retry.
+	// This workaround gives time for the connection to be made to a remote signer.
+	// If a Sentry and not set, defaults to 10.
+	// If set to 0, omits injecting sleep command.
+	// Assumes chain image has `sleep` in $PATH.
+	// +optional
+	PrivvalSleepSeconds *int32 `json:"privvalSleepSeconds"`
 }
 
 // TendermintConfig configures the tendermint config.toml.
