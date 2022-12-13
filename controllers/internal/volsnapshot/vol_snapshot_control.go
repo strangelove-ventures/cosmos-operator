@@ -40,12 +40,7 @@ func NewVolumeSnapshotControl(client Client, finder PodFinder) *VolumeSnapshotCo
 	}
 }
 
-// Candidate is a target instance of a CosmosFullNode from which to make a snapshot.
-type Candidate struct {
-	PodLabels map[string]string
-	PodName   string
-	PVCName   string
-}
+type Candidate = cosmosalpha.SnapshotCandidate
 
 // FindCandidate finds a suitable candidate for creating a volume snapshot.
 // Any errors returned can be treated as transient; worth a retry.
