@@ -96,6 +96,22 @@ spec:
             description: ScheduledVolumeSnapshotStatus defines the observed state
               of ScheduledVolumeSnapshot
             properties:
+              candidate:
+                description: The pod/pvc pair of the CosmosFullNode from which to
+                  make a VolumeSnapshot.
+                properties:
+                  podLabels:
+                    additionalProperties:
+                      type: string
+                    type: object
+                  podName:
+                    type: string
+                  pvcName:
+                    type: string
+                required:
+                - podName
+                - pvcName
+                type: object
               createdAt:
                 description: The date when the CRD was created. Used as a reference
                   when calculating the next time to create a snapshot.
@@ -196,12 +212,16 @@ spec:
                 description: The most recent generation observed by the controller.
                 format: int64
                 type: integer
+              phase:
+                description: The phase of the controller.
+                type: string
               status:
                 description: A generic message for the user. May contain errors.
                 type: string
             required:
             - createdAt
             - observedGeneration
+            - phase
             type: object
         type: object
     served: true

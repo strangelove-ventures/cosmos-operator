@@ -92,14 +92,38 @@ type ScheduledVolumeSnapshotStatus struct {
 	// +optional
 	StatusMessage *string `json:"status"`
 
+	// The phase of the controller.
+	Phase SnapshotPhase `json:"phase"`
+
 	// The date when the CRD was created.
 	// Used as a reference when calculating the next time to create a snapshot.
 	CreatedAt metav1.Time `json:"createdAt"`
+
+	// The pod/pvc pair of the CosmosFullNode from which to make a VolumeSnapshot.
+	// +optional
+	Candidate *SnapshotCandidate `json:"candidate"`
 
 	// The most recent volume snapshot created by the controller.
 	// +optional
 	LastSnapshot *VolumeSnapshotStatus `json:"lastSnapshot"`
 }
+
+type SnapshotCandidate struct {
+	PodName string `json:"podName"`
+	PVCName string `json:"pvcName"`
+
+	// +optional
+	PodLabels map[string]string `json:"podLabels"`
+}
+
+type SnapshotPhase string
+
+const (
+	SnapshotPhaseWaiting          SnapshotPhase = "WaitingForNext"
+	SnapshotPhaseFindingCandidate SnapshotPhase = "FindingCandidate"
+	SnapshotPhaseInitialize       SnapshotPhase = "InitializeSnapshot"
+	SnapshotPhaseCreating         SnapshotPhase = "CreatingSnapshot"
+)
 
 type VolumeSnapshotStatus struct {
 	// The name of the created VolumeSnapshot.
