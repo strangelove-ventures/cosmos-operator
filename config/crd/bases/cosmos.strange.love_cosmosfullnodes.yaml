@@ -238,6 +238,7 @@ spec:
                       to 10. If set to 0, omits injecting sleep command. Assumes chain
                       image has `sleep` in $PATH.
                     format: int32
+                    minimum: 0
                     type: integer
                   skipInvariants:
                     description: Skip x/crisis invariants check on startup.

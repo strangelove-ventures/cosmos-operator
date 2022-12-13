@@ -384,6 +384,7 @@ type ChainSpec struct {
 	// If a Sentry and not set, defaults to 10.
 	// If set to 0, omits injecting sleep command.
 	// Assumes chain image has `sleep` in $PATH.
+	// +kubebuilder:validation:Minimum:=0
 	// +optional
 	PrivvalSleepSeconds *int32 `json:"privvalSleepSeconds"`
 }
