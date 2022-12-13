@@ -146,6 +146,7 @@ func podRevisionHash(crd *cosmosv1.CosmosFullNode) string {
 	h := fnv.New32()
 	mustWrite(h, mustMarshalJSON(crd.Spec.PodTemplate))
 	mustWrite(h, mustMarshalJSON(crd.Spec.ChainSpec))
+	mustWrite(h, mustMarshalJSON(crd.Spec.Type))
 	return hex.EncodeToString(h.Sum(nil))
 }
 

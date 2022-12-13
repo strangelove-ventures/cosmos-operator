@@ -400,6 +400,11 @@ func FuzzPodBuilderBuild(f *testing.F) {
 		pod4 := NewPodBuilder(&crd).Build()
 
 		require.NotEqual(t, pod3.Labels[kube.RevisionLabel], pod4.Labels[kube.RevisionLabel])
+
+		crd.Spec.Type = cosmosv1.FullNodeSentry
+		pod5 := NewPodBuilder(&crd).Build()
+
+		require.NotEqual(t, pod4.Labels[kube.RevisionLabel], pod5.Labels[kube.RevisionLabel])
 	})
 }
 
