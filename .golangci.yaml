@@ -27,9 +27,6 @@ linters-settings:
       - github.com/onsi/ginkgo/v2: "Although Ginkgo is used in kubebuilder, use testify instead. Ginkgo is bloated providing little value."
   govet:
     check-shadowing: true
-  gofmt:
-    # simplify code: gofmt with `-s` option, true by default
-    simplify: true
   misspell:
     locale: US
   nakedret:
@@ -45,11 +42,9 @@ linters:
   disable-all: true
   enable:
     - bodyclose
-    - deadcode
     - depguard
     - errcheck
     - exportloopref
-    - gofmt
     - goimports
     - goprintffuncname
     - gosimple
@@ -60,9 +55,7 @@ linters:
     - noctx
     - nolintlint
     - staticcheck
-    - structcheck
     - stylecheck # replacement for golint
     - unconvert
     - unused
-    - varcheck
     - whitespace
