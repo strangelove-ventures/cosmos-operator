@@ -24,11 +24,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/go-logr/zapr"
-	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
-	"github.com/pkg/profile"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -36,15 +31,19 @@ import (
 	// Add Pprof endpoints.
 	_ "net/http/pprof"
 
+	"github.com/go-logr/zapr"
+	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
+	"github.com/pkg/profile"
+	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	cosmosv1alpha1 "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
+	"github.com/strangelove-ventures/cosmos-operator/controllers"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
-
-	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
-	cosmosv1alpha1 "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
-	"github.com/strangelove-ventures/cosmos-operator/controllers"
 	//+kubebuilder:scaffold:imports
 )
 
