@@ -103,7 +103,7 @@ func TestPodBuilder(t *testing.T) {
 		pod := NewPodBuilder(&crd).Build()
 		ports := pod.Spec.Containers[0].Ports
 
-		require.Len(t, ports, 7)
+		require.Equal(t, 7, len(ports))
 
 		for i, tt := range []struct {
 			Name string
@@ -123,6 +123,23 @@ func TestPodBuilder(t *testing.T) {
 			require.Equal(t, tt.Port, port.ContainerPort)
 			require.Zero(t, port.HostPort)
 		}
+	})
+
+	t.Run("ports - sentry", func(t *testing.T) {
+		crd := defaultCRD()
+		crd.Spec.Type = cosmosv1.FullNodeSentry
+
+		pod := NewPodBuilder(&crd).Build()
+		ports := pod.Spec.Containers[0].Ports
+
+		require.Equal(t, 8, len(ports))
+
+		got, _ := lo.Last(ports)
+
+		require.Equal(t, "privval", got.Name)
+		require.Equal(t, corev1.ProtocolTCP, got.Protocol)
+		require.EqualValues(t, 1234, got.ContainerPort)
+		require.Zero(t, got.HostPort)
 	})
 
 	t.Run("happy path - optional fields", func(t *testing.T) {

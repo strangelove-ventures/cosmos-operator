@@ -77,7 +77,7 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 					Command:   []string{crd.Spec.ChainConfig.Binary},
 					Args:      startCommandArgs(crd.Spec.ChainConfig),
 					Env:       envVars,
-					Ports:     fullNodePorts,
+					Ports:     buildPorts(crd.Spec.Type),
 					Resources: tpl.Resources,
 					ReadinessProbe: &corev1.Probe{
 						ProbeHandler: corev1.ProbeHandler{
