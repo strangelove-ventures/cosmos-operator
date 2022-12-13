@@ -49,7 +49,7 @@ type FullNodeSpec struct {
 	Type FullNodeType `json:"type"`
 
 	// Blockchain-specific configuration.
-	ChainConfig ChainConfig `json:"chain"`
+	ChainSpec ChainSpec `json:"chain"`
 
 	// Template applied to all pods.
 	// Creates 1 pod per replica.
@@ -296,7 +296,7 @@ type RolloutStrategy struct {
 	MaxUnavailable *intstr.IntOrString `json:"maxUnavailable"`
 }
 
-type ChainConfig struct {
+type ChainSpec struct {
 	// Genesis file chain-id.
 	// +kubebuilder:validation:MinLength:=1
 	ChainID string `json:"chainID"`

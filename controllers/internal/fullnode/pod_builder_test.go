@@ -24,7 +24,7 @@ func defaultCRD() cosmosv1.CosmosFullNode {
 			ResourceVersion: "_resource_version_",
 		},
 		Spec: cosmosv1.FullNodeSpec{
-			ChainConfig: cosmosv1.ChainConfig{Network: "mainnet"},
+			ChainSpec: cosmosv1.ChainSpec{Network: "mainnet"},
 			PodTemplate: cosmosv1.PodSpec{
 				Image: "busybox:v1.2.3",
 				Resources: corev1.ResourceRequirements{
@@ -199,9 +199,9 @@ func TestPodBuilder(t *testing.T) {
 	t.Run("containers", func(t *testing.T) {
 		crd := defaultCRD()
 		const wantWrkDir = "/home/operator"
-		crd.Spec.ChainConfig.ChainID = "osmosis-123"
-		crd.Spec.ChainConfig.Binary = "osmosisd"
-		crd.Spec.ChainConfig.SnapshotURL = ptr("https://example.com/snapshot.tar")
+		crd.Spec.ChainSpec.ChainID = "osmosis-123"
+		crd.Spec.ChainSpec.Binary = "osmosisd"
+		crd.Spec.ChainSpec.SnapshotURL = ptr("https://example.com/snapshot.tar")
 		crd.Spec.PodTemplate.Image = "main-image:v1.2.3"
 		builder := NewPodBuilder(&crd)
 		pod := builder.WithOrdinal(6).Build()
@@ -321,7 +321,7 @@ func TestPodBuilder(t *testing.T) {
 
 	t.Run("start container command", func(t *testing.T) {
 		cmdCrd := defaultCRD()
-		cmdCrd.Spec.ChainConfig.Binary = "gaiad"
+		cmdCrd.Spec.ChainSpec.Binary = "gaiad"
 		cmdCrd.Spec.PodTemplate.Image = "ghcr.io/cosmoshub:v1.2.3"
 
 		pod := NewPodBuilder(&cmdCrd).WithOrdinal(1).Build()
@@ -332,15 +332,15 @@ func TestPodBuilder(t *testing.T) {
 		require.Equal(t, []string{"gaiad"}, c.Command)
 		require.Equal(t, []string{"start", "--home", "/home/operator/cosmos"}, c.Args)
 
-		cmdCrd.Spec.ChainConfig.SkipInvariants = true
+		cmdCrd.Spec.ChainSpec.SkipInvariants = true
 		pod = NewPodBuilder(&cmdCrd).WithOrdinal(1).Build()
 		c = pod.Spec.Containers[0]
 
 		require.Equal(t, []string{"gaiad"}, c.Command)
 		require.Equal(t, []string{"start", "--home", "/home/operator/cosmos", "--x-crisis-skip-assert-invariants"}, c.Args)
 
-		cmdCrd.Spec.ChainConfig.LogLevel = ptr("debug")
-		cmdCrd.Spec.ChainConfig.LogFormat = ptr("json")
+		cmdCrd.Spec.ChainSpec.LogLevel = ptr("debug")
+		cmdCrd.Spec.ChainSpec.LogFormat = ptr("json")
 		pod = NewPodBuilder(&cmdCrd).WithOrdinal(1).Build()
 		c = pod.Spec.Containers[0]
 
@@ -395,8 +395,8 @@ func FuzzPodBuilderBuild(f *testing.F) {
 
 		require.NotEqual(t, pod1.Labels[kube.RevisionLabel], pod3.Labels[kube.RevisionLabel])
 
-		crd.Spec.ChainConfig.ChainID = "mychain-1"
-		crd.Spec.ChainConfig.Network = "newnetwork"
+		crd.Spec.ChainSpec.ChainID = "mychain-1"
+		crd.Spec.ChainSpec.Network = "newnetwork"
 		pod4 := NewPodBuilder(&crd).Build()
 
 		require.NotEqual(t, pod3.Labels[kube.RevisionLabel], pod4.Labels[kube.RevisionLabel])

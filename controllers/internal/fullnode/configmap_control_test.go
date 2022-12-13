@@ -29,7 +29,7 @@ func TestConfigMapControl_Reconcile(t *testing.T) {
 		crd := defaultCRD()
 		crd.Spec.Replicas = 3
 		crd.Name = "stargaze"
-		crd.Spec.ChainConfig.Network = "testnet"
+		crd.Spec.ChainSpec.Network = "testnet"
 
 		control.diffFactory = func(revisionLabelKey string, current, want []*corev1.ConfigMap) configmapDiffer {
 			require.Equal(t, "app.kubernetes.io/revision", revisionLabelKey)

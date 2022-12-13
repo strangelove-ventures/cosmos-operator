@@ -28,7 +28,7 @@ func defaultLabels(crd *cosmosv1.CosmosFullNode, kvPairs ...string) map[string]s
 		kube.ComponentLabel:  "CosmosFullNode",
 		kube.NameLabel:       appName(crd),
 		kube.VersionLabel:    kube.ParseImageVersion(crd.Spec.PodTemplate.Image),
-		networkLabel:         crd.Spec.ChainConfig.Network,
+		networkLabel:         crd.Spec.ChainSpec.Network,
 	}
 	for i := 0; i < len(kvPairs); i += 2 {
 		labels[kvPairs[i]] = kvPairs[i+1]

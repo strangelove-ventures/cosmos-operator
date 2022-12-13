@@ -18,7 +18,7 @@ func TestDownloadSnapshotCommand(t *testing.T) {
 fi`
 	)
 	t.Run("snapshot url", func(t *testing.T) {
-		var cfg cosmosv1.ChainConfig
+		var cfg cosmosv1.ChainSpec
 		cfg.SnapshotURL = ptr(testURL)
 
 		cmd, args := DownloadSnapshotCommand(cfg)
@@ -37,7 +37,7 @@ fi`
 	})
 
 	t.Run("snapshot script", func(t *testing.T) {
-		var cfg cosmosv1.ChainConfig
+		var cfg cosmosv1.ChainSpec
 		cfg.SnapshotURL = ptr(testURL) // Asserts SnapshotScript takes precedence.
 		cfg.SnapshotScript = ptr("echo hello")
 
@@ -53,7 +53,7 @@ fi`
 	})
 
 	t.Run("zero state", func(t *testing.T) {
-		var cfg cosmosv1.ChainConfig
+		var cfg cosmosv1.ChainSpec
 		require.Panics(t, func() {
 			DownloadSnapshotCommand(cfg)
 		})

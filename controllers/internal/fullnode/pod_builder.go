@@ -74,8 +74,8 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 					// The following is a useful hack if you need to inspect the PV.
 					//Command: []string{"/bin/sh"},
 					//Args:    []string{"-c", `trap : TERM INT; sleep infinity & wait`},
-					Command:   []string{crd.Spec.ChainConfig.Binary},
-					Args:      startCommandArgs(crd.Spec.ChainConfig),
+					Command:   []string{crd.Spec.ChainSpec.Binary},
+					Args:      startCommandArgs(crd.Spec.ChainSpec),
 					Env:       envVars,
 					Ports:     buildPorts(crd.Spec.Type),
 					Resources: tpl.Resources,
@@ -145,7 +145,7 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 func podRevisionHash(crd *cosmosv1.CosmosFullNode) string {
 	h := fnv.New32()
 	mustWrite(h, mustMarshalJSON(crd.Spec.PodTemplate))
-	mustWrite(h, mustMarshalJSON(crd.Spec.ChainConfig))
+	mustWrite(h, mustMarshalJSON(crd.Spec.ChainSpec))
 	return hex.EncodeToString(h.Sum(nil))
 }
 
@@ -237,10 +237,10 @@ var (
 
 func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Container {
 	tpl := crd.Spec.PodTemplate
-	binary := crd.Spec.ChainConfig.Binary
-	genesisCmd, genesisArgs := DownloadGenesisCommand(crd.Spec.ChainConfig)
+	binary := crd.Spec.ChainSpec.Binary
+	genesisCmd, genesisArgs := DownloadGenesisCommand(crd.Spec.ChainSpec)
 
-	initCmd := fmt.Sprintf("%s init %s --chain-id %s", binary, moniker, crd.Spec.ChainConfig.ChainID)
+	initCmd := fmt.Sprintf("%s init %s --chain-id %s", binary, moniker, crd.Spec.ChainSpec.ChainID)
 	required := []corev1.Container{
 		{
 			Name:    "chain-init",
@@ -300,7 +300,7 @@ config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CON
 	}
 
 	if willRestoreFromSnapshot(crd) {
-		cmd, args := DownloadSnapshotCommand(crd.Spec.ChainConfig)
+		cmd, args := DownloadSnapshotCommand(crd.Spec.ChainSpec)
 		required = append(required, corev1.Container{
 			Name:            "snapshot-restore",
 			Image:           infraToolImage,
@@ -315,7 +315,7 @@ config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CON
 	return required
 }
 
-func startCommandArgs(cfg cosmosv1.ChainConfig) []string {
+func startCommandArgs(cfg cosmosv1.ChainSpec) []string {
 	args := []string{"start", "--home", chainHomeDir}
 	if cfg.SkipInvariants {
 		args = append(args, "--x-crisis-skip-assert-invariants")
@@ -330,7 +330,7 @@ func startCommandArgs(cfg cosmosv1.ChainConfig) []string {
 }
 
 func willRestoreFromSnapshot(crd *cosmosv1.CosmosFullNode) bool {
-	return crd.Spec.ChainConfig.SnapshotURL != nil || crd.Spec.ChainConfig.SnapshotScript != nil
+	return crd.Spec.ChainSpec.SnapshotURL != nil || crd.Spec.ChainSpec.SnapshotScript != nil
 }
 
 // PVCName returns the primary PVC holding the chain data associated with the pod.

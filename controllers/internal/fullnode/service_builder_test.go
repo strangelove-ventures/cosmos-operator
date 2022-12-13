@@ -21,7 +21,7 @@ func TestBuildServices(t *testing.T) {
 		crd.Spec.Replicas = 3
 		crd.Name = "terra"
 		crd.Namespace = "test"
-		crd.Spec.ChainConfig.Network = "testnet"
+		crd.Spec.ChainSpec.Network = "testnet"
 		crd.Spec.PodTemplate.Image = "terra:v6.0.0"
 		svcs := BuildServices(&crd)
 
@@ -92,7 +92,7 @@ func TestBuildServices(t *testing.T) {
 		crd.Spec.Replicas = 1
 		crd.Name = "terra"
 		crd.Namespace = "test"
-		crd.Spec.ChainConfig.Network = "testnet"
+		crd.Spec.ChainSpec.Network = "testnet"
 		crd.Spec.PodTemplate.Image = "terra:v6.0.0"
 		svcs := BuildServices(&crd)
 
@@ -159,7 +159,7 @@ func TestBuildServices(t *testing.T) {
 		crd.Spec.Replicas = 0
 		crd.Name = "terra"
 		crd.Namespace = "test"
-		crd.Spec.ChainConfig.Network = "testnet"
+		crd.Spec.ChainSpec.Network = "testnet"
 		crd.Spec.PodTemplate.Image = "terra:v6.0.0"
 		crd.Spec.Service.RPCTemplate = cosmosv1.RPCServiceSpec{
 			Metadata: cosmosv1.Metadata{

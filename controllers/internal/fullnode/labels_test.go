@@ -13,7 +13,7 @@ func TestSelectorLabels(t *testing.T) {
 
 	crd := &cosmosv1.CosmosFullNode{}
 	crd.Name = "cool-chain"
-	crd.Spec.ChainConfig.Network = "mainnet"
+	crd.Spec.ChainSpec.Network = "mainnet"
 
 	got := SelectorLabels(crd)
 	require.Equal(t, client.MatchingLabels{"app.kubernetes.io/name": "cool-chain"}, got)
