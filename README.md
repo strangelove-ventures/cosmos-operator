@@ -24,7 +24,7 @@ thus minimizing human intervention and human error.
 * Only tested on GKE. Although kubernetes is portable, YMMV with AWS, Azure, or other kubernetes providers. Or it may not work at all.
 * Requires a recent version of kubernetes: v1.23+.
 * CosmosFullNode: The chain must be built from the [Cosmos SDK](https://github.com/cosmos/cosmos-sdk).
-* CosmosFullNode: The controller requires [heighliner](https://github.com/strangelove-ventures/heighliner) images. If you build your own image, you will need a shell `sh` and set the uid:gid to 1025:1025.
+* CosmosFullNode: The controller requires [heighliner](https://github.com/strangelove-ventures/heighliner) images. If you build your own image, you will need a shell `sh` and set the uid:gid to 1025:1025. If running as a validator sentry, you probably want `sleep` as well.
 * CosmosFullNode: May not work with all chains built with the Cosmos SDK. (Some chains diverge from common conventions.)
 
 # Flagship CRD
