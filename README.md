@@ -106,7 +106,8 @@ from a CosmosFullNode PVC on a recurring schedule described by a [crontab](https
 chooses a candidate pod/pvc combo from a source CosmosFullNode. This allows you to create reliable, scheduled backups
 of blockchain state.
 
-**Warning: Backups may include private keys and secrets.**
+**Warning: Backups may include private keys and secrets.** For validators, we strongly recommend using [Horcrux](https://github.com/strangelove-ventures/horcrux),
+[TMKMS](https://github.com/iqlusioninc/tmkms), or another tendermint remote signer.
 
 To minimize data corruption, the operator temporarily deletes the CosmosFullNode pod writing to the PVC while taking the snapshot. Deleting the pod allows the process to
 exit gracefully. Once the snapshot is complete, the operator re-creates the pod. Therefore, use of this CRD may affect
