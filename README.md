@@ -64,7 +64,7 @@ Currently, is no timeline for any of these potential features.
 * HPA support.
 * Automatic upgrades. Controller monitors governance and performs upgrade without any human intervention.
 * Corrupt data recovery. Detect when a PVC may have corrupted data. Restore data from a recent VolumeSnapshot.
-* ~~Safe, automatic backups. Create periodic VolumeSnapshots of PVCs while minimizing chance of data corruption during snapshot creation.~~ Done
+* ~~Safe, automatic backups. Create periodic VolumeSnapshots of PVCs while minimizing chance of data corruption during snapshot creation.~~ In Progress
 
 ### Why not a StatefulSet?
 
@@ -98,6 +98,8 @@ Strangelove uses it to compress and upload snapshots of chain data.
 ## ScheduledVolumeSnapshot
 
 Status: v1alpha1
+
+**NOT READY FOR PRODUCTION!**
 
 **Warning: May have backwards breaking changes!**
 
