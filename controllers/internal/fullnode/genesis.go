@@ -28,7 +28,7 @@ echo "Genesis $GENESIS_FILE initialized."
 //
 // The general strategy is if the user does not configure an external genesis file, use the genesis from the <chain-binary> init command.
 // If the user supplies a custom script, we use that. Otherwise, we use attempt to download and extract the file.
-func DownloadGenesisCommand(cfg cosmosv1.ChainConfig) (string, []string) {
+func DownloadGenesisCommand(cfg cosmosv1.ChainSpec) (string, []string) {
 	args := []string{"-c"}
 	switch {
 	case cfg.GenesisScript != nil:

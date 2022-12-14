@@ -20,8 +20,8 @@ func TestPodState(t *testing.T) {
 				Name: "agoric",
 			},
 			Spec: cosmosv1.FullNodeSpec{
-				Replicas:    5,
-				ChainConfig: cosmosv1.ChainConfig{Network: "devnet"},
+				Replicas:  5,
+				ChainSpec: cosmosv1.ChainSpec{Network: "devnet"},
 				PodTemplate: cosmosv1.PodSpec{
 					Image: "busybox:latest",
 				},

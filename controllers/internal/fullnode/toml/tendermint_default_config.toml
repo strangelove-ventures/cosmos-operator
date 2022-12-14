@@ -4,6 +4,8 @@ log_level = "info"
 # Output format: 'plain' (colored text) or 'json'
 log_format = "plain"
 
+priv_validator_laddr = ""
+
 [p2p]
 
 # Address to listen for incoming connections

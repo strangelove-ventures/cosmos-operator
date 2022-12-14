@@ -37,11 +37,11 @@ func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, p2p ExternalAddresses) ([]*co
 	for i := int32(0); i < crd.Spec.Replicas; i++ {
 		data := make(map[string]string)
 		instance := instanceName(crd, i)
-		if err := addTendermintToml(buf, data, crd.Spec.ChainConfig, p2p[instance]); err != nil {
+		if err := addTendermintToml(buf, data, crd, p2p[instance]); err != nil {
 			return nil, err
 		}
 		buf.Reset()
-		if err := addAppToml(buf, data, crd.Spec.ChainConfig.App); err != nil {
+		if err := addAppToml(buf, data, crd.Spec.ChainSpec.App); err != nil {
 			return nil, err
 		}
 		buf.Reset()
@@ -68,8 +68,9 @@ func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, p2p ExternalAddresses) ([]*co
 
 func configMapRevisionHash(crd *cosmosv1.CosmosFullNode, addresses ExternalAddresses) string {
 	h := fnv.New32()
-	mustWrite(h, mustMarshalJSON(crd.Spec.ChainConfig))
+	mustWrite(h, mustMarshalJSON(crd.Spec.ChainSpec))
 	mustWrite(h, mustMarshalJSON(crd.Spec.PodTemplate.Image))
+	mustWrite(h, mustMarshalJSON(crd.Spec.Type))
 
 	vals := lo.MapToSlice(addresses, func(v, k string) string {
 		return v + k
@@ -104,9 +105,15 @@ func defaultApp() decodedToml {
 	return data
 }
 
-func addTendermintToml(buf *bytes.Buffer, cmData map[string]string, spec cosmosv1.ChainConfig, externalAddress string) error {
-	base := make(decodedToml)
+func addTendermintToml(buf *bytes.Buffer, cmData map[string]string, crd *cosmosv1.CosmosFullNode, externalAddress string) error {
+	var (
+		spec = crd.Spec.ChainSpec
+		base = make(decodedToml)
+	)
 
+	if crd.Spec.Type == cosmosv1.FullNodeSentry {
+		base["priv_validator_laddr"] = fmt.Sprintf("tcp://0.0.0.0:%d", privvalPort)
+	}
 	if v := spec.LogLevel; v != nil {
 		base["log_level"] = v
 	}
