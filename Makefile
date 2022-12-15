@@ -83,7 +83,7 @@ build: generate ## Build manager binary.
 run: manifests generate ## Run a controller from your host.
 	go run ./main.go -log-level=debug
 
-PRE_IMG ?= ghcr.io/strangelove-ventures/cosmos-operator:$(shell git describe --always --dirty)
+PRE_IMG ?= ghcr.io/strangelove-ventures/cosmos-operator:dev$(shell git describe --always --dirty)
 .PHONY: docker-prerelease
 docker-prerelease: ## Build and push a prerelease docker image.
 	IMG=$(PRE_IMG) $(MAKE) docker-build docker-push

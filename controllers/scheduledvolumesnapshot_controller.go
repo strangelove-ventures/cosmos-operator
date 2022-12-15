@@ -80,36 +80,57 @@ func (r *ScheduledVolumeSnapshotReconciler) Reconcile(ctx context.Context, req c
 	volsnapshot.ResetStatus(crd)
 	defer r.updateStatus(ctx, crd)
 
-	dur, schedErr := r.scheduler.CalcNext(ctx, crd)
-	if schedErr != nil {
-		logger.Error(schedErr, "Failed to find duration until next snapshot")
-		r.reportError(crd, "FindNextSnapshotTimeError", schedErr)
-		if schedErr.IsTransient() {
+	switch crd.Status.Phase {
+	case cosmosv1alpha1.SnapshotPhaseWaiting:
+		dur, err := r.scheduler.CalcNext(crd)
+		if err != nil {
+			logger.Error(err, "Failed to find duration until next snapshot")
+			r.reportError(crd, "FindNextSnapshotTimeError", err)
+			return finishResult, nil // Fatal error. Do not requeue.
+		}
+		if dur > 0 {
+			logger.Info("Requeuing for next snapshot", "duration", dur.String())
+			return ctrl.Result{RequeueAfter: dur}, nil
+		}
+		crd.Status.Phase = cosmosv1alpha1.SnapshotPhaseFindingCandidate
+
+	case cosmosv1alpha1.SnapshotPhaseFindingCandidate:
+		logger.Info("Finding snapshot candidate")
+		candidate, err := r.volSnapshotControl.FindCandidate(ctx, crd)
+		if err != nil {
+			logger.Error(err, "Failed to find candidate for volume snapshot")
+			r.reportError(crd, "FindCandidateError", err)
 			return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 		}
-		return finishResult, nil // Fatal error. Do not requeue.
+		crd.Status.Phase = cosmosv1alpha1.SnapshotPhaseInitialize
+		crd.Status.Candidate = &candidate
+
+	case cosmosv1alpha1.SnapshotPhaseInitialize:
+		candidate := crd.Status.Candidate
+		logger.Info("Creating VolumeSnapshot", "candidatePod", candidate.PodName, "candidatePVC", candidate.PVCName)
+		if err := r.volSnapshotControl.CreateSnapshot(ctx, crd, *candidate); err != nil {
+			logger.Error(err, "Failed to create volume snapshot")
+			r.reportError(crd, "CreateVolumeSnapshotError", err)
+			return ctrl.Result{RequeueAfter: 60 * time.Second}, nil
+		}
+		crd.Status.Phase = cosmosv1alpha1.SnapshotPhaseCreating
+
+	case cosmosv1alpha1.SnapshotPhaseCreating:
+		ready, err := r.scheduler.IsSnapshotReady(ctx, crd)
+		if err != nil {
+			logger.Error(err, "Failed to find VolumeSnapshot ready status")
+			r.reportError(crd, "VolumeSnapshotReadyError", err)
+			return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+		}
+		if !ready {
+			logger.Info("VolumeSnapshot not ready for use; requeueing")
+			return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+		}
+		// Reset phase to the beginning.
+		crd.Status.Phase = cosmosv1alpha1.SnapshotPhaseWaiting
 	}
 
-	if dur > 0 {
-		logger.Info("Requeuing for next snapshot", "duration", dur.String())
-		return ctrl.Result{RequeueAfter: dur}, nil
-	}
-
-	logger.Info("Finding snapshot candidate")
-	candidate, err := r.volSnapshotControl.FindCandidate(ctx, crd)
-	if err != nil {
-		logger.Error(err, "Failed to find candidate for volume snapshot")
-		r.reportError(crd, "FindCandidateError", err)
-		return ctrl.Result{RequeueAfter: 60 * time.Second}, nil
-	}
-
-	logger.Info("Creating VolumeSnapshot", "candidatePod", candidate.PodName, "candidatePVC", candidate.PVCName)
-	if err = r.volSnapshotControl.CreateSnapshot(ctx, crd, candidate); err != nil {
-		logger.Error(err, "Failed to create volume snapshot")
-		r.reportError(crd, "CreateVolumeSnapshotError", err)
-		return ctrl.Result{RequeueAfter: 60 * time.Second}, nil
-	}
-
+	// Updating status in the defer above triggers a new reconcile loop.
 	return finishResult, nil
 }
 

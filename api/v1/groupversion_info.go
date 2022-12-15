@@ -15,8 +15,8 @@ limitations under the License.
 */
 
 // Package v1 contains API Schema definitions for the cosmos v1 API group
-//+kubebuilder:object:generate=true
-//+groupName=cosmos.strange.love
+// +kubebuilder:object:generate=true
+// +groupName=cosmos.strange.love
 package v1
 
 import (
