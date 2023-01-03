@@ -127,10 +127,10 @@ type FullNodeStatus struct {
 	// resources during VolumeSnapshot creation.
 	// Map key is the name of the ScheduledVolumeSnapshot CRD that created the status.
 	// +optional
-	ScheduledSnapshotStatus map[string]ScheduledSnapshotStatus `json:"scheduledSnapshotStatus"`
+	ScheduledSnapshotStatus map[string]FullNodeSnapshotStatus `json:"scheduledSnapshotStatus"`
 }
 
-type ScheduledSnapshotStatus struct {
+type FullNodeSnapshotStatus struct {
 	// Which pod name to temporarily delete. Indicates a ScheduledVolumeSnapshot is taking place. For optimal data
 	// integrity, pod is temporarily removed so PVC does not have any processes writing to it.
 	PodCandidate string `json:"podCandidate"`

@@ -140,7 +140,7 @@ const (
 	// the VolumeSnapshot to become ready for use.
 	SnapshotPhaseWaitingForCreation SnapshotPhase = "WaitingForCreationCompletion"
 
-	// SnapshotPhaseRestorePod signals the fullNodeRef it can create the temporarily deleted pod.
+	// SnapshotPhaseRestorePod signals the fullNodeRef it can recreate the temporarily deleted pod.
 	SnapshotPhaseRestorePod = "RestoringPod"
 )
 
