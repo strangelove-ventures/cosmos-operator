@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"time"
 
+	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	cosmosv1alpha1 "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/cosmos"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/volsnapshot"
@@ -102,8 +103,31 @@ func (r *ScheduledVolumeSnapshotReconciler) Reconcile(ctx context.Context, req c
 			r.reportError(crd, "FindCandidateError", err)
 			return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 		}
-		crd.Status.Phase = cosmosv1alpha1.SnapshotPhaseCreating
+		crd.Status.Phase = cosmosv1alpha1.SnapshotPhaseDeletePod
 		crd.Status.Candidate = &candidate
+
+	case cosmosv1alpha1.SnapshotPhaseDeletePod:
+		// TODO: abstract to ta service.
+		fn := cosmosv1.CosmosFullNode{}
+		fn.Name = crd.Spec.FullNodeRef.Name
+		fn.Namespace = crd.Spec.FullNodeRef.Namespace
+		if fn.Status.ScheduledSnapshotStatus == nil {
+			fn.Status.ScheduledSnapshotStatus = make(map[string]cosmosv1.FullNodeSnapshotStatus)
+		}
+		key := crd.Namespace + "/" + cosmosv1alpha1.GroupVersion.WithResource(crd.Name).GroupResource().String()
+		fn.Status.ScheduledSnapshotStatus[key] = cosmosv1.FullNodeSnapshotStatus{
+			PodCandidate: crd.Status.Candidate.PodName,
+		}
+		if err := r.Status().Patch(ctx, &fn, client.Merge); err != nil {
+			logger.Error(err, "Failed to patch fullnode status for deleting pod")
+			r.reportError(crd, "DeletePodError", err)
+			return ctrl.Result{RequeueAfter: 60 * time.Second}, nil
+		}
+		crd.Status.Phase = cosmosv1alpha1.SnapshotPhaseWaitingForPodDeletion
+
+	case cosmosv1alpha1.SnapshotPhaseWaitingForPodDeletion:
+		logger.Info("TODO", "phase", crd.Status.Phase)
+		crd.Status.Phase = cosmosv1alpha1.SnapshotPhaseCreating
 
 	case cosmosv1alpha1.SnapshotPhaseCreating:
 		candidate := crd.Status.Candidate
@@ -126,7 +150,22 @@ func (r *ScheduledVolumeSnapshotReconciler) Reconcile(ctx context.Context, req c
 			logger.Info("VolumeSnapshot not ready for use; requeueing")
 			return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 		}
-		// Reset phase to the beginning.
+		crd.Status.Phase = cosmosv1alpha1.SnapshotPhaseRestorePod
+
+	case cosmosv1alpha1.SnapshotPhaseRestorePod:
+		// TODO: abstract to service
+		//fn := cosmosv1.CosmosFullNode{}
+		//fn.Name = crd.Spec.FullNodeRef.Name
+		//fn.Namespace = crd.Spec.FullNodeRef.Namespace
+		//key := crd.Namespace + "/" + cosmosv1alpha1.GroupVersion.WithResource(crd.Name).GroupResource().String()
+		//delete(fn.Status.ScheduledSnapshotStatus, key)
+		//if err := r.Status().Patch(ctx, &fn, client.Merge); err != nil {
+		//	logger.Error(err, "Failed to patch fullnode status for restoring pod")
+		//	r.reportError(crd, "RestorePodError", err)
+		//	return ctrl.Result{RequeueAfter: 60 * time.Second}, nil
+		//}
+		logger.Info("TODO", "phase", crd.Status.Phase)
+		// Reset to beginning.
 		crd.Status.Phase = cosmosv1alpha1.SnapshotPhaseWaitingForNext
 	}
 
