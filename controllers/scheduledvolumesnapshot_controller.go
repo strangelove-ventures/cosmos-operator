@@ -81,7 +81,7 @@ func (r *ScheduledVolumeSnapshotReconciler) Reconcile(ctx context.Context, req c
 	defer r.updateStatus(ctx, crd)
 
 	switch crd.Status.Phase {
-	case cosmosv1alpha1.SnapshotPhaseWaiting:
+	case cosmosv1alpha1.SnapshotPhaseWaitingForNext:
 		dur, err := r.scheduler.CalcNext(crd)
 		if err != nil {
 			logger.Error(err, "Failed to find duration until next snapshot")
@@ -102,10 +102,10 @@ func (r *ScheduledVolumeSnapshotReconciler) Reconcile(ctx context.Context, req c
 			r.reportError(crd, "FindCandidateError", err)
 			return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 		}
-		crd.Status.Phase = cosmosv1alpha1.SnapshotPhaseInitialize
+		crd.Status.Phase = cosmosv1alpha1.SnapshotPhaseCreating
 		crd.Status.Candidate = &candidate
 
-	case cosmosv1alpha1.SnapshotPhaseInitialize:
+	case cosmosv1alpha1.SnapshotPhaseCreating:
 		candidate := crd.Status.Candidate
 		logger.Info("Creating VolumeSnapshot", "candidatePod", candidate.PodName, "candidatePVC", candidate.PVCName)
 		if err := r.volSnapshotControl.CreateSnapshot(ctx, crd, *candidate); err != nil {
@@ -113,9 +113,9 @@ func (r *ScheduledVolumeSnapshotReconciler) Reconcile(ctx context.Context, req c
 			r.reportError(crd, "CreateVolumeSnapshotError", err)
 			return ctrl.Result{RequeueAfter: 60 * time.Second}, nil
 		}
-		crd.Status.Phase = cosmosv1alpha1.SnapshotPhaseCreating
+		crd.Status.Phase = cosmosv1alpha1.SnapshotPhaseWaitingForCreation
 
-	case cosmosv1alpha1.SnapshotPhaseCreating:
+	case cosmosv1alpha1.SnapshotPhaseWaitingForCreation:
 		ready, err := r.scheduler.IsSnapshotReady(ctx, crd)
 		if err != nil {
 			logger.Error(err, "Failed to find VolumeSnapshot ready status")
@@ -127,7 +127,7 @@ func (r *ScheduledVolumeSnapshotReconciler) Reconcile(ctx context.Context, req c
 			return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 		}
 		// Reset phase to the beginning.
-		crd.Status.Phase = cosmosv1alpha1.SnapshotPhaseWaiting
+		crd.Status.Phase = cosmosv1alpha1.SnapshotPhaseWaitingForNext
 	}
 
 	// Updating status in the defer above triggers a new reconcile loop.

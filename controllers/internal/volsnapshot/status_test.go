@@ -31,6 +31,6 @@ func TestResetStatus(t *testing.T) {
 		ResetStatus(&crd)
 
 		require.WithinDuration(t, time.Now(), crd.Status.CreatedAt.Time, 10*time.Second)
-		require.Equal(t, cosmosalpha.SnapshotPhaseWaiting, crd.Status.Phase)
+		require.Equal(t, cosmosalpha.SnapshotPhaseWaitingForNext, crd.Status.Phase)
 	})
 }
