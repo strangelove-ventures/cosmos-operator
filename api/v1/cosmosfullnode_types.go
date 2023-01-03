@@ -122,6 +122,18 @@ type FullNodeStatus struct {
 	// A generic message for the user. May contain errors.
 	// +optional
 	StatusMessage *string `json:"status"`
+
+	// Set by the ScheduledVolumeSnapshotController. Used to signal the CosmosFullNode to modify its
+	// resources during VolumeSnapshot creation.
+	// Map key is the name of the ScheduledVolumeSnapshot CRD that created the status.
+	// +optional
+	ScheduledSnapshotStatus map[string]ScheduledSnapshotStatus `json:"scheduledSnapshotStatus"`
+}
+
+type ScheduledSnapshotStatus struct {
+	// Which pod name to temporarily delete. Indicates a ScheduledVolumeSnapshot is taking place. For optimal data
+	// integrity, pod is temporarily removed so PVC does not have any processes writing to it.
+	PodCandidate string `json:"podCandidate"`
 }
 
 type FullNodePhase string
