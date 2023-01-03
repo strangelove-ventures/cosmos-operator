@@ -47,6 +47,19 @@ spec:
               is created at a time, so at most only 1 pod is temporarily deleted.
               Multiple, parallel VolumeSnapshots are not supported.'
             properties:
+              fullNodeRef:
+                description: Reference to the source CosmosFullNode.
+                properties:
+                  name:
+                    description: Name of the object, metadata.name
+                    type: string
+                  namespace:
+                    description: Namespace of the object, metadata.namespace
+                    type: string
+                required:
+                - name
+                - namespace
+                type: object
               limit:
                 description: The number of recent VolumeSnapshots to keep. Default
                   is 3.
@@ -70,26 +83,13 @@ spec:
                   Therefore, setting a crontab that's too frequent may result in rate
                   limiting errors.
                 type: string
-              sourceRef:
-                description: Reference to the source CosmosFullNode.
-                properties:
-                  name:
-                    description: Name of the object, metadata.name
-                    type: string
-                  namespace:
-                    description: Namespace of the object, metadata.namespace
-                    type: string
-                required:
-                - name
-                - namespace
-                type: object
               volumeSnapshotClassName:
                 description: The name of the VolumeSnapshotClass to use when creating
                   snapshots.
                 type: string
             required:
+            - fullNodeRef
             - schedule
-            - sourceRef
             - volumeSnapshotClassName
             type: object
           status:

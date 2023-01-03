@@ -45,7 +45,7 @@ type ScheduledVolumeSnapshotSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Reference to the source CosmosFullNode.
-	SourceRef ObjectRef `json:"sourceRef"`
+	FullNodeRef ObjectRef `json:"fullNodeRef"`
 
 	// A crontab schedule using the standard as described in https://en.wikipedia.org/wiki/Cron.
 	// See https://crontab.guru for format.
@@ -118,6 +118,7 @@ type SnapshotCandidate struct {
 
 type SnapshotPhase string
 
+// These values are persisted. Do not change arbitrarily.
 const (
 	// SnapshotPhaseWaitingForNext means waiting for the next scheduled time to start the snapshot creation process.
 	SnapshotPhaseWaitingForNext SnapshotPhase = "WaitingForNext"
