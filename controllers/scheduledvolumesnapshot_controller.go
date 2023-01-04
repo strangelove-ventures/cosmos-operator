@@ -118,7 +118,7 @@ func (r *ScheduledVolumeSnapshotReconciler) Reconcile(ctx context.Context, req c
 		if fn.Status.ScheduledSnapshotStatus == nil {
 			fn.Status.ScheduledSnapshotStatus = make(map[string]cosmosv1.FullNodeSnapshotStatus)
 		}
-		key := crd.Namespace + "/" + cosmosv1alpha1.GroupVersion.WithResource(crd.Name).GroupResource().String()
+		key := crd.Namespace + "." + cosmosv1alpha1.GroupVersion.WithResource(crd.Name).GroupResource().String()
 		fn.Status.ScheduledSnapshotStatus[key] = cosmosv1.FullNodeSnapshotStatus{
 			PodCandidate: crd.Status.Candidate.PodName,
 		}
@@ -136,25 +136,25 @@ func (r *ScheduledVolumeSnapshotReconciler) Reconcile(ctx context.Context, req c
 	case cosmosv1alpha1.SnapshotPhaseCreating:
 		candidate := crd.Status.Candidate
 		logger.Info(string(phase), "candidatePod", candidate.PodName, "candidatePVC", candidate.PVCName)
-		//if err := r.volSnapshotControl.CreateSnapshot(ctx, crd, *candidate); err != nil {
-		//	logger.Error(err, "Failed to create volume snapshot")
-		//	r.reportError(crd, "CreateVolumeSnapshotError", err)
-		//	return ctrl.Result{RequeueAfter: 60 * time.Second}, nil
-		//}
+		if err := r.volSnapshotControl.CreateSnapshot(ctx, crd, *candidate); err != nil {
+			logger.Error(err, "Failed to create volume snapshot")
+			r.reportError(crd, "CreateVolumeSnapshotError", err)
+			return ctrl.Result{RequeueAfter: 60 * time.Second}, nil
+		}
 		crd.Status.Phase = cosmosv1alpha1.SnapshotPhaseWaitingForCreation
 
 	case cosmosv1alpha1.SnapshotPhaseWaitingForCreation:
 		logger.Info(string(phase))
-		//ready, err := r.scheduler.IsSnapshotReady(ctx, crd)
-		//if err != nil {
-		//	logger.Error(err, "Failed to find VolumeSnapshot ready status")
-		//	r.reportError(crd, "VolumeSnapshotReadyError", err)
-		//	return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
-		//}
-		//if !ready {
-		//	logger.Info("VolumeSnapshot not ready for use; requeueing")
-		//	return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
-		//}
+		ready, err := r.scheduler.IsSnapshotReady(ctx, crd)
+		if err != nil {
+			logger.Error(err, "Failed to find VolumeSnapshot ready status")
+			r.reportError(crd, "VolumeSnapshotReadyError", err)
+			return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+		}
+		if !ready {
+			logger.Info("VolumeSnapshot not ready for use; requeueing")
+			return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+		}
 		crd.Status.Phase = cosmosv1alpha1.SnapshotPhaseRestorePod
 
 	case cosmosv1alpha1.SnapshotPhaseRestorePod:
@@ -163,7 +163,7 @@ func (r *ScheduledVolumeSnapshotReconciler) Reconcile(ctx context.Context, req c
 		var fn cosmosv1.CosmosFullNode
 		fn.Name = crd.Spec.FullNodeRef.Name
 		fn.Namespace = crd.Spec.FullNodeRef.Namespace
-		key := crd.Namespace + "/" + cosmosv1alpha1.GroupVersion.WithResource(crd.Name).GroupResource().String()
+		key := crd.Namespace + "." + cosmosv1alpha1.GroupVersion.WithResource(crd.Name).GroupResource().String()
 		raw := client.RawPatch(types.JSONPatchType, []byte(fmt.Sprintf(`[{ "op": "remove", "path": "/status/scheduledSnapshotStatus/%s" }]`, key)))
 		if err := r.Status().Patch(ctx, &fn, raw); err != nil {
 			logger.Error(err, "Failed to update fullnode status for restoring pod")
