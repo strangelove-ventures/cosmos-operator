@@ -1690,9 +1690,10 @@ spec:
                   type: object
                 description: Set by the ScheduledVolumeSnapshotController. Used to
                   signal the CosmosFullNode to modify its resources during VolumeSnapshot
-                  creation. Map key is the name of the ScheduledVolumeSnapshot CRD
-                  that created the status.
+                  creation. Map key is the source ScheduledVolumeSnapshot CRD that
+                  created the status.
                 type: object
+                x-kubernetes-map-type: granular
               status:
                 description: A generic message for the user. May contain errors.
                 type: string

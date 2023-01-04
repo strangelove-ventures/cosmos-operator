@@ -126,9 +126,9 @@ const (
 	// SnapshotPhaseFindingCandidate is finding a pod/pvc candidate from which to create a VolumeSnapshot.
 	SnapshotPhaseFindingCandidate SnapshotPhase = "FindingCandidate"
 
-	// SnapshotPhaseDeletePod signals the fullNodeRef to delete the candidate pod. This allows taking a VolumeSnapshot
+	// SnapshotPhaseDeletingPod signals the fullNodeRef to delete the candidate pod. This allows taking a VolumeSnapshot
 	// on a "quiet" PVC, with no processes writing to it.
-	SnapshotPhaseDeletePod = "TemporaryPodDeletion"
+	SnapshotPhaseDeletingPod = "DeletingPod"
 
 	// SnapshotPhaseWaitingForPodDeletion indicates controller is waiting for the fullNodeRef to delete the candidate pod.
 	SnapshotPhaseWaitingForPodDeletion = "WaitingForPodDeletion"
@@ -138,7 +138,7 @@ const (
 
 	// SnapshotPhaseWaitingForCreation means the VolumeSnapshot has been created and the controller is waiting for
 	// the VolumeSnapshot to become ready for use.
-	SnapshotPhaseWaitingForCreation SnapshotPhase = "WaitingForCreationCompletion"
+	SnapshotPhaseWaitingForCreation SnapshotPhase = "WaitingForSnapshotCreation"
 
 	// SnapshotPhaseRestorePod signals the fullNodeRef it can recreate the temporarily deleted pod.
 	SnapshotPhaseRestorePod = "RestoringPod"

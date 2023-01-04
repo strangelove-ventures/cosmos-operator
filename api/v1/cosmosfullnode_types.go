@@ -125,8 +125,9 @@ type FullNodeStatus struct {
 
 	// Set by the ScheduledVolumeSnapshotController. Used to signal the CosmosFullNode to modify its
 	// resources during VolumeSnapshot creation.
-	// Map key is the name of the ScheduledVolumeSnapshot CRD that created the status.
+	// Map key is the source ScheduledVolumeSnapshot CRD that created the status.
 	// +optional
+	// +mapType:=granular
 	ScheduledSnapshotStatus map[string]FullNodeSnapshotStatus `json:"scheduledSnapshotStatus"`
 }
 
