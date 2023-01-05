@@ -18,11 +18,11 @@ type Patcher interface {
 
 // FullNodeControl manages a ScheduledVolumeSnapshot's spec.fullNodeRef.
 type FullNodeControl struct {
-	patcher Patcher
+	statusClient Patcher
 }
 
-func NewFullNodeControl(patcher Patcher) *FullNodeControl {
-	return &FullNodeControl{patcher: patcher}
+func NewFullNodeControl(statusClient Patcher) *FullNodeControl {
+	return &FullNodeControl{statusClient: statusClient}
 }
 
 // SignalPodDeletion updates the FullNodeRef's status to indicate it should delete the pod candidate.
@@ -39,7 +39,7 @@ func (control FullNodeControl) SignalPodDeletion(ctx context.Context, crd *cosmo
 	fn.Status.ScheduledSnapshotStatus[key] = cosmosv1.FullNodeSnapshotStatus{
 		PodCandidate: crd.Status.Candidate.PodName,
 	}
-	return control.patcher.Patch(ctx, &fn, client.Merge)
+	return control.statusClient.Patch(ctx, &fn, client.Merge)
 }
 
 // SignalPodRestoration updates the FullNodeRef's status to indicate it should recreate the pod candidate.
@@ -50,7 +50,7 @@ func (control FullNodeControl) SignalPodRestoration(ctx context.Context, crd *co
 	fn.Namespace = crd.Spec.FullNodeRef.Namespace
 	key := control.sourceKey(crd)
 	raw := client.RawPatch(types.JSONPatchType, []byte(fmt.Sprintf(`[{"op":"remove","path":"/status/scheduledSnapshotStatus/%s"}]`, key)))
-	return control.patcher.Patch(ctx, &fn, raw)
+	return control.statusClient.Patch(ctx, &fn, raw)
 }
 
 func (control FullNodeControl) sourceKey(crd *cosmosalpha.ScheduledVolumeSnapshot) string {
