@@ -11,7 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func TestPodState(t *testing.T) {
+func TestBuildPods(t *testing.T) {
 	t.Parallel()
 
 	t.Run("happy path", func(t *testing.T) {
@@ -29,7 +29,7 @@ func TestPodState(t *testing.T) {
 			},
 		}
 
-		pods := PodState(crd)
+		pods := BuildPods(crd)
 		require.Equal(t, 5, len(pods))
 
 		want := lo.Map([]int{0, 1, 2, 3, 4}, func(_ int, i int) string {
@@ -56,7 +56,7 @@ func TestPodState(t *testing.T) {
 			},
 		}
 
-		pods := PodState(crd)
+		pods := BuildPods(crd)
 		require.Equal(t, 4, len(pods))
 
 		want := lo.Map([]int{0, 1, 3, 5}, func(i int, _ int) string {

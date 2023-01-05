@@ -5,8 +5,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// PodState creates the final state of pods given the crd.
-func PodState(crd *cosmosv1.CosmosFullNode) []*corev1.Pod {
+// BuildPods creates the final state of pods given the crd.
+func BuildPods(crd *cosmosv1.CosmosFullNode) []*corev1.Pod {
 	var (
 		builder   = NewPodBuilder(crd)
 		overrides = crd.Spec.InstanceOverrides
