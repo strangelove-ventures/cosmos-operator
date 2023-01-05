@@ -98,7 +98,7 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	fullnode.ResetStatus(crd)
-	defer r.updateStatus(ctx, crd)
+	defer r.patchStatus(ctx, crd)
 
 	errs := &kube.ReconcileErrors{}
 
@@ -167,8 +167,8 @@ func (r *CosmosFullNodeReconciler) resultWithErr(crd *cosmosv1.CosmosFullNode, e
 	return finishResult, err
 }
 
-func (r *CosmosFullNodeReconciler) updateStatus(ctx context.Context, crd *cosmosv1.CosmosFullNode) {
-	if err := r.Status().Update(ctx, crd); err != nil {
+func (r *CosmosFullNodeReconciler) patchStatus(ctx context.Context, crd *cosmosv1.CosmosFullNode) {
+	if err := r.Status().Patch(ctx, crd, client.Merge); err != nil {
 		log.FromContext(ctx).Error(err, "Failed to update status")
 	}
 }
