@@ -99,8 +99,6 @@ Strangelove uses it to compress and upload snapshots of chain data.
 
 Status: v1alpha1
 
-**NOT READY FOR PRODUCTION!**
-
 **Warning: May have backwards breaking changes!**
 
 A ScheduledVolumeSnapshot creates [VolumeSnapshots]([VolumeSnapshot](https://kubernetes.io/docs/concepts/storage/volume-snapshots/))

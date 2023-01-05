@@ -49,7 +49,7 @@ func NewScheduledVolumeSnapshotReconciler(
 	tmClient := cosmos.NewTendermintClient(tendermintHTTP)
 	return &ScheduledVolumeSnapshotReconciler{
 		Client:             client,
-		fullNodeControl:    volsnapshot.NewFullNodeControl(client.Status()),
+		fullNodeControl:    volsnapshot.NewFullNodeControl(client.Status(), client),
 		recorder:           recorder,
 		scheduler:          volsnapshot.NewScheduler(client),
 		volSnapshotControl: volsnapshot.NewVolumeSnapshotControl(client, cosmos.NewSyncedPodFinder(tmClient)),
@@ -121,8 +121,12 @@ func (r *ScheduledVolumeSnapshotReconciler) Reconcile(ctx context.Context, req c
 		crd.Status.Phase = cosmosv1alpha1.SnapshotPhaseWaitingForPodDeletion
 
 	case cosmosv1alpha1.SnapshotPhaseWaitingForPodDeletion:
-		// TODO: Implement wait logic here.
 		logger.Info(string(phase))
+		if err := r.fullNodeControl.ConfirmPodDeletion(ctx, crd); err != nil {
+			logger.Error(err, "Failed to confirm pod deletion", "candidatePod", crd.Status.Candidate.PodName)
+			r.reportError(crd, "WaitingForPodDeletionError", err)
+			return retryResult, nil
+		}
 		crd.Status.Phase = cosmosv1alpha1.SnapshotPhaseCreating
 
 	case cosmosv1alpha1.SnapshotPhaseCreating:

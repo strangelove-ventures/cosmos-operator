@@ -48,7 +48,10 @@ spec:
               Multiple, parallel VolumeSnapshots are not supported.'
             properties:
               fullNodeRef:
-                description: Reference to the source CosmosFullNode.
+                description: Reference to the source CosmosFullNode. This field is
+                  immutable. If you change the fullnode, you may encounter undefined
+                  behavior. Instead delete the ScheduledVolumeSnapshot and create
+                  a new one with the correct fullNodeRef.
                 properties:
                   name:
                     description: Name of the object, metadata.name

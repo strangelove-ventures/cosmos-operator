@@ -11,7 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func TestPodState(t *testing.T) {
+func TestBuildPods(t *testing.T) {
 	t.Parallel()
 
 	t.Run("happy path", func(t *testing.T) {
@@ -29,7 +29,7 @@ func TestPodState(t *testing.T) {
 			},
 		}
 
-		pods := PodState(crd)
+		pods := BuildPods(crd)
 		require.Equal(t, 5, len(pods))
 
 		want := lo.Map([]int{0, 1, 2, 3, 4}, func(_ int, i int) string {
@@ -56,10 +56,37 @@ func TestPodState(t *testing.T) {
 			},
 		}
 
-		pods := PodState(crd)
+		pods := BuildPods(crd)
 		require.Equal(t, 4, len(pods))
 
 		want := lo.Map([]int{0, 1, 3, 5}, func(i int, _ int) string {
+			return fmt.Sprintf("agoric-%d", i)
+		})
+		got := lo.Map(pods, func(pod *corev1.Pod, _ int) string { return pod.Name })
+		require.Equal(t, want, got)
+	})
+
+	t.Run("scheduled volume snapshot pod candidate", func(t *testing.T) {
+		crd := &cosmosv1.CosmosFullNode{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "agoric",
+			},
+			Spec: cosmosv1.FullNodeSpec{
+				Replicas: 6,
+			},
+			Status: cosmosv1.FullNodeStatus{
+				ScheduledSnapshotStatus: map[string]cosmosv1.FullNodeSnapshotStatus{
+					"some.scheduled.snapshot.1":       {PodCandidate: "agoric-1"},
+					"some.scheduled.snapshot.2":       {PodCandidate: "agoric-2"},
+					"some.scheduled.snapshot.ignored": {PodCandidate: "agoric-99"},
+				},
+			},
+		}
+
+		pods := BuildPods(crd)
+		require.Equal(t, 4, len(pods))
+
+		want := lo.Map([]int{0, 3, 4, 5}, func(i int, _ int) string {
 			return fmt.Sprintf("agoric-%d", i)
 		})
 		got := lo.Map(pods, func(pod *corev1.Pod, _ int) string { return pod.Name })
