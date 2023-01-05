@@ -45,6 +45,8 @@ type ScheduledVolumeSnapshotSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Reference to the source CosmosFullNode.
+	// This field is immutable. If you change the fullnode, you may encounter undefined behavior.
+	// Instead delete the ScheduledVolumeSnapshot and create a new one with the correct fullNodeRef.
 	FullNodeRef ObjectRef `json:"fullNodeRef"`
 
 	// A crontab schedule using the standard as described in https://en.wikipedia.org/wiki/Cron.
