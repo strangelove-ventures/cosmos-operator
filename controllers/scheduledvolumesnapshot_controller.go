@@ -49,7 +49,7 @@ func NewScheduledVolumeSnapshotReconciler(
 	tmClient := cosmos.NewTendermintClient(tendermintHTTP)
 	return &ScheduledVolumeSnapshotReconciler{
 		Client:             client,
-		fullNodeControl:    volsnapshot.NewFullNodeControl(client.Status()),
+		fullNodeControl:    volsnapshot.NewFullNodeControl(client.Status(), client),
 		recorder:           recorder,
 		scheduler:          volsnapshot.NewScheduler(client),
 		volSnapshotControl: volsnapshot.NewVolumeSnapshotControl(client, cosmos.NewSyncedPodFinder(tmClient)),
