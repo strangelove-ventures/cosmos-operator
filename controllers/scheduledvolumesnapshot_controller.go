@@ -121,8 +121,12 @@ func (r *ScheduledVolumeSnapshotReconciler) Reconcile(ctx context.Context, req c
 		crd.Status.Phase = cosmosv1alpha1.SnapshotPhaseWaitingForPodDeletion
 
 	case cosmosv1alpha1.SnapshotPhaseWaitingForPodDeletion:
-		// TODO: Implement wait logic here.
 		logger.Info(string(phase))
+		if err := r.fullNodeControl.ConfirmPodDeletion(ctx, crd); err != nil {
+			logger.Error(err, "Candidate pod not deleted yet", "candidatePod", crd.Status.Candidate.PodName)
+			r.reportError(crd, "WaitingForPodDeletionError", err)
+			return retryResult, nil
+		}
 		crd.Status.Phase = cosmosv1alpha1.SnapshotPhaseCreating
 
 	case cosmosv1alpha1.SnapshotPhaseCreating:
