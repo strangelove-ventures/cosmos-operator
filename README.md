@@ -64,7 +64,7 @@ Currently, is no timeline for any of these potential features.
 * HPA support.
 * Automatic upgrades. Controller monitors governance and performs upgrade without any human intervention.
 * Corrupt data recovery. Detect when a PVC may have corrupted data. Restore data from a recent VolumeSnapshot.
-* ~~Safe, automatic backups. Create periodic VolumeSnapshots of PVCs while minimizing chance of data corruption during snapshot creation.~~ In Progress
+* ~~Safe, automatic backups. Create periodic VolumeSnapshots of PVCs while minimizing chance of data corruption during snapshot creation.~~
 
 ### Why not a StatefulSet?
 
