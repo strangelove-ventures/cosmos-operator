@@ -1676,6 +1676,24 @@ spec:
                   is complete and reconciliation is finished. "Error" means an unrecoverable
                   error occurred, which needs human intervention.
                 type: string
+              scheduledSnapshotStatus:
+                additionalProperties:
+                  properties:
+                    podCandidate:
+                      description: Which pod name to temporarily delete. Indicates
+                        a ScheduledVolumeSnapshot is taking place. For optimal data
+                        integrity, pod is temporarily removed so PVC does not have
+                        any processes writing to it.
+                      type: string
+                  required:
+                  - podCandidate
+                  type: object
+                description: Set by the ScheduledVolumeSnapshotController. Used to
+                  signal the CosmosFullNode to modify its resources during VolumeSnapshot
+                  creation. Map key is the source ScheduledVolumeSnapshot CRD that
+                  created the status.
+                type: object
+                x-kubernetes-map-type: granular
               status:
                 description: A generic message for the user. May contain errors.
                 type: string

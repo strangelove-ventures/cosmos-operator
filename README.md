@@ -116,6 +116,9 @@ exit gracefully. Once the snapshot is complete, the operator re-creates the pod.
 availability of the source CosmosFullNode. At least 2 CosmosFullNode replicas is necessary to prevent downtime; 3
 replicas recommended. In the future, this behavior may be configurable.
 
+Known Issues:
+- Cross namespace may not work. E.g. CosmosFullNode and ScheduledVolumeSnapshot in different namespaces.
+
 [Example yaml](./config/samples/cosmos_v1alpha1_scheduledvolumesnapshot.yaml)
 
 # Install in Your Cluster

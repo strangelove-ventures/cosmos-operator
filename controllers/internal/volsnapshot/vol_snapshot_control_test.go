@@ -66,8 +66,8 @@ func TestVolumeSnapshotControl_FindCandidate(t *testing.T) {
 	)
 
 	var crd cosmosalpha.ScheduledVolumeSnapshot
-	crd.Spec.SourceRef.Namespace = "strangelove"
-	crd.Spec.SourceRef.Name = "cosmoshub"
+	crd.Spec.FullNodeRef.Namespace = "strangelove"
+	crd.Spec.FullNodeRef.Name = "cosmoshub"
 
 	t.Run("happy path", func(t *testing.T) {
 		pods := make([]corev1.Pod, 3)

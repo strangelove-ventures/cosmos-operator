@@ -45,7 +45,7 @@ type ScheduledVolumeSnapshotSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Reference to the source CosmosFullNode.
-	SourceRef ObjectRef `json:"sourceRef"`
+	FullNodeRef ObjectRef `json:"fullNodeRef"`
 
 	// A crontab schedule using the standard as described in https://en.wikipedia.org/wiki/Cron.
 	// See https://crontab.guru for format.
@@ -118,11 +118,30 @@ type SnapshotCandidate struct {
 
 type SnapshotPhase string
 
+// These values are persisted. Do not change arbitrarily.
 const (
-	SnapshotPhaseWaiting          SnapshotPhase = "WaitingForNext"
+	// SnapshotPhaseWaitingForNext means waiting for the next scheduled time to start the snapshot creation process.
+	SnapshotPhaseWaitingForNext SnapshotPhase = "WaitingForNext"
+
+	// SnapshotPhaseFindingCandidate is finding a pod/pvc candidate from which to create a VolumeSnapshot.
 	SnapshotPhaseFindingCandidate SnapshotPhase = "FindingCandidate"
-	SnapshotPhaseInitialize       SnapshotPhase = "InitializeSnapshot"
-	SnapshotPhaseCreating         SnapshotPhase = "CreatingSnapshot"
+
+	// SnapshotPhaseDeletingPod signals the fullNodeRef to delete the candidate pod. This allows taking a VolumeSnapshot
+	// on a "quiet" PVC, with no processes writing to it.
+	SnapshotPhaseDeletingPod = "DeletingPod"
+
+	// SnapshotPhaseWaitingForPodDeletion indicates controller is waiting for the fullNodeRef to delete the candidate pod.
+	SnapshotPhaseWaitingForPodDeletion = "WaitingForPodDeletion"
+
+	// SnapshotPhaseCreating indicates controller found a candidate and will now create a VolumeSnapshot from the PVC.
+	SnapshotPhaseCreating SnapshotPhase = "CreatingSnapshot"
+
+	// SnapshotPhaseWaitingForCreation means the VolumeSnapshot has been created and the controller is waiting for
+	// the VolumeSnapshot to become ready for use.
+	SnapshotPhaseWaitingForCreation SnapshotPhase = "WaitingForSnapshotCreation"
+
+	// SnapshotPhaseRestorePod signals the fullNodeRef it can recreate the temporarily deleted pod.
+	SnapshotPhaseRestorePod = "RestoringPod"
 )
 
 type VolumeSnapshotStatus struct {

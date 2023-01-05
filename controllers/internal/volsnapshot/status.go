@@ -15,6 +15,6 @@ func ResetStatus(crd *cosmosalpha.ScheduledVolumeSnapshot) {
 		crd.Status.CreatedAt = metav1.NewTime(time.Now())
 	}
 	if crd.Status.Phase == "" {
-		crd.Status.Phase = cosmosalpha.SnapshotPhaseWaiting
+		crd.Status.Phase = cosmosalpha.SnapshotPhaseWaitingForNext
 	}
 }

@@ -34,6 +34,7 @@ import (
 // ScheduledVolumeSnapshotReconciler reconciles a ScheduledVolumeSnapshot object
 type ScheduledVolumeSnapshotReconciler struct {
 	client.Client
+	fullNodeControl    *volsnapshot.FullNodeControl
 	recorder           record.EventRecorder
 	scheduler          *volsnapshot.Scheduler
 	volSnapshotControl *volsnapshot.VolumeSnapshotControl
@@ -48,6 +49,7 @@ func NewScheduledVolumeSnapshotReconciler(
 	tmClient := cosmos.NewTendermintClient(tendermintHTTP)
 	return &ScheduledVolumeSnapshotReconciler{
 		Client:             client,
+		fullNodeControl:    volsnapshot.NewFullNodeControl(client.Status()),
 		recorder:           recorder,
 		scheduler:          volsnapshot.NewScheduler(client),
 		volSnapshotControl: volsnapshot.NewVolumeSnapshotControl(client, cosmos.NewSyncedPodFinder(tmClient)),
@@ -80,8 +82,12 @@ func (r *ScheduledVolumeSnapshotReconciler) Reconcile(ctx context.Context, req c
 	volsnapshot.ResetStatus(crd)
 	defer r.updateStatus(ctx, crd)
 
-	switch crd.Status.Phase {
-	case cosmosv1alpha1.SnapshotPhaseWaiting:
+	retryResult := ctrl.Result{RequeueAfter: 10 * time.Second}
+
+	phase := crd.Status.Phase
+	switch phase {
+	case cosmosv1alpha1.SnapshotPhaseWaitingForNext:
+		logger.Info(string(phase))
 		dur, err := r.scheduler.CalcNext(crd)
 		if err != nil {
 			logger.Error(err, "Failed to find duration until next snapshot")
@@ -95,39 +101,63 @@ func (r *ScheduledVolumeSnapshotReconciler) Reconcile(ctx context.Context, req c
 		crd.Status.Phase = cosmosv1alpha1.SnapshotPhaseFindingCandidate
 
 	case cosmosv1alpha1.SnapshotPhaseFindingCandidate:
-		logger.Info("Finding snapshot candidate")
+		logger.Info(string(phase))
 		candidate, err := r.volSnapshotControl.FindCandidate(ctx, crd)
 		if err != nil {
 			logger.Error(err, "Failed to find candidate for volume snapshot")
 			r.reportError(crd, "FindCandidateError", err)
-			return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+			return retryResult, nil
 		}
-		crd.Status.Phase = cosmosv1alpha1.SnapshotPhaseInitialize
+		crd.Status.Phase = cosmosv1alpha1.SnapshotPhaseDeletingPod
 		crd.Status.Candidate = &candidate
 
-	case cosmosv1alpha1.SnapshotPhaseInitialize:
-		candidate := crd.Status.Candidate
-		logger.Info("Creating VolumeSnapshot", "candidatePod", candidate.PodName, "candidatePVC", candidate.PVCName)
-		if err := r.volSnapshotControl.CreateSnapshot(ctx, crd, *candidate); err != nil {
-			logger.Error(err, "Failed to create volume snapshot")
-			r.reportError(crd, "CreateVolumeSnapshotError", err)
-			return ctrl.Result{RequeueAfter: 60 * time.Second}, nil
+	case cosmosv1alpha1.SnapshotPhaseDeletingPod:
+		logger.Info(string(phase))
+		if err := r.fullNodeControl.SignalPodDeletion(ctx, crd); err != nil {
+			logger.Error(err, "Failed to patch fullnode status for pod deletion")
+			r.reportError(crd, "DeletePodError", err)
+			return retryResult, nil
 		}
+		crd.Status.Phase = cosmosv1alpha1.SnapshotPhaseWaitingForPodDeletion
+
+	case cosmosv1alpha1.SnapshotPhaseWaitingForPodDeletion:
+		// TODO: Implement wait logic here.
+		logger.Info(string(phase))
 		crd.Status.Phase = cosmosv1alpha1.SnapshotPhaseCreating
 
 	case cosmosv1alpha1.SnapshotPhaseCreating:
+		candidate := crd.Status.Candidate
+		logger.Info(string(phase), "candidatePod", candidate.PodName, "candidatePVC", candidate.PVCName)
+		if err := r.volSnapshotControl.CreateSnapshot(ctx, crd, *candidate); err != nil {
+			logger.Error(err, "Failed to create volume snapshot")
+			r.reportError(crd, "CreateVolumeSnapshotError", err)
+			return retryResult, nil
+		}
+		crd.Status.Phase = cosmosv1alpha1.SnapshotPhaseWaitingForCreation
+
+	case cosmosv1alpha1.SnapshotPhaseWaitingForCreation:
+		logger.Info(string(phase))
 		ready, err := r.scheduler.IsSnapshotReady(ctx, crd)
 		if err != nil {
 			logger.Error(err, "Failed to find VolumeSnapshot ready status")
 			r.reportError(crd, "VolumeSnapshotReadyError", err)
-			return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+			return retryResult, nil
 		}
 		if !ready {
 			logger.Info("VolumeSnapshot not ready for use; requeueing")
-			return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+			return retryResult, nil
 		}
-		// Reset phase to the beginning.
-		crd.Status.Phase = cosmosv1alpha1.SnapshotPhaseWaiting
+		crd.Status.Phase = cosmosv1alpha1.SnapshotPhaseRestorePod
+
+	case cosmosv1alpha1.SnapshotPhaseRestorePod:
+		logger.Info(string(phase))
+		if err := r.fullNodeControl.SignalPodRestoration(ctx, crd); err != nil {
+			logger.Error(err, "Failed to update fullnode status for restoring pod")
+			r.reportError(crd, "RestorePodError", err)
+			return retryResult, nil
+		}
+		// Reset to beginning.
+		crd.Status.Phase = cosmosv1alpha1.SnapshotPhaseWaitingForNext
 	}
 
 	// Updating status in the defer above triggers a new reconcile loop.
