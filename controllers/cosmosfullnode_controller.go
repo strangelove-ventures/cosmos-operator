@@ -168,6 +168,8 @@ func (r *CosmosFullNodeReconciler) resultWithErr(crd *cosmosv1.CosmosFullNode, e
 }
 
 func (r *CosmosFullNodeReconciler) patchStatus(ctx context.Context, crd *cosmosv1.CosmosFullNode) {
+	// Use patch with new CRD to prevent error: the object has been modified; please apply your changes to the latest version and try again
+	// The ScheduledVolumeSnapshot controller may also update the fullnode's status in tandem with this controller.
 	var patchCRD cosmosv1.CosmosFullNode
 	patchCRD.Name = crd.Name
 	patchCRD.Namespace = crd.Namespace
