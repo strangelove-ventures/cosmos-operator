@@ -2,10 +2,12 @@ package volsnapshot
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	cosmosalpha "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -43,7 +45,12 @@ func (control FullNodeControl) SignalPodDeletion(ctx context.Context, crd *cosmo
 // SignalPodRestoration updates the FullNodeRef's status to indicate it should recreate the pod candidate.
 // Any error returned can be treated as transient and retried.
 func (control FullNodeControl) SignalPodRestoration(ctx context.Context, crd *cosmosalpha.ScheduledVolumeSnapshot) error {
-	return nil
+	var fn cosmosv1.CosmosFullNode
+	fn.Name = crd.Spec.FullNodeRef.Name
+	fn.Namespace = crd.Spec.FullNodeRef.Namespace
+	key := control.sourceKey(crd)
+	raw := client.RawPatch(types.JSONPatchType, []byte(fmt.Sprintf(`[{"op":"remove","path":"/status/scheduledSnapshotStatus/%s"}]`, key)))
+	return control.patcher.Patch(ctx, &fn, raw)
 }
 
 func (control FullNodeControl) sourceKey(crd *cosmosalpha.ScheduledVolumeSnapshot) string {
