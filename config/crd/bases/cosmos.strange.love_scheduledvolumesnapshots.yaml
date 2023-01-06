@@ -64,10 +64,10 @@ spec:
                 - namespace
                 type: object
               limit:
-                description: The number of recent VolumeSnapshots to keep. Default
-                  is 3.
+                description: The number of recent VolumeSnapshots to keep. Defaults
+                  to 3.
                 format: int32
-                minimum: 0
+                minimum: 1
                 type: integer
               minAvailable:
                 description: 'Minimum number of CosmosFullNode pods that must be ready

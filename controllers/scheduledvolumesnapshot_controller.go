@@ -88,16 +88,25 @@ func (r *ScheduledVolumeSnapshotReconciler) Reconcile(ctx context.Context, req c
 	switch phase {
 	case cosmosv1alpha1.SnapshotPhaseWaitingForNext:
 		logger.Info(string(phase))
+
+		if err := r.volSnapshotControl.DeleteOldSnapshots(ctx, logger, crd); err != nil {
+			logger.Error(err, "Failed to delete old volume snapshots")
+			r.reportError(crd, "DeleteOldSnapshotsError", err)
+			// Don't requeue, continue with next steps. Leaving old snapshots around is benign.
+		}
+
 		dur, err := r.scheduler.CalcNext(crd)
 		if err != nil {
 			logger.Error(err, "Failed to find duration until next snapshot")
 			r.reportError(crd, "FindNextSnapshotTimeError", err)
 			return finishResult, nil // Fatal error. Do not requeue.
 		}
+
 		if dur > 0 {
 			logger.Info("Requeuing for next snapshot", "duration", dur.String())
 			return ctrl.Result{RequeueAfter: dur}, nil
 		}
+
 		crd.Status.Phase = cosmosv1alpha1.SnapshotPhaseFindingCandidate
 
 	case cosmosv1alpha1.SnapshotPhaseFindingCandidate:
