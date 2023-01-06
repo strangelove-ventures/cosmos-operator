@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-logr/logr"
 	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
 	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
@@ -60,9 +61,13 @@ func (fn mockPodFinder) SyncedPod(ctx context.Context, candidates []*corev1.Pod)
 	return fn(ctx, candidates)
 }
 
-var panicFinder = mockPodFinder(func(ctx context.Context, candidates []*corev1.Pod) (*corev1.Pod, error) {
-	panic("should not be called")
-})
+var (
+	panicFinder = mockPodFinder(func(ctx context.Context, candidates []*corev1.Pod) (*corev1.Pod, error) {
+		panic("should not be called")
+	})
+
+	nopLogger = logr.Discard()
+)
 
 func TestVolumeSnapshotControl_FindCandidate(t *testing.T) {
 	t.Parallel()
@@ -354,7 +359,7 @@ func TestVolumeSnapshotControl_DeleteOldSnapshots(t *testing.T) {
 		crd.Spec.Limit = int32(limit)
 
 		control := NewVolumeSnapshotControl(&mClient, panicFinder)
-		err := control.DeleteOldSnapshots(ctx, &crd)
+		err := control.DeleteOldSnapshots(ctx, nopLogger, &crd)
 
 		require.NoError(t, err)
 
@@ -394,7 +399,7 @@ func TestVolumeSnapshotControl_DeleteOldSnapshots(t *testing.T) {
 
 		var crd cosmosalpha.ScheduledVolumeSnapshot
 		control := NewVolumeSnapshotControl(&mClient, panicFinder)
-		err := control.DeleteOldSnapshots(ctx, &crd)
+		err := control.DeleteOldSnapshots(ctx, nopLogger, &crd)
 
 		require.NoError(t, err)
 
@@ -423,7 +428,7 @@ func TestVolumeSnapshotControl_DeleteOldSnapshots(t *testing.T) {
 		var crd cosmosalpha.ScheduledVolumeSnapshot
 		crd.Spec.Limit = total + 1
 		control := NewVolumeSnapshotControl(&mClient, panicFinder)
-		err := control.DeleteOldSnapshots(ctx, &crd)
+		err := control.DeleteOldSnapshots(ctx, nopLogger, &crd)
 
 		require.NoError(t, err)
 		require.Empty(t, mClient.DeletedObjs)
@@ -433,7 +438,7 @@ func TestVolumeSnapshotControl_DeleteOldSnapshots(t *testing.T) {
 		var mClient mockVolumeSnapshotClient
 		var crd cosmosalpha.ScheduledVolumeSnapshot
 		control := NewVolumeSnapshotControl(&mClient, panicFinder)
-		err := control.DeleteOldSnapshots(ctx, &crd)
+		err := control.DeleteOldSnapshots(ctx, nopLogger, &crd)
 
 		require.NoError(t, err)
 		require.Empty(t, mClient.DeletedObjs)
@@ -444,7 +449,7 @@ func TestVolumeSnapshotControl_DeleteOldSnapshots(t *testing.T) {
 		mClient.ListErr = errors.New("boom")
 		var crd cosmosalpha.ScheduledVolumeSnapshot
 		control := NewVolumeSnapshotControl(&mClient, panicFinder)
-		err := control.DeleteOldSnapshots(ctx, &crd)
+		err := control.DeleteOldSnapshots(ctx, nopLogger, &crd)
 
 		require.Error(t, err)
 		require.EqualError(t, err, "list volume snapshots: boom")
@@ -468,7 +473,7 @@ func TestVolumeSnapshotControl_DeleteOldSnapshots(t *testing.T) {
 		var crd cosmosalpha.ScheduledVolumeSnapshot
 		crd.Spec.Limit = 1
 		control := NewVolumeSnapshotControl(&mClient, panicFinder)
-		err := control.DeleteOldSnapshots(ctx, &crd)
+		err := control.DeleteOldSnapshots(ctx, nopLogger, &crd)
 
 		require.Error(t, err)
 		require.EqualError(t, err, "delete 1: oops; delete 0: oops")

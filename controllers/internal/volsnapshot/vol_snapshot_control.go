@@ -7,6 +7,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/go-logr/logr"
 	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
 	"github.com/samber/lo"
 	cosmosalpha "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
@@ -121,7 +122,7 @@ func (control VolumeSnapshotControl) CreateSnapshot(ctx context.Context, crd *co
 
 // DeleteOldSnapshots deletes old VolumeSnapshots given crd's spec.limit.
 // If limit not set, defaults to keeping the 3 most recent.
-func (control VolumeSnapshotControl) DeleteOldSnapshots(ctx context.Context, crd *cosmosalpha.ScheduledVolumeSnapshot) error {
+func (control VolumeSnapshotControl) DeleteOldSnapshots(ctx context.Context, log logr.Logger, crd *cosmosalpha.ScheduledVolumeSnapshot) error {
 	limit := int(crd.Spec.Limit)
 	if limit <= 0 {
 		limit = 3
@@ -156,6 +157,7 @@ func (control VolumeSnapshotControl) DeleteOldSnapshots(ctx context.Context, crd
 	var merr error
 	for _, vs := range toDelete {
 		vs := vs
+		log.Info("Deleting volume snapshot", "volumeSnapshotName", vs.Name, "limit", limit)
 		if err := control.client.Delete(ctx, &vs); kube.IgnoreNotFound(err) != nil {
 			multierr.AppendInto(&merr, fmt.Errorf("delete %s: %w", vs.Name, err))
 		}
