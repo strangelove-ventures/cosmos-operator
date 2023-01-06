@@ -69,9 +69,9 @@ type ScheduledVolumeSnapshotSpec struct {
 	MinAvailable int32 `json:"minAvailable"`
 
 	// The number of recent VolumeSnapshots to keep.
-	// Default is 3.
+	// Defaults to 3.
 	// +optional
-	// +kubebuilder:validation:Minimum:=0
+	// +kubebuilder:validation:Minimum:=1
 	Limit int32 `json:"limit"`
 }
 
