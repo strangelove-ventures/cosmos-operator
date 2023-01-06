@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"time"
 
 	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
@@ -11,15 +12,19 @@ import (
 	cosmosalpha "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/fullnode"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
+	"go.uber.org/multierr"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const cosmosSourceLabel = "cosmos.strange.love/source"
+
 // Client is a subset of client.Client.
 type Client interface {
 	Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error
 	List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error
+	Delete(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error
 }
 
 type PodFinder interface {
@@ -81,6 +86,7 @@ func (control VolumeSnapshotControl) FindCandidate(ctx context.Context, crd *cos
 }
 
 // CreateSnapshot creates VolumeSnapshot from the Candidate.PVCName and updates crd.status to reflect the created VolumeSnapshot.
+// CreateSnapshot does not set an owner reference to avoid garbage collection if the CRD is deleted.
 // Any error returned is considered transient and can be retried.
 func (control VolumeSnapshotControl) CreateSnapshot(ctx context.Context, crd *cosmosalpha.ScheduledVolumeSnapshot, candidate Candidate) error {
 	snapshot := snapshotv1.VolumeSnapshot{
@@ -99,6 +105,7 @@ func (control VolumeSnapshotControl) CreateSnapshot(ctx context.Context, crd *co
 	snapshot.Labels = lo.Assign(candidate.PodLabels)
 	snapshot.Labels[kube.ComponentLabel] = "ScheduledVolumeSnapshot"
 	snapshot.Labels[kube.ControllerLabel] = "cosmos-operator"
+	snapshot.Labels[cosmosSourceLabel] = crd.Name
 
 	if err := control.client.Create(ctx, &snapshot); err != nil {
 		return err
@@ -110,4 +117,48 @@ func (control VolumeSnapshotControl) CreateSnapshot(ctx context.Context, crd *co
 	}
 
 	return nil
+}
+
+// DeleteOldSnapshots deletes old VolumeSnapshots given crd's spec.limit.
+// If limit not set, defaults to keeping the 3 most recent.
+func (control VolumeSnapshotControl) DeleteOldSnapshots(ctx context.Context, crd *cosmosalpha.ScheduledVolumeSnapshot) error {
+	limit := int(crd.Spec.Limit)
+	if limit <= 0 {
+		limit = 3
+	}
+	var snapshots snapshotv1.VolumeSnapshotList
+	err := control.client.List(ctx,
+		&snapshots,
+		client.InNamespace(crd.Namespace),
+		client.MatchingLabels(map[string]string{cosmosSourceLabel: crd.Name}),
+	)
+	if err != nil {
+		return fmt.Errorf("list volume snapshots: %w", err)
+	}
+
+	filtered := lo.Filter(snapshots.Items, func(item snapshotv1.VolumeSnapshot, _ int) bool {
+		return item.Status != nil && item.Status.CreationTime != nil
+	})
+
+	if len(filtered) <= limit {
+		return nil
+	}
+
+	// Sort by time descending
+	sort.Slice(filtered, func(i, j int) bool {
+		lhs := filtered[i].Status.CreationTime
+		rhs := filtered[j].Status.CreationTime
+		return !lhs.Before(rhs)
+	})
+
+	toDelete := filtered[limit:]
+
+	var merr error
+	for _, vs := range toDelete {
+		vs := vs
+		if err := control.client.Delete(ctx, &vs); kube.IgnoreNotFound(err) != nil {
+			multierr.AppendInto(&merr, fmt.Errorf("delete %s: %w", vs.Name, err))
+		}
+	}
+	return merr
 }
