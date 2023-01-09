@@ -122,6 +122,7 @@ type StatefulJobStatus struct {
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
+//+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // StatefulJob is the Schema for the statefuljobs API
 type StatefulJob struct {

@@ -605,6 +605,8 @@ type VolumeSnapshotSpec struct {
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
+//+kubebuilder:printcolumn:name="Phase",type=string,JSONPath=`.status.phase`
+//+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // CosmosFullNode is the Schema for the cosmosfullnodes API
 type CosmosFullNode struct {
