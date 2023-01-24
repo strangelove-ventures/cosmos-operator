@@ -77,25 +77,25 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 					// The following is a useful hack if you need to inspect the PV.
 					//Command: []string{"/bin/sh"},
 					//Args:    []string{"-c", `trap : TERM INT; sleep infinity & wait`},
-					Command:   []string{startCmd},
-					Args:      startArgs,
-					Env:       envVars,
-					Ports:     buildPorts(crd.Spec.Type),
-					Resources: tpl.Resources,
-					ReadinessProbe: &corev1.Probe{
-						ProbeHandler: corev1.ProbeHandler{
-							HTTPGet: &corev1.HTTPGetAction{
-								Path:   "/health",
-								Port:   intstr.FromInt(rpcPort),
-								Scheme: corev1.URISchemeHTTP,
-							},
-						},
-						InitialDelaySeconds: 1,
-						TimeoutSeconds:      10,
-						PeriodSeconds:       10,
-						SuccessThreshold:    1,
-						FailureThreshold:    5,
-					},
+					Command:        []string{startCmd},
+					Args:           startArgs,
+					Env:            envVars,
+					Ports:          buildPorts(crd.Spec.Type),
+					Resources:      tpl.Resources,
+					ReadinessProbe: nil, // &corev1.Probe{ TODO: temporary
+					//ProbeHandler: corev1.ProbeHandler{
+					//	HTTPGet: &corev1.HTTPGetAction{
+					//		Path:   "/health",
+					//		Port:   intstr.FromInt(rpcPort),
+					//		Scheme: corev1.URISchemeHTTP,
+					//	},
+					//},
+					//InitialDelaySeconds: 1,
+					//TimeoutSeconds:      10,
+					//PeriodSeconds:       10,
+					//SuccessThreshold:    1,
+					//FailureThreshold:    5,
+					//},
 
 					ImagePullPolicy: tpl.ImagePullPolicy,
 					WorkingDir:      workDir,
