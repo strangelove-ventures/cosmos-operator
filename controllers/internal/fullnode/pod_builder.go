@@ -15,6 +15,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 var bufPool = sync.Pool{New: func() any { return new(bytes.Buffer) }}
@@ -35,9 +36,11 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 		panic(errors.New("nil CosmosFullNode"))
 	}
 
-	tpl := crd.Spec.PodTemplate
-
-	startCmd, startArgs := startCmdAndArgs(crd)
+	var (
+		tpl                 = crd.Spec.PodTemplate
+		startCmd, startArgs = startCmdAndArgs(crd)
+		probes              = podReadinessProbes(crd)
+	)
 
 	pod := corev1.Pod{
 		TypeMeta: metav1.TypeMeta{
@@ -76,27 +79,12 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 					// The following is a useful hack if you need to inspect the PV.
 					//Command: []string{"/bin/sh"},
 					//Args:    []string{"-c", `trap : TERM INT; sleep infinity & wait`},
-					Command:   []string{startCmd},
-					Args:      startArgs,
-					Env:       envVars,
-					Ports:     buildPorts(crd.Spec.Type),
-					Resources: tpl.Resources,
-					// TODO: temporary
-					//ReadinessProbe: &corev1.Probe{
-					//ProbeHandler: corev1.ProbeHandler{
-					//	HTTPGet: &corev1.HTTPGetAction{
-					//		Path:   "/health",
-					//		Port:   intstr.FromInt(rpcPort),
-					//		Scheme: corev1.URISchemeHTTP,
-					//	},
-					//},
-					//InitialDelaySeconds: 1,
-					//TimeoutSeconds:      10,
-					//PeriodSeconds:       10,
-					//SuccessThreshold:    1,
-					//FailureThreshold:    5,
-					//},
-
+					Command:         []string{startCmd},
+					Args:            startArgs,
+					Env:             envVars,
+					Ports:           buildPorts(crd.Spec.Type),
+					Resources:       tpl.Resources,
+					ReadinessProbe:  probes[0],
 					ImagePullPolicy: tpl.ImagePullPolicy,
 					WorkingDir:      workDir,
 				},
@@ -112,21 +100,7 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 							corev1.ResourceMemory: resource.MustParse("16Mi"),
 						},
 					},
-					// TODO: temporary
-					//	ReadinessProbe: nil, &corev1.Probe{
-					//		ProbeHandler: corev1.ProbeHandler{
-					//			HTTPGet: &corev1.HTTPGetAction{
-					//				Path:   "/",
-					//				Port:   intstr.FromInt(healthCheckPort),
-					//				Scheme: corev1.URISchemeHTTP,
-					//			},
-					//		},
-					//		InitialDelaySeconds: 1,
-					//		TimeoutSeconds:      10,
-					//		PeriodSeconds:       10,
-					//		SuccessThreshold:    1,
-					//		FailureThreshold:    3,
-					//	},
+					ReadinessProbe:  probes[1],
 					ImagePullPolicy: tpl.ImagePullPolicy,
 				},
 			},
@@ -140,6 +114,44 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 		crd: crd,
 		pod: &pod,
 	}
+}
+
+func podReadinessProbes(crd *cosmosv1.CosmosFullNode) []*corev1.Probe {
+	if crd.Spec.Type == cosmosv1.FullNodeSentry {
+		return []*corev1.Probe{nil, nil}
+	}
+
+	mainProbe := &corev1.Probe{
+		ProbeHandler: corev1.ProbeHandler{
+			HTTPGet: &corev1.HTTPGetAction{
+				Path:   "/health",
+				Port:   intstr.FromInt(rpcPort),
+				Scheme: corev1.URISchemeHTTP,
+			},
+		},
+		InitialDelaySeconds: 1,
+		TimeoutSeconds:      10,
+		PeriodSeconds:       10,
+		SuccessThreshold:    1,
+		FailureThreshold:    5,
+	}
+
+	sidecarProbe := &corev1.Probe{
+		ProbeHandler: corev1.ProbeHandler{
+			HTTPGet: &corev1.HTTPGetAction{
+				Path:   "/",
+				Port:   intstr.FromInt(healthCheckPort),
+				Scheme: corev1.URISchemeHTTP,
+			},
+		},
+		InitialDelaySeconds: 1,
+		TimeoutSeconds:      10,
+		PeriodSeconds:       10,
+		SuccessThreshold:    1,
+		FailureThreshold:    3,
+	}
+
+	return []*corev1.Probe{mainProbe, sidecarProbe}
 }
 
 // Attempts to produce a deterministic hash based on the pod template, so we can detect updates.
