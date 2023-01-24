@@ -15,7 +15,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 var bufPool = sync.Pool{New: func() any { return new(bytes.Buffer) }}
@@ -77,12 +76,13 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 					// The following is a useful hack if you need to inspect the PV.
 					//Command: []string{"/bin/sh"},
 					//Args:    []string{"-c", `trap : TERM INT; sleep infinity & wait`},
-					Command:        []string{startCmd},
-					Args:           startArgs,
-					Env:            envVars,
-					Ports:          buildPorts(crd.Spec.Type),
-					Resources:      tpl.Resources,
-					ReadinessProbe: nil, // &corev1.Probe{ TODO: temporary
+					Command:   []string{startCmd},
+					Args:      startArgs,
+					Env:       envVars,
+					Ports:     buildPorts(crd.Spec.Type),
+					Resources: tpl.Resources,
+					// TODO: temporary
+					//ReadinessProbe: &corev1.Probe{
 					//ProbeHandler: corev1.ProbeHandler{
 					//	HTTPGet: &corev1.HTTPGetAction{
 					//		Path:   "/health",
@@ -112,20 +112,21 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 							corev1.ResourceMemory: resource.MustParse("16Mi"),
 						},
 					},
-					ReadinessProbe: &corev1.Probe{
-						ProbeHandler: corev1.ProbeHandler{
-							HTTPGet: &corev1.HTTPGetAction{
-								Path:   "/",
-								Port:   intstr.FromInt(healthCheckPort),
-								Scheme: corev1.URISchemeHTTP,
-							},
-						},
-						InitialDelaySeconds: 1,
-						TimeoutSeconds:      10,
-						PeriodSeconds:       10,
-						SuccessThreshold:    1,
-						FailureThreshold:    3,
-					},
+					// TODO: temporary
+					//	ReadinessProbe: nil, &corev1.Probe{
+					//		ProbeHandler: corev1.ProbeHandler{
+					//			HTTPGet: &corev1.HTTPGetAction{
+					//				Path:   "/",
+					//				Port:   intstr.FromInt(healthCheckPort),
+					//				Scheme: corev1.URISchemeHTTP,
+					//			},
+					//		},
+					//		InitialDelaySeconds: 1,
+					//		TimeoutSeconds:      10,
+					//		PeriodSeconds:       10,
+					//		SuccessThreshold:    1,
+					//		FailureThreshold:    3,
+					//	},
 					ImagePullPolicy: tpl.ImagePullPolicy,
 				},
 			},
