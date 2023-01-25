@@ -375,7 +375,7 @@ gaiad start --home /home/operator/cosmos`
 		require.Equal(t, []string{"gaiad"}, c.Command)
 	})
 
-	t.Run("probes", func(t *testing.T) {
+	t.Run("rpc probes", func(t *testing.T) {
 		crd := defaultCRD()
 		builder := NewPodBuilder(&crd)
 		pod := builder.WithOrdinal(1).Build()
@@ -396,7 +396,35 @@ gaiad start --home /home/operator/cosmos`
 		}
 		got := pod.Spec.Containers[0].ReadinessProbe
 
+		want = &corev1.Probe{
+			ProbeHandler: corev1.ProbeHandler{
+				HTTPGet: &corev1.HTTPGetAction{
+					Path:   "/",
+					Port:   intstr.FromInt(1251),
+					Scheme: "HTTP",
+				},
+			},
+			InitialDelaySeconds: 1,
+			TimeoutSeconds:      10,
+			PeriodSeconds:       10,
+			SuccessThreshold:    1,
+			FailureThreshold:    3,
+		}
+		got = pod.Spec.Containers[1].ReadinessProbe
+
 		require.Equal(t, want, got)
+	})
+
+	t.Run("sentry probes", func(t *testing.T) {
+		crd := defaultCRD()
+		crd.Spec.Type = cosmosv1.FullNodeSentry
+
+		builder := NewPodBuilder(&crd)
+		pod := builder.WithOrdinal(1).Build()
+
+		for i, cont := range pod.Spec.Containers {
+			require.Nilf(t, cont.ReadinessProbe, "container %d", i)
+		}
 	})
 }
 
