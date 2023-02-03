@@ -37,7 +37,7 @@ func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, p2p ExternalAddresses) ([]*co
 	for i := int32(0); i < crd.Spec.Replicas; i++ {
 		data := make(map[string]string)
 		instance := instanceName(crd, i)
-		if err := addTendermintToml(buf, data, crd, p2p[instance]); err != nil {
+		if err := addConfigToml(buf, data, crd, p2p[instance]); err != nil {
 			return nil, err
 		}
 		buf.Reset()
@@ -105,7 +105,7 @@ func defaultApp() decodedToml {
 	return data
 }
 
-func addTendermintToml(buf *bytes.Buffer, cmData map[string]string, crd *cosmosv1.CosmosFullNode, externalAddress string) error {
+func addConfigToml(buf *bytes.Buffer, cmData map[string]string, crd *cosmosv1.CosmosFullNode, externalAddress string) error {
 	var (
 		spec = crd.Spec.ChainSpec
 		base = make(decodedToml)
