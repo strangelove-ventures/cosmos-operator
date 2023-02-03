@@ -157,6 +157,7 @@ func TestBuildConfigMaps(t *testing.T) {
 			require.NotEmpty(t, got)
 
 			require.Equal(t, "tcp://0.0.0.0:1234", got["priv_validator_laddr"])
+			require.Equal(t, "null", got["tx_index"].(map[string]any)["indexer"])
 		})
 
 		t.Run("overrides", func(t *testing.T) {
