@@ -113,6 +113,8 @@ func addConfigToml(buf *bytes.Buffer, cmData map[string]string, crd *cosmosv1.Co
 
 	if crd.Spec.Type == cosmosv1.FullNodeSentry {
 		base["priv_validator_laddr"] = fmt.Sprintf("tcp://0.0.0.0:%d", privvalPort)
+		// Disable indexing for sentries; they should not serve queries.
+		base["tx_index"] = map[string]string{"indexer": "null"}
 	}
 	if v := spec.LogLevel; v != nil {
 		base["log_level"] = v
