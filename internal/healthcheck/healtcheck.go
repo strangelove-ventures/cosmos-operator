@@ -67,6 +67,7 @@ func (h *Tendermint) Handle(w http.ResponseWriter, r *http.Request) {
 
 func (h *Tendermint) writeResponse(code int, w http.ResponseWriter, resp healthResponse) {
 	w.WriteHeader(code)
+	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		// This should never happen.
 		panic(fmt.Errorf("json encode response: %w", err))
