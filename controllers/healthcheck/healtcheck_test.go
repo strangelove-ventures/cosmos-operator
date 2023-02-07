@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-logr/logr"
 	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/cosmos"
 	"github.com/stretchr/testify/require"
 )
@@ -18,6 +19,8 @@ type mockClient func(ctx context.Context, rpcHost string) (cosmos.TendermintStat
 func (fn mockClient) Status(ctx context.Context, rpcHost string) (cosmos.TendermintStatus, error) {
 	return fn(ctx, rpcHost)
 }
+
+var nopLogger = logr.Discard()
 
 func TestHandler(t *testing.T) {
 	var (
@@ -32,7 +35,7 @@ func TestHandler(t *testing.T) {
 			return cosmos.TendermintStatus{}, nil
 		})
 
-		h := NewTendermint(client, testRpc, 10*time.Second)
+		h := NewTendermint(nopLogger, client, testRpc, 10*time.Second)
 		w := httptest.NewRecorder()
 		h.Handle(w, stubReq)
 
@@ -55,7 +58,7 @@ func TestHandler(t *testing.T) {
 			return stub, nil
 		})
 
-		h := NewTendermint(client, testRpc, 10*time.Second)
+		h := NewTendermint(nopLogger, client, testRpc, 10*time.Second)
 		w := httptest.NewRecorder()
 		h.Handle(w, stubReq)
 
@@ -76,7 +79,7 @@ func TestHandler(t *testing.T) {
 			return cosmos.TendermintStatus{}, errors.New("boom")
 		})
 
-		h := NewTendermint(client, testRpc, 10*time.Second)
+		h := NewTendermint(nopLogger, client, testRpc, 10*time.Second)
 		w := httptest.NewRecorder()
 		h.Handle(w, stubReq)
 
@@ -99,7 +102,7 @@ func TestHandler(t *testing.T) {
 			return cosmos.TendermintStatus{}, nil
 		})
 
-		h := NewTendermint(client, testRpc, time.Nanosecond)
+		h := NewTendermint(nopLogger, client, testRpc, time.Nanosecond)
 		w := httptest.NewRecorder()
 		h.Handle(w, stubReq)
 
