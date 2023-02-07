@@ -23,6 +23,8 @@ func (fn mockClient) Status(ctx context.Context, rpcHost string) (cosmos.Tenderm
 var nopLogger = logr.Discard()
 
 func TestTendermint_ServeHTTP(t *testing.T) {
+	t.Parallel()
+
 	var (
 		stubReq = httptest.NewRequest("GET", "/", nil)
 	)
