@@ -22,8 +22,8 @@ import (
 	"time"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
-	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/fullnode"
-	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/kube"
+	"github.com/strangelove-ventures/cosmos-operator/internal/fullnode"
+	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"

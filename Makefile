@@ -77,11 +77,11 @@ tools: ## Install dev tools.
 
 .PHONY: build
 build: generate ## Build manager binary.
-	go build -o bin/manager main.go
+	go build -o bin/manager .
 
 .PHONY: run
 run: manifests generate ## Run a controller from your host.
-	go run ./main.go -log-level=debug
+	go run . --log-level=debug
 
 PRE_IMG ?= ghcr.io/strangelove-ventures/cosmos-operator:dev$(shell git describe --always --dirty)
 .PHONY: docker-prerelease

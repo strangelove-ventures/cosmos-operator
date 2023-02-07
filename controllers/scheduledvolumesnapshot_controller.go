@@ -23,8 +23,8 @@ import (
 	"time"
 
 	cosmosv1alpha1 "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
-	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/cosmos"
-	"github.com/strangelove-ventures/cosmos-operator/controllers/internal/volsnapshot"
+	"github.com/strangelove-ventures/cosmos-operator/internal/cosmos"
+	"github.com/strangelove-ventures/cosmos-operator/internal/volsnapshot"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"

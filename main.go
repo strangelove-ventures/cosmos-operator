@@ -17,12 +17,17 @@ limitations under the License.
 package main
 
 import (
-	"context"
-	"flag"
 	"fmt"
 	"net/http"
 	"os"
-	"time"
+	"runtime/debug"
+
+	"github.com/go-logr/zapr"
+	"github.com/pkg/profile"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+	"github.com/strangelove-ventures/cosmos-operator/controllers"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -31,19 +36,13 @@ import (
 	// Add Pprof endpoints.
 	_ "net/http/pprof"
 
-	"github.com/go-logr/zapr"
 	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
-	"github.com/pkg/profile"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	cosmosv1alpha1 "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
-	"github.com/strangelove-ventures/cosmos-operator/controllers"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -61,40 +60,72 @@ func init() {
 	//+kubebuilder:scaffold:scheme
 }
 
+var vcsRevision = func() string {
+	if info, ok := debug.ReadBuildInfo(); ok {
+		for _, setting := range info.Settings {
+			if setting.Key == "vcs.revision" {
+				return setting.Value
+			}
+		}
+	}
+	return ""
+}()
+
 func main() {
+	root := rootCmd()
+
 	ctx := ctrl.SetupSignalHandler()
 
+	if err := root.ExecuteContext(ctx); err != nil {
+		os.Exit(1)
+	}
+}
+
+// root command flags
+var (
+	metricsAddr          string
+	enableLeaderElection bool
+	probeAddr            string
+	profileMode          string
+	logLevel             string
+	logFormat            string
+)
+
+func rootCmd() *cobra.Command {
+	root := &cobra.Command{
+		Short:        "Run the operator",
+		Use:          "manager",
+		Version:      vcsRevision,
+		RunE:         startManager,
+		SilenceUsage: true,
+	}
+
+	root.Flags().StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
+	root.Flags().StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
+	root.Flags().BoolVar(&enableLeaderElection, "leader-elect", false,
+		"Enable leader election for controller manager. "+
+			"Enabling this will ensure there is only one active controller manager.")
+	root.Flags().StringVar(&profileMode, "profile", "", "Enable profiling and save profile to working dir. (Must be one of 'cpu', or 'mem'.)")
+	root.Flags().StringVar(&logLevel, "log-level", "info", "Logging level one of 'error', 'info', 'debug'")
+	root.Flags().StringVar(&logFormat, "log-format", "console", "Logging format one of 'console' or 'json'")
+
+	if err := viper.BindPFlags(root.Flags()); err != nil {
+		panic(err)
+	}
+
+	// Add subcommands here
+	root.AddCommand(healthcheckCmd())
+
+	return root
+}
+
+func startManager(cmd *cobra.Command, args []string) error {
 	go func() {
 		setupLog.Info("Serving pprof endpoints at localhost:6060/debug/pprof")
 		if err := http.ListenAndServe("localhost:6060", nil); err != nil {
 			setupLog.Error(err, "Pprof server exited with error")
 		}
 	}()
-
-	if err := start(ctx); err != nil {
-		setupLog.Error(err, "Failed to start")
-		os.Exit(1)
-	}
-}
-
-func start(ctx context.Context) error {
-	var (
-		metricsAddr          string
-		enableLeaderElection bool
-		probeAddr            string
-		profileMode          string
-		logLevel             string
-		logFormat            string
-	)
-	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
-	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
-	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
-		"Enable leader election for controller manager. "+
-			"Enabling this will ensure there is only one active controller manager.")
-	flag.StringVar(&profileMode, "profile", "", "Enable profiling and save profile to working dir. (Must be one of 'cpu', or 'mem'.)")
-	flag.StringVar(&logLevel, "log-level", "info", "Logging level one of 'error', 'info', 'debug'")
-	flag.StringVar(&logFormat, "log-format", "console", "Logging format one of 'console' or 'json'")
-	flag.Parse()
 
 	logger := zapLogger(logLevel, logFormat)
 	defer func() { _ = logger.Sync() }()
@@ -126,6 +157,8 @@ func start(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("unable to start manager: %w", err)
 	}
+
+	ctx := cmd.Context()
 
 	if err = controllers.NewFullNode(
 		mgr.GetClient(),
@@ -175,21 +208,4 @@ func profileOpts(mode string) []func(*profile.Profile) {
 	default:
 		panic(fmt.Errorf("unknown profile mode %q", mode))
 	}
-}
-
-func zapLogger(level, format string) *zap.Logger {
-	config := zap.NewProductionEncoderConfig()
-	config.EncodeTime = func(ts time.Time, encoder zapcore.PrimitiveArrayEncoder) {
-		encoder.AppendString(ts.UTC().Format(time.RFC3339))
-	}
-	enc := zapcore.NewConsoleEncoder(config)
-	if format == "json" {
-		enc = zapcore.NewJSONEncoder(config)
-	}
-
-	lvl := zap.NewAtomicLevel()
-	if err := lvl.UnmarshalText([]byte(level)); err != nil {
-		lvl = zap.NewAtomicLevelAt(zap.InfoLevel)
-	}
-	return zap.New(zapcore.NewCore(enc, os.Stdout, lvl))
 }
