@@ -9,7 +9,7 @@ import (
 	"github.com/robfig/cron/v3"
 	"github.com/samber/lo"
 	cosmosalpha "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
-	kube2 "github.com/strangelove-ventures/cosmos-operator/internal/kube"
+	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -60,12 +60,12 @@ func (s Scheduler) IsSnapshotReady(ctx context.Context, crd *cosmosalpha.Schedul
 
 	err := s.getter.Get(ctx, client.ObjectKeyFromObject(&snapshot), &snapshot)
 	switch {
-	case kube2.IsNotFound(err):
+	case kube.IsNotFound(err):
 		return true, nil
 	case err != nil:
 		return false, err
 	}
 
 	crd.Status.LastSnapshot.Status = snapshot.Status
-	return kube2.VolumeSnapshotIsReady(snapshot.Status), nil
+	return kube.VolumeSnapshotIsReady(snapshot.Status), nil
 }

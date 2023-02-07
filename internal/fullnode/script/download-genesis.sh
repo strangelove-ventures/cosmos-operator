@@ -13,7 +13,7 @@ download_json() {
 
 download_jsongz() {
   echo "Downloading json.gz..."
-  wget -c -O - "$GENESIS_URL" | gunzip -c > "$GENESIS_FILE"
+  wget -c -O - "$GENESIS_URL" | gunzip -c >"$GENESIS_FILE"
 }
 
 download_tar() {
@@ -37,13 +37,16 @@ download_zip() {
 rm -f "$GENESIS_FILE"
 
 case "$GENESIS_URL" in
-  *.json.gz) download_jsongz ;;
-  *.json) download_json ;;
-  *.tar.gz) download_targz ;;
-  *.tar.gzip) download_targz ;;
-  *.tar) download_tar ;;
-  *.zip) download_zip ;;
-  *) echo "Unable to handle file extension for $GENESIS_URL"; exit 1 ;;
+*.json.gz) download_jsongz ;;
+*.json) download_json ;;
+*.tar.gz) download_targz ;;
+*.tar.gzip) download_targz ;;
+*.tar) download_tar ;;
+*.zip) download_zip ;;
+*)
+  echo "Unable to handle file extension for $GENESIS_URL"
+  exit 1
+  ;;
 esac
 
 echo "Saved genesis file to $GENESIS_FILE."

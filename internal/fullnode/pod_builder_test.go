@@ -6,7 +6,7 @@ import (
 
 	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
-	kube2 "github.com/strangelove-ventures/cosmos-operator/internal/kube"
+	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	"github.com/strangelove-ventures/cosmos-operator/internal/test"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -63,7 +63,7 @@ func TestPodBuilder(t *testing.T) {
 
 		require.NotEmpty(t, pod.Labels["app.kubernetes.io/revision"])
 		// The fuzz test below tests this property.
-		delete(pod.Labels, kube2.RevisionLabel)
+		delete(pod.Labels, kube.RevisionLabel)
 		wantLabels := map[string]string{
 			"app.kubernetes.io/instance":   "osmosis-5",
 			"app.kubernetes.io/component":  "CosmosFullNode",
@@ -145,8 +145,8 @@ func TestPodBuilder(t *testing.T) {
 	t.Run("happy path - optional fields", func(t *testing.T) {
 		optCrd := defaultCRD()
 
-		optCrd.Spec.PodTemplate.Metadata.Labels = map[string]string{"custom": "label", kube2.NameLabel: "should not see me"}
-		optCrd.Spec.PodTemplate.Metadata.Annotations = map[string]string{"custom": "annotation", kube2.OrdinalAnnotation: "should not see me"}
+		optCrd.Spec.PodTemplate.Metadata.Labels = map[string]string{"custom": "label", kube.NameLabel: "should not see me"}
+		optCrd.Spec.PodTemplate.Metadata.Annotations = map[string]string{"custom": "annotation", kube.OrdinalAnnotation: "should not see me"}
 
 		optCrd.Spec.PodTemplate.Affinity = &corev1.Affinity{
 			PodAffinity: &corev1.PodAffinity{
@@ -166,11 +166,11 @@ func TestPodBuilder(t *testing.T) {
 
 		require.Equal(t, "label", pod.Labels["custom"])
 		// Operator label takes precedence.
-		require.Equal(t, "osmosis", pod.Labels[kube2.NameLabel])
+		require.Equal(t, "osmosis", pod.Labels[kube.NameLabel])
 
 		require.Equal(t, "annotation", pod.Annotations["custom"])
 		// Operator label takes precedence.
-		require.Equal(t, "9", pod.Annotations[kube2.OrdinalAnnotation])
+		require.Equal(t, "9", pod.Annotations[kube.OrdinalAnnotation])
 
 		require.Equal(t, optCrd.Spec.PodTemplate.Affinity, pod.Spec.Affinity)
 		require.Equal(t, optCrd.Spec.PodTemplate.Tolerations, pod.Spec.Tolerations)
@@ -439,28 +439,28 @@ func FuzzPodBuilderBuild(f *testing.F) {
 		pod1 := NewPodBuilder(&crd).Build()
 		pod2 := NewPodBuilder(&crd).Build()
 
-		require.NotEmpty(t, pod1.Labels[kube2.RevisionLabel], image)
-		require.NotEmpty(t, pod2.Labels[kube2.RevisionLabel], image)
+		require.NotEmpty(t, pod1.Labels[kube.RevisionLabel], image)
+		require.NotEmpty(t, pod2.Labels[kube.RevisionLabel], image)
 
-		require.Equal(t, pod1.Labels[kube2.RevisionLabel], pod2.Labels[kube2.RevisionLabel], image)
+		require.Equal(t, pod1.Labels[kube.RevisionLabel], pod2.Labels[kube.RevisionLabel], image)
 
 		crd.Spec.PodTemplate.Resources = corev1.ResourceRequirements{
 			Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceName(resourceName): resource.MustParse("2")}, // Changed value here.
 		}
 		pod3 := NewPodBuilder(&crd).Build()
 
-		require.NotEqual(t, pod1.Labels[kube2.RevisionLabel], pod3.Labels[kube2.RevisionLabel])
+		require.NotEqual(t, pod1.Labels[kube.RevisionLabel], pod3.Labels[kube.RevisionLabel])
 
 		crd.Spec.ChainSpec.ChainID = "mychain-1"
 		crd.Spec.ChainSpec.Network = "newnetwork"
 		pod4 := NewPodBuilder(&crd).Build()
 
-		require.NotEqual(t, pod3.Labels[kube2.RevisionLabel], pod4.Labels[kube2.RevisionLabel])
+		require.NotEqual(t, pod3.Labels[kube.RevisionLabel], pod4.Labels[kube.RevisionLabel])
 
 		crd.Spec.Type = cosmosv1.FullNodeSentry
 		pod5 := NewPodBuilder(&crd).Build()
 
-		require.NotEqual(t, pod4.Labels[kube2.RevisionLabel], pod5.Labels[kube2.RevisionLabel])
+		require.NotEqual(t, pod4.Labels[kube.RevisionLabel], pod5.Labels[kube.RevisionLabel])
 	})
 }
 

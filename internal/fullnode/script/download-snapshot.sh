@@ -22,11 +22,14 @@ download_lz4() {
 }
 
 case "$SNAPSHOT_URL" in
-  *.tar.lz4) download_lz4 ;;
-  *.tar.gzip) download_targz ;;
-  *.tar.gz) download_targz ;;
-  *.tar) download_tar ;;
-  *) echo "Unable to handle file extension for $SNAPSHOT_URL"; exit 1 ;;
+*.tar.lz4) download_lz4 ;;
+*.tar.gzip) download_targz ;;
+*.tar.gz) download_targz ;;
+*.tar) download_tar ;;
+*)
+  echo "Unable to handle file extension for $SNAPSHOT_URL"
+  exit 1
+  ;;
 esac
 
 echo "Download and extract snapshot complete."

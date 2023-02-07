@@ -7,7 +7,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
-	kube2 "github.com/strangelove-ventures/cosmos-operator/internal/kube"
+	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -32,38 +32,38 @@ func NewPVCControl(client Client) PVCControl {
 	return PVCControl{
 		client: client,
 		diffFactory: func(ordinalAnnotationKey, revisionLabelKey string, current, want []*corev1.PersistentVolumeClaim) pvcDiffer {
-			return kube2.NewOrdinalDiff(ordinalAnnotationKey, revisionLabelKey, current, want)
+			return kube.NewOrdinalDiff(ordinalAnnotationKey, revisionLabelKey, current, want)
 		},
 	}
 }
 
 // Reconcile is the control loop for PVCs. The bool return value, if true, indicates the controller should requeue
 // the request.
-func (vc PVCControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmosv1.CosmosFullNode) (bool, kube2.ReconcileError) {
+func (vc PVCControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmosv1.CosmosFullNode) (bool, kube.ReconcileError) {
 	// TODO (nix - 8/10/22) Update crd status.
 	// Find any existing pvcs for this CRD.
 	var vols corev1.PersistentVolumeClaimList
 	if err := vc.client.List(ctx, &vols,
 		client.InNamespace(crd.Namespace),
-		client.MatchingFields{kube2.ControllerOwnerField: crd.Name},
+		client.MatchingFields{kube.ControllerOwnerField: crd.Name},
 		SelectorLabels(crd),
 	); err != nil {
-		return false, kube2.TransientError(fmt.Errorf("list existing pvcs: %w", err))
+		return false, kube.TransientError(fmt.Errorf("list existing pvcs: %w", err))
 	}
 
 	var (
 		currentPVCs = ptrSlice(vols.Items)
 		wantPVCs    = BuildPVCs(crd)
-		diff        = vc.diffFactory(kube2.OrdinalAnnotation, kube2.RevisionLabel, currentPVCs, wantPVCs)
+		diff        = vc.diffFactory(kube.OrdinalAnnotation, kube.RevisionLabel, currentPVCs, wantPVCs)
 	)
 
 	for _, pvc := range diff.Creates() {
 		log.Info("Creating pvc", "pvcName", pvc.Name)
 		if err := ctrl.SetControllerReference(crd, pvc, vc.client.Scheme()); err != nil {
-			return true, kube2.TransientError(fmt.Errorf("set controller reference on pvc %q: %w", pvc.Name, err))
+			return true, kube.TransientError(fmt.Errorf("set controller reference on pvc %q: %w", pvc.Name, err))
 		}
-		if err := vc.client.Create(ctx, pvc); kube2.IgnoreAlreadyExists(err) != nil {
-			return true, kube2.TransientError(fmt.Errorf("create pvc %q: %w", pvc.Name, err))
+		if err := vc.client.Create(ctx, pvc); kube.IgnoreAlreadyExists(err) != nil {
+			return true, kube.TransientError(fmt.Errorf("create pvc %q: %w", pvc.Name, err))
 		}
 	}
 
@@ -72,7 +72,7 @@ func (vc PVCControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmos
 		for _, pvc := range diff.Deletes() {
 			log.Info("Deleting pvc", "pvcName", pvc.Name)
 			if err := vc.client.Delete(ctx, pvc, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
-				return true, kube2.TransientError(fmt.Errorf("delete pvc %q: %w", pvc.Name, err))
+				return true, kube.TransientError(fmt.Errorf("delete pvc %q: %w", pvc.Name, err))
 			}
 		}
 		deletes = len(diff.Deletes())

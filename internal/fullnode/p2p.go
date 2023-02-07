@@ -8,7 +8,7 @@ import (
 
 	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
-	kube2 "github.com/strangelove-ventures/cosmos-operator/internal/kube"
+	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -32,16 +32,16 @@ func (addrs ExternalAddresses) Incomplete() bool {
 }
 
 // CollectP2PAddresses collects external addresses from p2p services.
-func CollectP2PAddresses(ctx context.Context, crd *cosmosv1.CosmosFullNode, c Lister) (ExternalAddresses, kube2.ReconcileError) {
+func CollectP2PAddresses(ctx context.Context, crd *cosmosv1.CosmosFullNode, c Lister) (ExternalAddresses, kube.ReconcileError) {
 	var svcs corev1.ServiceList
 	selector := SelectorLabels(crd)
-	selector[kube2.ComponentLabel] = "p2p"
+	selector[kube.ComponentLabel] = "p2p"
 	if err := c.List(ctx, &svcs,
 		client.InNamespace(crd.Namespace),
-		client.MatchingFields{kube2.ControllerOwnerField: crd.Name},
+		client.MatchingFields{kube.ControllerOwnerField: crd.Name},
 		selector,
 	); err != nil {
-		return nil, kube2.TransientError(fmt.Errorf("list existing services: %w", err))
+		return nil, kube.TransientError(fmt.Errorf("list existing services: %w", err))
 	}
 
 	var (
@@ -51,13 +51,13 @@ func CollectP2PAddresses(ctx context.Context, crd *cosmosv1.CosmosFullNode, c Li
 	for _, svc := range svcs.Items {
 		ingress := svc.Status.LoadBalancer.Ingress
 		if len(ingress) == 0 {
-			m[svc.Labels[kube2.InstanceLabel]] = ""
+			m[svc.Labels[kube.InstanceLabel]] = ""
 			continue
 		}
 		lb := ingress[0]
 		host := lo.Ternary(lb.IP != "", lb.IP, lb.Hostname)
 		if host != "" {
-			m[svc.Labels[kube2.InstanceLabel]] = net.JoinHostPort(host, port)
+			m[svc.Labels[kube.InstanceLabel]] = net.JoinHostPort(host, port)
 		}
 	}
 	return m, nil

@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
-	kube2 "github.com/strangelove-ventures/cosmos-operator/internal/kube"
+	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -15,7 +15,7 @@ const (
 
 // SelectorLabels returns the labels used in selector operations.
 func SelectorLabels(crd *cosmosv1.CosmosFullNode) client.MatchingLabels {
-	return map[string]string{kube2.NameLabel: appName(crd)}
+	return map[string]string{kube.NameLabel: appName(crd)}
 }
 
 // kv is a list of extra kv pairs to add to the labels. Must be even.
@@ -24,11 +24,11 @@ func defaultLabels(crd *cosmosv1.CosmosFullNode, kvPairs ...string) map[string]s
 		panic(errors.New("key/value pairs must be even"))
 	}
 	labels := map[string]string{
-		kube2.ControllerLabel: "cosmos-operator",
-		kube2.ComponentLabel:  "CosmosFullNode",
-		kube2.NameLabel:       appName(crd),
-		kube2.VersionLabel:    kube2.ParseImageVersion(crd.Spec.PodTemplate.Image),
-		networkLabel:          crd.Spec.ChainSpec.Network,
+		kube.ControllerLabel: "cosmos-operator",
+		kube.ComponentLabel:  "CosmosFullNode",
+		kube.NameLabel:       appName(crd),
+		kube.VersionLabel:    kube.ParseImageVersion(crd.Spec.PodTemplate.Image),
+		networkLabel:         crd.Spec.ChainSpec.Network,
 	}
 	for i := 0; i < len(kvPairs); i += 2 {
 		labels[kvPairs[i]] = kvPairs[i+1]
@@ -37,11 +37,11 @@ func defaultLabels(crd *cosmosv1.CosmosFullNode, kvPairs ...string) map[string]s
 }
 
 func appName(crd *cosmosv1.CosmosFullNode) string {
-	return kube2.ToName(crd.Name)
+	return kube.ToName(crd.Name)
 }
 
 func instanceName(crd *cosmosv1.CosmosFullNode, ordinal int32) string {
-	return kube2.ToName(fmt.Sprintf("%s-%d", appName(crd), ordinal))
+	return kube.ToName(fmt.Sprintf("%s-%d", appName(crd), ordinal))
 }
 
 // Conditionally add custom labels or annotations, preserving key/values already set on 'into'.

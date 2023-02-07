@@ -8,7 +8,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
-	kube2 "github.com/strangelove-ventures/cosmos-operator/internal/kube"
+	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -43,46 +43,46 @@ func NewPodControl(client Client) PodControl {
 	return PodControl{
 		client: client,
 		diffFactory: func(ordinalAnnotationKey, revisionLabelKey string, current, want []*corev1.Pod) podDiffer {
-			return kube2.NewOrdinalDiff(ordinalAnnotationKey, revisionLabelKey, current, want)
+			return kube.NewOrdinalDiff(ordinalAnnotationKey, revisionLabelKey, current, want)
 		},
-		computeRollout: kube2.ComputeRollout,
+		computeRollout: kube.ComputeRollout,
 	}
 }
 
 // Reconcile is the control loop for pods. The bool return value, if true, indicates the controller should requeue
 // the request.
-func (pc PodControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmosv1.CosmosFullNode) (bool, kube2.ReconcileError) {
+func (pc PodControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmosv1.CosmosFullNode) (bool, kube.ReconcileError) {
 	// TODO (nix - 8/9/22) Update crd status.
 	// Find any existing pods for this CRD.
 	var pods corev1.PodList
 	if err := pc.client.List(ctx, &pods,
 		client.InNamespace(crd.Namespace),
-		client.MatchingFields{kube2.ControllerOwnerField: crd.Name},
+		client.MatchingFields{kube.ControllerOwnerField: crd.Name},
 		SelectorLabels(crd),
 	); err != nil {
-		return false, kube2.TransientError(fmt.Errorf("list existing pods: %w", err))
+		return false, kube.TransientError(fmt.Errorf("list existing pods: %w", err))
 	}
 
 	var (
 		currentPods = ptrSlice(pods.Items)
 		wantPods    = BuildPods(crd)
-		diff        = pc.diffFactory(kube2.OrdinalAnnotation, kube2.RevisionLabel, currentPods, wantPods)
+		diff        = pc.diffFactory(kube.OrdinalAnnotation, kube.RevisionLabel, currentPods, wantPods)
 	)
 
 	for _, pod := range diff.Creates() {
 		log.Info("Creating pod", "podName", pod.Name)
 		if err := ctrl.SetControllerReference(crd, pod, pc.client.Scheme()); err != nil {
-			return true, kube2.TransientError(fmt.Errorf("set controller reference on pod %q: %w", pod.Name, err))
+			return true, kube.TransientError(fmt.Errorf("set controller reference on pod %q: %w", pod.Name, err))
 		}
-		if err := pc.client.Create(ctx, pod); kube2.IgnoreAlreadyExists(err) != nil {
-			return true, kube2.TransientError(fmt.Errorf("create pod %q: %w", pod.Name, err))
+		if err := pc.client.Create(ctx, pod); kube.IgnoreAlreadyExists(err) != nil {
+			return true, kube.TransientError(fmt.Errorf("create pod %q: %w", pod.Name, err))
 		}
 	}
 
 	for _, pod := range diff.Deletes() {
 		log.Info("Deleting pod", "podName", pod.Name)
-		if err := pc.client.Delete(ctx, pod, client.PropagationPolicy(metav1.DeletePropagationForeground)); kube2.IgnoreNotFound(err) != nil {
-			return true, kube2.TransientError(fmt.Errorf("delete pod %q: %w", pod.Name, err))
+		if err := pc.client.Delete(ctx, pod, client.PropagationPolicy(metav1.DeletePropagationForeground)); kube.IgnoreNotFound(err) != nil {
+			return true, kube.TransientError(fmt.Errorf("delete pod %q: %w", pod.Name, err))
 		}
 	}
 
@@ -93,7 +93,7 @@ func (pc PodControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmos
 
 	if len(diff.Updates()) > 0 {
 		var (
-			avail      = kube2.AvailablePods(currentPods, 3*time.Second, time.Now())
+			avail      = kube.AvailablePods(currentPods, 3*time.Second, time.Now())
 			numUpdates = pc.computeRollout(crd.Spec.RolloutStrategy.MaxUnavailable, int(crd.Spec.Replicas), len(avail))
 		)
 
@@ -101,7 +101,7 @@ func (pc PodControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmos
 			log.Info("Deleting pod for update", "podName", pod.Name)
 			// Because we should watch for deletes, we get a re-queued request, detect pod is missing, and re-create it.
 			if err := pc.client.Delete(ctx, pod, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
-				return true, kube2.TransientError(fmt.Errorf("update pod %q: %w", pod.Name, err))
+				return true, kube.TransientError(fmt.Errorf("update pod %q: %w", pod.Name, err))
 			}
 		}
 

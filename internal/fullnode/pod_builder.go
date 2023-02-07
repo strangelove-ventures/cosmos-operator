@@ -11,7 +11,7 @@ import (
 	"sync"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
-	kube2 "github.com/strangelove-ventures/cosmos-operator/internal/kube"
+	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -50,7 +50,7 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: crd.Namespace,
 			Labels: defaultLabels(crd,
-				kube2.RevisionLabel, podRevisionHash(crd),
+				kube.RevisionLabel, podRevisionHash(crd),
 			),
 			// TODO: prom metrics
 			Annotations: make(map[string]string),
@@ -168,7 +168,7 @@ func podRevisionHash(crd *cosmosv1.CosmosFullNode) string {
 
 // Build assigns the CosmosFullNode crd as the owner and returns a fully constructed pod.
 func (b PodBuilder) Build() *corev1.Pod {
-	kube2.NormalizeMetadata(&b.pod.ObjectMeta)
+	kube.NormalizeMetadata(&b.pod.ObjectMeta)
 	return b.pod
 }
 
@@ -178,8 +178,8 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 	pod := b.pod.DeepCopy()
 	name := instanceName(b.crd, ordinal)
 
-	pod.Annotations[kube2.OrdinalAnnotation] = kube2.ToIntegerValue(ordinal)
-	pod.Labels[kube2.InstanceLabel] = name
+	pod.Annotations[kube.OrdinalAnnotation] = kube.ToIntegerValue(ordinal)
+	pod.Labels[kube.InstanceLabel] = name
 
 	pod.Name = name
 	pod.Spec.InitContainers = initContainers(b.crd, name)

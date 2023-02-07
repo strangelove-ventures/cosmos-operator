@@ -7,7 +7,7 @@ import (
 
 	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
-	kube2 "github.com/strangelove-ventures/cosmos-operator/internal/kube"
+	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	"github.com/strangelove-ventures/cosmos-operator/internal/test"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -37,10 +37,10 @@ func TestBuildPVCs(t *testing.T) {
 		gotNames := lo.Map(pvcs, func(pvc *corev1.PersistentVolumeClaim, _ int) string { return pvc.Name })
 		require.Equal(t, []string{"pvc-juno-0", "pvc-juno-1", "pvc-juno-2"}, gotNames)
 
-		gotOrds := lo.Map(pvcs, func(pvc *corev1.PersistentVolumeClaim, _ int) string { return pvc.Annotations[kube2.OrdinalAnnotation] })
+		gotOrds := lo.Map(pvcs, func(pvc *corev1.PersistentVolumeClaim, _ int) string { return pvc.Annotations[kube.OrdinalAnnotation] })
 		require.Equal(t, []string{"0", "1", "2"}, gotOrds)
 
-		revisions := lo.Map(pvcs, func(pvc *corev1.PersistentVolumeClaim, _ int) string { return pvc.Labels[kube2.RevisionLabel] })
+		revisions := lo.Map(pvcs, func(pvc *corev1.PersistentVolumeClaim, _ int) string { return pvc.Labels[kube.RevisionLabel] })
 		require.NotEmpty(t, lo.Uniq(revisions))
 		require.Len(t, lo.Uniq(revisions), 1)
 
@@ -58,7 +58,7 @@ func TestBuildPVCs(t *testing.T) {
 				"cosmos.strange.love/network":  "mainnet",
 			}
 			// These labels change and tested elsewhere.
-			delete(got.Labels, kube2.RevisionLabel)
+			delete(got.Labels, kube.RevisionLabel)
 
 			require.Equal(t, wantLabels, got.Labels)
 
@@ -94,10 +94,10 @@ func TestBuildPVCs(t *testing.T) {
 		require.Equal(t, []corev1.PersistentVolumeAccessMode{corev1.ReadWriteMany}, got.Spec.AccessModes)
 		require.Equal(t, corev1.PersistentVolumeBlock, *got.Spec.VolumeMode)
 
-		require.Equal(t, "0", got.Annotations[kube2.OrdinalAnnotation])
+		require.Equal(t, "0", got.Annotations[kube.OrdinalAnnotation])
 		require.Equal(t, "value", got.Annotations["annot"])
 
-		require.Equal(t, "cosmos-operator", got.Labels[kube2.ControllerLabel])
+		require.Equal(t, "cosmos-operator", got.Labels[kube.ControllerLabel])
 		require.Equal(t, "value", got.Labels["label"])
 
 		require.Equal(t, crd.Spec.VolumeClaimTemplate.DataSource, got.Spec.DataSource)
@@ -166,26 +166,26 @@ func FuzzBuildPVCs(f *testing.F) {
 		pvc1 := BuildPVCs(&crd)[0]
 		pvc2 := BuildPVCs(&crd)[0]
 
-		require.NotEmpty(t, pvc1.Labels[kube2.RevisionLabel])
-		require.NotEmpty(t, pvc2.Labels[kube2.RevisionLabel])
+		require.NotEmpty(t, pvc1.Labels[kube.RevisionLabel])
+		require.NotEmpty(t, pvc2.Labels[kube.RevisionLabel])
 
-		require.Equal(t, pvc1.Labels[kube2.RevisionLabel], pvc2.Labels[kube2.RevisionLabel])
+		require.Equal(t, pvc1.Labels[kube.RevisionLabel], pvc2.Labels[kube.RevisionLabel])
 
 		crd.Spec.VolumeClaimTemplate.StorageClassName = "different"
 
 		pvc3 := BuildPVCs(&crd)[0]
-		require.NotEmpty(t, pvc3.Labels[kube2.RevisionLabel])
-		require.NotEqual(t, pvc3.Labels[kube2.RevisionLabel], pvc1.Labels[kube2.RevisionLabel])
+		require.NotEmpty(t, pvc3.Labels[kube.RevisionLabel])
+		require.NotEqual(t, pvc3.Labels[kube.RevisionLabel], pvc1.Labels[kube.RevisionLabel])
 
 		crd.Spec.InstanceOverrides = map[string]cosmosv1.InstanceOverridesSpec{
 			"osmosis-0": {VolumeClaimTemplate: &cosmosv1.PersistentVolumeClaimSpec{StorageClassName: storageClass + "new1"}},
 			"osmosis-1": {VolumeClaimTemplate: &cosmosv1.PersistentVolumeClaimSpec{StorageClassName: storageClass + "new2"}},
 		}
 		pvc4 := BuildPVCs(&crd)[0]
-		require.NotEmpty(t, pvc4.Labels[kube2.RevisionLabel])
-		require.NotEqual(t, pvc3.Labels[kube2.RevisionLabel], pvc4.Labels[kube2.RevisionLabel])
+		require.NotEmpty(t, pvc4.Labels[kube.RevisionLabel])
+		require.NotEqual(t, pvc3.Labels[kube.RevisionLabel], pvc4.Labels[kube.RevisionLabel])
 
 		// Test determinism because maps are involved.
-		require.Equal(t, pvc4.Labels[kube2.RevisionLabel], BuildPVCs(&crd)[0].Labels[kube2.RevisionLabel])
+		require.Equal(t, pvc4.Labels[kube.RevisionLabel], BuildPVCs(&crd)[0].Labels[kube.RevisionLabel])
 	})
 }

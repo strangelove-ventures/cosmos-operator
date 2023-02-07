@@ -6,7 +6,7 @@ import (
 
 	"github.com/go-logr/logr"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
-	kube2 "github.com/strangelove-ventures/cosmos-operator/internal/kube"
+	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	corev1 "k8s.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -28,7 +28,7 @@ func NewServiceControl(client Client) ServiceControl {
 	return ServiceControl{
 		client: client,
 		diffFactory: func(revisionLabelKey string, current, want []*corev1.Service) svcDiffer {
-			return kube2.NewDiff(revisionLabelKey, current, want)
+			return kube.NewDiff(revisionLabelKey, current, want)
 		},
 	}
 }
@@ -36,36 +36,36 @@ func NewServiceControl(client Client) ServiceControl {
 // Reconcile creates or updates services.
 // Some services, like P2P, reserve public addresses of which should not change.
 // Therefore, services are never deleted unless the CRD itself is deleted.
-func (sc ServiceControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmosv1.CosmosFullNode) kube2.ReconcileError {
+func (sc ServiceControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmosv1.CosmosFullNode) kube.ReconcileError {
 	var svcs corev1.ServiceList
 	if err := sc.client.List(ctx, &svcs,
 		client.InNamespace(crd.Namespace),
-		client.MatchingFields{kube2.ControllerOwnerField: crd.Name},
+		client.MatchingFields{kube.ControllerOwnerField: crd.Name},
 		SelectorLabels(crd),
 	); err != nil {
-		return kube2.TransientError(fmt.Errorf("list existing services: %w", err))
+		return kube.TransientError(fmt.Errorf("list existing services: %w", err))
 	}
 
 	var (
 		currentSvcs = ptrSlice(svcs.Items)
 		wantSvcs    = BuildServices(crd)
-		diff        = sc.diffFactory(kube2.RevisionLabel, currentSvcs, wantSvcs)
+		diff        = sc.diffFactory(kube.RevisionLabel, currentSvcs, wantSvcs)
 	)
 
 	for _, svc := range diff.Creates() {
 		log.Info("Creating service", "svcName", svc.Name)
 		if err := ctrl.SetControllerReference(crd, svc, sc.client.Scheme()); err != nil {
-			return kube2.TransientError(fmt.Errorf("set controller reference on service %q: %w", svc.Name, err))
+			return kube.TransientError(fmt.Errorf("set controller reference on service %q: %w", svc.Name, err))
 		}
-		if err := sc.client.Create(ctx, svc); kube2.IgnoreAlreadyExists(err) != nil {
-			return kube2.TransientError(fmt.Errorf("create service %q: %w", svc.Name, err))
+		if err := sc.client.Create(ctx, svc); kube.IgnoreAlreadyExists(err) != nil {
+			return kube.TransientError(fmt.Errorf("create service %q: %w", svc.Name, err))
 		}
 	}
 
 	for _, svc := range diff.Updates() {
 		log.Info("Updating service", "svcName", svc.Name)
 		if err := sc.client.Update(ctx, svc); err != nil {
-			return kube2.TransientError(fmt.Errorf("update service %q: %w", svc.Name, err))
+			return kube.TransientError(fmt.Errorf("update service %q: %w", svc.Name, err))
 		}
 	}
 

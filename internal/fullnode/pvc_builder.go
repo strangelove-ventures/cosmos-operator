@@ -7,7 +7,7 @@ import (
 	"sort"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
-	kube2 "github.com/strangelove-ventures/cosmos-operator/internal/kube"
+	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	"golang.org/x/exp/maps"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,7 +27,7 @@ func BuildPVCs(crd *cosmosv1.CosmosFullNode) []*corev1.PersistentVolumeClaim {
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: crd.Namespace,
 			Labels: defaultLabels(crd,
-				kube2.RevisionLabel, pvcRevisionHash(crd),
+				kube.RevisionLabel, pvcRevisionHash(crd),
 			),
 			Annotations: make(map[string]string),
 		},
@@ -42,8 +42,8 @@ func BuildPVCs(crd *cosmosv1.CosmosFullNode) []*corev1.PersistentVolumeClaim {
 		pvc := base.DeepCopy()
 		name := pvcName(crd, i)
 		pvc.Name = name
-		pvc.Labels[kube2.InstanceLabel] = instanceName(crd, i)
-		pvc.Annotations[kube2.OrdinalAnnotation] = kube2.ToIntegerValue(i)
+		pvc.Labels[kube.InstanceLabel] = instanceName(crd, i)
+		pvc.Annotations[kube.OrdinalAnnotation] = kube.ToIntegerValue(i)
 
 		tpl := crd.Spec.VolumeClaimTemplate
 		if override, ok := crd.Spec.InstanceOverrides[instanceName(crd, i)]; ok {
@@ -62,7 +62,7 @@ func BuildPVCs(crd *cosmosv1.CosmosFullNode) []*corev1.PersistentVolumeClaim {
 
 		preserveMergeInto(pvc.Labels, tpl.Metadata.Labels)
 		preserveMergeInto(pvc.Annotations, tpl.Metadata.Annotations)
-		kube2.NormalizeMetadata(&pvc.ObjectMeta)
+		kube.NormalizeMetadata(&pvc.ObjectMeta)
 
 		pvcs = append(pvcs, pvc)
 	}
@@ -77,7 +77,7 @@ func pvcDisabled(crd *cosmosv1.CosmosFullNode, ordinal int32) bool {
 
 func pvcName(crd *cosmosv1.CosmosFullNode, ordinal int32) string {
 	name := fmt.Sprintf("pvc-%s-%d", appName(crd), ordinal)
-	return kube2.ToName(name)
+	return kube.ToName(name)
 }
 
 // Attempts to produce a deterministic hash based on the pvc template, so we can detect updates.

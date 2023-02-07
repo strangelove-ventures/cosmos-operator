@@ -12,7 +12,7 @@ import (
 	"github.com/samber/lo"
 	cosmosalpha "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
 	"github.com/strangelove-ventures/cosmos-operator/internal/fullnode"
-	kube2 "github.com/strangelove-ventures/cosmos-operator/internal/kube"
+	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	"go.uber.org/multierr"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -55,7 +55,7 @@ func (control VolumeSnapshotControl) FindCandidate(ctx context.Context, crd *cos
 	var pods corev1.PodList
 	if err := control.client.List(ctx, &pods,
 		client.InNamespace(crd.Spec.FullNodeRef.Namespace),
-		client.MatchingFields{kube2.ControllerOwnerField: crd.Spec.FullNodeRef.Name},
+		client.MatchingFields{kube.ControllerOwnerField: crd.Spec.FullNodeRef.Name},
 	); err != nil {
 		return Candidate{}, err
 	}
@@ -64,7 +64,7 @@ func (control VolumeSnapshotControl) FindCandidate(ctx context.Context, crd *cos
 		return Candidate{}, errors.New("list operation returned no pods")
 	}
 
-	avail := int32(len(kube2.AvailablePods(ptrSlice(pods.Items), 0, time.Now())))
+	avail := int32(len(kube.AvailablePods(ptrSlice(pods.Items), 0, time.Now())))
 	minAvail := crd.Spec.MinAvailable
 	if minAvail <= 0 {
 		minAvail = 2
@@ -100,12 +100,12 @@ func (control VolumeSnapshotControl) CreateSnapshot(ctx context.Context, crd *co
 	}
 	snapshot.Namespace = crd.Namespace
 	ts := control.now().UTC().Format("200601021504")
-	name := kube2.ToName(fmt.Sprintf("%s-%s", crd.Name, ts))
+	name := kube.ToName(fmt.Sprintf("%s-%s", crd.Name, ts))
 	snapshot.Name = name
 
 	snapshot.Labels = lo.Assign(candidate.PodLabels)
-	snapshot.Labels[kube2.ComponentLabel] = "ScheduledVolumeSnapshot"
-	snapshot.Labels[kube2.ControllerLabel] = "cosmos-operator"
+	snapshot.Labels[kube.ComponentLabel] = "ScheduledVolumeSnapshot"
+	snapshot.Labels[kube.ControllerLabel] = "cosmos-operator"
 	snapshot.Labels[cosmosSourceLabel] = crd.Name
 
 	if err := control.client.Create(ctx, &snapshot); err != nil {
@@ -158,7 +158,7 @@ func (control VolumeSnapshotControl) DeleteOldSnapshots(ctx context.Context, log
 	for _, vs := range toDelete {
 		vs := vs
 		log.Info("Deleting volume snapshot", "volumeSnapshotName", vs.Name, "limit", limit)
-		if err := control.client.Delete(ctx, &vs); kube2.IgnoreNotFound(err) != nil {
+		if err := control.client.Delete(ctx, &vs); kube.IgnoreNotFound(err) != nil {
 			multierr.AppendInto(&merr, fmt.Errorf("delete %s: %w", vs.Name, err))
 		}
 	}
