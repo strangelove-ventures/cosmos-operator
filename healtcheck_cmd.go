@@ -15,9 +15,10 @@ import (
 
 func healthcheckCmd() *cobra.Command {
 	hc := &cobra.Command{
-		Short: "Start health check probe",
-		Use:   "healthcheck",
-		RunE:  startHealthCheckServer,
+		Short:        "Start health check probe",
+		Use:          "healthcheck",
+		RunE:         startHealthCheckServer,
+		SilenceUsage: true,
 	}
 
 	hc.Flags().String("rpc-host", "http://localhost:26657", "tendermint rpc endpoint")

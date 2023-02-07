@@ -18,8 +18,8 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net/http"
+	"os"
 	"runtime/debug"
 
 	"github.com/go-logr/zapr"
@@ -77,7 +77,7 @@ func main() {
 	ctx := ctrl.SetupSignalHandler()
 
 	if err := root.ExecuteContext(ctx); err != nil {
-		log.Fatal(err)
+		os.Exit(1)
 	}
 }
 
@@ -93,10 +93,11 @@ var (
 
 func rootCmd() *cobra.Command {
 	root := &cobra.Command{
-		Short:   "Run the operator",
-		Use:     "manager",
-		Version: vcsRevision,
-		RunE:    startManager,
+		Short:        "Run the operator",
+		Use:          "manager",
+		Version:      vcsRevision,
+		RunE:         startManager,
+		SilenceUsage: true,
 	}
 
 	root.Flags().StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
