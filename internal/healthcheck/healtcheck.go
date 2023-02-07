@@ -41,8 +41,8 @@ func NewTendermint(logger logr.Logger, client Statuser, rpcHost string, timeout 
 	}
 }
 
-// Handle implements http.HandlerFunc signature.
-func (h *Tendermint) Handle(w http.ResponseWriter, r *http.Request) {
+// ServeHTTP implements http.Handler.
+func (h *Tendermint) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var resp healthResponse
 	resp.Address = h.rpcHost
 

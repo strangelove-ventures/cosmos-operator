@@ -112,6 +112,9 @@ func rootCmd() *cobra.Command {
 		panic(err)
 	}
 
+	// Add subcommands here
+	root.AddCommand(healthcheckCmd())
+
 	return root
 }
 

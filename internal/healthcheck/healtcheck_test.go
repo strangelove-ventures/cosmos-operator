@@ -22,7 +22,7 @@ func (fn mockClient) Status(ctx context.Context, rpcHost string) (cosmos.Tenderm
 
 var nopLogger = logr.Discard()
 
-func TestHandler(t *testing.T) {
+func TestTendermint_ServeHTTP(t *testing.T) {
 	var (
 		stubReq = httptest.NewRequest("GET", "/", nil)
 	)
@@ -37,7 +37,7 @@ func TestHandler(t *testing.T) {
 
 		h := NewTendermint(nopLogger, client, testRpc, 10*time.Second)
 		w := httptest.NewRecorder()
-		h.Handle(w, stubReq)
+		h.ServeHTTP(w, stubReq)
 
 		require.Equal(t, http.StatusOK, w.Code)
 		var got healthResponse
@@ -60,7 +60,7 @@ func TestHandler(t *testing.T) {
 
 		h := NewTendermint(nopLogger, client, testRpc, 10*time.Second)
 		w := httptest.NewRecorder()
-		h.Handle(w, stubReq)
+		h.ServeHTTP(w, stubReq)
 
 		require.Equal(t, http.StatusUnprocessableEntity, w.Code)
 		var got healthResponse
@@ -81,7 +81,7 @@ func TestHandler(t *testing.T) {
 
 		h := NewTendermint(nopLogger, client, testRpc, 10*time.Second)
 		w := httptest.NewRecorder()
-		h.Handle(w, stubReq)
+		h.ServeHTTP(w, stubReq)
 
 		require.Equal(t, http.StatusServiceUnavailable, w.Code)
 		var got healthResponse
@@ -104,7 +104,7 @@ func TestHandler(t *testing.T) {
 
 		h := NewTendermint(nopLogger, client, testRpc, time.Nanosecond)
 		w := httptest.NewRecorder()
-		h.Handle(w, stubReq)
+		h.ServeHTTP(w, stubReq)
 
 		select {
 		case <-gotCtx.Done():
