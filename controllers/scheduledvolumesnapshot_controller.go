@@ -169,6 +169,11 @@ func (r *ScheduledVolumeSnapshotReconciler) Reconcile(ctx context.Context, req c
 			r.reportError(crd, "RestorePodError", err)
 			return retryResult, nil
 		}
+		if err := r.fullNodeControl.ConfirmPodRestoration(ctx, crd); err != nil {
+			logger.Error(err, "Failed to confirm pod restoration")
+			r.reportError(crd, "RestorePodError", err)
+			return retryResult, nil
+		}
 		// Reset to beginning.
 		crd.Status.Phase = cosmosv1alpha1.SnapshotPhaseWaitingForNext
 	}
