@@ -52,6 +52,8 @@ func (control FullNodeControl) SignalPodDeletion(ctx context.Context, crd *cosmo
 
 // SignalPodRestoration updates the FullNodeRef's status to indicate it should recreate the pod candidate.
 // Any error returned can be treated as transient and retried.
+// This method will error if the scheduledSnapshotStatus map key does not exist. You get an unhelpful error message from
+// the k8s API: "The request is invalid: the server rejected our request due to an error in our request"
 func (control FullNodeControl) SignalPodRestoration(ctx context.Context, crd *cosmosalpha.ScheduledVolumeSnapshot) error {
 	var fn cosmosv1.CosmosFullNode
 	fn.Name = crd.Spec.FullNodeRef.Name
