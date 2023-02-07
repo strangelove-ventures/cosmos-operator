@@ -396,6 +396,8 @@ gaiad start --home /home/operator/cosmos`
 		}
 		got := pod.Spec.Containers[0].ReadinessProbe
 
+		require.Equal(t, want, got)
+
 		want = &corev1.Probe{
 			ProbeHandler: corev1.ProbeHandler{
 				HTTPGet: &corev1.HTTPGetAction{

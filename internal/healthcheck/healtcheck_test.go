@@ -26,16 +26,16 @@ func TestTendermint_ServeHTTP(t *testing.T) {
 	var (
 		stubReq = httptest.NewRequest("GET", "/", nil)
 	)
-	const testRpc = "http://my-rpc:25567"
+	const testRPC = "http://my-rpc:25567"
 
 	t.Run("happy path", func(t *testing.T) {
 		client := mockClient(func(ctx context.Context, rpcHost string) (cosmos.TendermintStatus, error) {
 			require.NotNil(t, ctx)
-			require.Equal(t, testRpc, rpcHost)
+			require.Equal(t, testRPC, rpcHost)
 			return cosmos.TendermintStatus{}, nil
 		})
 
-		h := NewTendermint(nopLogger, client, testRpc, 10*time.Second)
+		h := NewTendermint(nopLogger, client, testRPC, 10*time.Second)
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, stubReq)
 
@@ -45,7 +45,7 @@ func TestTendermint_ServeHTTP(t *testing.T) {
 		require.NoError(t, err)
 
 		want := healthResponse{
-			Address: testRpc,
+			Address: testRPC,
 			InSync:  true,
 		}
 		require.Equal(t, want, got)
@@ -58,7 +58,7 @@ func TestTendermint_ServeHTTP(t *testing.T) {
 			return stub, nil
 		})
 
-		h := NewTendermint(nopLogger, client, testRpc, 10*time.Second)
+		h := NewTendermint(nopLogger, client, testRPC, 10*time.Second)
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, stubReq)
 
@@ -68,7 +68,7 @@ func TestTendermint_ServeHTTP(t *testing.T) {
 		require.NoError(t, err)
 
 		want := healthResponse{
-			Address: testRpc,
+			Address: testRPC,
 			InSync:  false,
 		}
 		require.Equal(t, want, got)
@@ -79,7 +79,7 @@ func TestTendermint_ServeHTTP(t *testing.T) {
 			return cosmos.TendermintStatus{}, errors.New("boom")
 		})
 
-		h := NewTendermint(nopLogger, client, testRpc, 10*time.Second)
+		h := NewTendermint(nopLogger, client, testRPC, 10*time.Second)
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, stubReq)
 
@@ -89,7 +89,7 @@ func TestTendermint_ServeHTTP(t *testing.T) {
 		require.NoError(t, err)
 
 		want := healthResponse{
-			Address: testRpc,
+			Address: testRPC,
 			Error:   "boom",
 		}
 		require.Equal(t, want, got)
@@ -102,7 +102,7 @@ func TestTendermint_ServeHTTP(t *testing.T) {
 			return cosmos.TendermintStatus{}, nil
 		})
 
-		h := NewTendermint(nopLogger, client, testRpc, time.Nanosecond)
+		h := NewTendermint(nopLogger, client, testRPC, time.Nanosecond)
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, stubReq)
 
