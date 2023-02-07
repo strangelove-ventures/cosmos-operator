@@ -55,12 +55,12 @@ func startHealthCheckServer(cmd *cobra.Command, args []string) error {
 
 	var eg errgroup.Group
 	eg.Go(func() error {
-		logger.Info("Health check server listening", "addr", listenAddr, "rpcHost", rpcHost)
+		logger.Info("Healthcheck server listening", "addr", listenAddr, "rpcHost", rpcHost)
 		return srv.ListenAndServe()
 	})
 	eg.Go(func() error {
 		<-cmd.Context().Done()
-		logger.Info("Health check server shutting down")
+		logger.Info("Healthcheck server shutting down")
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		return srv.Shutdown(ctx)
