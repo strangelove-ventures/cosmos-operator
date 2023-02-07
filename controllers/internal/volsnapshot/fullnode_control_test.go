@@ -143,6 +143,85 @@ func TestFullNodeControl_SignalPodRestoration(t *testing.T) {
 	})
 }
 
+func TestFullNodeControl_ConfirmPodRestoration(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	var crd cosmosalpha.ScheduledVolumeSnapshot
+	crd.Spec.FullNodeRef.Namespace = "default"
+	crd.Spec.FullNodeRef.Name = "cosmoshub"
+	crd.Status.Candidate = &cosmosalpha.SnapshotCandidate{
+		PodName: "target-pod",
+	}
+
+	t.Run("happy path", func(t *testing.T) {
+		var didList bool
+		lister := mockLister(func(_ context.Context, list client.ObjectList, opts ...client.ListOption) error {
+			list.(*corev1.PodList).Items = []corev1.Pod{
+				{ObjectMeta: metav1.ObjectMeta{Name: "pod-1"}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "target-pod"}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "pod-2"}},
+			}
+
+			require.Len(t, opts, 2)
+			var listOpt client.ListOptions
+			for _, opt := range opts {
+				opt.ApplyToList(&listOpt)
+			}
+			require.Equal(t, "default", listOpt.Namespace)
+			require.Zero(t, listOpt.Limit)
+			require.Equal(t, ".metadata.controller=cosmoshub", listOpt.FieldSelector.String())
+
+			didList = true
+			return nil
+		})
+
+		control := NewFullNodeControl(nopPatcher, lister)
+
+		err := control.ConfirmPodRestoration(ctx, &crd)
+		require.NoError(t, err)
+
+		require.True(t, didList)
+	})
+
+	t.Run("pod not restored yet", func(t *testing.T) {
+		lister := mockLister(func(_ context.Context, list client.ObjectList, opts ...client.ListOption) error {
+			list.(*corev1.PodList).Items = []corev1.Pod{
+				{ObjectMeta: metav1.ObjectMeta{Name: "pod-1"}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "pod-2"}},
+			}
+			return nil
+		})
+
+		control := NewFullNodeControl(nopPatcher, lister)
+		err := control.ConfirmPodRestoration(ctx, &crd)
+
+		require.Error(t, err)
+		require.EqualError(t, err, "pod target-pod not restored yet")
+	})
+
+	t.Run("no items", func(t *testing.T) {
+		control := NewFullNodeControl(nopPatcher, nopLister)
+		err := control.ConfirmPodRestoration(ctx, &crd)
+
+		require.Error(t, err)
+		require.EqualError(t, err, "pod target-pod not restored yet")
+	})
+
+	t.Run("list error", func(t *testing.T) {
+		lister := mockLister(func(_ context.Context, list client.ObjectList, opts ...client.ListOption) error {
+			return errors.New("boom")
+		})
+
+		control := NewFullNodeControl(nopPatcher, lister)
+		err := control.ConfirmPodRestoration(ctx, &crd)
+
+		require.Error(t, err)
+		require.EqualError(t, err, "list pods: boom")
+	})
+}
+
 func TestFullNodeControl_ConfirmPodDeletion(t *testing.T) {
 	t.Parallel()
 
