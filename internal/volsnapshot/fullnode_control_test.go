@@ -60,7 +60,9 @@ func (m mockReader) List(ctx context.Context, list client.ObjectList, opts ...cl
 
 var nopReader = mockReader{
 	Lister: func(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error { return nil },
-	Getter: func(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error { return nil },
+	Getter: func(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+		return nil
+	},
 }
 
 func TestFullNodeControl_SignalPodDeletion(t *testing.T) {
