@@ -1,3 +1,7 @@
+// Package healthcheck typically enables readiness or liveness probes within kubernetes.
+// IMPORTANT: If you update this behavior, be sure to update internal/fullnode/pod_builder.go with the new
+// cosmos operator image in the "healthcheck" container.
+//
 //nolint:misspell
 package healthcheck
 
