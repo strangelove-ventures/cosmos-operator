@@ -52,6 +52,8 @@ func (control FullNodeControl) SignalPodDeletion(ctx context.Context, crd *cosmo
 
 // SignalPodRestoration updates the FullNodeRef's status to indicate it should recreate the pod candidate.
 // Any error returned can be treated as transient and retried.
+// This method will error if the scheduledSnapshotStatus map key does not exist. You get an unhelpful error message from
+// the k8s API: "The request is invalid: the server rejected our request due to an error in our request"
 func (control FullNodeControl) SignalPodRestoration(ctx context.Context, crd *cosmosalpha.ScheduledVolumeSnapshot) error {
 	var fn cosmosv1.CosmosFullNode
 	fn.Name = crd.Spec.FullNodeRef.Name
@@ -61,10 +63,21 @@ func (control FullNodeControl) SignalPodRestoration(ctx context.Context, crd *co
 	return control.statusClient.Patch(ctx, &fn, raw)
 }
 
-func (control FullNodeControl) sourceKey(crd *cosmosalpha.ScheduledVolumeSnapshot) string {
-	key := strings.Join([]string{crd.Namespace, crd.Name, cosmosalpha.GroupVersion.Version, cosmosalpha.GroupVersion.Group}, ".")
-	// Remove all slashes because key is used in JSONPatch where slash "/" is a reserved character.
-	return strings.ReplaceAll(key, "/", "")
+// ConfirmPodRestoration verifies the pod has been restored.
+func (control FullNodeControl) ConfirmPodRestoration(ctx context.Context, crd *cosmosalpha.ScheduledVolumeSnapshot) error {
+	var pods corev1.PodList
+	if err := control.listClient.List(ctx, &pods,
+		client.InNamespace(crd.Spec.FullNodeRef.Namespace),
+		client.MatchingFields{kube.ControllerOwnerField: crd.Spec.FullNodeRef.Name},
+	); err != nil {
+		return fmt.Errorf("list pods: %w", err)
+	}
+	for _, pod := range pods.Items {
+		if pod.Name == crd.Status.Candidate.PodName {
+			return nil
+		}
+	}
+	return fmt.Errorf("pod %s not restored yet", crd.Status.Candidate.PodName)
 }
 
 // ConfirmPodDeletion returns a nil error if the pod is deleted.
@@ -84,4 +97,10 @@ func (control FullNodeControl) ConfirmPodDeletion(ctx context.Context, crd *cosm
 		}
 	}
 	return nil
+}
+
+func (control FullNodeControl) sourceKey(crd *cosmosalpha.ScheduledVolumeSnapshot) string {
+	key := strings.Join([]string{crd.Namespace, crd.Name, cosmosalpha.GroupVersion.Version, cosmosalpha.GroupVersion.Group}, ".")
+	// Remove all slashes because key is used in JSONPatch where slash "/" is a reserved character.
+	return strings.ReplaceAll(key, "/", "")
 }
