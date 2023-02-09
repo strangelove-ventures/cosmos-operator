@@ -228,7 +228,7 @@ func TestPodBuilder(t *testing.T) {
 
 		healthContainer := pod.Spec.Containers[1]
 		require.Equal(t, "healthcheck", healthContainer.Name)
-		require.Equal(t, "ghcr.io/strangelove-ventures/cosmos-operator:v0.6.2", healthContainer.Image)
+		require.Equal(t, "ghcr.io/strangelove-ventures/cosmos-operator:v0.7.0", healthContainer.Image)
 		require.Equal(t, []string{"/manager", "healthcheck"}, healthContainer.Command)
 		require.Empty(t, healthContainer.Args)
 		require.Empty(t, healthContainer.ImagePullPolicy)
@@ -417,9 +417,9 @@ gaiad start --home /home/operator/cosmos`
 		require.Equal(t, want, got)
 	})
 
-	t.Run("sentry probes", func(t *testing.T) {
+	t.Run("probe strategy", func(t *testing.T) {
 		crd := defaultCRD()
-		crd.Spec.Type = cosmosv1.FullNodeSentry
+		crd.Spec.PodTemplate.Probes = cosmosv1.FullNodeProbesSpec{Strategy: cosmosv1.FullNodeProbeStrategyNone}
 
 		builder := NewPodBuilder(&crd)
 		pod := builder.WithOrdinal(1).Build()
@@ -427,6 +427,9 @@ gaiad start --home /home/operator/cosmos`
 		for i, cont := range pod.Spec.Containers {
 			require.Nilf(t, cont.ReadinessProbe, "container %d", i)
 		}
+
+		require.Equal(t, 1, len(pod.Spec.Containers))
+		require.Equal(t, "node", pod.Spec.Containers[0].Name)
 	})
 }
 
