@@ -90,9 +90,11 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 				},
 				// Healtcheck sidecar to ensure pod is in sync with the chain.
 				{
-					Name:    "healthcheck",
-					Image:   "ghcr.io/strangelove-ventures/ignite-health-check:v0.0.1",
-					Command: []string{"ihc"},
+					Name: "healthcheck",
+					// Available images: https://github.com/orgs/strangelove-ventures/packages?repo_name=cosmos-operator
+					// IMPORTANT: Must use v0.6.2 or later.
+					Image:   "ghcr.io/strangelove-ventures/cosmos-operator:v0.6.2",
+					Command: []string{"/manager", "healthcheck"},
 					Ports:   []corev1.ContainerPort{{ContainerPort: healthCheckPort, Protocol: corev1.ProtocolTCP}},
 					Resources: corev1.ResourceRequirements{
 						Requests: corev1.ResourceList{
