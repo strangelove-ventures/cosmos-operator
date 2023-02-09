@@ -1349,8 +1349,6 @@ spec:
                     type: string
                   probes:
                     description: Configure probes for the pods managed by the controller.
-                    enum:
-                    - None
                     properties:
                       strategy:
                         description: Strategy controls the default probes added by

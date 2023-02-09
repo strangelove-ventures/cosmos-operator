@@ -237,9 +237,8 @@ type PodSpec struct {
 	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds"`
 
 	// Configure probes for the pods managed by the controller.
-	// +kubebuilder:validation:Enum:=None
 	// +optional
-	Probes FullNodeProbesSpec `json:"probes,omitempty"`
+	Probes FullNodeProbesSpec `json:"probes"`
 }
 
 type FullNodeProbeStrategy string
