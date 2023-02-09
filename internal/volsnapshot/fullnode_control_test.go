@@ -30,18 +30,40 @@ var nopPatcher = mockPatcher(func(ctx context.Context, obj client.Object, patch 
 	return nil
 })
 
-type mockLister func(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error
+type mockReader struct {
+	Lister func(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error
+	Getter func(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error
+}
 
-func (fn mockLister) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
+func (m mockReader) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
 	if ctx == nil {
 		panic("nil context")
 	}
-	return fn(ctx, list, opts...)
+	if len(opts) > 0 {
+		panic("unexpected opts")
+	}
+	if m.Getter == nil {
+		panic("get called with no implementation")
+	}
+	return m.Getter(ctx, key, obj, opts...)
 }
 
-var nopLister = mockLister(func(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
-	return nil
-})
+func (m mockReader) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
+	if ctx == nil {
+		panic("nil context")
+	}
+	if m.Lister == nil {
+		panic("list called with no implementation")
+	}
+	return m.Lister(ctx, list, opts...)
+}
+
+var nopReader = mockReader{
+	Lister: func(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error { return nil },
+	Getter: func(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+		return nil
+	},
+}
 
 func TestFullNodeControl_SignalPodDeletion(t *testing.T) {
 	t.Parallel()
@@ -74,7 +96,7 @@ func TestFullNodeControl_SignalPodDeletion(t *testing.T) {
 			return nil
 		})
 
-		control := NewFullNodeControl(patcher, nopLister)
+		control := NewFullNodeControl(patcher, nopReader)
 		err := control.SignalPodDeletion(ctx, &crd)
 
 		require.NoError(t, err)
@@ -86,7 +108,7 @@ func TestFullNodeControl_SignalPodDeletion(t *testing.T) {
 			return errors.New("boom")
 		})
 
-		control := NewFullNodeControl(patcher, nopLister)
+		control := NewFullNodeControl(patcher, nopReader)
 		err := control.SignalPodDeletion(ctx, &crd)
 
 		require.Error(t, err)
@@ -123,7 +145,7 @@ func TestFullNodeControl_SignalPodRestoration(t *testing.T) {
 			return nil
 		})
 
-		control := NewFullNodeControl(patcher, nopLister)
+		control := NewFullNodeControl(patcher, nopReader)
 		err := control.SignalPodRestoration(ctx, &crd)
 
 		require.NoError(t, err)
@@ -135,7 +157,7 @@ func TestFullNodeControl_SignalPodRestoration(t *testing.T) {
 			return errors.New("boom")
 		})
 
-		control := NewFullNodeControl(patcher, nopLister)
+		control := NewFullNodeControl(patcher, nopReader)
 		err := control.SignalPodRestoration(ctx, &crd)
 
 		require.Error(t, err)
@@ -149,6 +171,8 @@ func TestFullNodeControl_ConfirmPodRestoration(t *testing.T) {
 	ctx := context.Background()
 
 	var crd cosmosalpha.ScheduledVolumeSnapshot
+	crd.Name = "snapshot"
+	crd.Namespace = "default"
 	crd.Spec.FullNodeRef.Namespace = "default"
 	crd.Spec.FullNodeRef.Name = "cosmoshub"
 	crd.Status.Candidate = &cosmosalpha.SnapshotCandidate{
@@ -156,69 +180,59 @@ func TestFullNodeControl_ConfirmPodRestoration(t *testing.T) {
 	}
 
 	t.Run("happy path", func(t *testing.T) {
-		var didList bool
-		lister := mockLister(func(_ context.Context, list client.ObjectList, opts ...client.ListOption) error {
-			list.(*corev1.PodList).Items = []corev1.Pod{
-				{ObjectMeta: metav1.ObjectMeta{Name: "pod-1"}},
-				{ObjectMeta: metav1.ObjectMeta{Name: "target-pod"}},
-				{ObjectMeta: metav1.ObjectMeta{Name: "pod-2"}},
+		for _, tt := range []struct {
+			Status map[string]cosmosv1.FullNodeSnapshotStatus
+		}{
+			{nil},
+			{map[string]cosmosv1.FullNodeSnapshotStatus{
+				"should-not-be-a-match": {PodCandidate: "target-pod"},
+			}},
+		} {
+			var reader mockReader
+			reader.Getter = func(_ context.Context, key client.ObjectKey, obj client.Object, _ ...client.GetOption) error {
+				require.Equal(t, "cosmoshub", key.Name)
+				require.Equal(t, "default", key.Namespace)
+				require.IsType(t, &cosmosv1.CosmosFullNode{}, obj)
+				obj.(*cosmosv1.CosmosFullNode).Status.ScheduledSnapshotStatus = map[string]cosmosv1.FullNodeSnapshotStatus{
+					"should-not-be-a-match": {PodCandidate: "target-pod"},
+				}
+				return nil
 			}
 
-			require.Len(t, opts, 2)
-			var listOpt client.ListOptions
-			for _, opt := range opts {
-				opt.ApplyToList(&listOpt)
-			}
-			require.Equal(t, "default", listOpt.Namespace)
-			require.Zero(t, listOpt.Limit)
-			require.Equal(t, ".metadata.controller=cosmoshub", listOpt.FieldSelector.String())
+			control := NewFullNodeControl(nopPatcher, reader)
 
-			didList = true
-			return nil
-		})
-
-		control := NewFullNodeControl(nopPatcher, lister)
-
-		err := control.ConfirmPodRestoration(ctx, &crd)
-		require.NoError(t, err)
-
-		require.True(t, didList)
+			err := control.ConfirmPodRestoration(ctx, &crd)
+			require.NoError(t, err, tt)
+		}
 	})
 
-	t.Run("pod not restored yet", func(t *testing.T) {
-		lister := mockLister(func(_ context.Context, list client.ObjectList, opts ...client.ListOption) error {
-			list.(*corev1.PodList).Items = []corev1.Pod{
-				{ObjectMeta: metav1.ObjectMeta{Name: "pod-1"}},
-				{ObjectMeta: metav1.ObjectMeta{Name: "pod-2"}},
+	t.Run("fullnode status not updated yet", func(t *testing.T) {
+		var reader mockReader
+		reader.Getter = func(_ context.Context, key client.ObjectKey, obj client.Object, _ ...client.GetOption) error {
+			obj.(*cosmosv1.CosmosFullNode).Status.ScheduledSnapshotStatus = map[string]cosmosv1.FullNodeSnapshotStatus{
+				"default.snapshot.v1alpha1.cosmos.strange.love": {PodCandidate: "target-pod"},
 			}
 			return nil
-		})
+		}
 
-		control := NewFullNodeControl(nopPatcher, lister)
+		control := NewFullNodeControl(nopPatcher, reader)
 		err := control.ConfirmPodRestoration(ctx, &crd)
 
 		require.Error(t, err)
 		require.EqualError(t, err, "pod target-pod not restored yet")
 	})
 
-	t.Run("no items", func(t *testing.T) {
-		control := NewFullNodeControl(nopPatcher, nopLister)
-		err := control.ConfirmPodRestoration(ctx, &crd)
-
-		require.Error(t, err)
-		require.EqualError(t, err, "pod target-pod not restored yet")
-	})
-
-	t.Run("list error", func(t *testing.T) {
-		lister := mockLister(func(_ context.Context, list client.ObjectList, opts ...client.ListOption) error {
+	t.Run("get error", func(t *testing.T) {
+		var reader mockReader
+		reader.Getter = func(_ context.Context, key client.ObjectKey, obj client.Object, _ ...client.GetOption) error {
 			return errors.New("boom")
-		})
+		}
 
-		control := NewFullNodeControl(nopPatcher, lister)
+		control := NewFullNodeControl(nopPatcher, reader)
 		err := control.ConfirmPodRestoration(ctx, &crd)
 
 		require.Error(t, err)
-		require.EqualError(t, err, "list pods: boom")
+		require.EqualError(t, err, "get CosmosFullNode: boom")
 	})
 }
 
@@ -236,7 +250,8 @@ func TestFullNodeControl_ConfirmPodDeletion(t *testing.T) {
 
 	t.Run("happy path", func(t *testing.T) {
 		var didList bool
-		lister := mockLister(func(_ context.Context, list client.ObjectList, opts ...client.ListOption) error {
+		var reader mockReader
+		reader.Lister = func(_ context.Context, list client.ObjectList, opts ...client.ListOption) error {
 			list.(*corev1.PodList).Items = []corev1.Pod{
 				{ObjectMeta: metav1.ObjectMeta{Name: "pod-1"}},
 				{ObjectMeta: metav1.ObjectMeta{Name: "pod-2"}},
@@ -253,9 +268,9 @@ func TestFullNodeControl_ConfirmPodDeletion(t *testing.T) {
 
 			didList = true
 			return nil
-		})
+		}
 
-		control := NewFullNodeControl(nopPatcher, lister)
+		control := NewFullNodeControl(nopPatcher, reader)
 
 		err := control.ConfirmPodDeletion(ctx, &crd)
 		require.NoError(t, err)
@@ -264,23 +279,24 @@ func TestFullNodeControl_ConfirmPodDeletion(t *testing.T) {
 	})
 
 	t.Run("happy path - no items", func(t *testing.T) {
-		control := NewFullNodeControl(nopPatcher, nopLister)
+		control := NewFullNodeControl(nopPatcher, nopReader)
 		err := control.ConfirmPodDeletion(ctx, &crd)
 
 		require.NoError(t, err)
 	})
 
 	t.Run("pod not deleted yet", func(t *testing.T) {
-		lister := mockLister(func(_ context.Context, list client.ObjectList, opts ...client.ListOption) error {
+		var reader mockReader
+		reader.Lister = func(_ context.Context, list client.ObjectList, opts ...client.ListOption) error {
 			list.(*corev1.PodList).Items = []corev1.Pod{
 				{ObjectMeta: metav1.ObjectMeta{Name: "pod-1"}},
 				{ObjectMeta: metav1.ObjectMeta{Name: "target-pod"}},
 				{ObjectMeta: metav1.ObjectMeta{Name: "pod-2"}},
 			}
 			return nil
-		})
+		}
 
-		control := NewFullNodeControl(nopPatcher, lister)
+		control := NewFullNodeControl(nopPatcher, reader)
 		err := control.ConfirmPodDeletion(ctx, &crd)
 
 		require.Error(t, err)
@@ -288,11 +304,12 @@ func TestFullNodeControl_ConfirmPodDeletion(t *testing.T) {
 	})
 
 	t.Run("list error", func(t *testing.T) {
-		lister := mockLister(func(_ context.Context, list client.ObjectList, opts ...client.ListOption) error {
+		var reader mockReader
+		reader.Lister = func(_ context.Context, list client.ObjectList, opts ...client.ListOption) error {
 			return errors.New("boom")
-		})
+		}
 
-		control := NewFullNodeControl(nopPatcher, lister)
+		control := NewFullNodeControl(nopPatcher, reader)
 		err := control.ConfirmPodDeletion(ctx, &crd)
 
 		require.Error(t, err)

@@ -18,19 +18,14 @@ type StatusPatcher interface {
 	Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error
 }
 
-// Lister lists resources.
-type Lister interface {
-	List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error
-}
-
 // FullNodeControl manages a ScheduledVolumeSnapshot's spec.fullNodeRef.
 type FullNodeControl struct {
-	listClient   Lister
+	client       client.Reader
 	statusClient StatusPatcher
 }
 
-func NewFullNodeControl(statusClient StatusPatcher, listClient Lister) *FullNodeControl {
-	return &FullNodeControl{listClient: listClient, statusClient: statusClient}
+func NewFullNodeControl(statusClient StatusPatcher, client client.Reader) *FullNodeControl {
+	return &FullNodeControl{client: client, statusClient: statusClient}
 }
 
 // SignalPodDeletion updates the FullNodeRef's status to indicate it should delete the pod candidate.
@@ -65,19 +60,20 @@ func (control FullNodeControl) SignalPodRestoration(ctx context.Context, crd *co
 
 // ConfirmPodRestoration verifies the pod has been restored.
 func (control FullNodeControl) ConfirmPodRestoration(ctx context.Context, crd *cosmosalpha.ScheduledVolumeSnapshot) error {
-	var pods corev1.PodList
-	if err := control.listClient.List(ctx, &pods,
-		client.InNamespace(crd.Spec.FullNodeRef.Namespace),
-		client.MatchingFields{kube.ControllerOwnerField: crd.Spec.FullNodeRef.Name},
-	); err != nil {
-		return fmt.Errorf("list pods: %w", err)
+	var (
+		fullnode cosmosv1.CosmosFullNode
+		getKey   = client.ObjectKey{Name: crd.Spec.FullNodeRef.Name, Namespace: crd.Spec.FullNodeRef.Namespace}
+	)
+
+	if err := control.client.Get(ctx, getKey, &fullnode); err != nil {
+		return fmt.Errorf("get CosmosFullNode: %w", err)
 	}
-	for _, pod := range pods.Items {
-		if pod.Name == crd.Status.Candidate.PodName {
-			return nil
-		}
+
+	if _, exists := fullnode.Status.ScheduledSnapshotStatus[control.sourceKey(crd)]; exists {
+		return fmt.Errorf("pod %s not restored yet", crd.Status.Candidate.PodName)
 	}
-	return fmt.Errorf("pod %s not restored yet", crd.Status.Candidate.PodName)
+
+	return nil
 }
 
 // ConfirmPodDeletion returns a nil error if the pod is deleted.
@@ -85,7 +81,7 @@ func (control FullNodeControl) ConfirmPodRestoration(ctx context.Context, crd *c
 // Assumes crd's status.candidate is set, otherwise this method panics.
 func (control FullNodeControl) ConfirmPodDeletion(ctx context.Context, crd *cosmosalpha.ScheduledVolumeSnapshot) error {
 	var pods corev1.PodList
-	if err := control.listClient.List(ctx, &pods,
+	if err := control.client.List(ctx, &pods,
 		client.InNamespace(crd.Spec.FullNodeRef.Namespace),
 		client.MatchingFields{kube.ControllerOwnerField: crd.Spec.FullNodeRef.Name},
 	); err != nil {
