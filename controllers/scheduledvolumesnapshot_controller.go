@@ -167,7 +167,6 @@ func (r *ScheduledVolumeSnapshotReconciler) Reconcile(ctx context.Context, req c
 		// Order of operations important here. SignalPodRestoration fails if the fullnode's status is already updated.
 		if err := r.fullNodeControl.ConfirmPodRestoration(ctx, crd); err != nil {
 			logger.Info("Pod not restored; signaling fullnode to restore pod", "error", err)
-			r.recorder.Event(crd, eventNormal, "RestorePod", "Signaling fullnode to restore pod")
 			if err = r.fullNodeControl.SignalPodRestoration(ctx, crd); err != nil {
 				logger.Error(err, "Failed to update fullnode status for restoring pod")
 				r.reportError(crd, "RestorePodError", err)
