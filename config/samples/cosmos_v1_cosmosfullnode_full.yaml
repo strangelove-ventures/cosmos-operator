@@ -87,6 +87,8 @@ spec:
     tolerations: []
     priorityClassName: name-of-priority-class
     priority: 1000
+    probes:
+      strategy: None
 
   # Configures kube services created by the operator.
   service:
