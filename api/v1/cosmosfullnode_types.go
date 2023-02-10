@@ -235,6 +235,25 @@ type PodSpec struct {
 	// Defaults to 30 seconds.
 	// +optional
 	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds"`
+
+	// Configure probes for the pods managed by the controller.
+	// +optional
+	Probes FullNodeProbesSpec `json:"probes"`
+}
+
+type FullNodeProbeStrategy string
+
+const (
+	FullNodeProbeStrategyNone FullNodeProbeStrategy = "None"
+)
+
+// FullNodeProbesSpec configures probes for created pods
+type FullNodeProbesSpec struct {
+	// Strategy controls the default probes added by the controller.
+	// None = Do not add any probes. May be necessary for Sentries using a remote signer.
+	// +kubebuilder:validation:Enum:=None
+	// +optional
+	Strategy FullNodeProbeStrategy `json:"strategy"`
 }
 
 // PersistentVolumeClaimSpec describes the common attributes of storage devices
@@ -284,7 +303,7 @@ type PersistentVolumeClaimSpec struct {
 	// the same contents as the DataSourceRef field.
 	// If you choose an existing PVC, the PVC must be in the same availability zone.
 	// +optional
-	DataSource *corev1.TypedLocalObjectReference `json:"dataSource,omitempty" protobuf:"bytes,7,opt,name=dataSource"`
+	DataSource *corev1.TypedLocalObjectReference `json:"dataSource"`
 }
 
 type RetentionPolicy string
