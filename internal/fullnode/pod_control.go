@@ -23,6 +23,10 @@ type podDiffer interface {
 	Deletes() []*corev1.Pod
 }
 
+type PodFilter interface {
+	SyncedPods(ctx context.Context, log logr.Logger, candidates []*corev1.Pod) []*corev1.Pod
+}
+
 // Client is a controller client. It is a subset of client.Client.
 type Client interface {
 	client.Reader
@@ -34,14 +38,16 @@ type Client interface {
 // PodControl reconciles pods for a CosmosFullNode.
 type PodControl struct {
 	client         Client
+	podFilter      PodFilter
 	diffFactory    func(ordinalAnnotationKey, revisionLabelKey string, current, want []*corev1.Pod) podDiffer
 	computeRollout func(maxUnavail *intstr.IntOrString, desired, ready int) int
 }
 
 // NewPodControl returns a valid PodControl.
-func NewPodControl(client Client) PodControl {
+func NewPodControl(client Client, filter PodFilter) PodControl {
 	return PodControl{
-		client: client,
+		client:    client,
+		podFilter: filter,
 		diffFactory: func(ordinalAnnotationKey, revisionLabelKey string, current, want []*corev1.Pod) podDiffer {
 			return kube.NewOrdinalDiff(ordinalAnnotationKey, revisionLabelKey, current, want)
 		},
@@ -92,8 +98,11 @@ func (pc PodControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmos
 	}
 
 	if len(diff.Updates()) > 0 {
+		cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
 		var (
-			avail      = kube.AvailablePods(currentPods, 3*time.Second, time.Now())
+			logger     = log.WithName("PodControl")
+			avail      = pc.podFilter.SyncedPods(cctx, logger, currentPods)
 			numUpdates = pc.computeRollout(crd.Spec.RolloutStrategy.MaxUnavailable, int(crd.Spec.Replicas), len(avail))
 		)
 
