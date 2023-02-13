@@ -22,6 +22,7 @@ import (
 	"time"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	"github.com/strangelove-ventures/cosmos-operator/internal/cosmos"
 	"github.com/strangelove-ventures/cosmos-operator/internal/fullnode"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	corev1 "k8s.io/api/core/v1"
@@ -56,10 +57,13 @@ type CosmosFullNodeReconciler struct {
 
 // NewFullNode returns a valid CosmosFullNode controller.
 func NewFullNode(client client.Client, recorder record.EventRecorder) *CosmosFullNodeReconciler {
+	var (
+		podFilter = cosmos.NewPodFilter(cosmos.NewTendermintClient(tendermintHTTP))
+	)
 	return &CosmosFullNodeReconciler{
 		Client:           client,
 		configMapControl: fullnode.NewConfigMapControl(client),
-		podControl:       fullnode.NewPodControl(client),
+		podControl:       fullnode.NewPodControl(client, podFilter),
 		pvcControl:       fullnode.NewPVCControl(client),
 		recorder:         recorder,
 		serviceControl:   fullnode.NewServiceControl(client),
