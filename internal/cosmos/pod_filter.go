@@ -103,7 +103,7 @@ func (filter PodFilter) SyncedPods(ctx context.Context, log logr.Logger, candida
 			host := fmt.Sprintf("http://%s:26657", ip)
 			resp, err := filter.tendermint.Status(ctx, host)
 			if err != nil {
-				logger.Error(err, "Failed to fetch tendermint rpc status")
+				logger.Info("Failed to fetch tendermint rpc status", "error", err)
 				return nil
 			}
 			if resp.Result.SyncInfo.CatchingUp {
