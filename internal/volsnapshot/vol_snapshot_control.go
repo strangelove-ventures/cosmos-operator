@@ -29,7 +29,7 @@ type Client interface {
 }
 
 type PodFinder interface {
-	SyncedPod(ctx context.Context, candidates []*corev1.Pod) (*corev1.Pod, error)
+	LargestHeight(ctx context.Context, candidates []*corev1.Pod) (*corev1.Pod, error)
 }
 
 // VolumeSnapshotControl manages VolumeSnapshots
@@ -74,7 +74,9 @@ func (control VolumeSnapshotControl) FindCandidate(ctx context.Context, crd *cos
 		return Candidate{}, fmt.Errorf("%d or more pods must be ready to prevent downtime, found %d ready", minAvail, avail)
 	}
 
-	pod, err := control.finder.SyncedPod(ctx, ptrSlice(pods.Items))
+	cctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	pod, err := control.finder.LargestHeight(cctx, ptrSlice(pods.Items))
 	if err != nil {
 		return Candidate{}, err
 	}
