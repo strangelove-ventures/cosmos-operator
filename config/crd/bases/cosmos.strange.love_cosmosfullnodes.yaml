@@ -304,6 +304,22 @@ spec:
                           items:
                             type: string
                           type: array
+                        autoDataSource:
+                          description: If set, discovers and dynamically sets dataSource
+                            for the PVC on creation. No effect if dataSource field
+                            set; that field takes precedence. Configuring autoDataSource
+                            may help boostrap new replicas more quickly.
+                          properties:
+                            volumeSnapshotSelector:
+                              additionalProperties:
+                                type: string
+                              description: If set, chooses the most recent VolumeSnapshot
+                                matching the selector to use as the PVC dataSource.
+                                See ScheduledVolumeSnapshot for a means of creating
+                                periodic VolumeSnapshots. If no VolumeSnapshots found,
+                                controller logs error and still creates PVC.
+                              type: object
+                          type: object
                         dataSource:
                           description: 'Can be used to specify either: * An existing
                             VolumeSnapshot object (snapshot.storage.k8s.io/VolumeSnapshot)
@@ -1543,6 +1559,22 @@ spec:
                     items:
                       type: string
                     type: array
+                  autoDataSource:
+                    description: If set, discovers and dynamically sets dataSource
+                      for the PVC on creation. No effect if dataSource field set;
+                      that field takes precedence. Configuring autoDataSource may
+                      help boostrap new replicas more quickly.
+                    properties:
+                      volumeSnapshotSelector:
+                        additionalProperties:
+                          type: string
+                        description: If set, chooses the most recent VolumeSnapshot
+                          matching the selector to use as the PVC dataSource. See
+                          ScheduledVolumeSnapshot for a means of creating periodic
+                          VolumeSnapshots. If no VolumeSnapshots found, controller
+                          logs error and still creates PVC.
+                        type: object
+                    type: object
                   dataSource:
                     description: 'Can be used to specify either: * An existing VolumeSnapshot
                       object (snapshot.storage.k8s.io/VolumeSnapshot) * An existing

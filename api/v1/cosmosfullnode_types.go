@@ -304,6 +304,12 @@ type PersistentVolumeClaimSpec struct {
 	// If you choose an existing PVC, the PVC must be in the same availability zone.
 	// +optional
 	DataSource *corev1.TypedLocalObjectReference `json:"dataSource"`
+
+	// If set, discovers and dynamically sets dataSource for the PVC on creation.
+	// No effect if dataSource field set; that field takes precedence.
+	// Configuring autoDataSource may help boostrap new replicas more quickly.
+	// +optional
+	AutoDataSource *AutoDataSource `json:"autoDataSource"`
 }
 
 type RetentionPolicy string
@@ -312,6 +318,14 @@ const (
 	RetentionPolicyRetain RetentionPolicy = "Retain"
 	RetentionPolicyDelete RetentionPolicy = "Delete"
 )
+
+type AutoDataSource struct {
+	// If set, chooses the most recent VolumeSnapshot matching the selector to use as the PVC dataSource.
+	// See ScheduledVolumeSnapshot for a means of creating periodic VolumeSnapshots.
+	// If no VolumeSnapshots found, controller logs error and still creates PVC.
+	// +optional
+	VolumeSnapshotSelector map[string]string `json:"volumeSnapshotSelector"`
+}
 
 // RolloutStrategy is an update strategy that can be shared between several Cosmos CRDs.
 type RolloutStrategy struct {

@@ -88,6 +88,7 @@ spec:
     priorityClassName: name-of-priority-class
     priority: 1000
     probes:
+      # Disable all probes.
       strategy: None
 
   # Configures kube services created by the operator.
@@ -116,6 +117,11 @@ spec:
       apiGroup: snapshot.storage.k8s.io
       kind: VolumeSnapshot
       name: "name-of-volume-snapshot"
+    # Discover and use data sources dynamically.
+    autoDataSource:
+      # Choose the most recent VolumeSnapshot matching selector.
+      volumeSnapshotSelector:
+        label: value
     # Optional
     metadata:
       labels:
