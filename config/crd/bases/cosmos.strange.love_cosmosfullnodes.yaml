@@ -316,8 +316,10 @@ spec:
                               description: If set, chooses the most recent VolumeSnapshot
                                 matching the selector to use as the PVC dataSource.
                                 See ScheduledVolumeSnapshot for a means of creating
-                                periodic VolumeSnapshots. If no VolumeSnapshots found,
-                                controller logs error and still creates PVC.
+                                periodic VolumeSnapshots. The VolumeSnapshots must
+                                be in the same namespace as the CosmosFullNode. If
+                                no VolumeSnapshots found, controller logs error and
+                                still creates PVC.
                               type: object
                           type: object
                         dataSource:
@@ -1571,8 +1573,9 @@ spec:
                         description: If set, chooses the most recent VolumeSnapshot
                           matching the selector to use as the PVC dataSource. See
                           ScheduledVolumeSnapshot for a means of creating periodic
-                          VolumeSnapshots. If no VolumeSnapshots found, controller
-                          logs error and still creates PVC.
+                          VolumeSnapshots. The VolumeSnapshots must be in the same
+                          namespace as the CosmosFullNode. If no VolumeSnapshots found,
+                          controller logs error and still creates PVC.
                         type: object
                     type: object
                   dataSource:

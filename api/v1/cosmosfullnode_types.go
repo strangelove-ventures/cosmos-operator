@@ -310,6 +310,7 @@ const (
 type AutoDataSource struct {
 	// If set, chooses the most recent VolumeSnapshot matching the selector to use as the PVC dataSource.
 	// See ScheduledVolumeSnapshot for a means of creating periodic VolumeSnapshots.
+	// The VolumeSnapshots must be in the same namespace as the CosmosFullNode.
 	// If no VolumeSnapshots found, controller logs error and still creates PVC.
 	// +optional
 	VolumeSnapshotSelector map[string]string `json:"volumeSnapshotSelector"`
