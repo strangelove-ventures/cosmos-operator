@@ -46,8 +46,9 @@ type ScheduledVolumeSnapshotSpec struct {
 
 	// Reference to the source CosmosFullNode.
 	// This field is immutable. If you change the fullnode, you may encounter undefined behavior.
+	// The CosmosFullNode must be in the same namespace as the ScheduledVolumeSnapshot.
 	// Instead delete the ScheduledVolumeSnapshot and create a new one with the correct fullNodeRef.
-	FullNodeRef ObjectRef `json:"fullNodeRef"`
+	FullNodeRef LocalFullNodeRef `json:"fullNodeRef"`
 
 	// A crontab schedule using the standard as described in https://en.wikipedia.org/wiki/Cron.
 	// See https://crontab.guru for format.
@@ -75,9 +76,10 @@ type ScheduledVolumeSnapshotSpec struct {
 	Limit int32 `json:"limit"`
 }
 
-type ObjectRef struct {
+type LocalFullNodeRef struct {
 	// Name of the object, metadata.name
 	Name string `json:"name"`
+	// DEPRECATED: Must be in the same namespace as the ScheduledVolumeSnapshot. This field is ignored.
 	// Namespace of the object, metadata.namespace
 	Namespace string `json:"namespace"`
 }
