@@ -101,7 +101,10 @@ func (pc PodControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmos
 		cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 		defer cancel()
 		var (
-			logger     = log.WithName("Rollout")
+			logger = log.WithName("PodControlRollout")
+			// This may be a source of confusion by passing currentPods vs. pods from diff.Updates().
+			// This is a leaky abstraction (which may be fixed in the future) because diff.Updates() pods are built
+			// from the operator and do not match what's returned by listing pods.
 			avail      = pc.podFilter.SyncedPods(cctx, logger, currentPods)
 			numUpdates = pc.computeRollout(crd.Spec.RolloutStrategy.MaxUnavailable, int(crd.Spec.Replicas), len(avail))
 		)
