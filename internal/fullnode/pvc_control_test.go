@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"testing"
 
+	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
 	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -95,6 +97,50 @@ func TestPVCControl_Reconcile(t *testing.T) {
 		require.Equal(t, crd.Name, mClient.LastCreateObject.OwnerReferences[0].Name)
 		require.Equal(t, "CosmosFullNode", mClient.LastCreateObject.OwnerReferences[0].Kind)
 		require.True(t, *mClient.LastCreateObject.OwnerReferences[0].Controller)
+	})
+
+	t.Run("autoDataSource", func(t *testing.T) {
+		var (
+			mDiff = mockPVCDiffer{
+				StubCreates: buildPVCs(3),
+			}
+			mClient mockPVCClient
+			crd     = defaultCRD()
+			control = NewPVCControl(&mClient)
+		)
+		crd.Namespace = namespace
+		crd.Spec.VolumeClaimTemplate.AutoDataSource = &cosmosv1.AutoDataSource{
+			VolumeSnapshotSelector: map[string]string{"label": "vol-snapshot"},
+		}
+		control.diffFactory = func(_, _ string, current, want []*corev1.PersistentVolumeClaim) pvcDiffer {
+			return mDiff
+		}
+		var volCallCount int
+		control.recentVolumeSnapshot = func(ctx context.Context, lister kube.Lister, namespace string, selector map[string]string) (*snapshotv1.VolumeSnapshot, error) {
+			require.NotNil(t, ctx)
+			require.Equal(t, lister, mClient)
+			require.Equal(t, "testpvc", namespace)
+			require.Equal(t, map[string]string{"label": "vol-snapshot"}, selector)
+			var stub snapshotv1.VolumeSnapshot
+			stub.Name = "found-snapshot"
+			volCallCount++
+			return &stub, nil
+		}
+		requeue, err := control.Reconcile(ctx, nopLogger, &crd)
+		require.NoError(t, err)
+		require.True(t, requeue)
+
+		require.Equal(t, 3, mClient.CreateCount)
+		require.Equal(t, 1, volCallCount)
+
+		got := mClient.LastCreateObject.Spec.DataSource
+		require.NotNil(t, got)
+		want := corev1.TypedLocalObjectReference{
+			APIGroup: ptr("snapshot.storage.k8s.io"),
+			Kind:     "VolumeSnapshot",
+			Name:     "found-snapshot",
+		}
+		require.Equal(t, want, *got)
 	})
 
 	t.Run("updates", func(t *testing.T) {

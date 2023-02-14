@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/go-logr/logr"
+	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
 	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
@@ -23,14 +24,16 @@ type pvcDiffer interface {
 // PVCControl reconciles volumes for a CosmosFullNode.
 // Unlike StatefulSet, PVCControl will update volumes by deleting and recreating volumes.
 type PVCControl struct {
-	client      Client
-	diffFactory func(ordinalAnnotationKey, revisionLabelKey string, current, want []*corev1.PersistentVolumeClaim) pvcDiffer
+	client               Client
+	diffFactory          func(ordinalAnnotationKey, revisionLabelKey string, current, want []*corev1.PersistentVolumeClaim) pvcDiffer
+	recentVolumeSnapshot func(ctx context.Context, lister kube.Lister, namespace string, selector map[string]string) (*snapshotv1.VolumeSnapshot, error)
 }
 
 // NewPVCControl returns a valid PVCControl
 func NewPVCControl(client Client) PVCControl {
 	return PVCControl{
-		client: client,
+		client:               client,
+		recentVolumeSnapshot: kube.RecentVolumeSnapshot,
 		diffFactory: func(ordinalAnnotationKey, revisionLabelKey string, current, want []*corev1.PersistentVolumeClaim) pvcDiffer {
 			return kube.NewOrdinalDiff(ordinalAnnotationKey, revisionLabelKey, current, want)
 		},
