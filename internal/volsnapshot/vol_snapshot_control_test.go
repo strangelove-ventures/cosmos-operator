@@ -78,7 +78,7 @@ func TestVolumeSnapshotControl_FindCandidate(t *testing.T) {
 	)
 
 	var crd cosmosalpha.ScheduledVolumeSnapshot
-	crd.Spec.FullNodeRef.Namespace = "strangelove"
+	crd.Namespace = "strangelove"
 	crd.Spec.FullNodeRef.Name = "cosmoshub"
 
 	t.Run("happy path", func(t *testing.T) {

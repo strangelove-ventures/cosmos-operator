@@ -54,7 +54,7 @@ type Candidate = cosmosalpha.SnapshotCandidate
 func (control VolumeSnapshotControl) FindCandidate(ctx context.Context, crd *cosmosalpha.ScheduledVolumeSnapshot) (Candidate, error) {
 	var pods corev1.PodList
 	if err := control.client.List(ctx, &pods,
-		client.InNamespace(crd.Spec.FullNodeRef.Namespace),
+		client.InNamespace(crd.Namespace),
 		client.MatchingFields{kube.ControllerOwnerField: crd.Spec.FullNodeRef.Name},
 	); err != nil {
 		return Candidate{}, err
