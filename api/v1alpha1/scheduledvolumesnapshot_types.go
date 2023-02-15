@@ -79,8 +79,7 @@ type ScheduledVolumeSnapshotSpec struct {
 type LocalFullNodeRef struct {
 	// Name of the object, metadata.name
 	Name string `json:"name"`
-	// DEPRECATED: Must be in the same namespace as the ScheduledVolumeSnapshot. This field is ignored.
-	// Namespace of the object, metadata.namespace
+	// DEPRECATED: CosmosFullNode must be in the same namespace as the ScheduledVolumeSnapshot. This field is ignored.
 	Namespace string `json:"namespace"`
 }
 

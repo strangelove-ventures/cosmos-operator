@@ -65,8 +65,8 @@ spec:
                     description: Name of the object, metadata.name
                     type: string
                   namespace:
-                    description: 'DEPRECATED: Must be in the same namespace as the
-                      ScheduledVolumeSnapshot. Namespace of the object, metadata.namespace'
+                    description: 'DEPRECATED: CosmosFullNode must be in the same namespace
+                      as the ScheduledVolumeSnapshot. This field is ignored.'
                     type: string
                 required:
                 - name
