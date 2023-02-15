@@ -42,11 +42,11 @@ func NewPVCControl(client Client) PVCControl {
 
 // Reconcile is the control loop for PVCs. The bool return value, if true, indicates the controller should requeue
 // the request.
-func (vc PVCControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmosv1.CosmosFullNode) (bool, kube.ReconcileError) {
+func (control PVCControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmosv1.CosmosFullNode) (bool, kube.ReconcileError) {
 	// TODO (nix - 8/10/22) Update crd status.
 	// Find any existing pvcs for this CRD.
 	var vols corev1.PersistentVolumeClaimList
-	if err := vc.client.List(ctx, &vols,
+	if err := control.client.List(ctx, &vols,
 		client.InNamespace(crd.Namespace),
 		client.MatchingFields{kube.ControllerOwnerField: crd.Name},
 		SelectorLabels(crd),
@@ -57,24 +57,32 @@ func (vc PVCControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmos
 	var (
 		currentPVCs = ptrSlice(vols.Items)
 		wantPVCs    = BuildPVCs(crd)
-		diff        = vc.diffFactory(kube.OrdinalAnnotation, kube.RevisionLabel, currentPVCs, wantPVCs)
+		diff        = control.diffFactory(kube.OrdinalAnnotation, kube.RevisionLabel, currentPVCs, wantPVCs)
 	)
 
+	var dataSource *corev1.TypedLocalObjectReference
+	if len(diff.Creates()) > 0 {
+		dataSource = control.autoDataSource(ctx, log, crd)
+	}
+
 	for _, pvc := range diff.Creates() {
+		if pvc.Spec.DataSource == nil && pvc.Spec.DataSourceRef == nil {
+			pvc.Spec.DataSource = dataSource
+		}
 		log.Info("Creating pvc", "pvcName", pvc.Name)
-		if err := ctrl.SetControllerReference(crd, pvc, vc.client.Scheme()); err != nil {
+		if err := ctrl.SetControllerReference(crd, pvc, control.client.Scheme()); err != nil {
 			return true, kube.TransientError(fmt.Errorf("set controller reference on pvc %q: %w", pvc.Name, err))
 		}
-		if err := vc.client.Create(ctx, pvc); kube.IgnoreAlreadyExists(err) != nil {
+		if err := control.client.Create(ctx, pvc); kube.IgnoreAlreadyExists(err) != nil {
 			return true, kube.TransientError(fmt.Errorf("create pvc %q: %w", pvc.Name, err))
 		}
 	}
 
 	var deletes int
-	if !vc.shouldRetain(crd) {
+	if !control.shouldRetain(crd) {
 		for _, pvc := range diff.Deletes() {
 			log.Info("Deleting pvc", "pvcName", pvc.Name)
-			if err := vc.client.Delete(ctx, pvc, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
+			if err := control.client.Delete(ctx, pvc, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
 				return true, kube.TransientError(fmt.Errorf("delete pvc %q: %w", pvc.Name, err))
 			}
 		}
@@ -103,7 +111,7 @@ func (vc PVCControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmos
 			},
 		}
 		// It's safe to patch all PVCs at once. Pods must be restarted after resizing complete.
-		if err := vc.client.Patch(ctx, &patch, client.Merge); err != nil {
+		if err := control.client.Patch(ctx, &patch, client.Merge); err != nil {
 			// TODO (nix - 8/11/22) Update status with failures
 			log.Error(err, "Patch failed", "pvcName", pvc.Name)
 			continue
@@ -113,11 +121,33 @@ func (vc PVCControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmos
 	return false, nil
 }
 
-func (vc PVCControl) shouldRetain(crd *cosmosv1.CosmosFullNode) bool {
+func (control PVCControl) shouldRetain(crd *cosmosv1.CosmosFullNode) bool {
 	if policy := crd.Spec.RetentionPolicy; policy != nil {
 		return *policy == cosmosv1.RetentionPolicyRetain
 	}
 	return false
+}
+
+func (control PVCControl) autoDataSource(ctx context.Context, log logr.Logger, crd *cosmosv1.CosmosFullNode) *corev1.TypedLocalObjectReference {
+	spec := crd.Spec.VolumeClaimTemplate.AutoDataSource
+	if spec == nil {
+		return nil
+	}
+	selector := spec.VolumeSnapshotSelector
+	if len(selector) == 0 {
+		return nil
+	}
+	found, err := control.recentVolumeSnapshot(ctx, control.client, crd.Namespace, selector)
+	if err != nil {
+		log.Error(err, "Failed to find VolumeSnapshot for AutoDataSource")
+		return nil
+	}
+
+	return &corev1.TypedLocalObjectReference{
+		APIGroup: ptr("snapshot.storage.k8s.io"),
+		Kind:     "VolumeSnapshot",
+		Name:     found.Name,
+	}
 }
 
 func findMatchingResource[T client.Object](r T, list []T) (T, bool) {

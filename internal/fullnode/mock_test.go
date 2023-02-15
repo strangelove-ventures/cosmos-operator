@@ -20,6 +20,7 @@ type mockClient[T client.Object] struct {
 
 	CreateCount      int
 	LastCreateObject T
+	CreatedObjects   []T
 
 	DeleteCount int
 
@@ -80,6 +81,7 @@ func (m *mockClient[T]) Create(ctx context.Context, obj client.Object, opts ...c
 		panic("nil context")
 	}
 	m.LastCreateObject = obj.(T)
+	m.CreatedObjects = append(m.CreatedObjects, obj.(T))
 	m.CreateCount++
 	return nil
 }
