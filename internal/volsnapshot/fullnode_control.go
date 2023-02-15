@@ -28,14 +28,14 @@ func NewFullNodeControl(statusClient StatusPatcher, client client.Reader) *FullN
 	return &FullNodeControl{client: client, statusClient: statusClient}
 }
 
-// SignalPodDeletion updates the FullNodeRef's status to indicate it should delete the pod candidate.
+// SignalPodDeletion updates the LocalFullNodeRef's status to indicate it should delete the pod candidate.
 // The pod is gracefully removed to ensure the highest data integrity while taking a VolumeSnapshot.
 // Assumes crd's status.candidate is set, otherwise this method panics.
 // Any error returned can be treated as transient and retried.
 func (control FullNodeControl) SignalPodDeletion(ctx context.Context, crd *cosmosalpha.ScheduledVolumeSnapshot) error {
 	var fn cosmosv1.CosmosFullNode
 	fn.Name = crd.Spec.FullNodeRef.Name
-	fn.Namespace = crd.Spec.FullNodeRef.Namespace
+	fn.Namespace = crd.Namespace
 	fn.Status.ScheduledSnapshotStatus = make(map[string]cosmosv1.FullNodeSnapshotStatus)
 
 	key := control.sourceKey(crd)
@@ -45,14 +45,14 @@ func (control FullNodeControl) SignalPodDeletion(ctx context.Context, crd *cosmo
 	return control.statusClient.Patch(ctx, &fn, client.Merge)
 }
 
-// SignalPodRestoration updates the FullNodeRef's status to indicate it should recreate the pod candidate.
+// SignalPodRestoration updates the LocalFullNodeRef's status to indicate it should recreate the pod candidate.
 // Any error returned can be treated as transient and retried.
 // This method will error if the scheduledSnapshotStatus map key does not exist. You get an unhelpful error message from
 // the k8s API: "The request is invalid: the server rejected our request due to an error in our request"
 func (control FullNodeControl) SignalPodRestoration(ctx context.Context, crd *cosmosalpha.ScheduledVolumeSnapshot) error {
 	var fn cosmosv1.CosmosFullNode
 	fn.Name = crd.Spec.FullNodeRef.Name
-	fn.Namespace = crd.Spec.FullNodeRef.Namespace
+	fn.Namespace = crd.Namespace
 	key := control.sourceKey(crd)
 	raw := client.RawPatch(types.JSONPatchType, []byte(fmt.Sprintf(`[{"op":"remove","path":"/status/scheduledSnapshotStatus/%s"}]`, key)))
 	return control.statusClient.Patch(ctx, &fn, raw)
@@ -62,7 +62,7 @@ func (control FullNodeControl) SignalPodRestoration(ctx context.Context, crd *co
 func (control FullNodeControl) ConfirmPodRestoration(ctx context.Context, crd *cosmosalpha.ScheduledVolumeSnapshot) error {
 	var (
 		fullnode cosmosv1.CosmosFullNode
-		getKey   = client.ObjectKey{Name: crd.Spec.FullNodeRef.Name, Namespace: crd.Spec.FullNodeRef.Namespace}
+		getKey   = client.ObjectKey{Name: crd.Spec.FullNodeRef.Name, Namespace: crd.Namespace}
 	)
 
 	if err := control.client.Get(ctx, getKey, &fullnode); err != nil {
@@ -82,7 +82,7 @@ func (control FullNodeControl) ConfirmPodRestoration(ctx context.Context, crd *c
 func (control FullNodeControl) ConfirmPodDeletion(ctx context.Context, crd *cosmosalpha.ScheduledVolumeSnapshot) error {
 	var pods corev1.PodList
 	if err := control.client.List(ctx, &pods,
-		client.InNamespace(crd.Spec.FullNodeRef.Namespace),
+		client.InNamespace(crd.Namespace),
 		client.MatchingFields{kube.ControllerOwnerField: crd.Spec.FullNodeRef.Name},
 	); err != nil {
 		return fmt.Errorf("list pods: %w", err)

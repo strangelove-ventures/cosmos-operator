@@ -73,7 +73,6 @@ func TestFullNodeControl_SignalPodDeletion(t *testing.T) {
 	var crd cosmosalpha.ScheduledVolumeSnapshot
 	crd.Namespace = "default/" // Tests for slash stripping.
 	crd.Name = "my-snapshot"
-	crd.Spec.FullNodeRef.Namespace = "node-ns"
 	crd.Spec.FullNodeRef.Name = "my-node"
 	crd.Status.Candidate = &cosmosalpha.SnapshotCandidate{
 		PodName: "target-pod",
@@ -84,7 +83,7 @@ func TestFullNodeControl_SignalPodDeletion(t *testing.T) {
 		patcher := mockPatcher(func(_ context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
 			var want cosmosv1.CosmosFullNode
 			want.Name = "my-node"
-			want.Namespace = "node-ns"
+			want.Namespace = "default/"
 			want.Status.ScheduledSnapshotStatus = map[string]cosmosv1.FullNodeSnapshotStatus{
 				"default.my-snapshot.v1alpha1.cosmos.strange.love": {PodCandidate: "target-pod"},
 			}
@@ -124,7 +123,6 @@ func TestFullNodeControl_SignalPodRestoration(t *testing.T) {
 	var crd cosmosalpha.ScheduledVolumeSnapshot
 	crd.Namespace = "default/" // Tests for slash stripping.
 	crd.Name = "my-snapshot"
-	crd.Spec.FullNodeRef.Namespace = "node-ns"
 	crd.Spec.FullNodeRef.Name = "my-node"
 	crd.Status.Candidate = &cosmosalpha.SnapshotCandidate{
 		PodName: "target-pod",
@@ -135,7 +133,7 @@ func TestFullNodeControl_SignalPodRestoration(t *testing.T) {
 		patcher := mockPatcher(func(_ context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
 			var wantObj cosmosv1.CosmosFullNode
 			wantObj.Name = "my-node"
-			wantObj.Namespace = "node-ns"
+			wantObj.Namespace = "default/"
 			require.Equal(t, client.Object(&wantObj), obj)
 
 			wantPatch := client.RawPatch(k8stypes.JSONPatchType, []byte(`[{"op":"remove","path":"/status/scheduledSnapshotStatus/default.my-snapshot.v1alpha1.cosmos.strange.love"}]`))
@@ -173,7 +171,6 @@ func TestFullNodeControl_ConfirmPodRestoration(t *testing.T) {
 	var crd cosmosalpha.ScheduledVolumeSnapshot
 	crd.Name = "snapshot"
 	crd.Namespace = "default"
-	crd.Spec.FullNodeRef.Namespace = "default"
 	crd.Spec.FullNodeRef.Name = "cosmoshub"
 	crd.Status.Candidate = &cosmosalpha.SnapshotCandidate{
 		PodName: "target-pod",
@@ -242,7 +239,7 @@ func TestFullNodeControl_ConfirmPodDeletion(t *testing.T) {
 	ctx := context.Background()
 
 	var crd cosmosalpha.ScheduledVolumeSnapshot
-	crd.Spec.FullNodeRef.Namespace = "default"
+	crd.Namespace = "default"
 	crd.Spec.FullNodeRef.Name = "cosmoshub"
 	crd.Status.Candidate = &cosmosalpha.SnapshotCandidate{
 		PodName: "target-pod",

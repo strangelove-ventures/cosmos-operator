@@ -57,18 +57,19 @@ spec:
               fullNodeRef:
                 description: Reference to the source CosmosFullNode. This field is
                   immutable. If you change the fullnode, you may encounter undefined
-                  behavior. Instead delete the ScheduledVolumeSnapshot and create
-                  a new one with the correct fullNodeRef.
+                  behavior. The CosmosFullNode must be in the same namespace as the
+                  ScheduledVolumeSnapshot. Instead delete the ScheduledVolumeSnapshot
+                  and create a new one with the correct fullNodeRef.
                 properties:
                   name:
                     description: Name of the object, metadata.name
                     type: string
                   namespace:
-                    description: Namespace of the object, metadata.namespace
+                    description: 'DEPRECATED: CosmosFullNode must be in the same namespace
+                      as the ScheduledVolumeSnapshot. This field is ignored.'
                     type: string
                 required:
                 - name
-                - namespace
                 type: object
               limit:
                 description: The number of recent VolumeSnapshots to keep. Defaults
