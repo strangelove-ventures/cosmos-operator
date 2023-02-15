@@ -61,10 +61,10 @@ func (control VolumeSnapshotControl) FindCandidate(ctx context.Context, crd *cos
 		return Candidate{}, err
 	}
 
+	logger := log.FromContext(ctx).WithName("FindCandidate")
 	cctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	var (
-		logger     = log.FromContext(ctx).WithName("FindCandidate")
 		synced     = control.podFilter.SyncedPods(cctx, logger, ptrSlice(pods.Items))
 		availCount = int32(len(synced))
 		minAvail   = crd.Spec.MinAvailable
