@@ -80,6 +80,7 @@ type LocalFullNodeRef struct {
 	// Name of the object, metadata.name
 	Name string `json:"name"`
 	// DEPRECATED: CosmosFullNode must be in the same namespace as the ScheduledVolumeSnapshot. This field is ignored.
+	// +optional
 	Namespace string `json:"namespace"`
 }
 

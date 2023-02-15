@@ -70,7 +70,6 @@ spec:
                     type: string
                 required:
                 - name
-                - namespace
                 type: object
               limit:
                 description: The number of recent VolumeSnapshots to keep. Defaults
