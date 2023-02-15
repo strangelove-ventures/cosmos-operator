@@ -28,22 +28,22 @@ type Client interface {
 	Delete(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error
 }
 
-type PodFinder interface {
-	SyncedPod(ctx context.Context, candidates []*corev1.Pod) (*corev1.Pod, error)
+type PodFilter interface {
+	LargestHeight(ctx context.Context, candidates []*corev1.Pod) (*corev1.Pod, error)
 }
 
 // VolumeSnapshotControl manages VolumeSnapshots
 type VolumeSnapshotControl struct {
-	client Client
-	finder PodFinder
-	now    func() time.Time
+	client    Client
+	podFilter PodFilter
+	now       func() time.Time
 }
 
-func NewVolumeSnapshotControl(client Client, finder PodFinder) *VolumeSnapshotControl {
+func NewVolumeSnapshotControl(client Client, filter PodFilter) *VolumeSnapshotControl {
 	return &VolumeSnapshotControl{
-		client: client,
-		finder: finder,
-		now:    time.Now,
+		client:    client,
+		podFilter: filter,
+		now:       time.Now,
 	}
 }
 
@@ -74,7 +74,9 @@ func (control VolumeSnapshotControl) FindCandidate(ctx context.Context, crd *cos
 		return Candidate{}, fmt.Errorf("%d or more pods must be ready to prevent downtime, found %d ready", minAvail, avail)
 	}
 
-	pod, err := control.finder.SyncedPod(ctx, ptrSlice(pods.Items))
+	cctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	pod, err := control.podFilter.LargestHeight(cctx, ptrSlice(pods.Items))
 	if err != nil {
 		return Candidate{}, err
 	}

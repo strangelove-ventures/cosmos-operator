@@ -57,7 +57,7 @@ func (m *mockPodClient) Delete(ctx context.Context, obj client.Object, opts ...c
 
 type mockPodFinder func(ctx context.Context, candidates []*corev1.Pod) (*corev1.Pod, error)
 
-func (fn mockPodFinder) SyncedPod(ctx context.Context, candidates []*corev1.Pod) (*corev1.Pod, error) {
+func (fn mockPodFinder) LargestHeight(ctx context.Context, candidates []*corev1.Pod) (*corev1.Pod, error) {
 	return fn(ctx, candidates)
 }
 
