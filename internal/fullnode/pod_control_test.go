@@ -16,6 +16,19 @@ import (
 
 var nopLogger = logr.Discard()
 
+type mockPodFilter func(ctx context.Context, log logr.Logger, candidates []*corev1.Pod) []*corev1.Pod
+
+func (fn mockPodFilter) SyncedPods(ctx context.Context, log logr.Logger, candidates []*corev1.Pod) []*corev1.Pod {
+	if ctx == nil {
+		panic("nil context")
+	}
+	return fn(ctx, log, candidates)
+}
+
+var panicPodFilter = mockPodFilter(func(ctx context.Context, log logr.Logger, candidates []*corev1.Pod) []*corev1.Pod {
+	panic("SyncedPods should not be called")
+})
+
 func TestPodControl_Reconcile(t *testing.T) {
 	t.Parallel()
 
@@ -50,7 +63,7 @@ func TestPodControl_Reconcile(t *testing.T) {
 		crd.Namespace = namespace
 		crd.Name = "hub"
 
-		control := NewPodControl(&mClient)
+		control := NewPodControl(&mClient, panicPodFilter)
 		control.diffFactory = func(ordinalAnnotationKey, revisionLabelKey string, current, want []*corev1.Pod) podDiffer {
 			require.Equal(t, "app.kubernetes.io/ordinal", ordinalAnnotationKey)
 			require.Equal(t, "app.kubernetes.io/revision", revisionLabelKey)
@@ -83,7 +96,7 @@ func TestPodControl_Reconcile(t *testing.T) {
 			}
 			mClient mockPodClient
 			crd     = defaultCRD()
-			control = NewPodControl(&mClient)
+			control = NewPodControl(&mClient, panicPodFilter)
 		)
 		crd.Namespace = namespace
 		control.diffFactory = func(_, _ string, current, want []*corev1.Pod) podDiffer {
@@ -107,6 +120,7 @@ func TestPodControl_Reconcile(t *testing.T) {
 		mClient.ObjectList = corev1.PodList{
 			Items: []corev1.Pod{
 				{ObjectMeta: metav1.ObjectMeta{Name: "pod-1"}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "pod-2"}},
 			},
 		}
 
@@ -114,8 +128,14 @@ func TestPodControl_Reconcile(t *testing.T) {
 			mDiff = mockPodDiffer{
 				StubUpdates: buildPods(10),
 			}
-			crd     = defaultCRD()
-			control = NewPodControl(&mClient)
+			crd       = defaultCRD()
+			podFilter = mockPodFilter(func(_ context.Context, _ logr.Logger, candidates []*corev1.Pod) []*corev1.Pod {
+				require.Equal(t, 2, len(candidates))
+				require.Equal(t, "pod-1", candidates[0].Name)
+				require.Equal(t, "pod-2", candidates[1].Name)
+				return candidates[:1]
+			})
+			control = NewPodControl(&mClient, podFilter)
 		)
 
 		crd.Namespace = namespace
@@ -127,6 +147,7 @@ func TestPodControl_Reconcile(t *testing.T) {
 		const stubRollout = 5
 		control.computeRollout = func(maxUnavail *intstr.IntOrString, desired, ready int) int {
 			require.EqualValues(t, crd.Spec.Replicas, desired)
+			require.Equal(t, 1, ready) // mockPodFilter only returns 1 candidate as ready
 			return stubRollout
 		}
 
