@@ -2,7 +2,6 @@ package volsnapshot
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sort"
 	"time"
@@ -17,6 +16,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const cosmosSourceLabel = "cosmos.strange.love/source"
@@ -29,7 +29,7 @@ type Client interface {
 }
 
 type PodFilter interface {
-	LargestHeight(ctx context.Context, candidates []*corev1.Pod) (*corev1.Pod, error)
+	SyncedPods(ctx context.Context, log logr.Logger, candidates []*corev1.Pod) []*corev1.Pod
 }
 
 // VolumeSnapshotControl manages VolumeSnapshots
@@ -50,6 +50,7 @@ func NewVolumeSnapshotControl(client Client, filter PodFilter) *VolumeSnapshotCo
 type Candidate = cosmosalpha.SnapshotCandidate
 
 // FindCandidate finds a suitable candidate for creating a volume snapshot.
+// Only selects a pod that is in-sync.
 // Any errors returned can be treated as transient; worth a retry.
 func (control VolumeSnapshotControl) FindCandidate(ctx context.Context, crd *cosmosalpha.ScheduledVolumeSnapshot) (Candidate, error) {
 	var pods corev1.PodList
@@ -60,26 +61,23 @@ func (control VolumeSnapshotControl) FindCandidate(ctx context.Context, crd *cos
 		return Candidate{}, err
 	}
 
-	if len(pods.Items) == 0 {
-		return Candidate{}, errors.New("list operation returned no pods")
-	}
-
-	avail := int32(len(kube.AvailablePods(ptrSlice(pods.Items), 0, time.Now())))
-	minAvail := crd.Spec.MinAvailable
+	cctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	var (
+		logger     = log.FromContext(ctx).WithName("FindCandidate")
+		synced     = control.podFilter.SyncedPods(cctx, logger, ptrSlice(pods.Items))
+		availCount = int32(len(synced))
+		minAvail   = crd.Spec.MinAvailable
+	)
 	if minAvail <= 0 {
 		minAvail = 2
 	}
 
-	if avail < minAvail {
-		return Candidate{}, fmt.Errorf("%d or more pods must be ready to prevent downtime, found %d ready", minAvail, avail)
+	if availCount < minAvail {
+		return Candidate{}, fmt.Errorf("%d or more pods must be in-sync to prevent downtime, found %d in-sync", minAvail, availCount)
 	}
 
-	cctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-	pod, err := control.podFilter.LargestHeight(cctx, ptrSlice(pods.Items))
-	if err != nil {
-		return Candidate{}, err
-	}
+	pod := synced[0]
 
 	return Candidate{
 		PodLabels: pod.Labels,
