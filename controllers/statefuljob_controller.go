@@ -120,7 +120,7 @@ func (r *StatefulJobReconciler) createResources(ctx context.Context, crd *cosmos
 	logger := log.FromContext(ctx)
 
 	// Find most recent VolumeSnapshot.
-	recent, err := statefuljob.RecentVolumeSnapshot(ctx, r, crd)
+	recent, err := kube.RecentVolumeSnapshot(ctx, r, crd.Namespace, crd.Spec.Selector)
 	if err != nil {
 		return err
 	}

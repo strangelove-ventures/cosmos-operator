@@ -2,11 +2,14 @@ package fullnode
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 
+	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
 	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -32,6 +35,14 @@ func TestPVCControl_Reconcile(t *testing.T) {
 		})
 	}
 
+	testPVCControl := func(client Client) PVCControl {
+		control := NewPVCControl(client)
+		control.recentVolumeSnapshot = func(ctx context.Context, lister kube.Lister, namespace string, selector map[string]string) (*snapshotv1.VolumeSnapshot, error) {
+			panic("recentVolumeSnapshot should not be called")
+		}
+		return control
+	}
+
 	t.Run("no changes", func(t *testing.T) {
 		var mClient mockPVCClient
 		mClient.ObjectList = corev1.PersistentVolumeClaimList{
@@ -45,7 +56,7 @@ func TestPVCControl_Reconcile(t *testing.T) {
 		crd.Namespace = namespace
 		crd.Name = "hub"
 
-		control := NewPVCControl(&mClient)
+		control := testPVCControl(&mClient)
 		control.diffFactory = func(ordinalAnnotationKey, revisionLabelKey string, current, want []*corev1.PersistentVolumeClaim) pvcDiffer {
 			require.Equal(t, "app.kubernetes.io/ordinal", ordinalAnnotationKey)
 			require.Equal(t, "app.kubernetes.io/revision", revisionLabelKey)
@@ -54,6 +65,7 @@ func TestPVCControl_Reconcile(t *testing.T) {
 			require.Len(t, want, 3)
 			return mockPVCDiffer{}
 		}
+
 		requeue, err := control.Reconcile(ctx, nopLogger, &crd)
 		require.NoError(t, err)
 		require.False(t, requeue)
@@ -78,7 +90,7 @@ func TestPVCControl_Reconcile(t *testing.T) {
 			}
 			mClient mockPVCClient
 			crd     = defaultCRD()
-			control = NewPVCControl(&mClient)
+			control = testPVCControl(&mClient)
 		)
 		crd.Namespace = namespace
 		control.diffFactory = func(_, _ string, current, want []*corev1.PersistentVolumeClaim) pvcDiffer {
@@ -97,6 +109,84 @@ func TestPVCControl_Reconcile(t *testing.T) {
 		require.True(t, *mClient.LastCreateObject.OwnerReferences[0].Controller)
 	})
 
+	t.Run("create - autoDataSource", func(t *testing.T) {
+		pvcs := buildPVCs(5)
+		pvcs[0].Spec.DataSource = &corev1.TypedLocalObjectReference{Name: "existing1"}
+		pvcs[1].Spec.DataSourceRef = &corev1.TypedLocalObjectReference{Name: "existing2"}
+
+		var (
+			mClient mockPVCClient
+			crd     = defaultCRD()
+			control = testPVCControl(&mClient)
+		)
+		crd.Namespace = namespace
+		crd.Spec.VolumeClaimTemplate.AutoDataSource = &cosmosv1.AutoDataSource{
+			VolumeSnapshotSelector: map[string]string{"label": "vol-snapshot"},
+		}
+		control.diffFactory = func(_, _ string, current, want []*corev1.PersistentVolumeClaim) pvcDiffer {
+			return mockPVCDiffer{StubCreates: pvcs}
+		}
+		var volCallCount int
+		control.recentVolumeSnapshot = func(ctx context.Context, lister kube.Lister, namespace string, selector map[string]string) (*snapshotv1.VolumeSnapshot, error) {
+			require.NotNil(t, ctx)
+			require.Equal(t, &mClient, lister)
+			require.Equal(t, "testpvc", namespace)
+			require.Equal(t, map[string]string{"label": "vol-snapshot"}, selector)
+			var stub snapshotv1.VolumeSnapshot
+			stub.Name = "found-snapshot"
+			volCallCount++
+			return &stub, nil
+		}
+		requeue, err := control.Reconcile(ctx, nopLogger, &crd)
+		require.NoError(t, err)
+		require.True(t, requeue)
+
+		require.Equal(t, 1, volCallCount)
+		require.Equal(t, 5, len(mClient.CreatedObjects))
+
+		require.Equal(t, pvcs[0].Spec.DataSource, mClient.CreatedObjects[0].Spec.DataSource)
+		require.Equal(t, pvcs[1].Spec.DataSource, mClient.CreatedObjects[1].Spec.DataSource)
+
+		want := corev1.TypedLocalObjectReference{
+			APIGroup: ptr("snapshot.storage.k8s.io"),
+			Kind:     "VolumeSnapshot",
+			Name:     "found-snapshot",
+		}
+		for _, pvc := range mClient.CreatedObjects[2:] {
+			ds := pvc.Spec.DataSource
+			require.NotNil(t, ds)
+			require.Equal(t, want, *ds)
+		}
+	})
+
+	t.Run("create - autoDataSource error", func(t *testing.T) {
+		var (
+			mClient mockPVCClient
+			crd     = defaultCRD()
+			control = testPVCControl(&mClient)
+		)
+		crd.Namespace = namespace
+		crd.Spec.VolumeClaimTemplate.AutoDataSource = &cosmosv1.AutoDataSource{
+			VolumeSnapshotSelector: map[string]string{"label": "vol-snapshot"},
+		}
+		control.diffFactory = func(_, _ string, current, want []*corev1.PersistentVolumeClaim) pvcDiffer {
+			return mockPVCDiffer{StubCreates: buildPVCs(1)}
+		}
+		var volCallCount int
+		control.recentVolumeSnapshot = func(ctx context.Context, lister kube.Lister, namespace string, selector map[string]string) (*snapshotv1.VolumeSnapshot, error) {
+			volCallCount++
+			return nil, errors.New("boom")
+		}
+		requeue, err := control.Reconcile(ctx, nopLogger, &crd)
+		require.NoError(t, err)
+		require.True(t, requeue)
+
+		require.Equal(t, 1, mClient.CreateCount)
+		require.Equal(t, 1, volCallCount)
+
+		require.Nil(t, mClient.LastCreateObject.Spec.DataSource)
+	})
+
 	t.Run("updates", func(t *testing.T) {
 		updates := buildPVCs(2)
 		unbound := updates[0]
@@ -111,7 +201,7 @@ func TestPVCControl_Reconcile(t *testing.T) {
 				StubUpdates: updates,
 			}
 			crd     = defaultCRD()
-			control = NewPVCControl(&mClient)
+			control = testPVCControl(&mClient)
 		)
 		crd.Namespace = namespace
 		crd.Spec.VolumeClaimTemplate.VolumeMode = ptr(corev1.PersistentVolumeMode("should not be in the patch"))
@@ -141,7 +231,7 @@ func TestPVCControl_Reconcile(t *testing.T) {
 			}
 			mClient mockPVCClient
 			crd     = defaultCRD()
-			control = NewPVCControl(&mClient)
+			control = testPVCControl(&mClient)
 		)
 		crd.Namespace = namespace
 		crd.Spec.RetentionPolicy = ptr(cosmosv1.RetentionPolicyRetain)
