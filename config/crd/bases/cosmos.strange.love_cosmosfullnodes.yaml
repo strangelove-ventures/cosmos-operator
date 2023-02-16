@@ -1466,6 +1466,44 @@ spec:
                 format: int32
                 minimum: 0
                 type: integer
+              selfHealing:
+                description: Strategies for automatic recovery of faults and errors.
+                  SelfHealing is managed by a separate controller, SelfHealingController,
+                  in an effort to reduce complexity of the CosmosFullNodeController.
+                properties:
+                  replicaFaultRecovery:
+                    description: "Determines when to destroy and recreate a replica
+                      (aka instance, pod/pvc combo) that is failing. Occasionally,
+                      data may become corrupt and the chain exits and cannot restart.
+                      This strategy only watches the pods \"node\" container running
+                      the `start` command, and only for pods that are crashlooping.
+                      \n This pairs well with volumeClaimTemplate.autoDataSource and
+                      a ScheduledVolumeSnapshot resource. With this pairing, a new
+                      PVC is created with a recent VolumeSnapshot. Otherwise, ensure
+                      your snapshot, genesis, etc. creation are idempotent. (e.g.
+                      chain.snapshotURL and chain.genesisURL have stable urls)"
+                    properties:
+                      healthyThreshold:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: How many healthy pods are required to trigger
+                          destroying a crashlooping pod and pvc. The controller periodically
+                          inspects the status of all pods. If the majority of pods
+                          are crashlooping, then there's probably something else wrong,
+                          and recreating the pod and pvc will have no effect. Set
+                          an integer or a percentage string such as 50%. If the threshold
+                          is too high, defaults to watching for 1 unhealthy pod.
+                        x-kubernetes-int-or-string: true
+                      restartThreshold:
+                        description: How many restarts to wait before destroying and
+                          recreating an unhealthy replica. Defaults to 5.
+                        format: int32
+                        type: integer
+                    required:
+                    - healthyThreshold
+                    type: object
+                type: object
               service:
                 description: Configure Operator created services. A singe rpc service
                   is created for load balancing api, grpc, rpc, etc. requests. This

@@ -84,6 +84,12 @@ type FullNodeSpec struct {
 	// Used for debugging.
 	// +optional
 	InstanceOverrides map[string]InstanceOverridesSpec `json:"instanceOverrides"`
+
+	// Strategies for automatic recovery of faults and errors.
+	// SelfHealing is managed by a separate controller, SelfHealingController, in an effort to reduce
+	// complexity of the CosmosFullNodeController.
+	// +optional
+	SelfHealing *SelfHealingSpec `json:"selfHealing"`
 }
 
 type FullNodeType string
