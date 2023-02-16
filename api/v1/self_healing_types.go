@@ -22,11 +22,12 @@ type SelfHealingSpec struct {
 type PodFaultRecovery struct {
 	// How many healthy pods are required to trigger destroying a crashlooping pod and pvc.
 	// Set an integer or a percentage string such as 50%.
+	// Example: If you set to 80% and there are 10 total pods, at least 8 must be healthy to trigger the recovery.
+	// Fractional values are rounded down.
 	//
-	// This setting attempts to minimize false positives in order to detect data corruption instead of
-	// a variety of other reasons for crashloops.
-	// The controller periodically inspects the status of all pods.
-	// If the majority of pods are crashlooping, then there's probably something else wrong, and recreating
+	// This setting attempts to minimize false positives in order to detect data corruption vs.
+	// endless other reasons for unhealthy pods.
+	// If the majority of pods are unhealthy, then there's probably something else wrong, and recreating
 	// the pod and pvc will have no effect.
 	//
 	// If the threshold is too high, defaults to recovering 1 unhealthy pod, the rest must be healthy.
