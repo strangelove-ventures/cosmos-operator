@@ -55,18 +55,23 @@ func (m *mockPodClient) Delete(ctx context.Context, obj client.Object, opts ...c
 	panic("delete should not be called")
 }
 
-type mockPodFinder func(ctx context.Context, candidates []*corev1.Pod) (*corev1.Pod, error)
+type mockPodFilter struct {
+	SyncedPodsFn func(ctx context.Context, log logr.Logger, candidates []*corev1.Pod) []*corev1.Pod
+}
 
-func (fn mockPodFinder) LargestHeight(ctx context.Context, candidates []*corev1.Pod) (*corev1.Pod, error) {
-	return fn(ctx, candidates)
+func (fn mockPodFilter) SyncedPods(ctx context.Context, log logr.Logger, candidates []*corev1.Pod) []*corev1.Pod {
+	if ctx == nil {
+		panic("nil context")
+	}
+	if fn.SyncedPodsFn == nil {
+		panic("SyncedPods not implemented")
+	}
+	return fn.SyncedPodsFn(ctx, log, candidates)
 }
 
 var (
-	panicFinder = mockPodFinder(func(ctx context.Context, candidates []*corev1.Pod) (*corev1.Pod, error) {
-		panic("should not be called")
-	})
-
-	nopLogger = logr.Discard()
+	panicFilter mockPodFilter
+	nopLogger   = logr.Discard()
 )
 
 func TestVolumeSnapshotControl_FindCandidate(t *testing.T) {
@@ -78,7 +83,7 @@ func TestVolumeSnapshotControl_FindCandidate(t *testing.T) {
 	)
 
 	var crd cosmosalpha.ScheduledVolumeSnapshot
-	crd.Spec.FullNodeRef.Namespace = "strangelove"
+	crd.Namespace = "strangelove"
 	crd.Spec.FullNodeRef.Name = "cosmoshub"
 
 	t.Run("happy path", func(t *testing.T) {
@@ -95,12 +100,12 @@ func TestVolumeSnapshotControl_FindCandidate(t *testing.T) {
 		// finding the PVC name.
 		candidate := fullnode.NewPodBuilder(&fullnodeCRD).WithOrdinal(1).Build()
 
-		control := NewVolumeSnapshotControl(&mClient, mockPodFinder(func(ctx context.Context, candidates []*corev1.Pod) (*corev1.Pod, error) {
-			require.NotNil(t, ctx)
-			require.Equal(t, ptrSlice(pods), candidates)
-
-			return candidate, nil
-		}))
+		control := NewVolumeSnapshotControl(&mClient, mockPodFilter{
+			SyncedPodsFn: func(ctx context.Context, _ logr.Logger, candidates []*corev1.Pod) []*corev1.Pod {
+				require.Equal(t, ptrSlice(pods), candidates)
+				return []*corev1.Pod{candidate, new(corev1.Pod), new(corev1.Pod)}
+			},
+		})
 
 		got, err := control.FindCandidate(ctx, &crd)
 		require.NoError(t, err)
@@ -127,9 +132,11 @@ func TestVolumeSnapshotControl_FindCandidate(t *testing.T) {
 		var mClient mockPodClient
 		mClient.Items = []corev1.Pod{pod}
 
-		control := NewVolumeSnapshotControl(&mClient, mockPodFinder(func(ctx context.Context, candidates []*corev1.Pod) (*corev1.Pod, error) {
-			return &pod, nil
-		}))
+		control := NewVolumeSnapshotControl(&mClient, mockPodFilter{
+			SyncedPodsFn: func(ctx context.Context, log logr.Logger, candidates []*corev1.Pod) []*corev1.Pod {
+				return []*corev1.Pod{&pod}
+			},
+		})
 
 		availCRD := crd.DeepCopy()
 		availCRD.Spec.MinAvailable = 1
@@ -143,7 +150,7 @@ func TestVolumeSnapshotControl_FindCandidate(t *testing.T) {
 	t.Run("list error", func(t *testing.T) {
 		var mClient mockPodClient
 		mClient.ListErr = errors.New("no list for you")
-		control := NewVolumeSnapshotControl(&mClient, panicFinder)
+		control := NewVolumeSnapshotControl(&mClient, panicFilter)
 
 		_, err := control.FindCandidate(ctx, &crd)
 
@@ -151,46 +158,29 @@ func TestVolumeSnapshotControl_FindCandidate(t *testing.T) {
 		require.EqualError(t, err, "no list for you")
 	})
 
-	t.Run("synced pod error", func(t *testing.T) {
-		pods := make([]corev1.Pod, 2)
-		for i := range pods {
-			pods[i].Status.Conditions = []corev1.PodCondition{readyCondition}
-		}
-		var mClient mockPodClient
-		mClient.Items = pods
-
-		control := NewVolumeSnapshotControl(&mClient, mockPodFinder(func(ctx context.Context, candidates []*corev1.Pod) (*corev1.Pod, error) {
-			return nil, errors.New("pod sync error")
-		}))
-
-		_, err := control.FindCandidate(ctx, &crd)
-
-		require.Error(t, err)
-		require.EqualError(t, err, "pod sync error")
-	})
-
 	t.Run("not enough ready pods", func(t *testing.T) {
 		var readyPod corev1.Pod
 		readyPod.Status.Conditions = []corev1.PodCondition{readyCondition}
 
-		for _, tt := range []struct {
+		for i, tt := range []struct {
 			Pods    []corev1.Pod
 			WantErr string
 		}{
-			{nil, "list operation returned no pods"},
-			{make([]corev1.Pod, 0), "list operation returned no pods"},
-			{make([]corev1.Pod, 3), "2 or more pods must be ready to prevent downtime, found 0 ready"},      // no pods ready
-			{[]corev1.Pod{readyPod, {}}, "2 or more pods must be ready to prevent downtime, found 1 ready"}, // 1 pod ready
+			{nil, "2 or more pods must be in-sync to prevent downtime, found 0 in-sync"},
+			{make([]corev1.Pod, 0), "2 or more pods must be in-sync to prevent downtime, found 0 in-sync"},
+			{make([]corev1.Pod, 1), "2 or more pods must be in-sync to prevent downtime, found 1 in-sync"}, // no pods in-sync
 		} {
 			var mClient mockPodClient
-			mClient.Items = tt.Pods
-
-			control := NewVolumeSnapshotControl(&mClient, panicFinder)
+			control := NewVolumeSnapshotControl(&mClient, mockPodFilter{
+				SyncedPodsFn: func(ctx context.Context, log logr.Logger, candidates []*corev1.Pod) []*corev1.Pod {
+					return ptrSlice(tt.Pods)
+				},
+			})
 
 			_, err := control.FindCandidate(ctx, &crd)
 
-			require.Error(t, err, tt)
-			require.EqualError(t, err, tt.WantErr, tt)
+			require.Errorf(t, err, "test case %d", i)
+			require.EqualErrorf(t, err, tt.WantErr, "test case %d", i)
 		}
 	})
 }
@@ -202,7 +192,7 @@ func TestVolumeSnapshotControl_CreateSnapshot(t *testing.T) {
 
 	t.Run("happy path", func(t *testing.T) {
 		var mClient mockPodClient
-		control := NewVolumeSnapshotControl(&mClient, panicFinder)
+		control := NewVolumeSnapshotControl(&mClient, panicFilter)
 		// Use time.Local to ensure we format with UTC.
 		now := time.Date(2022, time.September, 1, 2, 3, 0, 0, time.UTC)
 		control.now = func() time.Time {
@@ -255,7 +245,7 @@ func TestVolumeSnapshotControl_CreateSnapshot(t *testing.T) {
 
 	t.Run("nil pod labels", func(t *testing.T) {
 		var mClient mockPodClient
-		control := NewVolumeSnapshotControl(&mClient, panicFinder)
+		control := NewVolumeSnapshotControl(&mClient, panicFilter)
 		var crd cosmosalpha.ScheduledVolumeSnapshot
 		crd.Name = "cosmoshub"
 
@@ -277,7 +267,7 @@ func TestVolumeSnapshotControl_CreateSnapshot(t *testing.T) {
 	t.Run("create error", func(t *testing.T) {
 		var mClient mockPodClient
 		mClient.CreateErr = errors.New("boom")
-		control := NewVolumeSnapshotControl(&mClient, panicFinder)
+		control := NewVolumeSnapshotControl(&mClient, panicFilter)
 		var crd cosmosalpha.ScheduledVolumeSnapshot
 		err := control.CreateSnapshot(ctx, &crd, Candidate{})
 
@@ -358,7 +348,7 @@ func TestVolumeSnapshotControl_DeleteOldSnapshots(t *testing.T) {
 		crd.Namespace = "default"
 		crd.Spec.Limit = int32(limit)
 
-		control := NewVolumeSnapshotControl(&mClient, panicFinder)
+		control := NewVolumeSnapshotControl(&mClient, panicFilter)
 		err := control.DeleteOldSnapshots(ctx, nopLogger, &crd)
 
 		require.NoError(t, err)
@@ -398,7 +388,7 @@ func TestVolumeSnapshotControl_DeleteOldSnapshots(t *testing.T) {
 		lo.Shuffle(mClient.Items)
 
 		var crd cosmosalpha.ScheduledVolumeSnapshot
-		control := NewVolumeSnapshotControl(&mClient, panicFinder)
+		control := NewVolumeSnapshotControl(&mClient, panicFilter)
 		err := control.DeleteOldSnapshots(ctx, nopLogger, &crd)
 
 		require.NoError(t, err)
@@ -427,7 +417,7 @@ func TestVolumeSnapshotControl_DeleteOldSnapshots(t *testing.T) {
 
 		var crd cosmosalpha.ScheduledVolumeSnapshot
 		crd.Spec.Limit = total + 1
-		control := NewVolumeSnapshotControl(&mClient, panicFinder)
+		control := NewVolumeSnapshotControl(&mClient, panicFilter)
 		err := control.DeleteOldSnapshots(ctx, nopLogger, &crd)
 
 		require.NoError(t, err)
@@ -437,7 +427,7 @@ func TestVolumeSnapshotControl_DeleteOldSnapshots(t *testing.T) {
 	t.Run("happy path - no items", func(t *testing.T) {
 		var mClient mockVolumeSnapshotClient
 		var crd cosmosalpha.ScheduledVolumeSnapshot
-		control := NewVolumeSnapshotControl(&mClient, panicFinder)
+		control := NewVolumeSnapshotControl(&mClient, panicFilter)
 		err := control.DeleteOldSnapshots(ctx, nopLogger, &crd)
 
 		require.NoError(t, err)
@@ -448,7 +438,7 @@ func TestVolumeSnapshotControl_DeleteOldSnapshots(t *testing.T) {
 		var mClient mockVolumeSnapshotClient
 		mClient.ListErr = errors.New("boom")
 		var crd cosmosalpha.ScheduledVolumeSnapshot
-		control := NewVolumeSnapshotControl(&mClient, panicFinder)
+		control := NewVolumeSnapshotControl(&mClient, panicFilter)
 		err := control.DeleteOldSnapshots(ctx, nopLogger, &crd)
 
 		require.Error(t, err)
@@ -472,7 +462,7 @@ func TestVolumeSnapshotControl_DeleteOldSnapshots(t *testing.T) {
 
 		var crd cosmosalpha.ScheduledVolumeSnapshot
 		crd.Spec.Limit = 1
-		control := NewVolumeSnapshotControl(&mClient, panicFinder)
+		control := NewVolumeSnapshotControl(&mClient, panicFilter)
 		err := control.DeleteOldSnapshots(ctx, nopLogger, &crd)
 
 		require.Error(t, err)
