@@ -1471,29 +1471,34 @@ spec:
                   SelfHealing is managed by a separate controller, SelfHealingController,
                   in an effort to reduce complexity of the CosmosFullNodeController.
                 properties:
-                  replicaFaultRecovery:
+                  podFaultRecovery:
                     description: "Determines when to destroy and recreate a replica
-                      (aka instance, pod/pvc combo) that is failing. Occasionally,
-                      data may become corrupt and the chain exits and cannot restart.
-                      This strategy only watches the pods \"node\" container running
-                      the `start` command, and only for pods that are crashlooping.
-                      \n This pairs well with volumeClaimTemplate.autoDataSource and
-                      a ScheduledVolumeSnapshot resource. With this pairing, a new
-                      PVC is created with a recent VolumeSnapshot. Otherwise, ensure
-                      your snapshot, genesis, etc. creation are idempotent. (e.g.
-                      chain.snapshotURL and chain.genesisURL have stable urls)"
+                      (aka pod/pvc combo) that is crashlooping. Occasionally, data
+                      may become corrupt and the chain exits and cannot restart. This
+                      strategy only watches the pods' \"node\" containers running
+                      the `start` command. \n This pairs well with volumeClaimTemplate.autoDataSource
+                      and a ScheduledVolumeSnapshot resource. With this pairing, a
+                      new PVC is created with a recent VolumeSnapshot. Otherwise,
+                      ensure your snapshot, genesis, etc. creation are idempotent.
+                      (e.g. chain.snapshotURL and chain.genesisURL have stable urls)
+                      \n This feature may be extended to detect other failed pod states
+                      instead of just crashloops."
                     properties:
                       healthyThreshold:
                         anyOf:
                         - type: integer
                         - type: string
-                        description: How many healthy pods are required to trigger
-                          destroying a crashlooping pod and pvc. The controller periodically
-                          inspects the status of all pods. If the majority of pods
-                          are crashlooping, then there's probably something else wrong,
-                          and recreating the pod and pvc will have no effect. Set
-                          an integer or a percentage string such as 50%. If the threshold
-                          is too high, defaults to watching for 1 unhealthy pod.
+                        description: "How many healthy pods are required to trigger
+                          destroying a crashlooping pod and pvc. Set an integer or
+                          a percentage string such as 50%. \n This setting attempts
+                          to minimize false positives in order to detect data corruption
+                          instead of a variety of other reasons for crashloops. The
+                          controller periodically inspects the status of all pods.
+                          If the majority of pods are crashlooping, then there's probably
+                          something else wrong, and recreating the pod and pvc will
+                          have no effect. \n If the threshold is too high, defaults
+                          to recovering 1 unhealthy pod, the rest must be healthy.
+                          It's not recommended to use this feature with only 1 replica."
                         x-kubernetes-int-or-string: true
                       restartThreshold:
                         description: How many restarts to wait before destroying and
