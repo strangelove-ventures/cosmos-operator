@@ -263,7 +263,7 @@ func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Conta
 	genesisCmd, genesisArgs := DownloadGenesisCommand(crd.Spec.ChainSpec)
 
 	initCmd := fmt.Sprintf("%s init %s --chain-id %s", binary, moniker, crd.Spec.ChainSpec.ChainID)
-	required := []corev1.Container{
+	containers := []corev1.Container{
 		{
 			Name:    "chain-init",
 			Image:   tpl.Image,
@@ -323,7 +323,7 @@ config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CON
 
 	if willRestoreFromSnapshot(crd) {
 		cmd, args := DownloadSnapshotCommand(crd.Spec.ChainSpec)
-		required = append(required, corev1.Container{
+		containers = append(containers, corev1.Container{
 			Name:            "snapshot-restore",
 			Image:           infraToolImage,
 			Command:         []string{cmd},
@@ -334,7 +334,12 @@ config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CON
 		})
 	}
 
-	return required
+	// Setting init container resources helps GKE AutoPilot provision node resources more accurately.
+	for i := range containers {
+		containers[i].Resources = tpl.Resources
+	}
+
+	return containers
 }
 
 func startCmdAndArgs(crd *cosmosv1.CosmosFullNode) (string, []string) {
