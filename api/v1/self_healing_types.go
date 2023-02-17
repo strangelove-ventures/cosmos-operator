@@ -14,27 +14,24 @@ type SelfHealingSpec struct {
 	// Otherwise, ensure your snapshot, genesis, etc. creation are idempotent.
 	// (e.g. chain.snapshotURL and chain.genesisURL have stable urls)
 	//
-	// This feature may be extended to detect other failed pod states instead of just crashloops.
 	// +optional
-	PodFaultRecovery *PodFaultRecovery `json:"podFaultRecovery"`
+	CrashLoopRecovery *CrashLoopRecovery `json:"crashLoopRecovery"`
 }
 
-type PodFaultRecovery struct {
+type CrashLoopRecovery struct {
 	// How many healthy pods are required to trigger destroying a crashlooping pod and pvc.
 	// Set an integer or a percentage string such as 50%.
 	// Example: If you set to 80% and there are 10 total pods, at least 8 must be healthy to trigger the recovery.
-	// Fractional values are rounded down.
+	// Fractional values are rounded down, but the minimum is 1.
+	// It's not recommended to use this feature with only 1 replica.
 	//
 	// This setting attempts to minimize false positives in order to detect data corruption vs.
 	// endless other reasons for unhealthy pods.
 	// If the majority of pods are unhealthy, then there's probably something else wrong, and recreating
 	// the pod and pvc will have no effect.
-	//
-	// If the threshold is too high, defaults to recovering 1 unhealthy pod, the rest must be healthy.
-	// It's not recommended to use this feature with only 1 replica.
 	HealthyThreshold intstr.IntOrString `json:"healthyThreshold"`
 
-	// How many restarts to wait before destroying and recreating an unhealthy replica.
+	// How many restarts to wait before destroying and recreating the unhealthy replica.
 	// Defaults to 5.
 	// +optional
 	RestartThreshold int32 `json:"restartThreshold"`
