@@ -230,6 +230,7 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 			{Name: volConfig, MountPath: tmpConfigDir},
 		}...)
 	}
+
 	for i := range pod.Spec.Containers {
 		pod.Spec.Containers[i].VolumeMounts = mounts
 	}
@@ -335,8 +336,18 @@ config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CON
 	}
 
 	// Setting init container resources helps GKE AutoPilot provision node resources more accurately.
+	resources := corev1.ResourceRequirements{
+		Requests: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceCPU:    resource.MustParse("500m"),
+			corev1.ResourceMemory: resource.MustParse("1Gi"),
+		},
+		//Limits: map[corev1.ResourceName]resource.Quantity{
+		//	corev1.ResourceCPU:    resource.MustParse("1000m"),
+		//	corev1.ResourceMemory: resource.MustParse("1Gi"),
+		//},
+	}
 	for i := range containers {
-		containers[i].Resources = tpl.Resources
+		containers[i].Resources = resources
 	}
 
 	return containers
