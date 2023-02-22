@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"net/http"
+	"path"
 	"time"
 
 	"github.com/go-logr/zapr"
@@ -47,9 +48,22 @@ func startHealthCheckServer(cmd *cobra.Command, args []string) error {
 	)
 	defer func() { _ = zlog.Sync() }()
 
+	var (
+		tm   = healthcheck.NewTendermint(logger, tmClient, rpcHost, timeout)
+		disk = healthcheck.DiskUsage("/")
+	)
+	router := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch path.Clean(r.URL.Path) {
+		case "/disk":
+			disk.ServeHTTP(w, r)
+		default:
+			tm.ServeHTTP(w, r)
+		}
+	})
+
 	srv := &http.Server{
 		Addr:         listenAddr,
-		Handler:      healthcheck.NewTendermint(logger, tmClient, rpcHost, timeout),
+		Handler:      router,
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 30 * time.Second,
 	}
