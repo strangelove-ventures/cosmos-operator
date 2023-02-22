@@ -1,38 +1,38 @@
 package v1
 
-import "k8s.io/apimachinery/pkg/util/intstr"
-
 // SelfHealingSpec is part of a CosmosFullNode but is managed by a separate controller, SelfHealingController.
 // This is an effort to reduce complexity in the CosmosFullNodeController.
+// The controller only modifies the CosmosFullNode's status subresource relying on the CosmosFullNodeController
+// to reconcile appropriately.
 type SelfHealingSpec struct {
-	// Determines when to destroy and recreate a replica (aka pod/pvc combo) that is crashlooping.
-	// Occasionally, data may become corrupt and the chain exits and cannot restart.
-	// This strategy only watches the pods' "node" containers running the `start` command.
+	// Automatically increases PVC storage as they approach capacity.
 	//
-	// This pairs well with volumeClaimTemplate.autoDataSource and a ScheduledVolumeSnapshot resource.
-	// With this pairing, a new PVC is created with a recent VolumeSnapshot.
-	// Otherwise, ensure your snapshot, genesis, etc. creation are idempotent.
-	// (e.g. chain.snapshotURL and chain.genesisURL have stable urls)
-	//
+	// Your cluster must support and use the ExpandInUsePersistentVolumes feature gate. This allows volumes to
+	// expand while a pod is attached to it, thus eliminating the need to restart pods.
+	// If you cluster does not support ExpandInUsePersistentVolumes, you will manually need to restart pods.
 	// +optional
-	CrashLoopRecovery *CrashLoopRecovery `json:"crashLoopRecovery"`
+	PVCAutoScaling *PVCAutoScalingSpec `json:"pvcAutoScaling"`
 }
 
-type CrashLoopRecovery struct {
-	// How many healthy pods are required to trigger destroying a crashlooping pod and pvc.
-	// Set an integer or a percentage string such as 50%.
-	// Example: If you set to 80% and there are 10 total pods, at least 8 must be healthy to trigger the recovery.
-	// Fractional values are rounded down, but the minimum is 1.
-	// It's not recommended to use this feature with only 1 replica.
-	//
-	// This setting attempts to minimize false positives in order to detect data corruption vs.
-	// endless other reasons for unhealthy pods.
-	// If the majority of pods are unhealthy, then there's probably something else wrong, and recreating
-	// the pod and pvc will have no effect.
-	HealthyThreshold intstr.IntOrString `json:"healthyThreshold"`
+type PVCAutoScalingSpec struct {
+	// The percentage of used disk space required to trigger scaling.
+	// Example, if set to 80, autoscaling will not trigger until used space reaches >=80% of capacity.
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=100
+	UsedSpacePercentage int32 `json:"usedSpacePercentage"`
 
-	// How many restarts to wait before destroying and recreating the unhealthy replica.
-	// Defaults to 5.
+	// How much to increase the PVC's capacity.
+	// Either a percentage (e.g. 20%) or a resource storage quantity (e.g. 100Gi).
+	//
+	// If a percentage, the existing capacity increases by the percentage.
+	// E.g. PVC of 100Gi capacity + Quantity of 20% increases disk to 120Gi.
+	//
+	// If a storage quantity (e.g. 100Gi), increases by that amount.
+	Quantity string `json:"quantity"`
+
+	// A resource storage quantity (e.g. 2000Gi).
+	// When increasing PVC capacity reaches >= Maximum, autoscaling ceases.
+	// Safeguards against storage quotas.
 	// +optional
-	RestartThreshold int32 `json:"restartThreshold"`
+	Maximum string `json:"maximum"`
 }

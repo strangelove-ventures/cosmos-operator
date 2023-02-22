@@ -1471,40 +1471,38 @@ spec:
                   SelfHealing is managed by a separate controller, SelfHealingController,
                   in an effort to reduce complexity of the CosmosFullNodeController.
                 properties:
-                  crashLoopRecovery:
-                    description: "Determines when to destroy and recreate a replica
-                      (aka pod/pvc combo) that is crashlooping. Occasionally, data
-                      may become corrupt and the chain exits and cannot restart. This
-                      strategy only watches the pods' \"node\" containers running
-                      the `start` command. \n This pairs well with volumeClaimTemplate.autoDataSource
-                      and a ScheduledVolumeSnapshot resource. With this pairing, a
-                      new PVC is created with a recent VolumeSnapshot. Otherwise,
-                      ensure your snapshot, genesis, etc. creation are idempotent.
-                      (e.g. chain.snapshotURL and chain.genesisURL have stable urls)"
+                  pvcAutoScaling:
+                    description: "Automatically increases PVC storage as they approach
+                      capacity. \n Your cluster must support and use the ExpandInUsePersistentVolumes
+                      feature gate. This allows volumes to expand while a pod is attached
+                      to it, thus eliminating the need to restart pods. If you cluster
+                      does not support ExpandInUsePersistentVolumes, you will manually
+                      need to restart pods."
                     properties:
-                      healthyThreshold:
-                        anyOf:
-                        - type: integer
-                        - type: string
-                        description: "How many healthy pods are required to trigger
-                          destroying a crashlooping pod and pvc. Set an integer or
-                          a percentage string such as 50%. Example: If you set to
-                          80% and there are 10 total pods, at least 8 must be healthy
-                          to trigger the recovery. Fractional values are rounded down,
-                          but the minimum is 1. It's not recommended to use this feature
-                          with only 1 replica. \n This setting attempts to minimize
-                          false positives in order to detect data corruption vs. endless
-                          other reasons for unhealthy pods. If the majority of pods
-                          are unhealthy, then there's probably something else wrong,
-                          and recreating the pod and pvc will have no effect."
-                        x-kubernetes-int-or-string: true
-                      restartThreshold:
-                        description: How many restarts to wait before destroying and
-                          recreating the unhealthy replica. Defaults to 5.
+                      maximum:
+                        description: A resource storage quantity (e.g. 2000Gi). When
+                          increasing PVC capacity reaches >= Maximum, autoscaling
+                          ceases. Safeguards against storage quotas.
+                        type: string
+                      quantity:
+                        description: "How much to increase the PVC's capacity. Either
+                          a percentage (e.g. 20%) or a resource storage quantity (e.g.
+                          100Gi). \n If a percentage, the existing capacity increases
+                          by the percentage. E.g. PVC of 100Gi capacity + Quantity
+                          of 20% increases disk to 120Gi. \n If a storage quantity
+                          (e.g. 100Gi), increases by that amount."
+                        type: string
+                      usedSpacePercentage:
+                        description: The percentage of used disk space required to
+                          trigger scaling. Example, if set to 80, autoscaling will
+                          not trigger until used space reaches >=80% of capacity.
                         format: int32
+                        maximum: 100
+                        minimum: 1
                         type: integer
                     required:
-                    - healthyThreshold
+                    - quantity
+                    - usedSpacePercentage
                     type: object
                 type: object
               service:
