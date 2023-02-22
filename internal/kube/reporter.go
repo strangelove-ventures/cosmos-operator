@@ -10,8 +10,8 @@ import (
 type Reporter interface {
 	Info(msg string, keysAndValues ...interface{})
 	Error(err error, msg string, keysAndValues ...interface{})
-	RecordInfo(reason, msg string, keysAndValues ...interface{})
-	RecordError(err error, reason, msg string, keysAndValues ...interface{})
+	RecordInfo(reason, msg string)
+	RecordError(reason string, err error)
 }
 
 // EventReporter both logs and records events.
@@ -21,22 +21,32 @@ type EventReporter struct {
 	resource client.Object
 }
 
-func NewEventReporter(logger logr.Logger, recorder record.EventRecorder, resource client.Object) *EventReporter {
-	return &EventReporter{log: logger, recorder: recorder, resource: resource}
+func NewEventReporter(recorder record.EventRecorder) EventReporter {
+	return EventReporter{log: logr.Discard(), recorder: recorder}
 }
 
-// Error logs information as an error log entry.
+func (r EventReporter) WithResource(resource client.Object) EventReporter {
+	r.resource = resource
+	return r
+}
+
+func (r EventReporter) WithLogger(logger logr.Logger) EventReporter {
+	r.log = logger
+	return r
+}
+
+// Error logs as an error log entry.
 func (r EventReporter) Error(err error, msg string, keysAndValues ...interface{}) {
 	r.log.Error(err, msg, keysAndValues...)
 }
 
-// Info logs information as an info log entry.
+// Info logs as an info log entry.
 func (r EventReporter) Info(msg string, keysAndValues ...interface{}) {
 	r.log.Info(msg, keysAndValues...)
 }
 
 // RecordError records a warning event.
-func (r EventReporter) RecordError(err error, reason string) {
+func (r EventReporter) RecordError(reason string, err error) {
 	const label = "Warning"
 	r.recorder.Event(r.resource, label, reason, err.Error())
 }

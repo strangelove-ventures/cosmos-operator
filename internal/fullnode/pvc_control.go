@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/go-logr/logr"
 	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
 	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
@@ -42,8 +41,7 @@ func NewPVCControl(client Client) PVCControl {
 
 // Reconcile is the control loop for PVCs. The bool return value, if true, indicates the controller should requeue
 // the request.
-func (control PVCControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmosv1.CosmosFullNode) (bool, kube.ReconcileError) {
-	// TODO (nix - 8/10/22) Update crd status.
+func (control PVCControl) Reconcile(ctx context.Context, reporter kube.Reporter, crd *cosmosv1.CosmosFullNode) (bool, kube.ReconcileError) {
 	// Find any existing pvcs for this CRD.
 	var vols corev1.PersistentVolumeClaimList
 	if err := control.client.List(ctx, &vols,
@@ -62,14 +60,14 @@ func (control PVCControl) Reconcile(ctx context.Context, log logr.Logger, crd *c
 
 	var dataSource *corev1.TypedLocalObjectReference
 	if len(diff.Creates()) > 0 {
-		dataSource = control.autoDataSource(ctx, log, crd)
+		dataSource = control.autoDataSource(ctx, reporter, crd)
 	}
 
 	for _, pvc := range diff.Creates() {
 		if pvc.Spec.DataSource == nil && pvc.Spec.DataSourceRef == nil {
 			pvc.Spec.DataSource = dataSource
 		}
-		log.Info("Creating pvc", "pvcName", pvc.Name)
+		reporter.Info("Creating pvc", "pvcName", pvc.Name)
 		if err := ctrl.SetControllerReference(crd, pvc, control.client.Scheme()); err != nil {
 			return true, kube.TransientError(fmt.Errorf("set controller reference on pvc %q: %w", pvc.Name, err))
 		}
@@ -81,7 +79,7 @@ func (control PVCControl) Reconcile(ctx context.Context, log logr.Logger, crd *c
 	var deletes int
 	if !control.shouldRetain(crd) {
 		for _, pvc := range diff.Deletes() {
-			log.Info("Deleting pvc", "pvcName", pvc.Name)
+			reporter.Info("Deleting pvc", "pvcName", pvc.Name)
 			if err := control.client.Delete(ctx, pvc, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
 				return true, kube.TransientError(fmt.Errorf("delete pvc %q: %w", pvc.Name, err))
 			}
@@ -102,7 +100,7 @@ func (control PVCControl) Reconcile(ctx context.Context, log logr.Logger, crd *c
 			continue
 		}
 
-		log.Info("Patching pvc", "pvcName", pvc.Name)
+		reporter.Info("Patching pvc", "pvcName", pvc.Name)
 		patch := corev1.PersistentVolumeClaim{
 			ObjectMeta: pvc.ObjectMeta,
 			TypeMeta:   pvc.TypeMeta,
@@ -110,10 +108,9 @@ func (control PVCControl) Reconcile(ctx context.Context, log logr.Logger, crd *c
 				Resources: pvc.Spec.Resources,
 			},
 		}
-		// It's safe to patch all PVCs at once. Pods must be restarted after resizing complete.
 		if err := control.client.Patch(ctx, &patch, client.Merge); err != nil {
-			// TODO (nix - 8/11/22) Update status with failures
-			log.Error(err, "Patch failed", "pvcName", pvc.Name)
+			reporter.Error(err, "PVC patch failed", "pvcName", pvc.Name)
+			reporter.RecordError("PVCPatchFailed", fmt.Errorf("%s: %w", pvc.Name, err))
 			continue
 		}
 	}
@@ -128,7 +125,7 @@ func (control PVCControl) shouldRetain(crd *cosmosv1.CosmosFullNode) bool {
 	return false
 }
 
-func (control PVCControl) autoDataSource(ctx context.Context, log logr.Logger, crd *cosmosv1.CosmosFullNode) *corev1.TypedLocalObjectReference {
+func (control PVCControl) autoDataSource(ctx context.Context, reporter kube.Reporter, crd *cosmosv1.CosmosFullNode) *corev1.TypedLocalObjectReference {
 	spec := crd.Spec.VolumeClaimTemplate.AutoDataSource
 	if spec == nil {
 		return nil
@@ -139,7 +136,8 @@ func (control PVCControl) autoDataSource(ctx context.Context, log logr.Logger, c
 	}
 	found, err := control.recentVolumeSnapshot(ctx, control.client, crd.Namespace, selector)
 	if err != nil {
-		log.Error(err, "Failed to find VolumeSnapshot for AutoDataSource")
+		reporter.Error(err, "Failed to find VolumeSnapshot for AutoDataSource")
+		reporter.RecordError("AutoDataSourceFindSnapshot", err)
 		return nil
 	}
 

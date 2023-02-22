@@ -10,11 +10,14 @@ import (
 	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
+	"github.com/strangelove-ventures/cosmos-operator/internal/test"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+var nopReporter test.NopReporter
 
 func TestPVCControl_Reconcile(t *testing.T) {
 	t.Parallel()
@@ -66,7 +69,7 @@ func TestPVCControl_Reconcile(t *testing.T) {
 			return mockPVCDiffer{}
 		}
 
-		requeue, err := control.Reconcile(ctx, nopLogger, &crd)
+		requeue, err := control.Reconcile(ctx, nopReporter, &crd)
 		require.NoError(t, err)
 		require.False(t, requeue)
 
@@ -96,7 +99,7 @@ func TestPVCControl_Reconcile(t *testing.T) {
 		control.diffFactory = func(_, _ string, current, want []*corev1.PersistentVolumeClaim) pvcDiffer {
 			return mDiff
 		}
-		requeue, err := control.Reconcile(ctx, nopLogger, &crd)
+		requeue, err := control.Reconcile(ctx, nopReporter, &crd)
 		require.NoError(t, err)
 		require.True(t, requeue)
 
@@ -137,7 +140,7 @@ func TestPVCControl_Reconcile(t *testing.T) {
 			volCallCount++
 			return &stub, nil
 		}
-		requeue, err := control.Reconcile(ctx, nopLogger, &crd)
+		requeue, err := control.Reconcile(ctx, nopReporter, &crd)
 		require.NoError(t, err)
 		require.True(t, requeue)
 
@@ -177,7 +180,7 @@ func TestPVCControl_Reconcile(t *testing.T) {
 			volCallCount++
 			return nil, errors.New("boom")
 		}
-		requeue, err := control.Reconcile(ctx, nopLogger, &crd)
+		requeue, err := control.Reconcile(ctx, nopReporter, &crd)
 		require.NoError(t, err)
 		require.True(t, requeue)
 
@@ -208,7 +211,7 @@ func TestPVCControl_Reconcile(t *testing.T) {
 		control.diffFactory = func(_, _ string, current, want []*corev1.PersistentVolumeClaim) pvcDiffer {
 			return mDiff
 		}
-		requeue, rerr := control.Reconcile(ctx, nopLogger, &crd)
+		requeue, rerr := control.Reconcile(ctx, nopReporter, &crd)
 		require.NoError(t, rerr)
 		require.False(t, requeue)
 
@@ -238,14 +241,14 @@ func TestPVCControl_Reconcile(t *testing.T) {
 		control.diffFactory = func(_, _ string, current, want []*corev1.PersistentVolumeClaim) pvcDiffer {
 			return mDiff
 		}
-		requeue, err := control.Reconcile(ctx, nopLogger, &crd)
+		requeue, err := control.Reconcile(ctx, nopReporter, &crd)
 		require.NoError(t, err)
 
 		require.Zero(t, mClient.DeleteCount)
 		require.False(t, requeue)
 
 		crd.Spec.RetentionPolicy = ptr(cosmosv1.RetentionPolicyDelete)
-		requeue, err = control.Reconcile(ctx, nopLogger, &crd)
+		requeue, err = control.Reconcile(ctx, nopReporter, &crd)
 		require.NoError(t, err)
 
 		require.Equal(t, 2, mClient.DeleteCount)
