@@ -51,7 +51,7 @@ type CosmosFullNodeReconciler struct {
 	configMapControl fullnode.ConfigMapControl
 	podControl       fullnode.PodControl
 	pvcControl       fullnode.PVCControl
-	recorder         record.EventRecorder
+	reporter         kube.EventReporter
 	serviceControl   fullnode.ServiceControl
 }
 
@@ -65,7 +65,7 @@ func NewFullNode(client client.Client, recorder record.EventRecorder) *CosmosFul
 		configMapControl: fullnode.NewConfigMapControl(client),
 		podControl:       fullnode.NewPodControl(client, podFilter),
 		pvcControl:       fullnode.NewPVCControl(client),
-		recorder:         recorder,
+		reporter:         kube.NewEventReporter(recorder),
 		serviceControl:   fullnode.NewServiceControl(client),
 	}
 }
@@ -101,6 +101,8 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return finishResult, client.IgnoreNotFound(err)
 	}
 
+	reporter := r.reporter.WithLogger(logger).WithResource(crd)
+
 	fullnode.ResetStatus(crd)
 	defer r.patchStatus(ctx, crd)
 
@@ -133,7 +135,7 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	// Reconcile pvcs.
-	pvcRequeue, err := r.pvcControl.Reconcile(ctx, logger, crd)
+	pvcRequeue, err := r.pvcControl.Reconcile(ctx, reporter, crd)
 	if err != nil {
 		errs.Append(err)
 	}
@@ -148,7 +150,7 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	// Check final state and requeue if necessary.
 	if p2pAddresses.Incomplete() {
-		r.recorder.Event(crd, eventNormal, "P2PIncomplete", "Waiting for p2p service IPs or Hostnames to be ready.")
+		reporter.Info("P2PIncomplete", "Waiting for p2p service IPs or Hostnames to be ready.")
 		logger.V(1).Info("Requeueing due to incomplete p2p external addresses")
 		// Allow more time to requeue while p2p services create their load balancers.
 		return ctrl.Result{RequeueAfter: 15 * time.Second}, nil
@@ -174,8 +176,6 @@ func (r *CosmosFullNodeReconciler) resultWithErr(crd *cosmosv1.CosmosFullNode, e
 func (r *CosmosFullNodeReconciler) patchStatus(ctx context.Context, crd *cosmosv1.CosmosFullNode) {
 	// Use patch with new CRD to prevent error: the object has been modified; please apply your changes to the latest version and try again
 	// The ScheduledVolumeSnapshot controller may also update the fullnode's status in tandem with this controller.
-	var patchCRD cosmosv1.CosmosFullNode
-	patchCRD.Name = crd.Name
 	patchCRD.Namespace = crd.Namespace
 	patchCRD.Status = crd.Status
 	if err := r.Status().Patch(ctx, &patchCRD, client.Merge); err != nil {
