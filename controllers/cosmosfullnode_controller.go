@@ -37,12 +37,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-const (
-	controllerOwnerField = ".metadata.controller"
-
-	eventNormal  = "Normal"
-	eventWarning = "Warning"
-)
+const controllerOwnerField = ".metadata.controller"
 
 // CosmosFullNodeReconciler reconciles a CosmosFullNode object
 type CosmosFullNodeReconciler struct {
@@ -129,7 +124,7 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	// Reconcile pods.
-	podRequeue, err := r.podControl.Reconcile(ctx, logger, crd)
+	podRequeue, err := r.podControl.Reconcile(ctx, reporter, crd)
 	if err != nil {
 		errs.Append(err)
 	}
@@ -162,20 +157,22 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 func (r *CosmosFullNodeReconciler) resultWithErr(crd *cosmosv1.CosmosFullNode, err kube.ReconcileError) (ctrl.Result, kube.ReconcileError) {
 	if err.IsTransient() {
-		r.recorder.Event(crd, eventWarning, "ErrorTransient", fmt.Sprintf("%v; retrying.", err))
+		r.recorder.Event(crd, kube.EventWarning, "ErrorTransient", fmt.Sprintf("%v; retrying.", err))
 		crd.Status.StatusMessage = ptr(fmt.Sprintf("Transient error: system is retrying: %v", err))
 		return requeueResult, err
 	}
 
 	crd.Status.Phase = cosmosv1.FullNodePhaseError
 	crd.Status.StatusMessage = ptr(fmt.Sprintf("Unrecoverable error: human intervention required: %v", err))
-	r.recorder.Event(crd, eventWarning, "Error", err.Error())
+	r.recorder.Event(crd, kube.EventWarning, "Error", err.Error())
 	return finishResult, err
 }
 
 func (r *CosmosFullNodeReconciler) patchStatus(ctx context.Context, crd *cosmosv1.CosmosFullNode) {
 	// Use patch with new CRD to prevent error: the object has been modified; please apply your changes to the latest version and try again
 	// The ScheduledVolumeSnapshot controller may also update the fullnode's status in tandem with this controller.
+	var patchCRD cosmosv1.CosmosFullNode
+	patchCRD.Name = crd.Name
 	patchCRD.Namespace = crd.Namespace
 	patchCRD.Status = crd.Status
 	if err := r.Status().Patch(ctx, &patchCRD, client.Merge); err != nil {

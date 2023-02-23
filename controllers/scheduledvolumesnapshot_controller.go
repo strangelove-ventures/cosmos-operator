@@ -24,6 +24,7 @@ import (
 
 	cosmosv1alpha1 "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
 	"github.com/strangelove-ventures/cosmos-operator/internal/cosmos"
+	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	"github.com/strangelove-ventures/cosmos-operator/internal/volsnapshot"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -182,7 +183,7 @@ func (r *ScheduledVolumeSnapshotReconciler) Reconcile(ctx context.Context, req c
 }
 
 func (r *ScheduledVolumeSnapshotReconciler) reportError(crd *cosmosv1alpha1.ScheduledVolumeSnapshot, reason string, err error) {
-	r.recorder.Event(crd, eventWarning, reason, err.Error())
+	r.recorder.Event(crd, kube.EventWarning, reason, err.Error())
 	crd.Status.StatusMessage = ptr(fmt.Sprint("Error: ", err))
 }
 

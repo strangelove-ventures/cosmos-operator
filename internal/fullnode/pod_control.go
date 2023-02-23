@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-logr/logr"
 	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
@@ -24,7 +23,7 @@ type podDiffer interface {
 }
 
 type PodFilter interface {
-	SyncedPods(ctx context.Context, log logr.Logger, candidates []*corev1.Pod) []*corev1.Pod
+	SyncedPods(ctx context.Context, log kube.Logger, candidates []*corev1.Pod) []*corev1.Pod
 }
 
 // Client is a controller client. It is a subset of client.Client.
@@ -57,9 +56,7 @@ func NewPodControl(client Client, filter PodFilter) PodControl {
 
 // Reconcile is the control loop for pods. The bool return value, if true, indicates the controller should requeue
 // the request.
-func (pc PodControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmosv1.CosmosFullNode) (bool, kube.ReconcileError) {
-	// TODO (nix - 8/9/22) Update crd status.
-	// Find any existing pods for this CRD.
+func (pc PodControl) Reconcile(ctx context.Context, reporter kube.Reporter, crd *cosmosv1.CosmosFullNode) (bool, kube.ReconcileError) {
 	var pods corev1.PodList
 	if err := pc.client.List(ctx, &pods,
 		client.InNamespace(crd.Namespace),
@@ -76,7 +73,7 @@ func (pc PodControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmos
 	)
 
 	for _, pod := range diff.Creates() {
-		log.Info("Creating pod", "podName", pod.Name)
+		reporter.Info("Creating pod", "podName", pod.Name)
 		if err := ctrl.SetControllerReference(crd, pod, pc.client.Scheme()); err != nil {
 			return true, kube.TransientError(fmt.Errorf("set controller reference on pod %q: %w", pod.Name, err))
 		}
@@ -86,7 +83,7 @@ func (pc PodControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmos
 	}
 
 	for _, pod := range diff.Deletes() {
-		log.Info("Deleting pod", "podName", pod.Name)
+		reporter.Info("Deleting pod", "podName", pod.Name)
 		if err := pc.client.Delete(ctx, pod, client.PropagationPolicy(metav1.DeletePropagationForeground)); kube.IgnoreNotFound(err) != nil {
 			return true, kube.TransientError(fmt.Errorf("delete pod %q: %w", pod.Name, err))
 		}
@@ -101,16 +98,15 @@ func (pc PodControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmos
 		cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 		defer cancel()
 		var (
-			logger = log.WithName("PodControlRollout")
 			// This may be a source of confusion by passing currentPods vs. pods from diff.Updates().
 			// This is a leaky abstraction (which may be fixed in the future) because diff.Updates() pods are built
 			// from the operator and do not match what's returned by listing pods.
-			avail      = pc.podFilter.SyncedPods(cctx, logger, currentPods)
+			avail      = pc.podFilter.SyncedPods(cctx, reporter, currentPods)
 			numUpdates = pc.computeRollout(crd.Spec.RolloutStrategy.MaxUnavailable, int(crd.Spec.Replicas), len(avail))
 		)
 
 		for _, pod := range lo.Slice(diff.Updates(), 0, numUpdates) {
-			log.Info("Deleting pod for update", "podName", pod.Name)
+			reporter.Info("Deleting pod for update", "podName", pod.Name)
 			// Because we should watch for deletes, we get a re-queued request, detect pod is missing, and re-create it.
 			if err := pc.client.Delete(ctx, pod, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
 				return true, kube.TransientError(fmt.Errorf("update pod %q: %w", pod.Name, err))

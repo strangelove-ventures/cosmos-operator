@@ -56,10 +56,10 @@ func (m *mockPodClient) Delete(ctx context.Context, obj client.Object, opts ...c
 }
 
 type mockPodFilter struct {
-	SyncedPodsFn func(ctx context.Context, log logr.Logger, candidates []*corev1.Pod) []*corev1.Pod
+	SyncedPodsFn func(ctx context.Context, log kube.Logger, candidates []*corev1.Pod) []*corev1.Pod
 }
 
-func (fn mockPodFilter) SyncedPods(ctx context.Context, log logr.Logger, candidates []*corev1.Pod) []*corev1.Pod {
+func (fn mockPodFilter) SyncedPods(ctx context.Context, log kube.Logger, candidates []*corev1.Pod) []*corev1.Pod {
 	if ctx == nil {
 		panic("nil context")
 	}
@@ -101,7 +101,7 @@ func TestVolumeSnapshotControl_FindCandidate(t *testing.T) {
 		candidate := fullnode.NewPodBuilder(&fullnodeCRD).WithOrdinal(1).Build()
 
 		control := NewVolumeSnapshotControl(&mClient, mockPodFilter{
-			SyncedPodsFn: func(ctx context.Context, _ logr.Logger, candidates []*corev1.Pod) []*corev1.Pod {
+			SyncedPodsFn: func(ctx context.Context, _ kube.Logger, candidates []*corev1.Pod) []*corev1.Pod {
 				require.Equal(t, ptrSlice(pods), candidates)
 				return []*corev1.Pod{candidate, new(corev1.Pod), new(corev1.Pod)}
 			},
@@ -133,7 +133,7 @@ func TestVolumeSnapshotControl_FindCandidate(t *testing.T) {
 		mClient.Items = []corev1.Pod{pod}
 
 		control := NewVolumeSnapshotControl(&mClient, mockPodFilter{
-			SyncedPodsFn: func(ctx context.Context, log logr.Logger, candidates []*corev1.Pod) []*corev1.Pod {
+			SyncedPodsFn: func(ctx context.Context, log kube.Logger, candidates []*corev1.Pod) []*corev1.Pod {
 				return []*corev1.Pod{&pod}
 			},
 		})
@@ -172,7 +172,7 @@ func TestVolumeSnapshotControl_FindCandidate(t *testing.T) {
 		} {
 			var mClient mockPodClient
 			control := NewVolumeSnapshotControl(&mClient, mockPodFilter{
-				SyncedPodsFn: func(ctx context.Context, log logr.Logger, candidates []*corev1.Pod) []*corev1.Pod {
+				SyncedPodsFn: func(ctx context.Context, log kube.Logger, candidates []*corev1.Pod) []*corev1.Pod {
 					return ptrSlice(tt.Pods)
 				},
 			})

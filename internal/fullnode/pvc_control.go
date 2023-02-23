@@ -141,6 +141,7 @@ func (control PVCControl) autoDataSource(ctx context.Context, reporter kube.Repo
 		return nil
 	}
 
+	reporter.RecordInfo("AutoDataSource", "Using recent VolumeSnapshot for PVC data source")
 	return &corev1.TypedLocalObjectReference{
 		APIGroup: ptr("snapshot.storage.k8s.io"),
 		Kind:     "VolumeSnapshot",

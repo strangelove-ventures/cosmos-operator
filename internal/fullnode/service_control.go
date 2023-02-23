@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/go-logr/logr"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	corev1 "k8s.io/api/core/v1"
@@ -36,7 +35,7 @@ func NewServiceControl(client Client) ServiceControl {
 // Reconcile creates or updates services.
 // Some services, like P2P, reserve public addresses of which should not change.
 // Therefore, services are never deleted unless the CRD itself is deleted.
-func (sc ServiceControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmosv1.CosmosFullNode) kube.ReconcileError {
+func (sc ServiceControl) Reconcile(ctx context.Context, log kube.Logger, crd *cosmosv1.CosmosFullNode) kube.ReconcileError {
 	var svcs corev1.ServiceList
 	if err := sc.client.List(ctx, &svcs,
 		client.InNamespace(crd.Namespace),

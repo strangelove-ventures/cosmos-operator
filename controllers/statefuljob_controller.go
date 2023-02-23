@@ -160,7 +160,7 @@ func (r *StatefulJobReconciler) deletePVCs(ctx context.Context, crd *cosmosalpha
 func (r *StatefulJobReconciler) reportErr(logger logr.Logger, crd *cosmosalpha.StatefulJob, err error) {
 	logger.Error(err, "An error occurred")
 	msg := err.Error()
-	r.recorder.Event(crd, eventWarning, "Error", msg)
+	r.recorder.Event(crd, kube.EventWarning, "Error", msg)
 	crd.Status.StatusMessage = &msg
 }
 

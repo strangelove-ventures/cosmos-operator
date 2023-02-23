@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/go-logr/logr"
 	"github.com/samber/lo"
+	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	"golang.org/x/sync/errgroup"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -28,7 +28,7 @@ func NewPodFilter(status TendermintStatuser) *PodFilter {
 
 // SyncedPods returns all pods that are in sync (i.e. no longer catching up).
 // Caller is responsible for timeouts via the context.
-func (filter PodFilter) SyncedPods(ctx context.Context, log logr.Logger, candidates []*corev1.Pod) []*corev1.Pod {
+func (filter PodFilter) SyncedPods(ctx context.Context, log kube.Logger, candidates []*corev1.Pod) []*corev1.Pod {
 	var (
 		eg     errgroup.Group
 		inSync = make([]*corev1.Pod, len(candidates))
@@ -38,20 +38,20 @@ func (filter PodFilter) SyncedPods(ctx context.Context, log logr.Logger, candida
 		i := i
 		eg.Go(func() error {
 			pod := candidates[i]
-			logger := log.WithValues("pod", pod.Name)
+			fields := []interface{}{"pod", pod.Name}
 			ip := pod.Status.PodIP
 			if ip == "" {
-				logger.Info("Pod has no IP")
+				log.Info("Pod has no IP", fields...)
 				return nil
 			}
 			host := fmt.Sprintf("http://%s:26657", ip)
 			resp, err := filter.tendermint.Status(ctx, host)
 			if err != nil {
-				logger.Info("Failed to fetch tendermint rpc status", "error", err)
+				log.Info("Failed to fetch tendermint rpc status", append(fields, "error", err)...)
 				return nil
 			}
 			if resp.Result.SyncInfo.CatchingUp {
-				logger.Info("Pod is still catching up")
+				log.Info("Pod is still catching up", fields...)
 				return nil
 			}
 			inSync[i] = pod

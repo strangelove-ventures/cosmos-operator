@@ -40,7 +40,7 @@ func TestServiceControl_Reconcile(t *testing.T) {
 				StubDeletes: ptrSlice(make([]corev1.Service, 3)),
 			}
 		}
-		err := control.Reconcile(ctx, nopLogger, &crd)
+		err := control.Reconcile(ctx, nopReporter, &crd)
 		require.NoError(t, err)
 
 		require.Len(t, mClient.GotListOpts, 3)

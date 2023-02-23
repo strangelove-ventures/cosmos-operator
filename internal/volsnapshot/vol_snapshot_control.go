@@ -29,7 +29,7 @@ type Client interface {
 }
 
 type PodFilter interface {
-	SyncedPods(ctx context.Context, log logr.Logger, candidates []*corev1.Pod) []*corev1.Pod
+	SyncedPods(ctx context.Context, log kube.Logger, candidates []*corev1.Pod) []*corev1.Pod
 }
 
 // VolumeSnapshotControl manages VolumeSnapshots

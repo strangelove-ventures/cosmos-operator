@@ -1,27 +1,37 @@
 package kube
 
 import (
-	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 )
 
-// Reporter logs and reports various events.
-type Reporter interface {
+// The two accepted event types for recording events.
+const (
+	EventWarning = "Warning"
+	EventNormal  = "Normal"
+)
+
+// Logger is a structured logger
+type Logger interface {
 	Info(msg string, keysAndValues ...interface{})
 	Error(err error, msg string, keysAndValues ...interface{})
+}
+
+// Reporter logs and reports various events.
+type Reporter interface {
+	Logger
 	RecordInfo(reason, msg string)
 	RecordError(reason string, err error)
 }
 
 // EventReporter both logs and records events.
 type EventReporter struct {
-	log      logr.Logger
+	log      Logger
 	recorder record.EventRecorder
 	resource runtime.Object
 }
 
-func NewEventReporter(logger logr.Logger, recorder record.EventRecorder, resource runtime.Object) EventReporter {
+func NewEventReporter(logger Logger, recorder record.EventRecorder, resource runtime.Object) EventReporter {
 	return EventReporter{log: logger, recorder: recorder, resource: resource}
 }
 
@@ -37,12 +47,10 @@ func (r EventReporter) Info(msg string, keysAndValues ...interface{}) {
 
 // RecordError records a warning event.
 func (r EventReporter) RecordError(reason string, err error) {
-	const label = "Warning"
-	r.recorder.Event(r.resource, label, reason, err.Error())
+	r.recorder.Event(r.resource, EventWarning, reason, err.Error())
 }
 
 // RecordInfo records a normal event.
 func (r EventReporter) RecordInfo(reason, msg string) {
-	const label = "Normal"
-	r.recorder.Event(r.resource, label, reason, msg)
+	r.recorder.Event(r.resource, EventNormal, reason, msg)
 }
