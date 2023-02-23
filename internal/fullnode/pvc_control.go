@@ -67,7 +67,7 @@ func (control PVCControl) Reconcile(ctx context.Context, reporter kube.Reporter,
 		if pvc.Spec.DataSource == nil && pvc.Spec.DataSourceRef == nil {
 			pvc.Spec.DataSource = dataSource
 		}
-		reporter.Info("Creating pvc", "pvcName", pvc.Name)
+		reporter.Info("Creating pvc", "pvc", pvc.Name)
 		if err := ctrl.SetControllerReference(crd, pvc, control.client.Scheme()); err != nil {
 			return true, kube.TransientError(fmt.Errorf("set controller reference on pvc %q: %w", pvc.Name, err))
 		}
@@ -79,7 +79,7 @@ func (control PVCControl) Reconcile(ctx context.Context, reporter kube.Reporter,
 	var deletes int
 	if !control.shouldRetain(crd) {
 		for _, pvc := range diff.Deletes() {
-			reporter.Info("Deleting pvc", "pvcName", pvc.Name)
+			reporter.Info("Deleting pvc", "pvc", pvc.Name)
 			if err := control.client.Delete(ctx, pvc, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
 				return true, kube.TransientError(fmt.Errorf("delete pvc %q: %w", pvc.Name, err))
 			}
@@ -92,15 +92,20 @@ func (control PVCControl) Reconcile(ctx context.Context, reporter kube.Reporter,
 		return true, nil
 	}
 
+	var requeue bool
 	// PVCs have many immutable fields, so only update the storage size.
 	for _, pvc := range diff.Updates() {
+		// TODO(nix): Another leaky abstraction because diff.Updates() returns what the builder creates
+		// which are brand-new pvcs vs. pvcs gathered from a List call to the kube API.
 		// Only bound claims can be resized.
 		found, ok := findMatchingResource(pvc, currentPVCs)
 		if ok && found.Status.Phase != corev1.ClaimBound {
+			reporter.Info("PVC cannot be updated yet because it is not bound", "pvc", pvc.Name, "phase", found.Status.Phase)
+			requeue = true
 			continue
 		}
 
-		reporter.Info("Patching pvc", "pvcName", pvc.Name)
+		reporter.Info("Patching pvc", "pvc", pvc.Name)
 		patch := corev1.PersistentVolumeClaim{
 			ObjectMeta: pvc.ObjectMeta,
 			TypeMeta:   pvc.TypeMeta,
@@ -109,13 +114,13 @@ func (control PVCControl) Reconcile(ctx context.Context, reporter kube.Reporter,
 			},
 		}
 		if err := control.client.Patch(ctx, &patch, client.Merge); err != nil {
-			reporter.Error(err, "PVC patch failed", "pvcName", pvc.Name)
-			reporter.RecordError("PVCPatchFailed", fmt.Errorf("%s: %w", pvc.Name, err))
+			reporter.Error(err, "PVC patch failed", "pvc", pvc.Name)
+			reporter.RecordError("PVCPatchFailed", err)
 			continue
 		}
 	}
 
-	return false, nil
+	return requeue, nil
 }
 
 func (control PVCControl) shouldRetain(crd *cosmosv1.CosmosFullNode) bool {
