@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/strangelove-ventures/cosmos-operator/internal/cosmos"
+	"github.com/strangelove-ventures/cosmos-operator/internal/fullnode"
 	"github.com/strangelove-ventures/cosmos-operator/internal/healthcheck"
 	"golang.org/x/sync/errgroup"
 )
@@ -50,7 +51,7 @@ func startHealthCheckServer(cmd *cobra.Command, args []string) error {
 
 	var (
 		tm   = healthcheck.NewTendermint(logger, tmClient, rpcHost, timeout)
-		disk = healthcheck.DiskUsage("/home/operator/cosmos") // TODO: experimenting
+		disk = healthcheck.DiskUsage(fullnode.ChainHomeDir)
 	)
 	router := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch path.Clean(r.URL.Path) {
