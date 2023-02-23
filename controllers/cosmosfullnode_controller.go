@@ -51,7 +51,7 @@ type CosmosFullNodeReconciler struct {
 	configMapControl fullnode.ConfigMapControl
 	podControl       fullnode.PodControl
 	pvcControl       fullnode.PVCControl
-	reporter         kube.EventReporter
+	recorder         record.EventRecorder
 	serviceControl   fullnode.ServiceControl
 }
 
@@ -65,7 +65,7 @@ func NewFullNode(client client.Client, recorder record.EventRecorder) *CosmosFul
 		configMapControl: fullnode.NewConfigMapControl(client),
 		podControl:       fullnode.NewPodControl(client, podFilter),
 		pvcControl:       fullnode.NewPVCControl(client),
-		reporter:         kube.NewEventReporter(recorder),
+		recorder:         recorder,
 		serviceControl:   fullnode.NewServiceControl(client),
 	}
 }
@@ -101,7 +101,7 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return finishResult, client.IgnoreNotFound(err)
 	}
 
-	reporter := r.reporter.WithLogger(logger).WithResource(crd)
+	reporter := kube.NewEventReporter(logger, r.recorder, crd)
 
 	fullnode.ResetStatus(crd)
 	defer r.patchStatus(ctx, crd)
@@ -150,8 +150,8 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	// Check final state and requeue if necessary.
 	if p2pAddresses.Incomplete() {
-		reporter.Info("P2PIncomplete", "Waiting for p2p service IPs or Hostnames to be ready.")
-		logger.V(1).Info("Requeueing due to incomplete p2p external addresses")
+		reporter.Info("Requeueing due to incomplete p2p external addresses")
+		reporter.RecordInfo("P2PIncomplete", "Waiting for p2p service IPs or Hostnames to be ready.")
 		// Allow more time to requeue while p2p services create their load balancers.
 		return ctrl.Result{RequeueAfter: 15 * time.Second}, nil
 	}
