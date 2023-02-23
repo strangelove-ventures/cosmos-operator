@@ -101,6 +101,7 @@ func (control PVCControl) Reconcile(ctx context.Context, reporter kube.Reporter,
 		found, ok := findMatchingResource(pvc, currentPVCs)
 		if ok && found.Status.Phase != corev1.ClaimBound {
 			reporter.Info("PVC cannot be updated yet because it is not bound", "pvc", pvc.Name, "phase", found.Status.Phase)
+			reporter.RecordInfo("PVCUpdate", fmt.Sprintf("PVC %s cannot be updated yet because it is not bound; retrying", pvc.Name))
 			requeue = true
 			continue
 		}
