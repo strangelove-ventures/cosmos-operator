@@ -222,7 +222,7 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 	}
 
 	mounts := []corev1.VolumeMount{
-		{Name: volChainHome, MountPath: chainHomeDir},
+		{Name: volChainHome, MountPath: ChainHomeDir},
 	}
 	for i := range pod.Spec.InitContainers {
 		pod.Spec.InitContainers[i].VolumeMounts = append(mounts, []corev1.VolumeMount{
@@ -239,21 +239,22 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 }
 
 const (
-	workDir      = "/home/operator"
-	chainHomeDir = workDir + "/cosmos"
-	tmpDir       = workDir + "/.tmp"
-	tmpConfigDir = workDir + "/.config"
+	workDir = "/home/operator"
+	// ChainHomeDir is the abs filepath for the chain's home directory.
+	ChainHomeDir = workDir + "/cosmos"
 
+	tmpDir         = workDir + "/.tmp"
+	tmpConfigDir   = workDir + "/.config"
 	infraToolImage = "ghcr.io/strangelove-ventures/infra-toolkit:v0.0.1"
 )
 
 var (
 	envVars = []corev1.EnvVar{
 		{Name: "HOME", Value: workDir},
-		{Name: "CHAIN_HOME", Value: chainHomeDir},
-		{Name: "GENESIS_FILE", Value: path.Join(chainHomeDir, "config", "genesis.json")},
-		{Name: "CONFIG_DIR", Value: path.Join(chainHomeDir, "config")},
-		{Name: "DATA_DIR", Value: path.Join(chainHomeDir, "data")},
+		{Name: "CHAIN_HOME", Value: ChainHomeDir},
+		{Name: "GENESIS_FILE", Value: path.Join(ChainHomeDir, "config", "genesis.json")},
+		{Name: "CONFIG_DIR", Value: path.Join(ChainHomeDir, "config")},
+		{Name: "DATA_DIR", Value: path.Join(ChainHomeDir, "data")},
 	}
 )
 
@@ -357,7 +358,7 @@ func startCmdAndArgs(crd *cosmosv1.CosmosFullNode) (string, []string) {
 }
 
 func startCommandArgs(cfg cosmosv1.ChainSpec) []string {
-	args := []string{"start", "--home", chainHomeDir}
+	args := []string{"start", "--home", ChainHomeDir}
 	if cfg.SkipInvariants {
 		args = append(args, "--x-crisis-skip-assert-invariants")
 	}
