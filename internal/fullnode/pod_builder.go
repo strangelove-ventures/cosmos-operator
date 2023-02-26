@@ -275,8 +275,6 @@ set -eu
 if [ ! -d "$CHAIN_HOME/data" ]; then
 	echo "Initializing chain..."
 	%s --home "$CHAIN_HOME"
-	# Remove because downstream containers check the presence of this file.
-	rm "$GENESIS_FILE"
 else
 	echo "Skipping chain init; already initialized."
 fi
