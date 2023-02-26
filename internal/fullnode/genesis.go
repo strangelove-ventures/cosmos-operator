@@ -14,8 +14,10 @@ var (
 	scriptUseInitGenesis string
 )
 
-const genesisScriptWrapper = `if [ -f "$GENESIS_FILE" ]; then
-	echo "Genesis file $GENESIS_FILE already exists; skipping initialization."
+const genesisScriptWrapper = `ls $DATA_DIR/*.db 1> /dev/null 2>&1
+DB_INIT=$?
+if [ $DB_INIT -eq 0 ]; then
+	echo "Database already initialized, skipping genesis initialization"
 	exit 0
 fi
 
