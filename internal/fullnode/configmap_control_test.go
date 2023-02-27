@@ -42,7 +42,7 @@ func TestConfigMapControl_Reconcile(t *testing.T) {
 			}
 		}
 
-		err := control.Reconcile(ctx, nopLogger, &crd, nil)
+		err := control.Reconcile(ctx, nopReporter, &crd, nil)
 		require.NoError(t, err)
 
 		require.Len(t, mClient.GotListOpts, 2)
@@ -75,7 +75,7 @@ func TestConfigMapControl_Reconcile(t *testing.T) {
 		}
 
 		crd := defaultCRD()
-		err := control.Reconcile(ctx, nopLogger, &crd, nil)
+		err := control.Reconcile(ctx, nopReporter, &crd, nil)
 
 		require.Error(t, err)
 		require.EqualError(t, err, "boom")

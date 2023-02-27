@@ -10,11 +10,15 @@ import (
 	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
+	"github.com/strangelove-ventures/cosmos-operator/internal/test"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+var nopReporter test.NopReporter
 
 func TestPVCControl_Reconcile(t *testing.T) {
 	t.Parallel()
@@ -31,6 +35,10 @@ func TestPVCControl_Reconcile(t *testing.T) {
 			var pvc corev1.PersistentVolumeClaim
 			pvc.Name = fmt.Sprintf("pvc-%d", i)
 			pvc.Namespace = namespace
+			pvc.Spec.Resources = corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("100G")},
+			}
+			pvc.Status.Phase = corev1.ClaimBound
 			return &pvc
 		})
 	}
@@ -66,7 +74,7 @@ func TestPVCControl_Reconcile(t *testing.T) {
 			return mockPVCDiffer{}
 		}
 
-		requeue, err := control.Reconcile(ctx, nopLogger, &crd)
+		requeue, err := control.Reconcile(ctx, nopReporter, &crd)
 		require.NoError(t, err)
 		require.False(t, requeue)
 
@@ -96,7 +104,7 @@ func TestPVCControl_Reconcile(t *testing.T) {
 		control.diffFactory = func(_, _ string, current, want []*corev1.PersistentVolumeClaim) pvcDiffer {
 			return mDiff
 		}
-		requeue, err := control.Reconcile(ctx, nopLogger, &crd)
+		requeue, err := control.Reconcile(ctx, nopReporter, &crd)
 		require.NoError(t, err)
 		require.True(t, requeue)
 
@@ -137,7 +145,7 @@ func TestPVCControl_Reconcile(t *testing.T) {
 			volCallCount++
 			return &stub, nil
 		}
-		requeue, err := control.Reconcile(ctx, nopLogger, &crd)
+		requeue, err := control.Reconcile(ctx, nopReporter, &crd)
 		require.NoError(t, err)
 		require.True(t, requeue)
 
@@ -177,7 +185,7 @@ func TestPVCControl_Reconcile(t *testing.T) {
 			volCallCount++
 			return nil, errors.New("boom")
 		}
-		requeue, err := control.Reconcile(ctx, nopLogger, &crd)
+		requeue, err := control.Reconcile(ctx, nopReporter, &crd)
 		require.NoError(t, err)
 		require.True(t, requeue)
 
@@ -189,7 +197,41 @@ func TestPVCControl_Reconcile(t *testing.T) {
 
 	t.Run("updates", func(t *testing.T) {
 		updates := buildPVCs(2)
-		unbound := updates[0]
+		updatedResources := updates[0].Spec.Resources
+
+		var (
+			mClient mockPVCClient
+			mDiff   = mockPVCDiffer{
+				StubUpdates: updates,
+			}
+			crd     = defaultCRD()
+			control = testPVCControl(&mClient)
+		)
+		crd.Namespace = namespace
+		crd.Spec.VolumeClaimTemplate.VolumeMode = ptr(corev1.PersistentVolumeMode("should not be in the patch"))
+		control.diffFactory = func(_, _ string, current, want []*corev1.PersistentVolumeClaim) pvcDiffer {
+			return mDiff
+		}
+		requeue, rerr := control.Reconcile(ctx, nopReporter, &crd)
+		require.NoError(t, rerr)
+		require.False(t, requeue)
+
+		require.Empty(t, mClient.CreateCount)
+		require.Empty(t, mClient.DeleteCount)
+
+		require.Equal(t, 2, mClient.PatchCount)
+		require.Equal(t, client.Merge, mClient.LastPatch)
+
+		gotPatch := mClient.LastPatchObject.(*corev1.PersistentVolumeClaim)
+		require.Equal(t, updates[1].Name, gotPatch.Name)
+		require.Equal(t, namespace, gotPatch.Namespace)
+		require.Empty(t, gotPatch.Spec.VolumeMode)
+		require.Equal(t, updatedResources, gotPatch.Spec.Resources)
+	})
+
+	t.Run("updates with unbound volumes", func(t *testing.T) {
+		updates := buildPVCs(2)
+		unbound := updates[1]
 		unbound.Status.Phase = corev1.ClaimPending
 
 		var mClient mockPVCClient
@@ -204,24 +246,22 @@ func TestPVCControl_Reconcile(t *testing.T) {
 			control = testPVCControl(&mClient)
 		)
 		crd.Namespace = namespace
-		crd.Spec.VolumeClaimTemplate.VolumeMode = ptr(corev1.PersistentVolumeMode("should not be in the patch"))
+		crd.Spec.VolumeClaimTemplate.Resources = corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("1Ti")},
+		}
 		control.diffFactory = func(_, _ string, current, want []*corev1.PersistentVolumeClaim) pvcDiffer {
 			return mDiff
 		}
-		requeue, rerr := control.Reconcile(ctx, nopLogger, &crd)
+		requeue, rerr := control.Reconcile(ctx, nopReporter, &crd)
 		require.NoError(t, rerr)
-		require.False(t, requeue)
-
-		require.Empty(t, mClient.CreateCount)
-		require.Empty(t, mClient.DeleteCount)
+		require.True(t, requeue)
 
 		// Count of 1 because we skip patching unbound claims (results in kube API error).
 		require.Equal(t, 1, mClient.PatchCount)
-		require.Equal(t, client.Merge, mClient.LastPatch)
 
-		gotPVC := mClient.LastPatchObject.(*corev1.PersistentVolumeClaim)
-		require.Empty(t, gotPVC.Spec.VolumeMode)
-		require.Equal(t, updates[1].Spec.Resources, gotPVC.Spec.Resources)
+		gotPatch := mClient.LastPatchObject.(*corev1.PersistentVolumeClaim)
+		require.Equal(t, updates[0].Name, gotPatch.Name)
+		require.Equal(t, namespace, gotPatch.Namespace)
 	})
 
 	t.Run("retention policy", func(t *testing.T) {
@@ -238,14 +278,14 @@ func TestPVCControl_Reconcile(t *testing.T) {
 		control.diffFactory = func(_, _ string, current, want []*corev1.PersistentVolumeClaim) pvcDiffer {
 			return mDiff
 		}
-		requeue, err := control.Reconcile(ctx, nopLogger, &crd)
+		requeue, err := control.Reconcile(ctx, nopReporter, &crd)
 		require.NoError(t, err)
 
 		require.Zero(t, mClient.DeleteCount)
 		require.False(t, requeue)
 
 		crd.Spec.RetentionPolicy = ptr(cosmosv1.RetentionPolicyDelete)
-		requeue, err = control.Reconcile(ctx, nopLogger, &crd)
+		requeue, err = control.Reconcile(ctx, nopReporter, &crd)
 		require.NoError(t, err)
 
 		require.Equal(t, 2, mClient.DeleteCount)

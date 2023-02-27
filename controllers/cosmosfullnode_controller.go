@@ -37,12 +37,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-const (
-	controllerOwnerField = ".metadata.controller"
-
-	eventNormal  = "Normal"
-	eventWarning = "Warning"
-)
+const controllerOwnerField = ".metadata.controller"
 
 // CosmosFullNodeReconciler reconciles a CosmosFullNode object
 type CosmosFullNodeReconciler struct {
@@ -101,6 +96,8 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return finishResult, client.IgnoreNotFound(err)
 	}
 
+	reporter := kube.NewEventReporter(logger, r.recorder, crd)
+
 	fullnode.ResetStatus(crd)
 	defer r.patchStatus(ctx, crd)
 
@@ -127,13 +124,13 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	// Reconcile pods.
-	podRequeue, err := r.podControl.Reconcile(ctx, logger, crd)
+	podRequeue, err := r.podControl.Reconcile(ctx, reporter, crd)
 	if err != nil {
 		errs.Append(err)
 	}
 
 	// Reconcile pvcs.
-	pvcRequeue, err := r.pvcControl.Reconcile(ctx, logger, crd)
+	pvcRequeue, err := r.pvcControl.Reconcile(ctx, reporter, crd)
 	if err != nil {
 		errs.Append(err)
 	}
@@ -148,8 +145,8 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	// Check final state and requeue if necessary.
 	if p2pAddresses.Incomplete() {
-		r.recorder.Event(crd, eventNormal, "P2PIncomplete", "Waiting for p2p service IPs or Hostnames to be ready.")
-		logger.V(1).Info("Requeueing due to incomplete p2p external addresses")
+		reporter.Info("Requeueing due to incomplete p2p external addresses")
+		reporter.RecordInfo("P2PIncomplete", "Waiting for p2p service IPs or Hostnames to be ready.")
 		// Allow more time to requeue while p2p services create their load balancers.
 		return ctrl.Result{RequeueAfter: 15 * time.Second}, nil
 	}
@@ -160,14 +157,14 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 func (r *CosmosFullNodeReconciler) resultWithErr(crd *cosmosv1.CosmosFullNode, err kube.ReconcileError) (ctrl.Result, kube.ReconcileError) {
 	if err.IsTransient() {
-		r.recorder.Event(crd, eventWarning, "ErrorTransient", fmt.Sprintf("%v; retrying.", err))
+		r.recorder.Event(crd, kube.EventWarning, "ErrorTransient", fmt.Sprintf("%v; retrying.", err))
 		crd.Status.StatusMessage = ptr(fmt.Sprintf("Transient error: system is retrying: %v", err))
 		return requeueResult, err
 	}
 
 	crd.Status.Phase = cosmosv1.FullNodePhaseError
 	crd.Status.StatusMessage = ptr(fmt.Sprintf("Unrecoverable error: human intervention required: %v", err))
-	r.recorder.Event(crd, eventWarning, "Error", err.Error())
+	r.recorder.Event(crd, kube.EventWarning, "Error", err.Error())
 	return finishResult, err
 }
 

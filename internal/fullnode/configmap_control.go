@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/go-logr/logr"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	corev1 "k8s.io/api/core/v1"
@@ -38,7 +37,7 @@ func NewConfigMapControl(client Client) ConfigMapControl {
 
 // Reconcile creates or updates configmaps containing items that are mounted into pods as files.
 // The ConfigMap is never deleted unless the CRD itself is deleted.
-func (cmc ConfigMapControl) Reconcile(ctx context.Context, log logr.Logger, crd *cosmosv1.CosmosFullNode, p2p ExternalAddresses) kube.ReconcileError {
+func (cmc ConfigMapControl) Reconcile(ctx context.Context, log kube.Logger, crd *cosmosv1.CosmosFullNode, p2p ExternalAddresses) kube.ReconcileError {
 	want, err := cmc.build(crd, p2p)
 	if err != nil {
 		return kube.UnrecoverableError(err)

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/go-logr/logr"
 	"github.com/samber/lo"
+	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -14,18 +14,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var nopLogger = logr.Discard()
+type mockPodFilter func(ctx context.Context, log kube.Logger, candidates []*corev1.Pod) []*corev1.Pod
 
-type mockPodFilter func(ctx context.Context, log logr.Logger, candidates []*corev1.Pod) []*corev1.Pod
-
-func (fn mockPodFilter) SyncedPods(ctx context.Context, log logr.Logger, candidates []*corev1.Pod) []*corev1.Pod {
+func (fn mockPodFilter) SyncedPods(ctx context.Context, log kube.Logger, candidates []*corev1.Pod) []*corev1.Pod {
 	if ctx == nil {
 		panic("nil context")
 	}
 	return fn(ctx, log, candidates)
 }
 
-var panicPodFilter = mockPodFilter(func(ctx context.Context, log logr.Logger, candidates []*corev1.Pod) []*corev1.Pod {
+var panicPodFilter = mockPodFilter(func(ctx context.Context, log kube.Logger, candidates []*corev1.Pod) []*corev1.Pod {
 	panic("SyncedPods should not be called")
 })
 
@@ -72,7 +70,7 @@ func TestPodControl_Reconcile(t *testing.T) {
 			require.Len(t, want, 3)
 			return mockPodDiffer{}
 		}
-		requeue, err := control.Reconcile(ctx, nopLogger, &crd)
+		requeue, err := control.Reconcile(ctx, nopReporter, &crd)
 		require.NoError(t, err)
 		require.False(t, requeue)
 
@@ -102,7 +100,7 @@ func TestPodControl_Reconcile(t *testing.T) {
 		control.diffFactory = func(_, _ string, current, want []*corev1.Pod) podDiffer {
 			return mDiff
 		}
-		requeue, err := control.Reconcile(ctx, nopLogger, &crd)
+		requeue, err := control.Reconcile(ctx, nopReporter, &crd)
 		require.NoError(t, err)
 		require.True(t, requeue)
 
@@ -129,7 +127,7 @@ func TestPodControl_Reconcile(t *testing.T) {
 				StubUpdates: buildPods(10),
 			}
 			crd       = defaultCRD()
-			podFilter = mockPodFilter(func(_ context.Context, _ logr.Logger, candidates []*corev1.Pod) []*corev1.Pod {
+			podFilter = mockPodFilter(func(_ context.Context, _ kube.Logger, candidates []*corev1.Pod) []*corev1.Pod {
 				require.Equal(t, 2, len(candidates))
 				require.Equal(t, "pod-1", candidates[0].Name)
 				require.Equal(t, "pod-2", candidates[1].Name)
@@ -151,7 +149,7 @@ func TestPodControl_Reconcile(t *testing.T) {
 			return stubRollout
 		}
 
-		requeue, err := control.Reconcile(ctx, nopLogger, &crd)
+		requeue, err := control.Reconcile(ctx, nopReporter, &crd)
 		require.NoError(t, err)
 		require.True(t, requeue)
 
