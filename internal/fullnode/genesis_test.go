@@ -13,7 +13,7 @@ func TestDownloadGenesisCommand(t *testing.T) {
 	requireValidScript := func(t *testing.T, script string) {
 		t.Helper()
 		require.NotEmpty(t, script)
-		require.Contains(t, script, `if [ $DB_INIT -eq 0 ]`)
+		require.Contains(t, script, `if [ -f "$GENESIS_FILE" ]`)
 	}
 
 	t.Run("default", func(t *testing.T) {
