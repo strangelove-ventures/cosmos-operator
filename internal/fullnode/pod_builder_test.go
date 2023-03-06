@@ -440,8 +440,12 @@ gaiad start --home /home/operator/cosmos`
 			require.Nilf(t, cont.ReadinessProbe, "container %d", i)
 		}
 
-		require.Equal(t, 1, len(pod.Spec.Containers))
+		require.Equal(t, 2, len(pod.Spec.Containers))
 		require.Equal(t, "node", pod.Spec.Containers[0].Name)
+
+		sidecar := pod.Spec.Containers[1]
+		require.Equal(t, "healthcheck", sidecar.Name)
+		require.Nil(t, sidecar.ReadinessProbe)
 	})
 }
 
