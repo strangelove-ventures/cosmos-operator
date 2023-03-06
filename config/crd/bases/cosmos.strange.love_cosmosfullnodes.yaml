@@ -1476,8 +1476,8 @@ spec:
                       capacity. \n Your cluster must support and use the ExpandInUsePersistentVolumes
                       feature gate. This allows volumes to expand while a pod is attached
                       to it, thus eliminating the need to restart pods. If you cluster
-                      does not support ExpandInUsePersistentVolumes, you will manually
-                      need to restart pods."
+                      does not support ExpandInUsePersistentVolumes, you will need
+                      to manually restart pods after resizing is complete."
                     properties:
                       maximum:
                         description: A resource storage quantity (e.g. 2000Gi). When

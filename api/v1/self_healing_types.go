@@ -1,15 +1,16 @@
 package v1
 
-// SelfHealingSpec is part of a CosmosFullNode but is managed by a separate controller, SelfHealingController.
-// This is an effort to reduce complexity in the CosmosFullNodeController.
-// The controller only modifies the CosmosFullNode's status subresource relying on the CosmosFullNodeController
+// SelfHealingSpec is part of a CosmosFullNode but is managed by a separate controller, SelfHealingReconciler.
+// This is an effort to reduce complexity in the CosmosFullNodeReconciler.
+// The controller only modifies the CosmosFullNode's status subresource relying on the CosmosFullNodeReconciler
 // to reconcile appropriately.
 type SelfHealingSpec struct {
 	// Automatically increases PVC storage as they approach capacity.
 	//
 	// Your cluster must support and use the ExpandInUsePersistentVolumes feature gate. This allows volumes to
 	// expand while a pod is attached to it, thus eliminating the need to restart pods.
-	// If you cluster does not support ExpandInUsePersistentVolumes, you will manually need to restart pods.
+	// If you cluster does not support ExpandInUsePersistentVolumes, you will need to manually restart pods after
+	// resizing is complete.
 	// +optional
 	PVCAutoScaling *PVCAutoScalingSpec `json:"pvcAutoScaling"`
 }
