@@ -193,7 +193,7 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 		volChainHome = "vol-chain-home" // Stores live chain data and config files.
 		volTmp       = "vol-tmp"        // Stores temporary config files for manipulation later.
 		volConfig    = "vol-config"     // Items from ConfigMap.
-		volSystemTmp = "vol-system-tmp" // Necessary for statesync.
+		volSystemTmp = "vol-system-tmp" // Necessary for statesync or else you may see the error: ERR State sync failed err="failed to create chunk queue: unable to create temp dir for state sync chunks: stat /tmp: no such file or directory" module=statesync
 	)
 	pod.Spec.Volumes = []corev1.Volume{
 		{
