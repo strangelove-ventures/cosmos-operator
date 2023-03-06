@@ -14,6 +14,7 @@ var (
 	scriptUseInitGenesis string
 )
 
+// If $DATA_DIR is populated, then we assume we have the genesis file.
 const genesisScriptWrapper = `ls $DATA_DIR/*.db 1> /dev/null 2>&1
 DB_INIT=$?
 if [ $DB_INIT -eq 0 ]; then

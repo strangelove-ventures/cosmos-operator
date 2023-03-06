@@ -193,6 +193,7 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 		volChainHome = "vol-chain-home" // Stores live chain data and config files.
 		volTmp       = "vol-tmp"        // Stores temporary config files for manipulation later.
 		volConfig    = "vol-config"     // Items from ConfigMap.
+		volSystemTmp = "vol-system-tmp" // Necessary for statesync or else you may see the error: ERR State sync failed err="failed to create chunk queue: unable to create temp dir for state sync chunks: stat /tmp: no such file or directory" module=statesync
 	)
 	pod.Spec.Volumes = []corev1.Volume{
 		{
@@ -219,11 +220,20 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 				},
 			},
 		},
+		{
+			Name: volSystemTmp,
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
 	}
 
+	// Mounts required by all containers.
 	mounts := []corev1.VolumeMount{
 		{Name: volChainHome, MountPath: ChainHomeDir},
+		{Name: volSystemTmp, MountPath: systemTmpDir},
 	}
+	// Additional mounts only needed for init containers.
 	for i := range pod.Spec.InitContainers {
 		pod.Spec.InitContainers[i].VolumeMounts = append(mounts, []corev1.VolumeMount{
 			{Name: volTmp, MountPath: tmpDir},
@@ -246,6 +256,9 @@ const (
 	tmpDir         = workDir + "/.tmp"
 	tmpConfigDir   = workDir + "/.config"
 	infraToolImage = "ghcr.io/strangelove-ventures/infra-toolkit:v0.0.1"
+
+	// Necessary for statesync
+	systemTmpDir = "/tmp"
 )
 
 var (
@@ -376,7 +389,7 @@ func willRestoreFromSnapshot(crd *cosmosv1.CosmosFullNode) bool {
 // PVCName returns the primary PVC holding the chain data associated with the pod.
 func PVCName(pod *corev1.Pod) string {
 	if vols := pod.Spec.Volumes; len(vols) > 0 {
-		if claim := pod.Spec.Volumes[0].PersistentVolumeClaim; claim != nil {
+		if claim := vols[0].PersistentVolumeClaim; claim != nil {
 			return claim.ClaimName
 		}
 	}
