@@ -1479,29 +1479,28 @@ spec:
                       does not support ExpandInUsePersistentVolumes, you will need
                       to manually restart pods after resizing is complete."
                     properties:
-                      maximum:
-                        description: A resource storage quantity (e.g. 2000Gi). When
-                          increasing PVC capacity reaches >= Maximum, autoscaling
-                          ceases. Safeguards against storage quotas.
-                        type: string
-                      quantity:
+                      increaseQuantity:
                         description: "How much to increase the PVC's capacity. Either
                           a percentage (e.g. 20%) or a resource storage quantity (e.g.
                           100Gi). \n If a percentage, the existing capacity increases
-                          by the percentage. E.g. PVC of 100Gi capacity + Quantity
+                          by the percentage. E.g. PVC of 100Gi capacity + IncreaseQuantity
                           of 20% increases disk to 120Gi. \n If a storage quantity
                           (e.g. 100Gi), increases by that amount."
+                        type: string
+                      maxSize:
+                        description: A resource storage quantity (e.g. 2000Gi). When
+                          increasing PVC capacity reaches >= MaxSize, autoscaling
+                          ceases. Safeguards against storage quotas.
                         type: string
                       usedSpacePercentage:
                         description: The percentage of used disk space required to
                           trigger scaling. Example, if set to 80, autoscaling will
                           not trigger until used space reaches >=80% of capacity.
                         format: int32
-                        maximum: 100
                         minimum: 1
                         type: integer
                     required:
-                    - quantity
+                    - increaseQuantity
                     - usedSpacePercentage
                     type: object
                 type: object
@@ -1513,7 +1512,7 @@ spec:
                   exchange.
                 properties:
                   maxP2PExternalAddresses:
-                    description: Maximum number of p2p services to create for tendermint
+                    description: MaxSize number of p2p services to create for tendermint
                       peer exchange. The public endpoint is set as the "p2p.external_address"
                       in the tendermint config.toml. If not set, defaults to 1.
                     format: int32

@@ -19,21 +19,21 @@ type PVCAutoScalingSpec struct {
 	// The percentage of used disk space required to trigger scaling.
 	// Example, if set to 80, autoscaling will not trigger until used space reaches >=80% of capacity.
 	// +kubebuilder:validation:Minimum=1
-	// +kubebuilder:validation:Maximum=100
+	// +kubebuilder:validation:MaxSize=100
 	UsedSpacePercentage int32 `json:"usedSpacePercentage"`
 
 	// How much to increase the PVC's capacity.
 	// Either a percentage (e.g. 20%) or a resource storage quantity (e.g. 100Gi).
 	//
 	// If a percentage, the existing capacity increases by the percentage.
-	// E.g. PVC of 100Gi capacity + Quantity of 20% increases disk to 120Gi.
+	// E.g. PVC of 100Gi capacity + IncreaseQuantity of 20% increases disk to 120Gi.
 	//
 	// If a storage quantity (e.g. 100Gi), increases by that amount.
-	Quantity string `json:"quantity"`
+	IncreaseQuantity string `json:"increaseQuantity"`
 
 	// A resource storage quantity (e.g. 2000Gi).
-	// When increasing PVC capacity reaches >= Maximum, autoscaling ceases.
+	// When increasing PVC capacity reaches >= MaxSize, autoscaling ceases.
 	// Safeguards against storage quotas.
 	// +optional
-	Maximum string `json:"maximum"`
+	MaxSize string `json:"maxSize"`
 }
