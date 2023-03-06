@@ -376,7 +376,7 @@ func willRestoreFromSnapshot(crd *cosmosv1.CosmosFullNode) bool {
 // PVCName returns the primary PVC holding the chain data associated with the pod.
 func PVCName(pod *corev1.Pod) string {
 	if vols := pod.Spec.Volumes; len(vols) > 0 {
-		if claim := pod.Spec.Volumes[0].PersistentVolumeClaim; claim != nil {
+		if claim := vols[0].PersistentVolumeClaim; claim != nil {
 			return claim.ClaimName
 		}
 	}
