@@ -6,8 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-
-	"github.com/strangelove-ventures/cosmos-operator/internal/fullnode"
 )
 
 // Client can be used to query healthcheck information.
@@ -18,7 +16,7 @@ type Client struct {
 
 func NewClient(client *http.Client) *Client {
 	return &Client{
-		rootURL: fmt.Sprintf("http://localhost:%d", fullnode.HealthCheckPort),
+		rootURL: fmt.Sprintf("http://localhost:%d", Port),
 		httpDo:  client.Do,
 	}
 }
