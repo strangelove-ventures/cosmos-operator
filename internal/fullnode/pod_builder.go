@@ -20,7 +20,8 @@ import (
 
 var bufPool = sync.Pool{New: func() any { return new(bytes.Buffer) }}
 
-const healthCheckPort = 1251
+// HealthCheckPort is the port for the healtcheck sidecar.
+const HealthCheckPort = 1251
 
 // PodBuilder builds corev1.Pods
 type PodBuilder struct {
@@ -99,7 +100,7 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 		// IMPORTANT: Must use v0.6.2 or later.
 		Image:   "ghcr.io/strangelove-ventures/cosmos-operator:v0.7.0",
 		Command: []string{"/manager", "healthcheck"},
-		Ports:   []corev1.ContainerPort{{ContainerPort: healthCheckPort, Protocol: corev1.ProtocolTCP}},
+		Ports:   []corev1.ContainerPort{{ContainerPort: HealthCheckPort, Protocol: corev1.ProtocolTCP}},
 		Resources: corev1.ResourceRequirements{
 			Requests: corev1.ResourceList{
 				corev1.ResourceCPU:    resource.MustParse("5m"),
@@ -143,7 +144,7 @@ func podReadinessProbes(crd *cosmosv1.CosmosFullNode) []*corev1.Probe {
 		ProbeHandler: corev1.ProbeHandler{
 			HTTPGet: &corev1.HTTPGetAction{
 				Path:   "/",
-				Port:   intstr.FromInt(healthCheckPort),
+				Port:   intstr.FromInt(HealthCheckPort),
 				Scheme: corev1.URISchemeHTTP,
 			},
 		},
