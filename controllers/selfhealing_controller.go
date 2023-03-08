@@ -20,6 +20,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/go-logr/logr"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/internal/fullnode"
 	"github.com/strangelove-ventures/cosmos-operator/internal/healthcheck"
@@ -48,7 +49,7 @@ func NewSelfHealing(client client.Client, recorder record.EventRecorder) *SelfHe
 // updates a CosmosFullNode status subresource thus triggering another reconcile loop. The CosmosFullNode
 // uses the status object to reconcile its state.
 func (r *SelfHealingReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := log.FromContext(ctx)
+	logger := log.FromContext(ctx).WithName("SelfHealing")
 	logger.V(1).Info("Entering reconcile loop", "request", req.NamespacedName)
 
 	crd := new(cosmosv1.CosmosFullNode)
@@ -64,11 +65,12 @@ func (r *SelfHealingReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return finishResult, nil
 	}
 
+	r.pvcAutoScale(ctx, logger, crd)
+
 	return ctrl.Result{RequeueAfter: 60 * time.Second}, nil
 }
 
-func (r *SelfHealingReconciler) pvcAutoScale(ctx context.Context, crd *cosmosv1.CosmosFullNode) {
-	logger := log.FromContext(ctx)
+func (r *SelfHealingReconciler) pvcAutoScale(ctx context.Context, logger logr.Logger, crd *cosmosv1.CosmosFullNode) {
 	if crd.Spec.SelfHealing.PVCAutoScaling == nil {
 		return
 	}
