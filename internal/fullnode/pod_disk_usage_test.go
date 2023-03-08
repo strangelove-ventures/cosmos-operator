@@ -21,7 +21,7 @@ func (fn mockDiskUsager) DiskUsage(ctx context.Context, host string) (healthchec
 	return fn(ctx, host)
 }
 
-func TestFindPodsDiskUsage(t *testing.T) {
+func TestCollectPodDiskUsage(t *testing.T) {
 	t.Parallel()
 
 	type mockLister = mockClient[*corev1.Pod]
@@ -58,7 +58,7 @@ func TestFindPodsDiskUsage(t *testing.T) {
 		crd.Name = "cosmoshub"
 		crd.Namespace = "default"
 
-		got, err := FindPodsDiskUsage(ctx, &crd, &lister, diskClient)
+		got, err := CollectPodDiskUsage(ctx, &crd, &lister, diskClient)
 
 		require.NoError(t, err)
 		require.Len(t, got, 3)
@@ -96,7 +96,7 @@ func TestFindPodsDiskUsage(t *testing.T) {
 		})
 
 		var crd cosmosv1.CosmosFullNode
-		_, err := FindPodsDiskUsage(ctx, &crd, &lister, diskClient)
+		_, err := CollectPodDiskUsage(ctx, &crd, &lister, diskClient)
 
 		require.Error(t, err)
 		require.EqualError(t, err, "no pods found")
@@ -113,7 +113,7 @@ func TestFindPodsDiskUsage(t *testing.T) {
 		})
 
 		var crd cosmosv1.CosmosFullNode
-		_, err := FindPodsDiskUsage(ctx, &crd, &lister, diskClient)
+		_, err := CollectPodDiskUsage(ctx, &crd, &lister, diskClient)
 
 		require.Error(t, err)
 		require.EqualError(t, err, "list pods: boom")
@@ -138,7 +138,7 @@ func TestFindPodsDiskUsage(t *testing.T) {
 
 		var crd cosmosv1.CosmosFullNode
 
-		got, err := FindPodsDiskUsage(ctx, &crd, &lister, diskClient)
+		got, err := CollectPodDiskUsage(ctx, &crd, &lister, diskClient)
 
 		require.NoError(t, err)
 		require.Len(t, got, 1)
@@ -159,7 +159,7 @@ func TestFindPodsDiskUsage(t *testing.T) {
 
 		var crd cosmosv1.CosmosFullNode
 
-		_, err := FindPodsDiskUsage(ctx, &crd, &lister, diskClient)
+		_, err := CollectPodDiskUsage(ctx, &crd, &lister, diskClient)
 
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "pod 1: boom")

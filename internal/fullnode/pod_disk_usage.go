@@ -26,11 +26,11 @@ type PodDiskUsage struct {
 	PercentUsed int
 }
 
-// FindPodsDiskUsage retrieves the disk usage information for all Pods belonging to the specified CosmosFullNode.
+// CollectPodDiskUsage retrieves the disk usage information for all Pods belonging to the specified CosmosFullNode.
 //
 // It returns a slice of PodDiskUsage objects representing the disk usage information for each Pod or an error
 // if fetching disk usage from all pods was unsuccessful.
-func FindPodsDiskUsage(ctx context.Context, crd *cosmosv1.CosmosFullNode, lister Lister, diskClient DiskUsager) ([]PodDiskUsage, error) {
+func CollectPodDiskUsage(ctx context.Context, crd *cosmosv1.CosmosFullNode, lister Lister, diskClient DiskUsager) ([]PodDiskUsage, error) {
 	var pods corev1.PodList
 	if err := lister.List(ctx, &pods,
 		client.InNamespace(crd.Namespace),
