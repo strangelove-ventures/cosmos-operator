@@ -49,7 +49,7 @@ func TestCollectPodDiskUsage(t *testing.T) {
 				panic(fmt.Errorf("unkonwn host: %s", host))
 			}
 			return healthcheck.DiskUsageResponse{
-				AllBytes:  100,
+				AllBytes:  101, // Odd number tests truncating
 				FreeBytes: free,
 			}, nil
 		})
