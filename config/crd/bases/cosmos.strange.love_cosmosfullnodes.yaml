@@ -1493,7 +1493,7 @@ spec:
                         - type: string
                         description: A resource storage quantity (e.g. 2000Gi). When
                           increasing PVC capacity reaches >= MaxSize, autoscaling
-                          ceases. Safeguards against storage quotas.
+                          ceases. Safeguards against storage quotas and costs.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                       usedSpacePercentage:
@@ -1764,6 +1764,23 @@ spec:
                   created the status.
                 type: object
                 x-kubernetes-map-type: granular
+              selfHealing:
+                description: Status set by the SelfHealing controller.
+                properties:
+                  pvcAutoScaling:
+                    description: Status resulting from the PVC auto-scaling.
+                    properties:
+                      requestedSize:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: The PVC size requested by the SelfHealing controller.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                    required:
+                    - requestedSize
+                    type: object
+                type: object
               status:
                 description: A generic message for the user. May contain errors.
                 type: string

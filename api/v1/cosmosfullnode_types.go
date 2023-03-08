@@ -123,6 +123,10 @@ type FullNodeStatus struct {
 	// +optional
 	// +mapType:=granular
 	ScheduledSnapshotStatus map[string]FullNodeSnapshotStatus `json:"scheduledSnapshotStatus"`
+
+	// Status set by the SelfHealing controller.
+	// +optional
+	SelfHealing SelfHealingStatus `json:"selfHealing"`
 }
 
 type FullNodeSnapshotStatus struct {

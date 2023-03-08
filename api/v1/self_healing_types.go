@@ -1,6 +1,9 @@
 package v1
 
-import "k8s.io/apimachinery/pkg/api/resource"
+import (
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
 
 // SelfHealingSpec is part of a CosmosFullNode but is managed by a separate controller, SelfHealingReconciler.
 // This is an effort to reduce complexity in the CosmosFullNodeReconciler.
@@ -35,7 +38,20 @@ type PVCAutoScalingSpec struct {
 
 	// A resource storage quantity (e.g. 2000Gi).
 	// When increasing PVC capacity reaches >= MaxSize, autoscaling ceases.
-	// Safeguards against storage quotas.
+	// Safeguards against storage quotas and costs.
 	// +optional
 	MaxSize resource.Quantity `json:"maxSize"`
+}
+
+type SelfHealingStatus struct {
+	// Status resulting from the PVC auto-scaling.
+	// +optional
+	PVCAutoScaling *PVCAutoScalingStatus `json:"pvcAutoScaling"`
+}
+
+type PVCAutoScalingStatus struct {
+	// The PVC size requested by the SelfHealing controller.
+	RequestedSize resource.Quantity `json:"requestedSize"`
+	// The timestamp the SelfHealing controller requested a PVC increase.
+	RequestedAt metav1.Time `json:"requestedAt"`
 }
