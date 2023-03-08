@@ -21,6 +21,8 @@ import (
 	"time"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	"github.com/strangelove-ventures/cosmos-operator/internal/fullnode"
+	"github.com/strangelove-ventures/cosmos-operator/internal/healthcheck"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -30,13 +32,15 @@ import (
 // SelfHealingReconciler reconciles the self healing portion of a CosmosFullNode object
 type SelfHealingReconciler struct {
 	client.Client
-	recorder record.EventRecorder
+	recorder   record.EventRecorder
+	diskClient *healthcheck.Client
 }
 
 func NewSelfHealing(client client.Client, recorder record.EventRecorder) *SelfHealingReconciler {
 	return &SelfHealingReconciler{
-		Client:   client,
-		recorder: recorder,
+		Client:     client,
+		recorder:   recorder,
+		diskClient: healthcheck.NewClient(sharedHTTPClient),
 	}
 }
 
@@ -64,9 +68,17 @@ func (r *SelfHealingReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 }
 
 func (r *SelfHealingReconciler) pvcAutoScale(ctx context.Context, crd *cosmosv1.CosmosFullNode) {
+	logger := log.FromContext(ctx)
 	if crd.Spec.SelfHealing.PVCAutoScaling == nil {
 		return
 	}
+	// TODO: temporary to prove incremental phases of pvc auto scaling
+	results, err := fullnode.CollectPodDiskUsage(ctx, crd, r, r.diskClient)
+	if err != nil {
+		logger.Error(err, "Failed to collect pod disk usage")
+		return
+	}
+	logger.Info("Found pod disk usage", "results", results)
 }
 
 // SetupWithManager sets up the controller with the Manager.
