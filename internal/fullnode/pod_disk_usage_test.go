@@ -21,7 +21,7 @@ func (fn mockDiskUsager) DiskUsage(ctx context.Context, host string) (healthchec
 	return fn(ctx, host)
 }
 
-func TestCollectPodDiskUsage(t *testing.T) {
+func TestCollectDiskUsage(t *testing.T) {
 	t.Parallel()
 
 	type mockLister = mockClient[*corev1.Pod]
@@ -40,16 +40,16 @@ func TestCollectPodDiskUsage(t *testing.T) {
 			var free uint64
 			switch host {
 			case "http://10.0.0.1":
-				free = 90
+				free = 900
 			case "http://10.0.0.2":
-				free = 50
+				free = 500
 			case "http://10.0.0.3":
-				free = 10
+				free = 15 // Tests rounding up
 			default:
 				panic(fmt.Errorf("unkonwn host: %s", host))
 			}
 			return healthcheck.DiskUsageResponse{
-				AllBytes:  101, // Odd number tests truncating
+				AllBytes:  1000,
 				FreeBytes: free,
 			}, nil
 		})
@@ -58,7 +58,7 @@ func TestCollectPodDiskUsage(t *testing.T) {
 		crd.Name = "cosmoshub"
 		crd.Namespace = "default"
 
-		got, err := CollectPodDiskUsage(ctx, &crd, &lister, diskClient)
+		got, err := CollectDiskUsage(ctx, &crd, &lister, diskClient)
 
 		require.NoError(t, err)
 		require.Len(t, got, 3)
@@ -86,7 +86,7 @@ func TestCollectPodDiskUsage(t *testing.T) {
 
 		result = got[2]
 		require.Equal(t, "pod-3", result.Name)
-		require.Equal(t, 90, result.PercentUsed)
+		require.Equal(t, 99, result.PercentUsed) // Tests rounding to be close to output of `df`
 	})
 
 	t.Run("no pods found", func(t *testing.T) {
@@ -96,7 +96,7 @@ func TestCollectPodDiskUsage(t *testing.T) {
 		})
 
 		var crd cosmosv1.CosmosFullNode
-		_, err := CollectPodDiskUsage(ctx, &crd, &lister, diskClient)
+		_, err := CollectDiskUsage(ctx, &crd, &lister, diskClient)
 
 		require.Error(t, err)
 		require.EqualError(t, err, "no pods found")
@@ -113,7 +113,7 @@ func TestCollectPodDiskUsage(t *testing.T) {
 		})
 
 		var crd cosmosv1.CosmosFullNode
-		_, err := CollectPodDiskUsage(ctx, &crd, &lister, diskClient)
+		_, err := CollectDiskUsage(ctx, &crd, &lister, diskClient)
 
 		require.Error(t, err)
 		require.EqualError(t, err, "list pods: boom")
@@ -138,7 +138,7 @@ func TestCollectPodDiskUsage(t *testing.T) {
 
 		var crd cosmosv1.CosmosFullNode
 
-		got, err := CollectPodDiskUsage(ctx, &crd, &lister, diskClient)
+		got, err := CollectDiskUsage(ctx, &crd, &lister, diskClient)
 
 		require.NoError(t, err)
 		require.Len(t, got, 1)
@@ -159,7 +159,7 @@ func TestCollectPodDiskUsage(t *testing.T) {
 
 		var crd cosmosv1.CosmosFullNode
 
-		_, err := CollectPodDiskUsage(ctx, &crd, &lister, diskClient)
+		_, err := CollectDiskUsage(ctx, &crd, &lister, diskClient)
 
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "pod 1: boom")

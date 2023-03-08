@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/samber/lo"
@@ -21,16 +22,16 @@ type DiskUsager interface {
 	DiskUsage(ctx context.Context, host string) (healthcheck.DiskUsageResponse, error)
 }
 
-type PodDiskUsage struct {
+type PVCDiskUsage struct {
 	Name        string // pod name
 	PercentUsed int
 }
 
-// CollectPodDiskUsage retrieves the disk usage information for all Pods belonging to the specified CosmosFullNode.
+// CollectDiskUsage retrieves the disk usage information for all Pods belonging to the specified CosmosFullNode.
 //
-// It returns a slice of PodDiskUsage objects representing the disk usage information for each Pod or an error
+// It returns a slice of PVCDiskUsage objects representing the disk usage information for each Pod or an error
 // if fetching disk usage from all pods was unsuccessful.
-func CollectPodDiskUsage(ctx context.Context, crd *cosmosv1.CosmosFullNode, lister Lister, diskClient DiskUsager) ([]PodDiskUsage, error) {
+func CollectDiskUsage(ctx context.Context, crd *cosmosv1.CosmosFullNode, lister Lister, diskClient DiskUsager) ([]PVCDiskUsage, error) {
 	var pods corev1.PodList
 	if err := lister.List(ctx, &pods,
 		client.InNamespace(crd.Namespace),
@@ -44,7 +45,7 @@ func CollectPodDiskUsage(ctx context.Context, crd *cosmosv1.CosmosFullNode, list
 	}
 
 	var (
-		found = make([]PodDiskUsage, len(pods.Items))
+		found = make([]PVCDiskUsage, len(pods.Items))
 		errs  = make([]error, len(pods.Items))
 		eg    errgroup.Group
 	)
@@ -61,7 +62,9 @@ func CollectPodDiskUsage(ctx context.Context, crd *cosmosv1.CosmosFullNode, list
 				return nil
 			}
 			found[i].Name = pod.Name
-			found[i].PercentUsed = int((float64(resp.AllBytes-resp.FreeBytes) / float64(resp.AllBytes)) * 100)
+			n := (float64(resp.AllBytes-resp.FreeBytes) / float64(resp.AllBytes)) * 100
+			n = math.Round(n)
+			found[i].PercentUsed = int(n)
 			return nil
 		})
 	}

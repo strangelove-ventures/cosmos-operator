@@ -75,7 +75,7 @@ func (r *SelfHealingReconciler) pvcAutoScale(ctx context.Context, logger logr.Lo
 		return
 	}
 	// TODO: temporary to prove incremental phases of pvc auto scaling
-	results, err := fullnode.CollectPodDiskUsage(ctx, crd, r, r.diskClient)
+	results, err := fullnode.CollectDiskUsage(ctx, crd, r, r.diskClient)
 	if err != nil {
 		logger.Error(err, "Failed to collect pod disk usage")
 		return
