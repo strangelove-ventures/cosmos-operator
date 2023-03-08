@@ -98,7 +98,7 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 		Name: "healthcheck",
 		// Available images: https://github.com/orgs/strangelove-ventures/packages?repo_name=cosmos-operator
 		// IMPORTANT: Must use v0.6.2 or later.
-		Image:   "ghcr.io/strangelove-ventures/cosmos-operator:v0.7.0",
+		Image:   "ghcr.io/strangelove-ventures/cosmos-operator:v0.9.2",
 		Command: []string{"/manager", "healthcheck"},
 		Ports:   []corev1.ContainerPort{{ContainerPort: healthCheckPort, Protocol: corev1.ProtocolTCP}},
 		Resources: corev1.ResourceRequirements{
