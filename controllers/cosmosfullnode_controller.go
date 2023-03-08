@@ -53,7 +53,7 @@ type CosmosFullNodeReconciler struct {
 // NewFullNode returns a valid CosmosFullNode controller.
 func NewFullNode(client client.Client, recorder record.EventRecorder) *CosmosFullNodeReconciler {
 	var (
-		podFilter = cosmos.NewPodFilter(cosmos.NewTendermintClient(tendermintHTTP))
+		podFilter = cosmos.NewPodFilter(cosmos.NewTendermintClient(sharedHTTPClient))
 	)
 	return &CosmosFullNodeReconciler{
 		Client:           client,
