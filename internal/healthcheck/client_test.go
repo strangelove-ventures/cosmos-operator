@@ -93,4 +93,19 @@ func TestClient_DiskUsage(t *testing.T) {
 		require.Error(t, err)
 		require.EqualError(t, err, "malformed json: unexpected EOF")
 	})
+
+	t.Run("zero values", func(t *testing.T) {
+		client := NewClient(httpClient)
+
+		client.httpDo = func(req *http.Request) (*http.Response, error) {
+			return &http.Response{
+				Body: io.NopCloser(strings.NewReader(`{}`)),
+			}, nil
+		}
+
+		_, err := client.DiskUsage(ctx, host)
+
+		require.Error(t, err)
+		require.EqualError(t, err, "invalid response: 0 free bytes")
+	})
 }

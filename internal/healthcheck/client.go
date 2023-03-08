@@ -48,5 +48,8 @@ func (c Client) DiskUsage(ctx context.Context, host string) (DiskUsageResponse, 
 	if diskResp.Error != "" {
 		return diskResp, errors.New(diskResp.Error)
 	}
+	if diskResp.AllBytes == 0 {
+		return diskResp, errors.New("invalid response: 0 free bytes")
+	}
 	return diskResp, nil
 }
