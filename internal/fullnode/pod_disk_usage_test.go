@@ -46,7 +46,7 @@ func TestCollectDiskUsage(t *testing.T) {
 			case "http://10.0.0.3":
 				free = 15 // Tests rounding up
 			default:
-				panic(fmt.Errorf("unkonwn host: %s", host))
+				panic(fmt.Errorf("unkown host: %s", host))
 			}
 			return healthcheck.DiskUsageResponse{
 				AllBytes:  1000,
