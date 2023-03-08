@@ -1488,10 +1488,14 @@ spec:
                           (e.g. 100Gi), increases by that amount."
                         type: string
                       maxSize:
+                        anyOf:
+                        - type: integer
+                        - type: string
                         description: A resource storage quantity (e.g. 2000Gi). When
                           increasing PVC capacity reaches >= MaxSize, autoscaling
                           ceases. Safeguards against storage quotas.
-                        type: string
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
                       usedSpacePercentage:
                         description: The percentage of used disk space required to
                           trigger scaling. Example, if set to 80, autoscaling will
