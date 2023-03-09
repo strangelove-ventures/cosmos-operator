@@ -33,15 +33,15 @@ import (
 // SelfHealingReconciler reconciles the self healing portion of a CosmosFullNode object
 type SelfHealingReconciler struct {
 	client.Client
-	recorder   record.EventRecorder
-	diskClient *healthcheck.Client
+	recorder           record.EventRecorder
+	diskUsageCollector *fullnode.DiskUsageCollector
 }
 
 func NewSelfHealing(client client.Client, recorder record.EventRecorder) *SelfHealingReconciler {
 	return &SelfHealingReconciler{
-		Client:     client,
-		recorder:   recorder,
-		diskClient: healthcheck.NewClient(sharedHTTPClient),
+		Client:             client,
+		recorder:           recorder,
+		diskUsageCollector: fullnode.NewDiskUsageCollector(healthcheck.NewClient(sharedHTTPClient), client),
 	}
 }
 
@@ -75,7 +75,7 @@ func (r *SelfHealingReconciler) pvcAutoScale(ctx context.Context, logger logr.Lo
 		return
 	}
 	// TODO: temporary to prove incremental phases of pvc auto scaling
-	results, err := fullnode.CollectDiskUsage(ctx, crd, r, r.diskClient)
+	results, err := r.diskUsageCollector.CollectDiskUsage(ctx, crd)
 	if err != nil {
 		logger.Error(err, "Failed to collect pod disk usage")
 		return
