@@ -17,10 +17,10 @@ type SelfHealingSpec struct {
 	// If you cluster does not support ExpandInUsePersistentVolumes, you will need to manually restart pods after
 	// resizing is complete.
 	// +optional
-	PVCAutoScaling *PVCAutoScalingSpec `json:"pvcAutoScaling"`
+	PVCAutoScale *PVCAutoScaleSpec `json:"pvcAutoScale"`
 }
 
-type PVCAutoScalingSpec struct {
+type PVCAutoScaleSpec struct {
 	// The percentage of used disk space required to trigger scaling.
 	// Example, if set to 80, autoscaling will not trigger until used space reaches >=80% of capacity.
 	// +kubebuilder:validation:Minimum=1
@@ -46,10 +46,10 @@ type PVCAutoScalingSpec struct {
 type SelfHealingStatus struct {
 	// Status resulting from the PVC auto-scaling.
 	// +optional
-	PVCAutoScaling *PVCAutoScalingStatus `json:"pvcAutoScaling"`
+	PVCAutoScale *PVCAutoScaleStatus `json:"pvcAutoScale"`
 }
 
-type PVCAutoScalingStatus struct {
+type PVCAutoScaleStatus struct {
 	// The PVC size requested by the SelfHealing controller.
 	RequestedSize resource.Quantity `json:"requestedSize"`
 	// The timestamp the SelfHealing controller requested a PVC increase.

@@ -1471,7 +1471,7 @@ spec:
                   SelfHealing is managed by a separate controller, SelfHealingController,
                   in an effort to reduce complexity of the CosmosFullNodeController.
                 properties:
-                  pvcAutoScaling:
+                  pvcAutoScale:
                     description: "Automatically increases PVC storage as they approach
                       capacity. \n Your cluster must support and use the ExpandInUsePersistentVolumes
                       feature gate. This allows volumes to expand while a pod is attached
@@ -1767,7 +1767,7 @@ spec:
               selfHealing:
                 description: Status set by the SelfHealing controller.
                 properties:
-                  pvcAutoScaling:
+                  pvcAutoScale:
                     description: Status resulting from the PVC auto-scaling.
                     properties:
                       requestedAt:
