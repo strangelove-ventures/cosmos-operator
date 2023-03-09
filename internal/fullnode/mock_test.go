@@ -45,6 +45,8 @@ func (m *mockClient[T]) Get(ctx context.Context, key client.ObjectKey, obj clien
 	switch ref := obj.(type) {
 	case *corev1.ConfigMap:
 		*ref = m.Object.(corev1.ConfigMap)
+	case *corev1.PersistentVolumeClaim:
+		*ref = m.Object.(corev1.PersistentVolumeClaim)
 	default:
 		panic(fmt.Errorf("unknown Object type: %T", m.ObjectList))
 	}

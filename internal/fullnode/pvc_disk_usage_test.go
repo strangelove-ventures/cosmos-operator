@@ -12,6 +12,7 @@ import (
 	"github.com/strangelove-ventures/cosmos-operator/internal/healthcheck"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -25,13 +26,15 @@ func (fn mockDiskUsager) DiskUsage(ctx context.Context, host string) (healthchec
 func TestCollectDiskUsage(t *testing.T) {
 	t.Parallel()
 
-	type mockLister = mockClient[*corev1.Pod]
+	type mockReader = mockClient[*corev1.Pod]
 
 	ctx := context.Background()
 
+	const namespace = "default"
+
 	var crd cosmosv1.CosmosFullNode
 	crd.Name = "cosmoshub"
-	crd.Namespace = "default"
+	crd.Namespace = namespace
 
 	builder := NewPodBuilder(&crd)
 	validPods := lo.Map(lo.Range(3), func(_ int, index int) corev1.Pod {
@@ -41,9 +44,13 @@ func TestCollectDiskUsage(t *testing.T) {
 	})
 
 	t.Run("happy path", func(t *testing.T) {
-
-		var lister mockLister
-		lister.ObjectList = corev1.PodList{Items: validPods}
+		var reader mockReader
+		reader.ObjectList = corev1.PodList{Items: validPods}
+		reader.Object = corev1.PersistentVolumeClaim{
+			Status: corev1.PersistentVolumeClaimStatus{
+				Capacity: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("500Gi")},
+			},
+		}
 
 		diskClient := mockDiskUsager(func(ctx context.Context, host string) (healthcheck.DiskUsageResponse, error) {
 			var free uint64
@@ -63,20 +70,23 @@ func TestCollectDiskUsage(t *testing.T) {
 			}, nil
 		})
 
-		coll := NewDiskUsageCollector(diskClient, &lister)
+		coll := NewDiskUsageCollector(diskClient, &reader)
 		got, err := coll.CollectDiskUsage(ctx, &crd)
 
 		require.NoError(t, err)
 		require.Len(t, got, 3)
 
-		require.Len(t, lister.GotListOpts, 2)
+		require.Len(t, reader.GotListOpts, 2)
 		var listOpt client.ListOptions
-		for _, opt := range lister.GotListOpts {
+		for _, opt := range reader.GotListOpts {
 			opt.ApplyToList(&listOpt)
 		}
 		require.Equal(t, "default", listOpt.Namespace)
 		require.Zero(t, listOpt.Limit)
 		require.Equal(t, ".metadata.controller=cosmoshub", listOpt.FieldSelector.String())
+
+		require.Equal(t, namespace, reader.GetObjectKey.Namespace)
+		require.Contains(t, []string{"pvc-cosmoshub-0", "pvc-cosmoshub-1", "pvc-cosmoshub-2"}, reader.GetObjectKey.Name)
 
 		sort.Slice(got, func(i, j int) bool {
 			return got[i].Name < got[j].Name
@@ -85,23 +95,26 @@ func TestCollectDiskUsage(t *testing.T) {
 		result := got[0]
 		require.Equal(t, "pvc-cosmoshub-0", result.Name)
 		require.Equal(t, 10, result.PercentUsed)
+		require.Equal(t, resource.MustParse("500Gi"), result.Capacity)
 
 		result = got[1]
 		require.Equal(t, "pvc-cosmoshub-1", result.Name)
 		require.Equal(t, 50, result.PercentUsed)
+		require.Equal(t, resource.MustParse("500Gi"), result.Capacity)
 
 		result = got[2]
 		require.Equal(t, "pvc-cosmoshub-2", result.Name)
 		require.Equal(t, 99, result.PercentUsed) // Tests rounding to be close to output of `df`
+		require.Equal(t, resource.MustParse("500Gi"), result.Capacity)
 	})
 
 	t.Run("no pods found", func(t *testing.T) {
-		var lister mockLister
+		var reader mockReader
 		diskClient := mockDiskUsager(func(ctx context.Context, host string) (healthcheck.DiskUsageResponse, error) {
 			panic("should not be called")
 		})
 
-		coll := NewDiskUsageCollector(diskClient, &lister)
+		coll := NewDiskUsageCollector(diskClient, &reader)
 		_, err := coll.CollectDiskUsage(ctx, &crd)
 
 		require.Error(t, err)
@@ -109,16 +122,16 @@ func TestCollectDiskUsage(t *testing.T) {
 	})
 
 	t.Run("list error", func(t *testing.T) {
-		var lister mockLister
-		lister.ObjectList = corev1.PodList{Items: []corev1.Pod{
+		var reader mockReader
+		reader.ObjectList = corev1.PodList{Items: []corev1.Pod{
 			{ObjectMeta: metav1.ObjectMeta{Name: "pod-1"}, Status: corev1.PodStatus{PodIP: "10.0.0.1"}},
 		}}
-		lister.ListErr = errors.New("boom")
+		reader.ListErr = errors.New("boom")
 		diskClient := mockDiskUsager(func(ctx context.Context, host string) (healthcheck.DiskUsageResponse, error) {
 			panic("should not be called")
 		})
 
-		coll := NewDiskUsageCollector(diskClient, &lister)
+		coll := NewDiskUsageCollector(diskClient, &reader)
 		_, err := coll.CollectDiskUsage(ctx, &crd)
 
 		require.Error(t, err)
@@ -126,8 +139,8 @@ func TestCollectDiskUsage(t *testing.T) {
 	})
 
 	t.Run("partial disk client errors", func(t *testing.T) {
-		var lister mockLister
-		lister.ObjectList = corev1.PodList{Items: validPods}
+		var reader mockReader
+		reader.ObjectList = corev1.PodList{Items: validPods}
 
 		diskClient := mockDiskUsager(func(ctx context.Context, host string) (healthcheck.DiskUsageResponse, error) {
 			if host == "http://10.0.0.1" {
@@ -139,7 +152,7 @@ func TestCollectDiskUsage(t *testing.T) {
 			}, nil
 		})
 
-		coll := NewDiskUsageCollector(diskClient, &lister)
+		coll := NewDiskUsageCollector(diskClient, &reader)
 		got, err := coll.CollectDiskUsage(ctx, &crd)
 
 		require.NoError(t, err)
@@ -152,8 +165,8 @@ func TestCollectDiskUsage(t *testing.T) {
 	})
 
 	t.Run("disk client error", func(t *testing.T) {
-		var lister mockLister
-		lister.ObjectList = corev1.PodList{Items: []corev1.Pod{
+		var reader mockReader
+		reader.ObjectList = corev1.PodList{Items: []corev1.Pod{
 			{ObjectMeta: metav1.ObjectMeta{Name: "1"}, Status: corev1.PodStatus{PodIP: "10.0.0.1"}},
 			{ObjectMeta: metav1.ObjectMeta{Name: "2"}, Status: corev1.PodStatus{PodIP: "10.0.0.2"}},
 		}}
@@ -164,7 +177,7 @@ func TestCollectDiskUsage(t *testing.T) {
 
 		var crd cosmosv1.CosmosFullNode
 
-		coll := NewDiskUsageCollector(diskClient, &lister)
+		coll := NewDiskUsageCollector(diskClient, &reader)
 		_, err := coll.CollectDiskUsage(ctx, &crd)
 
 		require.Error(t, err)
