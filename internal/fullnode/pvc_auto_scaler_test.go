@@ -64,7 +64,7 @@ func TestPVCAutoScaler_SignalPVCResize(t *testing.T) {
 			crd.APIVersion = "v1"
 			crd.Name = name
 			crd.Namespace = namespace
-			crd.Spec.SelfHealing = &cosmosv1.SelfHealingSpec{
+			crd.Spec.SelfHeal = &cosmosv1.SelfHealSpec{
 				PVCAutoScale: &cosmosv1.PVCAutoScaleSpec{
 					UsedSpacePercentage: usedSpacePercentage,
 					IncreaseQuantity:    tt.Increase,
@@ -120,7 +120,7 @@ func TestPVCAutoScaler_SignalPVCResize(t *testing.T) {
 		const usedSpacePercentage = 80
 
 		var crd cosmosv1.CosmosFullNode
-		crd.Spec.SelfHealing = &cosmosv1.SelfHealingSpec{
+		crd.Spec.SelfHeal = &cosmosv1.SelfHealSpec{
 			PVCAutoScale: &cosmosv1.PVCAutoScaleSpec{
 				UsedSpacePercentage: usedSpacePercentage,
 				IncreaseQuantity:    "300%",
@@ -157,7 +157,7 @@ func TestPVCAutoScaler_SignalPVCResize(t *testing.T) {
 		const usedSpacePercentage = 80
 
 		var crd cosmosv1.CosmosFullNode
-		crd.Spec.SelfHealing = &cosmosv1.SelfHealingSpec{
+		crd.Spec.SelfHeal = &cosmosv1.SelfHealSpec{
 			PVCAutoScale: &cosmosv1.PVCAutoScaleSpec{
 				UsedSpacePercentage: usedSpacePercentage,
 				IncreaseQuantity:    "10Gi",
@@ -187,7 +187,7 @@ func TestPVCAutoScaler_SignalPVCResize(t *testing.T) {
 			}},
 		} {
 			var crd cosmosv1.CosmosFullNode
-			crd.Spec.SelfHealing = &cosmosv1.SelfHealingSpec{
+			crd.Spec.SelfHeal = &cosmosv1.SelfHealSpec{
 				PVCAutoScale: &cosmosv1.PVCAutoScaleSpec{
 					UsedSpacePercentage: 80,
 					IncreaseQuantity:    "10Gi",
@@ -212,7 +212,7 @@ func TestPVCAutoScaler_SignalPVCResize(t *testing.T) {
 			{"wut"},
 		} {
 			var crd cosmosv1.CosmosFullNode
-			crd.Spec.SelfHealing = &cosmosv1.SelfHealingSpec{
+			crd.Spec.SelfHeal = &cosmosv1.SelfHealSpec{
 				PVCAutoScale: &cosmosv1.PVCAutoScaleSpec{
 					UsedSpacePercentage: usedSpacePercentage,
 					IncreaseQuantity:    tt.Increase,
@@ -234,7 +234,7 @@ func TestPVCAutoScaler_SignalPVCResize(t *testing.T) {
 		const usedSpacePercentage = 50
 
 		var crd cosmosv1.CosmosFullNode
-		crd.Spec.SelfHealing = &cosmosv1.SelfHealingSpec{
+		crd.Spec.SelfHeal = &cosmosv1.SelfHealSpec{
 			PVCAutoScale: &cosmosv1.PVCAutoScaleSpec{
 				UsedSpacePercentage: usedSpacePercentage,
 				IncreaseQuantity:    "10%",

@@ -41,7 +41,7 @@ func NewPVCAutoScaler(patcher StatusPatcher) *PVCAutoScaler {
 // Returns an error if patching unsuccessful.
 func (scaler PVCAutoScaler) SignalPVCResize(ctx context.Context, crd *cosmosv1.CosmosFullNode, results []PVCDiskUsage) (bool, error) {
 	var (
-		spec         = crd.Spec.SelfHealing.PVCAutoScale
+		spec         = crd.Spec.SelfHeal.PVCAutoScale
 		trigger      = int(spec.UsedSpacePercentage)
 		pvcCandidate = lo.MaxBy(results, func(a PVCDiskUsage, b PVCDiskUsage) bool { return a.PercentUsed > b.PercentUsed })
 	)

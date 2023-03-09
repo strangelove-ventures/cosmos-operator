@@ -63,7 +63,7 @@ func (r *SelfHealingReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return finishResult, client.IgnoreNotFound(err)
 	}
 
-	if crd.Spec.SelfHealing == nil {
+	if crd.Spec.SelfHeal == nil {
 		return finishResult, nil
 	}
 
@@ -75,7 +75,7 @@ func (r *SelfHealingReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 }
 
 func (r *SelfHealingReconciler) pvcAutoScale(ctx context.Context, reporter kube.Reporter, crd *cosmosv1.CosmosFullNode) {
-	if crd.Spec.SelfHealing.PVCAutoScale == nil {
+	if crd.Spec.SelfHeal.PVCAutoScale == nil {
 		return
 	}
 	usage, err := r.diskClient.CollectDiskUsage(ctx, crd)

@@ -5,11 +5,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// SelfHealingSpec is part of a CosmosFullNode but is managed by a separate controller, SelfHealingReconciler.
+// SelfHealSpec is part of a CosmosFullNode but is managed by a separate controller, SelfHealingReconciler.
 // This is an effort to reduce complexity in the CosmosFullNodeReconciler.
 // The controller only modifies the CosmosFullNode's status subresource relying on the CosmosFullNodeReconciler
 // to reconcile appropriately.
-type SelfHealingSpec struct {
+type SelfHealSpec struct {
 	// Automatically increases PVC storage as they approach capacity.
 	//
 	// Your cluster must support and use the ExpandInUsePersistentVolumes feature gate. This allows volumes to
