@@ -19,6 +19,8 @@ func TestClient_DiskUsage(t *testing.T) {
 		httpClient = &http.Client{}
 	)
 
+	const host = "http://10.1.1.1"
+
 	t.Run("happy path", func(t *testing.T) {
 		client := NewClient(httpClient)
 		require.NotNil(t, client.httpDo)
@@ -30,7 +32,7 @@ func TestClient_DiskUsage(t *testing.T) {
 		}
 
 		client.httpDo = func(req *http.Request) (*http.Response, error) {
-			require.Equal(t, "http://localhost:1251/disk", req.URL.String())
+			require.Equal(t, "http://10.1.1.1:1251/disk", req.URL.String())
 			require.Equal(t, "GET", req.Method)
 
 			b, err := json.Marshal(want)
@@ -40,7 +42,7 @@ func TestClient_DiskUsage(t *testing.T) {
 			return &http.Response{Body: io.NopCloser(bytes.NewReader(b))}, nil
 		}
 
-		got, err := client.DiskUsage(ctx)
+		got, err := client.DiskUsage(ctx, host)
 
 		require.NoError(t, err)
 		require.Equal(t, want, got)
@@ -51,7 +53,7 @@ func TestClient_DiskUsage(t *testing.T) {
 		client.httpDo = func(req *http.Request) (*http.Response, error) {
 			return nil, errors.New("boom")
 		}
-		_, err := client.DiskUsage(ctx)
+		_, err := client.DiskUsage(ctx, host)
 
 		require.Error(t, err)
 		require.EqualError(t, err, "http do: boom")
@@ -71,7 +73,7 @@ func TestClient_DiskUsage(t *testing.T) {
 			}, nil
 		}
 
-		_, err := client.DiskUsage(ctx)
+		_, err := client.DiskUsage(ctx, host)
 
 		require.Error(t, err)
 		require.EqualError(t, err, "something bad happened")
@@ -86,9 +88,24 @@ func TestClient_DiskUsage(t *testing.T) {
 			}, nil
 		}
 
-		_, err := client.DiskUsage(ctx)
+		_, err := client.DiskUsage(ctx, host)
 
 		require.Error(t, err)
 		require.EqualError(t, err, "malformed json: unexpected EOF")
+	})
+
+	t.Run("zero values", func(t *testing.T) {
+		client := NewClient(httpClient)
+
+		client.httpDo = func(req *http.Request) (*http.Response, error) {
+			return &http.Response{
+				Body: io.NopCloser(strings.NewReader(`{}`)),
+			}, nil
+		}
+
+		_, err := client.DiskUsage(ctx, host)
+
+		require.Error(t, err)
+		require.EqualError(t, err, "invalid response: 0 free bytes")
 	})
 }

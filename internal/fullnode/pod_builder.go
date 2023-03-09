@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	"github.com/strangelove-ventures/cosmos-operator/internal/healthcheck"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -20,8 +21,7 @@ import (
 
 var bufPool = sync.Pool{New: func() any { return new(bytes.Buffer) }}
 
-// HealthCheckPort is the port for the healtcheck sidecar.
-const HealthCheckPort = 1251
+const healthCheckPort = healthcheck.Port
 
 // PodBuilder builds corev1.Pods
 type PodBuilder struct {
@@ -98,9 +98,9 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 		Name: "healthcheck",
 		// Available images: https://github.com/orgs/strangelove-ventures/packages?repo_name=cosmos-operator
 		// IMPORTANT: Must use v0.6.2 or later.
-		Image:   "ghcr.io/strangelove-ventures/cosmos-operator:v0.7.0",
+		Image:   "ghcr.io/strangelove-ventures/cosmos-operator:v0.9.2",
 		Command: []string{"/manager", "healthcheck"},
-		Ports:   []corev1.ContainerPort{{ContainerPort: HealthCheckPort, Protocol: corev1.ProtocolTCP}},
+		Ports:   []corev1.ContainerPort{{ContainerPort: healthCheckPort, Protocol: corev1.ProtocolTCP}},
 		Resources: corev1.ResourceRequirements{
 			Requests: corev1.ResourceList{
 				corev1.ResourceCPU:    resource.MustParse("5m"),
@@ -144,7 +144,7 @@ func podReadinessProbes(crd *cosmosv1.CosmosFullNode) []*corev1.Probe {
 		ProbeHandler: corev1.ProbeHandler{
 			HTTPGet: &corev1.HTTPGetAction{
 				Path:   "/",
-				Port:   intstr.FromInt(HealthCheckPort),
+				Port:   intstr.FromInt(healthCheckPort),
 				Scheme: corev1.URISchemeHTTP,
 			},
 		},
