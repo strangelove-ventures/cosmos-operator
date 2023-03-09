@@ -2,6 +2,7 @@ package fullnode
 
 import (
 	"context"
+	"errors"
 	"math/rand"
 	"testing"
 	"time"
@@ -56,6 +57,8 @@ func TestPVCAutoScaler_SignalPVCResize(t *testing.T) {
 			{"10%", zeroQuant, resource.MustParse("110Gi")},
 			{"0.5Gi", zeroQuant, resource.MustParse("100.5Gi")},
 			{"200%", zeroQuant, resource.MustParse("300Gi")},
+			// Weird user input cases
+			{"1", zeroQuant, *resource.NewQuantity(capacity.Value()+1, resource.BinarySI)},
 		} {
 			var crd cosmosv1.CosmosFullNode
 			crd.APIVersion = "v1"
@@ -77,14 +80,13 @@ func TestPVCAutoScaler_SignalPVCResize(t *testing.T) {
 				want.TypeMeta = crd.TypeMeta
 
 				got := obj.(*cosmosv1.CosmosFullNode)
-				require.Equal(t, want.ObjectMeta, got.ObjectMeta)
-				require.Equal(t, want.TypeMeta, got.TypeMeta)
-				require.Empty(t, got.Spec) // Asserts we just patch the status
+				require.Equal(t, want.ObjectMeta, got.ObjectMeta, tt)
+				require.Equal(t, want.TypeMeta, got.TypeMeta, tt)
+				require.Empty(t, got.Spec, tt) // Asserts we just patch the status
 
 				gotStatus := got.Status.SelfHealing.PVCAutoScaling
-				require.Equal(t, stubNow, gotStatus.RequestedAt.Time)
-				require.Equal(t, tt.Want.Value(), gotStatus.RequestedSize.Value())
-				require.Equal(t, tt.Want.Format, gotStatus.RequestedSize.Format)
+				require.Equal(t, stubNow, gotStatus.RequestedAt.Time, tt)
+				require.Truef(t, tt.Want.Equal(gotStatus.RequestedSize), "%s:\nwant %+v\ngot  %+v", tt, tt.Want, gotStatus.RequestedSize)
 
 				require.Equal(t, client.Merge, patch)
 
@@ -174,46 +176,80 @@ func TestPVCAutoScaler_SignalPVCResize(t *testing.T) {
 	})
 
 	t.Run("no patch needed", func(t *testing.T) {
-		var crd cosmosv1.CosmosFullNode
-		crd.Spec.SelfHealing = &cosmosv1.SelfHealingSpec{
-			PVCAutoScaling: &cosmosv1.PVCAutoScalingSpec{
-				UsedSpacePercentage: 80,
-				IncreaseQuantity:    "10Gi",
-			},
+		for _, tt := range []struct {
+			DiskUsage []PVCDiskUsage
+		}{
+			{nil}, // tests zero state
+			{[]PVCDiskUsage{
+				{PercentUsed: 79},
+				{PercentUsed: 1},
+				{PercentUsed: 10},
+			}},
+		} {
+			var crd cosmosv1.CosmosFullNode
+			crd.Spec.SelfHealing = &cosmosv1.SelfHealingSpec{
+				PVCAutoScaling: &cosmosv1.PVCAutoScalingSpec{
+					UsedSpacePercentage: 80,
+					IncreaseQuantity:    "10Gi",
+				},
+			}
+
+			scaler := NewPVCAutoScaler(panicPatcher)
+			got, err := scaler.SignalPVCResize(ctx, &crd, lo.Shuffle(tt.DiskUsage))
+
+			require.NoError(t, err)
+			require.False(t, got)
 		}
-
-		scaler := NewPVCAutoScaler(panicPatcher)
-		usage := []PVCDiskUsage{
-			{PercentUsed: 79},
-			{PercentUsed: 1},
-			{PercentUsed: 10},
-		}
-		got, err := scaler.SignalPVCResize(ctx, &crd, lo.Shuffle(usage))
-
-		require.NoError(t, err)
-		require.False(t, got)
-	})
-
-	t.Run("no disk usage results", func(t *testing.T) {
-		var crd cosmosv1.CosmosFullNode
-		crd.Spec.SelfHealing = &cosmosv1.SelfHealingSpec{
-			PVCAutoScaling: &cosmosv1.PVCAutoScalingSpec{
-				UsedSpacePercentage: 80,
-				IncreaseQuantity:    "10Gi",
-			},
-		}
-
-		scaler := NewPVCAutoScaler(panicPatcher)
-		got, err := scaler.SignalPVCResize(ctx, &crd, nil)
-		require.NoError(t, err)
-		require.False(t, got)
 	})
 
 	t.Run("invalid increase quantity", func(t *testing.T) {
+		const usedSpacePercentage = 80
 
+		for _, tt := range []struct {
+			Increase string
+		}{
+			{""}, // CRD validation should prevent this
+			{"wut"},
+		} {
+			var crd cosmosv1.CosmosFullNode
+			crd.Spec.SelfHealing = &cosmosv1.SelfHealingSpec{
+				PVCAutoScaling: &cosmosv1.PVCAutoScalingSpec{
+					UsedSpacePercentage: usedSpacePercentage,
+					IncreaseQuantity:    tt.Increase,
+				},
+			}
+
+			scaler := NewPVCAutoScaler(panicPatcher)
+			usage := []PVCDiskUsage{
+				{PercentUsed: usedSpacePercentage},
+			}
+			_, err := scaler.SignalPVCResize(ctx, &crd, lo.Shuffle(usage))
+
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "increaseQuantity must be a percentage string (e.g. 10%) or a storage quantity (e.g. 100Gi):")
+		}
 	})
 
 	t.Run("patch error", func(t *testing.T) {
+		const usedSpacePercentage = 50
 
+		var crd cosmosv1.CosmosFullNode
+		crd.Spec.SelfHealing = &cosmosv1.SelfHealingSpec{
+			PVCAutoScaling: &cosmosv1.PVCAutoScalingSpec{
+				UsedSpacePercentage: usedSpacePercentage,
+				IncreaseQuantity:    "10%",
+			},
+		}
+
+		scaler := NewPVCAutoScaler(mockPatcher(func(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+			return errors.New("boom")
+		}))
+		usage := []PVCDiskUsage{
+			{PercentUsed: usedSpacePercentage},
+		}
+		_, err := scaler.SignalPVCResize(ctx, &crd, lo.Shuffle(usage))
+
+		require.Error(t, err)
+		require.EqualError(t, err, "boom")
 	})
 }

@@ -49,24 +49,26 @@ func (scaler PVCAutoScaler) SignalPVCResize(ctx context.Context, crd *cosmosv1.C
 	// Calc new size first to catch errors with the increase quantity
 	newSize, err := scaler.calcNextCapacity(pvcCandidate.Capacity, spec.IncreaseQuantity)
 	if err != nil {
-		return false, fmt.Errorf("calc next capacity: %w", err)
+		return false, fmt.Errorf("increaseQuantity must be a percentage string (e.g. 10%%) or a storage quantity (e.g. 100Gi): %w", err)
 	}
 
 	if pvcCandidate.PercentUsed < trigger {
 		return false, nil
 	}
 
+	// Handle max size
 	if max := spec.MaxSize; !max.IsZero() {
-		// If already reached max, don't patch
+		// If already reached max size, don't patch
 		if pvcCandidate.Capacity.Cmp(max) >= 0 {
 			return false, nil
 		}
-		// Cap new size to the maximum
+		// Cap new size to the max size
 		if newSize.Cmp(max) >= 0 {
 			newSize = max
 		}
 	}
 
+	// Patch object status which will signal the CosmosFullNode controller to increase PVC size.
 	var patch cosmosv1.CosmosFullNode
 	patch.TypeMeta = crd.TypeMeta
 	patch.Namespace = crd.Namespace
@@ -78,19 +80,18 @@ func (scaler PVCAutoScaler) SignalPVCResize(ctx context.Context, crd *cosmosv1.C
 	return true, scaler.patcher.Patch(ctx, &patch, client.Merge)
 }
 
-func (scaler PVCAutoScaler) calcNextCapacity(currentCapacity resource.Quantity, increase string) (resource.Quantity, error) {
+func (scaler PVCAutoScaler) calcNextCapacity(current resource.Quantity, increase string) (resource.Quantity, error) {
 	var (
 		merr     error
-		quantity = currentCapacity
-		current  = currentCapacity.Value()
+		quantity resource.Quantity
 	)
 
 	// Try to calc by percentage first
 	v := intstr.FromString(increase)
 	percent, err := intstr.GetScaledValueFromIntOrPercent(&v, 100, false)
 	if err == nil {
-		addtl := math.Round(float64(current) * (float64(percent) / 100.0))
-		quantity.Set(current + int64(addtl))
+		addtl := math.Round(float64(current.Value()) * (float64(percent) / 100.0))
+		quantity = *resource.NewQuantity(current.Value()+int64(addtl), current.Format)
 		return quantity, nil
 	}
 
@@ -102,6 +103,5 @@ func (scaler PVCAutoScaler) calcNextCapacity(currentCapacity resource.Quantity, 
 		return quantity, multierr.Append(merr, err)
 	}
 
-	quantity.Set(current + addtl.Value())
-	return quantity, nil
+	return *resource.NewQuantity(current.Value()+addtl.Value(), current.Format), nil
 }
