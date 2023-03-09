@@ -3,6 +3,7 @@ package fullnode
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -11,6 +12,8 @@ import (
 )
 
 type mockClient[T client.Object] struct {
+	mu sync.Mutex
+
 	Object       any
 	GetObjectKey client.ObjectKey
 	GetObjectErr error
@@ -34,6 +37,9 @@ type mockClient[T client.Object] struct {
 }
 
 func (m *mockClient[T]) Get(ctx context.Context, key client.ObjectKey, obj client.Object, _ ...client.GetOption) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	if ctx == nil {
 		panic("nil context")
 	}
@@ -54,6 +60,9 @@ func (m *mockClient[T]) Get(ctx context.Context, key client.ObjectKey, obj clien
 }
 
 func (m *mockClient[T]) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	if ctx == nil {
 		panic("nil context")
 	}
@@ -80,6 +89,9 @@ func (m *mockClient[T]) List(ctx context.Context, list client.ObjectList, opts .
 }
 
 func (m *mockClient[T]) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	if ctx == nil {
 		panic("nil context")
 	}
@@ -90,6 +102,9 @@ func (m *mockClient[T]) Create(ctx context.Context, obj client.Object, opts ...c
 }
 
 func (m *mockClient[T]) Delete(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	if ctx == nil {
 		panic("nil context")
 	}
@@ -98,6 +113,9 @@ func (m *mockClient[T]) Delete(ctx context.Context, obj client.Object, opts ...c
 }
 
 func (m *mockClient[T]) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	if ctx == nil {
 		panic("nil context")
 	}
@@ -107,6 +125,9 @@ func (m *mockClient[T]) Update(ctx context.Context, obj client.Object, opts ...c
 }
 
 func (m *mockClient[T]) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	if ctx == nil {
 		panic("nil context")
 	}
@@ -121,6 +142,9 @@ func (m *mockClient[T]) DeleteAllOf(ctx context.Context, obj client.Object, opts
 }
 
 func (m *mockClient[T]) Scheme() *runtime.Scheme {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	scheme := runtime.NewScheme()
 	if err := cosmosv1.AddToScheme(scheme); err != nil {
 		panic(err)
