@@ -126,7 +126,7 @@ type FullNodeStatus struct {
 
 	// Status set by the SelfHealing controller.
 	// +optional
-	SelfHealing SelfHealingStatus `json:"selfHealing"`
+	SelfHealing SelfHealingStatus `json:"selfHealing,omitempty"`
 }
 
 type FullNodeSnapshotStatus struct {

@@ -1770,6 +1770,11 @@ spec:
                   pvcAutoScaling:
                     description: Status resulting from the PVC auto-scaling.
                     properties:
+                      requestedAt:
+                        description: The timestamp the SelfHealing controller requested
+                          a PVC increase.
+                        format: date-time
+                        type: string
                       requestedSize:
                         anyOf:
                         - type: integer
@@ -1778,6 +1783,7 @@ spec:
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     required:
+                    - requestedAt
                     - requestedSize
                     type: object
                 type: object
