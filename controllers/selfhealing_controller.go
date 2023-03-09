@@ -20,10 +20,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/go-logr/logr"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/internal/fullnode"
 	"github.com/strangelove-ventures/cosmos-operator/internal/healthcheck"
+	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -33,15 +33,17 @@ import (
 // SelfHealingReconciler reconciles the self healing portion of a CosmosFullNode object
 type SelfHealingReconciler struct {
 	client.Client
-	recorder  record.EventRecorder
-	diskUsage *fullnode.DiskUsageCollector
+	recorder      record.EventRecorder
+	diskClient    *fullnode.DiskUsageCollector
+	pvcAutoScaler *fullnode.PVCAutoScaler
 }
 
 func NewSelfHealing(client client.Client, recorder record.EventRecorder) *SelfHealingReconciler {
 	return &SelfHealingReconciler{
-		Client:    client,
-		recorder:  recorder,
-		diskUsage: fullnode.NewDiskUsageCollector(healthcheck.NewClient(sharedHTTPClient), client),
+		Client:        client,
+		recorder:      recorder,
+		diskClient:    fullnode.NewDiskUsageCollector(healthcheck.NewClient(sharedHTTPClient), client),
+		pvcAutoScaler: fullnode.NewPVCAutoScaler(client.Status()),
 	}
 }
 
@@ -65,22 +67,34 @@ func (r *SelfHealingReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return finishResult, nil
 	}
 
-	r.pvcAutoScale(ctx, logger, crd)
+	reporter := kube.NewEventReporter(logger, r.recorder, crd)
+
+	r.pvcAutoScale(ctx, reporter, crd)
 
 	return ctrl.Result{RequeueAfter: 60 * time.Second}, nil
 }
 
-func (r *SelfHealingReconciler) pvcAutoScale(ctx context.Context, logger logr.Logger, crd *cosmosv1.CosmosFullNode) {
-	if crd.Spec.SelfHealing.PVCAutoScaling == nil {
+func (r *SelfHealingReconciler) pvcAutoScale(ctx context.Context, reporter kube.Reporter, crd *cosmosv1.CosmosFullNode) {
+	if crd.Spec.SelfHealing.PVCAutoScale == nil {
 		return
 	}
-	// TODO: temporary to prove incremental phases of pvc auto scaling
-	results, err := r.diskUsage.CollectDiskUsage(ctx, crd)
+	usage, err := r.diskClient.CollectDiskUsage(ctx, crd)
 	if err != nil {
-		logger.Error(err, "Failed to collect pod disk usage")
+		reporter.Error(err, "Failed to collect pvc disk usage")
+		reporter.RecordError("PVCAutoScaleCollectUsage", err)
 		return
 	}
-	logger.Info("Found pod disk usage", "results", results)
+	ok, err := r.pvcAutoScaler.SignalPVCResize(ctx, crd, usage)
+	if err != nil {
+		reporter.Error(err, "Failed to signal pvc resize")
+		reporter.RecordError("PVCAutoScaleSignalResize", err)
+		return
+	}
+	if ok {
+		const msg = "PVC auto scaling requested new disk size"
+		reporter.Info(msg)
+		reporter.RecordInfo("PVCAutoScale", msg)
+	}
 }
 
 // SetupWithManager sets up the controller with the Manager.
