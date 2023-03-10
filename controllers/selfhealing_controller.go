@@ -91,7 +91,7 @@ func (r *SelfHealingReconciler) pvcAutoScale(ctx context.Context, reporter kube.
 		return
 	}
 	if ok {
-		const msg = "PVC auto scaling requested new disk size"
+		const msg = "PVC auto scaling requested disk expansion"
 		reporter.Info(msg)
 		reporter.RecordInfo("PVCAutoScale", msg)
 	}
