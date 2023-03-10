@@ -52,8 +52,16 @@ func (scaler PVCAutoScaler) SignalPVCResize(ctx context.Context, crd *cosmosv1.C
 		return false, fmt.Errorf("increaseQuantity must be a percentage string (e.g. 10%%) or a storage quantity (e.g. 100Gi): %w", err)
 	}
 
+	// Prevent patching if PVC size not at threshold
 	if pvcCandidate.PercentUsed < trigger {
 		return false, nil
+	}
+
+	// Prevent continuous reconcile loops
+	if status := crd.Status.SelfHealing.PVCAutoScale; status != nil {
+		if status.RequestedSize.Value() >= newSize.Value() {
+			return false, nil
+		}
 	}
 
 	// Handle max size

@@ -202,6 +202,30 @@ func TestPVCAutoScaler_SignalPVCResize(t *testing.T) {
 		}
 	})
 
+	t.Run("patch already signaled", func(t *testing.T) {
+		const usedSpacePercentage = 90
+
+		var crd cosmosv1.CosmosFullNode
+		crd.Spec.SelfHeal = &cosmosv1.SelfHealSpec{
+			PVCAutoScale: &cosmosv1.PVCAutoScaleSpec{
+				UsedSpacePercentage: usedSpacePercentage,
+				IncreaseQuantity:    "10Gi",
+			},
+		}
+		crd.Status.SelfHealing.PVCAutoScale = &cosmosv1.PVCAutoScaleStatus{
+			RequestedSize: resource.MustParse("100Gi"),
+		}
+
+		scaler := NewPVCAutoScaler(panicPatcher)
+		usage := []PVCDiskUsage{
+			{PercentUsed: usedSpacePercentage, Capacity: resource.MustParse("90Gi")},
+		}
+		got, err := scaler.SignalPVCResize(ctx, &crd, usage)
+
+		require.NoError(t, err)
+		require.False(t, got)
+	})
+
 	t.Run("invalid increase quantity", func(t *testing.T) {
 		const usedSpacePercentage = 80
 
