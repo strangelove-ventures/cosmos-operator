@@ -152,27 +152,33 @@ func TestPVCAutoScaler_SignalPVCResize(t *testing.T) {
 		require.True(t, patchCalled)
 	})
 
-	t.Run("capacity at max", func(t *testing.T) {
-		var maxSize = resource.MustParse("5Ti")
-		const usedSpacePercentage = 80
+	t.Run("capacity at or above max", func(t *testing.T) {
+		for _, tt := range []struct {
+			Max, Capacity resource.Quantity
+		}{
+			{resource.MustParse("5Ti"), resource.MustParse("5Ti")}, // the same
+			{resource.MustParse("1G"), resource.MustParse("2G")},   // greater
+		} {
+			const usedSpacePercentage = 60
 
-		var crd cosmosv1.CosmosFullNode
-		crd.Spec.SelfHeal = &cosmosv1.SelfHealSpec{
-			PVCAutoScale: &cosmosv1.PVCAutoScaleSpec{
-				UsedSpacePercentage: usedSpacePercentage,
-				IncreaseQuantity:    "10Gi",
-				MaxSize:             maxSize,
-			},
+			var crd cosmosv1.CosmosFullNode
+			crd.Spec.SelfHeal = &cosmosv1.SelfHealSpec{
+				PVCAutoScale: &cosmosv1.PVCAutoScaleSpec{
+					UsedSpacePercentage: usedSpacePercentage,
+					IncreaseQuantity:    "10Gi",
+					MaxSize:             tt.Max,
+				},
+			}
+
+			scaler := NewPVCAutoScaler(panicPatcher)
+			usage := []PVCDiskUsage{
+				{PercentUsed: 80, Capacity: tt.Capacity},
+			}
+			got, err := scaler.SignalPVCResize(ctx, &crd, usage)
+
+			require.NoError(t, err, tt)
+			require.False(t, got, tt)
 		}
-
-		scaler := NewPVCAutoScaler(panicPatcher)
-		usage := []PVCDiskUsage{
-			{PercentUsed: 80, Capacity: maxSize},
-		}
-		got, err := scaler.SignalPVCResize(ctx, &crd, lo.Shuffle(usage))
-
-		require.NoError(t, err)
-		require.False(t, got)
 	})
 
 	t.Run("no patch needed", func(t *testing.T) {
