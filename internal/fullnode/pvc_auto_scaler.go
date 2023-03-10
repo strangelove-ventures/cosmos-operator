@@ -59,7 +59,7 @@ func (scaler PVCAutoScaler) SignalPVCResize(ctx context.Context, crd *cosmosv1.C
 
 	// Prevent continuous reconcile loops
 	if status := crd.Status.SelfHealing.PVCAutoScale; status != nil {
-		if status.RequestedSize.Value() >= newSize.Value() {
+		if status.RequestedSize.Value() == newSize.Value() {
 			return false, nil
 		}
 	}
