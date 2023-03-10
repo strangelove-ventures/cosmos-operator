@@ -84,17 +84,18 @@ func (r *SelfHealingReconciler) pvcAutoScale(ctx context.Context, reporter kube.
 		reporter.RecordError("PVCAutoScaleCollectUsage", err)
 		return
 	}
-	ok, err := r.pvcAutoScaler.SignalPVCResize(ctx, crd, usage)
+	didSignal, err := r.pvcAutoScaler.SignalPVCResize(ctx, crd, usage)
 	if err != nil {
 		reporter.Error(err, "Failed to signal pvc resize")
 		reporter.RecordError("PVCAutoScaleSignalResize", err)
 		return
 	}
-	if ok {
-		const msg = "PVC auto scaling requested disk expansion"
-		reporter.Info(msg)
-		reporter.RecordInfo("PVCAutoScale", msg)
+	if !didSignal {
+		return
 	}
+	const msg = "PVC auto scaling requested disk expansion"
+	reporter.Info(msg)
+	reporter.RecordInfo("PVCAutoScale", msg)
 }
 
 // SetupWithManager sets up the controller with the Manager.
