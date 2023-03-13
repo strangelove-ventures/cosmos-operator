@@ -17,6 +17,7 @@ type mockClient[T client.Object] struct {
 
 	ObjectList  any
 	GotListOpts []client.ListOption
+	ListErr     error
 
 	CreateCount      int
 	LastCreateObject T
@@ -73,7 +74,7 @@ func (m *mockClient[T]) List(ctx context.Context, list client.ObjectList, opts .
 		panic(fmt.Errorf("unknown ObjectList type: %T", m.ObjectList))
 	}
 
-	return nil
+	return m.ListErr
 }
 
 func (m *mockClient[T]) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {

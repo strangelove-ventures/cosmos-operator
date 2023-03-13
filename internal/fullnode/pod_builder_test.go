@@ -228,7 +228,7 @@ func TestPodBuilder(t *testing.T) {
 
 		healthContainer := pod.Spec.Containers[1]
 		require.Equal(t, "healthcheck", healthContainer.Name)
-		require.Equal(t, "ghcr.io/strangelove-ventures/cosmos-operator:v0.7.0", healthContainer.Image)
+		require.Equal(t, "ghcr.io/strangelove-ventures/cosmos-operator:v0.9.2", healthContainer.Image)
 		require.Equal(t, []string{"/manager", "healthcheck"}, healthContainer.Command)
 		require.Empty(t, healthContainer.Args)
 		require.Empty(t, healthContainer.ImagePullPolicy)
@@ -280,7 +280,7 @@ func TestPodBuilder(t *testing.T) {
 		pod := builder.WithOrdinal(5).Build()
 
 		vols := pod.Spec.Volumes
-		require.Len(t, vols, 3)
+		require.Len(t, vols, 4)
 
 		require.Equal(t, "vol-chain-home", vols[0].Name)
 		require.Equal(t, "pvc-osmosis-5", vols[0].PersistentVolumeClaim.ClaimName)
@@ -296,24 +296,36 @@ func TestPodBuilder(t *testing.T) {
 		}
 		require.Equal(t, wantItems, vols[2].ConfigMap.Items)
 
-		for _, c := range pod.Spec.Containers {
-			require.Len(t, c.VolumeMounts, 1)
-			mount := c.VolumeMounts[0]
-			require.Equal(t, "vol-chain-home", mount.Name, c.Name)
-			require.Equal(t, "/home/operator/cosmos", mount.MountPath, c.Name)
-		}
+		// Required for statesync
+		require.Equal(t, "vol-system-tmp", vols[3].Name)
+		require.NotNil(t, vols[3].EmptyDir)
 
-		for _, c := range pod.Spec.InitContainers {
-			require.Len(t, c.VolumeMounts, 3)
+		for _, c := range pod.Spec.Containers {
+			require.Len(t, c.VolumeMounts, 2)
 			mount := c.VolumeMounts[0]
 			require.Equal(t, "vol-chain-home", mount.Name, c.Name)
 			require.Equal(t, "/home/operator/cosmos", mount.MountPath, c.Name)
 
 			mount = c.VolumeMounts[1]
+			require.Equal(t, "vol-system-tmp", mount.Name, c.Name)
+			require.Equal(t, "/tmp", mount.MountPath, c.Name)
+		}
+
+		for _, c := range pod.Spec.InitContainers {
+			require.Len(t, c.VolumeMounts, 4)
+			mount := c.VolumeMounts[0]
+			require.Equal(t, "vol-chain-home", mount.Name, c.Name)
+			require.Equal(t, "/home/operator/cosmos", mount.MountPath, c.Name)
+
+			mount = c.VolumeMounts[1]
+			require.Equal(t, "vol-system-tmp", mount.Name, c.Name)
+			require.Equal(t, "/tmp", mount.MountPath, c.Name)
+
+			mount = c.VolumeMounts[2]
 			require.Equal(t, "vol-tmp", mount.Name, c.Name)
 			require.Equal(t, "/home/operator/.tmp", mount.MountPath, c.Name)
 
-			mount = c.VolumeMounts[2]
+			mount = c.VolumeMounts[3]
 			require.Equal(t, "vol-config", mount.Name, c.Name)
 			require.Equal(t, "/home/operator/.config", mount.MountPath, c.Name)
 		}
@@ -428,8 +440,12 @@ gaiad start --home /home/operator/cosmos`
 			require.Nilf(t, cont.ReadinessProbe, "container %d", i)
 		}
 
-		require.Equal(t, 1, len(pod.Spec.Containers))
+		require.Equal(t, 2, len(pod.Spec.Containers))
 		require.Equal(t, "node", pod.Spec.Containers[0].Name)
+
+		sidecar := pod.Spec.Containers[1]
+		require.Equal(t, "healthcheck", sidecar.Name)
+		require.Nil(t, sidecar.ReadinessProbe)
 	})
 }
 

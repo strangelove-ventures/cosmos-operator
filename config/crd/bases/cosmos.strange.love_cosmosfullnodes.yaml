@@ -1466,6 +1466,44 @@ spec:
                 format: int32
                 minimum: 0
                 type: integer
+              selfHealing:
+                description: Strategies for automatic recovery of faults and errors.
+                  SelfHealing is managed by a separate controller, SelfHealingController,
+                  in an effort to reduce complexity of the CosmosFullNodeController.
+                properties:
+                  pvcAutoScaling:
+                    description: "Automatically increases PVC storage as they approach
+                      capacity. \n Your cluster must support and use the ExpandInUsePersistentVolumes
+                      feature gate. This allows volumes to expand while a pod is attached
+                      to it, thus eliminating the need to restart pods. If you cluster
+                      does not support ExpandInUsePersistentVolumes, you will need
+                      to manually restart pods after resizing is complete."
+                    properties:
+                      increaseQuantity:
+                        description: "How much to increase the PVC's capacity. Either
+                          a percentage (e.g. 20%) or a resource storage quantity (e.g.
+                          100Gi). \n If a percentage, the existing capacity increases
+                          by the percentage. E.g. PVC of 100Gi capacity + IncreaseQuantity
+                          of 20% increases disk to 120Gi. \n If a storage quantity
+                          (e.g. 100Gi), increases by that amount."
+                        type: string
+                      maxSize:
+                        description: A resource storage quantity (e.g. 2000Gi). When
+                          increasing PVC capacity reaches >= MaxSize, autoscaling
+                          ceases. Safeguards against storage quotas.
+                        type: string
+                      usedSpacePercentage:
+                        description: The percentage of used disk space required to
+                          trigger scaling. Example, if set to 80, autoscaling will
+                          not trigger until used space reaches >=80% of capacity.
+                        format: int32
+                        minimum: 1
+                        type: integer
+                    required:
+                    - increaseQuantity
+                    - usedSpacePercentage
+                    type: object
+                type: object
               service:
                 description: Configure Operator created services. A singe rpc service
                   is created for load balancing api, grpc, rpc, etc. requests. This
@@ -1474,7 +1512,7 @@ spec:
                   exchange.
                 properties:
                   maxP2PExternalAddresses:
-                    description: Maximum number of p2p services to create for tendermint
+                    description: MaxSize number of p2p services to create for tendermint
                       peer exchange. The public endpoint is set as the "p2p.external_address"
                       in the tendermint config.toml. If not set, defaults to 1.
                     format: int32

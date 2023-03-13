@@ -13,11 +13,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// Lister can list resources, subset of client.Client.
-type Lister interface {
-	List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error
-}
-
 // ExternalAddresses keys are instance names and values are public IPs or hostnames.
 type ExternalAddresses map[string]string
 

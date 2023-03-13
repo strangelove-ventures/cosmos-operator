@@ -167,6 +167,13 @@ func startManager(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("unable to create CosmosFullNode controller: %w", err)
 	}
 
+	if err = controllers.NewSelfHealing(
+		mgr.GetClient(),
+		mgr.GetEventRecorderFor("SelfHealing"),
+	).SetupWithManager(ctx, mgr); err != nil {
+		return fmt.Errorf("unable to create SelfHealing controller: %w", err)
+	}
+
 	if err = controllers.NewStatefulJob(
 		mgr.GetClient(),
 		mgr.GetEventRecorderFor("StatefulJob"),

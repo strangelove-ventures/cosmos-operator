@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	"github.com/strangelove-ventures/cosmos-operator/internal/healthcheck"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -20,7 +21,7 @@ import (
 
 var bufPool = sync.Pool{New: func() any { return new(bytes.Buffer) }}
 
-const healthCheckPort = 1251
+const healthCheckPort = healthcheck.Port
 
 // PodBuilder builds corev1.Pods
 type PodBuilder struct {
@@ -92,25 +93,23 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 		},
 	}
 
-	if crd.Spec.PodTemplate.Probes.Strategy != cosmosv1.FullNodeProbeStrategyNone {
-		// Healtcheck sidecar to ensure pod is in sync with the chain.
-		pod.Spec.Containers = append(pod.Spec.Containers, corev1.Container{
-			Name: "healthcheck",
-			// Available images: https://github.com/orgs/strangelove-ventures/packages?repo_name=cosmos-operator
-			// IMPORTANT: Must use v0.6.2 or later.
-			Image:   "ghcr.io/strangelove-ventures/cosmos-operator:v0.7.0",
-			Command: []string{"/manager", "healthcheck"},
-			Ports:   []corev1.ContainerPort{{ContainerPort: healthCheckPort, Protocol: corev1.ProtocolTCP}},
-			Resources: corev1.ResourceRequirements{
-				Requests: corev1.ResourceList{
-					corev1.ResourceCPU:    resource.MustParse("5m"),
-					corev1.ResourceMemory: resource.MustParse("16Mi"),
-				},
+	// Add healtcheck sidecar
+	pod.Spec.Containers = append(pod.Spec.Containers, corev1.Container{
+		Name: "healthcheck",
+		// Available images: https://github.com/orgs/strangelove-ventures/packages?repo_name=cosmos-operator
+		// IMPORTANT: Must use v0.6.2 or later.
+		Image:   "ghcr.io/strangelove-ventures/cosmos-operator:v0.9.2",
+		Command: []string{"/manager", "healthcheck"},
+		Ports:   []corev1.ContainerPort{{ContainerPort: healthCheckPort, Protocol: corev1.ProtocolTCP}},
+		Resources: corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("5m"),
+				corev1.ResourceMemory: resource.MustParse("16Mi"),
 			},
-			ReadinessProbe:  probes[1],
-			ImagePullPolicy: tpl.ImagePullPolicy,
-		})
-	}
+		},
+		ReadinessProbe:  probes[1],
+		ImagePullPolicy: tpl.ImagePullPolicy,
+	})
 
 	preserveMergeInto(pod.Labels, tpl.Metadata.Labels)
 	preserveMergeInto(pod.Annotations, tpl.Metadata.Annotations)
@@ -193,6 +192,7 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 		volChainHome = "vol-chain-home" // Stores live chain data and config files.
 		volTmp       = "vol-tmp"        // Stores temporary config files for manipulation later.
 		volConfig    = "vol-config"     // Items from ConfigMap.
+		volSystemTmp = "vol-system-tmp" // Necessary for statesync or else you may see the error: ERR State sync failed err="failed to create chunk queue: unable to create temp dir for state sync chunks: stat /tmp: no such file or directory" module=statesync
 	)
 	pod.Spec.Volumes = []corev1.Volume{
 		{
@@ -219,11 +219,20 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 				},
 			},
 		},
+		{
+			Name: volSystemTmp,
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
 	}
 
+	// Mounts required by all containers.
 	mounts := []corev1.VolumeMount{
 		{Name: volChainHome, MountPath: ChainHomeDir},
+		{Name: volSystemTmp, MountPath: systemTmpDir},
 	}
+	// Additional mounts only needed for init containers.
 	for i := range pod.Spec.InitContainers {
 		pod.Spec.InitContainers[i].VolumeMounts = append(mounts, []corev1.VolumeMount{
 			{Name: volTmp, MountPath: tmpDir},
@@ -246,6 +255,9 @@ const (
 	tmpDir         = workDir + "/.tmp"
 	tmpConfigDir   = workDir + "/.config"
 	infraToolImage = "ghcr.io/strangelove-ventures/infra-toolkit:v0.0.1"
+
+	// Necessary for statesync
+	systemTmpDir = "/tmp"
 )
 
 var (
@@ -376,7 +388,7 @@ func willRestoreFromSnapshot(crd *cosmosv1.CosmosFullNode) bool {
 // PVCName returns the primary PVC holding the chain data associated with the pod.
 func PVCName(pod *corev1.Pod) string {
 	if vols := pod.Spec.Volumes; len(vols) > 0 {
-		if claim := pod.Spec.Volumes[0].PersistentVolumeClaim; claim != nil {
+		if claim := vols[0].PersistentVolumeClaim; claim != nil {
 			return claim.ClaimName
 		}
 	}

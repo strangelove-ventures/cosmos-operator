@@ -41,13 +41,13 @@ type ScheduledVolumeSnapshotReconciler struct {
 	volSnapshotControl *volsnapshot.VolumeSnapshotControl
 }
 
-var tendermintHTTP = &http.Client{Timeout: 60 * time.Second}
+var sharedHTTPClient = &http.Client{Timeout: 60 * time.Second}
 
 func NewScheduledVolumeSnapshotReconciler(
 	client client.Client,
 	recorder record.EventRecorder,
 ) *ScheduledVolumeSnapshotReconciler {
-	tmClient := cosmos.NewTendermintClient(tendermintHTTP)
+	tmClient := cosmos.NewTendermintClient(sharedHTTPClient)
 	return &ScheduledVolumeSnapshotReconciler{
 		Client:             client,
 		fullNodeControl:    volsnapshot.NewFullNodeControl(client.Status(), client),
