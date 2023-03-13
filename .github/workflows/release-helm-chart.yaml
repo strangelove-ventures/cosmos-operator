@@ -1,5 +1,9 @@
 name: Release Helm Chart
 
+on:                                                                                                           
+  push:                                                                                                       
+    branches:                                                                                                 
+      - main
 
 env:
   REGISTRY: ghcr.io
