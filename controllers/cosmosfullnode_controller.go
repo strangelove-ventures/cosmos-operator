@@ -175,7 +175,7 @@ func (r *CosmosFullNodeReconciler) patchStatus(ctx context.Context, crd *cosmosv
 	patchCRD.Name = crd.Name
 	patchCRD.Namespace = crd.Namespace
 	patchCRD.Status = crd.Status
-	if err := r.Status().Patch(ctx, &patchCRD, client.Merge); err != nil {
+	if err := r.Status().Patch(ctx, &patchCRD, client.Apply); err != nil {
 		log.FromContext(ctx).Error(err, "Failed to patch status")
 	}
 }

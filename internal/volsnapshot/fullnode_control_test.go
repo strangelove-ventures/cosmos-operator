@@ -89,7 +89,7 @@ func TestFullNodeControl_SignalPodDeletion(t *testing.T) {
 			}
 			require.Equal(t, client.Object(&want), obj)
 
-			require.Equal(t, client.Merge, patch)
+			require.Equal(t, client.Apply, patch)
 
 			didPatch = true
 			return nil
