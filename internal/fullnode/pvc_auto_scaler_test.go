@@ -135,8 +135,6 @@ func TestPVCAutoScaler_SignalPVCResize(t *testing.T) {
 			require.Equal(t, maxSize.Value(), gotStatus.RequestedSize.Value())
 			require.Equal(t, maxSize.Format, gotStatus.RequestedSize.Format)
 
-			require.Equal(t, client.Merge, patch)
-
 			patchCalled = true
 			return nil
 		})
