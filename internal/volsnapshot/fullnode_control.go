@@ -42,7 +42,7 @@ func (control FullNodeControl) SignalPodDeletion(ctx context.Context, crd *cosmo
 	fn.Status.ScheduledSnapshotStatus[key] = cosmosv1.FullNodeSnapshotStatus{
 		PodCandidate: crd.Status.Candidate.PodName,
 	}
-	return control.statusClient.Patch(ctx, &fn, client.Apply)
+	return control.statusClient.Patch(ctx, &fn, client.Merge)
 }
 
 // SignalPodRestoration updates the LocalFullNodeRef's status to indicate it should recreate the pod candidate.

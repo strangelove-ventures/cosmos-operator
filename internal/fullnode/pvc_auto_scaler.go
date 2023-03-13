@@ -85,7 +85,7 @@ func (scaler PVCAutoScaler) SignalPVCResize(ctx context.Context, crd *cosmosv1.C
 		RequestedSize: newSize,
 		RequestedAt:   metav1.NewTime(scaler.now()),
 	}
-	return true, scaler.patcher.Patch(ctx, &patch, client.Apply)
+	return true, scaler.patcher.Patch(ctx, &patch, client.Merge)
 }
 
 func (scaler PVCAutoScaler) calcNextCapacity(current resource.Quantity, increase string) (resource.Quantity, error) {

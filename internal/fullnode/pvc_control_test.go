@@ -220,7 +220,7 @@ func TestPVCControl_Reconcile(t *testing.T) {
 		require.Empty(t, mClient.DeleteCount)
 
 		require.Equal(t, 2, mClient.PatchCount)
-		require.Equal(t, client.Apply, mClient.LastPatch)
+		require.Equal(t, client.Merge, mClient.LastPatch)
 
 		gotPatch := mClient.LastPatchObject.(*corev1.PersistentVolumeClaim)
 		require.Equal(t, updates[1].Name, gotPatch.Name)

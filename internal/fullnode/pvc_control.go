@@ -114,7 +114,7 @@ func (control PVCControl) Reconcile(ctx context.Context, reporter kube.Reporter,
 				Resources: pvc.Spec.Resources,
 			},
 		}
-		if err := control.client.Patch(ctx, &patch, client.Apply); err != nil {
+		if err := control.client.Patch(ctx, &patch, client.Merge); err != nil {
 			reporter.Error(err, "PVC patch failed", "pvc", pvc.Name)
 			reporter.RecordError("PVCPatchFailed", err)
 			continue

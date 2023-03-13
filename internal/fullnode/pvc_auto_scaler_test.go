@@ -88,7 +88,7 @@ func TestPVCAutoScaler_SignalPVCResize(t *testing.T) {
 				require.Equal(t, stubNow, gotStatus.RequestedAt.Time, tt)
 				require.Truef(t, tt.Want.Equal(gotStatus.RequestedSize), "%s:\nwant %+v\ngot  %+v", tt, tt.Want, gotStatus.RequestedSize)
 
-				require.Equal(t, client.Apply, patch)
+				require.Equal(t, client.Merge, patch)
 
 				patchCalled = true
 				return nil
@@ -135,7 +135,7 @@ func TestPVCAutoScaler_SignalPVCResize(t *testing.T) {
 			require.Equal(t, maxSize.Value(), gotStatus.RequestedSize.Value())
 			require.Equal(t, maxSize.Format, gotStatus.RequestedSize.Format)
 
-			require.Equal(t, client.Apply, patch)
+			require.Equal(t, client.Merge, patch)
 
 			patchCalled = true
 			return nil
