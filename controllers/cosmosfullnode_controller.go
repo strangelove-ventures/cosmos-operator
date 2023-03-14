@@ -187,7 +187,7 @@ func (r *CosmosFullNodeReconciler) SetupWithManager(ctx context.Context, mgr ctr
 		ctx,
 		&corev1.Pod{},
 		controllerOwnerField,
-		kube.IndexOwner[*corev1.Pod]("CosmosFullNode"),
+		kube.IndexOwner[*corev1.Pod](cosmosv1.CosmosFullNodeController),
 	)
 	if err != nil {
 		return fmt.Errorf("pod index field %s: %w", controllerOwnerField, err)
@@ -198,7 +198,7 @@ func (r *CosmosFullNodeReconciler) SetupWithManager(ctx context.Context, mgr ctr
 		ctx,
 		&corev1.PersistentVolumeClaim{},
 		controllerOwnerField,
-		kube.IndexOwner[*corev1.PersistentVolumeClaim]("CosmosFullNode"),
+		kube.IndexOwner[*corev1.PersistentVolumeClaim](cosmosv1.CosmosFullNodeController),
 	)
 	if err != nil {
 		return fmt.Errorf("pvc index field %s: %w", controllerOwnerField, err)
@@ -209,7 +209,7 @@ func (r *CosmosFullNodeReconciler) SetupWithManager(ctx context.Context, mgr ctr
 		ctx,
 		&corev1.ConfigMap{},
 		controllerOwnerField,
-		kube.IndexOwner[*corev1.ConfigMap]("CosmosFullNode"),
+		kube.IndexOwner[*corev1.ConfigMap](cosmosv1.CosmosFullNodeController),
 	)
 	if err != nil {
 		return fmt.Errorf("configmap index field %s: %w", controllerOwnerField, err)
@@ -220,7 +220,7 @@ func (r *CosmosFullNodeReconciler) SetupWithManager(ctx context.Context, mgr ctr
 		ctx,
 		&corev1.Service{},
 		controllerOwnerField,
-		kube.IndexOwner[*corev1.Service]("CosmosFullNode"),
+		kube.IndexOwner[*corev1.Service](cosmosv1.CosmosFullNodeController),
 	)
 	if err != nil {
 		return fmt.Errorf("service index field %s: %w", controllerOwnerField, err)
