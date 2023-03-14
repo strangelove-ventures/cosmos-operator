@@ -16,14 +16,16 @@ import (
 )
 
 type PVCAutoScaler struct {
-	patcher StatusPatcher
-	now     func() time.Time
+	// TODO make interface
+	client *StatusClient
+	now    func() time.Time
 }
 
-func NewPVCAutoScaler(patcher StatusPatcher) *PVCAutoScaler {
+// TODO: take interface
+func NewPVCAutoScaler(client *StatusClient) *PVCAutoScaler {
 	return &PVCAutoScaler{
-		patcher: patcher,
-		now:     time.Now,
+		client: client,
+		now:    time.Now,
 	}
 }
 
@@ -81,11 +83,12 @@ func (scaler PVCAutoScaler) SignalPVCResize(ctx context.Context, crd *cosmosv1.C
 	patch.TypeMeta = crd.TypeMeta
 	patch.Namespace = crd.Namespace
 	patch.Name = crd.Name
-	patch.Status.SelfHealing.PVCAutoScale = &cosmosv1.PVCAutoScaleStatus{
-		RequestedSize: newSize,
-		RequestedAt:   metav1.NewTime(scaler.now()),
-	}
-	return true, scaler.patcher.Patch(ctx, &patch, client.Merge)
+	return true, scaler.client.SyncUpdate(ctx, client.ObjectKeyFromObject(&patch), func(status *cosmosv1.FullNodeStatus) {
+		status.SelfHealing.PVCAutoScale = &cosmosv1.PVCAutoScaleStatus{
+			RequestedSize: newSize,
+			RequestedAt:   metav1.NewTime(scaler.now()),
+		}
+	})
 }
 
 func (scaler PVCAutoScaler) calcNextCapacity(current resource.Quantity, increase string) (resource.Quantity, error) {
