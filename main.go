@@ -27,6 +27,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/strangelove-ventures/cosmos-operator/controllers"
+	"github.com/strangelove-ventures/cosmos-operator/internal/fullnode"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -160,9 +161,12 @@ func startManager(cmd *cobra.Command, args []string) error {
 
 	ctx := cmd.Context()
 
+	statusClient := &fullnode.StatusClient{Client: mgr.GetClient()}
+
 	if err = controllers.NewFullNode(
 		mgr.GetClient(),
 		mgr.GetEventRecorderFor(cosmosv1.CosmosFullNodeController),
+		statusClient,
 	).SetupWithManager(ctx, mgr); err != nil {
 		return fmt.Errorf("unable to create CosmosFullNode controller: %w", err)
 	}
