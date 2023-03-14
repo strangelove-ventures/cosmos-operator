@@ -48,8 +48,7 @@ type CosmosFullNodeReconciler struct {
 	pvcControl       fullnode.PVCControl
 	recorder         record.EventRecorder
 	serviceControl   fullnode.ServiceControl
-
-	statusClient *fullnode.StatusClient
+	statusClient     *fullnode.StatusClient
 }
 
 // NewFullNode returns a valid CosmosFullNode controller.
