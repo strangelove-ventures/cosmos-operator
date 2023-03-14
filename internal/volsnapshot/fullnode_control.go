@@ -7,26 +7,22 @@ import (
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	cosmosalpha "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
-	"github.com/strangelove-ventures/cosmos-operator/internal/fullnode"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// StatusPatcher patches the status subresource of a CosmosFullNode.
-type StatusPatcher interface {
-	Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error
+type StatusSyncer interface {
+	SyncUpdate(ctx context.Context, key client.ObjectKey, update func(status *cosmosv1.FullNodeStatus)) error
 }
 
 // FullNodeControl manages a ScheduledVolumeSnapshot's spec.fullNodeRef.
 type FullNodeControl struct {
-	client client.Reader
-	// TODO: use interface
-	statusClient *fullnode.StatusClient
+	client       client.Reader
+	statusClient StatusSyncer
 }
 
-// TODO: take interface
-func NewFullNodeControl(statusClient *fullnode.StatusClient, client client.Reader) *FullNodeControl {
+func NewFullNodeControl(statusClient StatusSyncer, client client.Reader) *FullNodeControl {
 	return &FullNodeControl{client: client, statusClient: statusClient}
 }
 
