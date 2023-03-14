@@ -104,7 +104,7 @@ func (control VolumeSnapshotControl) CreateSnapshot(ctx context.Context, crd *co
 	snapshot.Name = name
 
 	snapshot.Labels = lo.Assign(candidate.PodLabels)
-	snapshot.Labels[kube.ComponentLabel] = "ScheduledVolumeSnapshot"
+	snapshot.Labels[kube.ComponentLabel] = cosmosalpha.ScheduledVolumeSnapshotController
 	snapshot.Labels[kube.ControllerLabel] = "cosmos-operator"
 	snapshot.Labels[cosmosSourceLabel] = crd.Name
 
