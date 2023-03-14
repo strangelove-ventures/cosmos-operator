@@ -12,7 +12,7 @@ import (
 type StatusClient struct {
 	mu sync.Mutex
 	// TODO: use constructor
-	client.Client
+	Client client.Client
 }
 
 func (client *StatusClient) SyncUpdate(ctx context.Context, key client.ObjectKey, update func(status *cosmosv1.FullNodeStatus)) error {
@@ -20,9 +20,9 @@ func (client *StatusClient) SyncUpdate(ctx context.Context, key client.ObjectKey
 	defer client.mu.Unlock()
 
 	var crd cosmosv1.CosmosFullNode
-	if err := client.Get(ctx, key, &crd); err != nil {
+	if err := client.Client.Get(ctx, key, &crd); err != nil {
 		return fmt.Errorf("get %v: %w", key, err)
 	}
 	update(&crd.Status)
-	return client.Status().Update(ctx, &crd)
+	return client.Client.Status().Update(ctx, &crd)
 }

@@ -24,6 +24,7 @@ import (
 
 	cosmosv1alpha1 "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
 	"github.com/strangelove-ventures/cosmos-operator/internal/cosmos"
+	"github.com/strangelove-ventures/cosmos-operator/internal/fullnode"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	"github.com/strangelove-ventures/cosmos-operator/internal/volsnapshot"
 	"k8s.io/client-go/tools/record"
@@ -39,6 +40,7 @@ type ScheduledVolumeSnapshotReconciler struct {
 	recorder           record.EventRecorder
 	scheduler          *volsnapshot.Scheduler
 	volSnapshotControl *volsnapshot.VolumeSnapshotControl
+	statusClient       *fullnode.StatusClient
 }
 
 var sharedHTTPClient = &http.Client{Timeout: 60 * time.Second}
@@ -46,11 +48,12 @@ var sharedHTTPClient = &http.Client{Timeout: 60 * time.Second}
 func NewScheduledVolumeSnapshotReconciler(
 	client client.Client,
 	recorder record.EventRecorder,
+	statusClient *fullnode.StatusClient,
 ) *ScheduledVolumeSnapshotReconciler {
 	tmClient := cosmos.NewTendermintClient(sharedHTTPClient)
 	return &ScheduledVolumeSnapshotReconciler{
 		Client:             client,
-		fullNodeControl:    volsnapshot.NewFullNodeControl(client.Status(), client),
+		fullNodeControl:    volsnapshot.NewFullNodeControl(statusClient, client),
 		recorder:           recorder,
 		scheduler:          volsnapshot.NewScheduler(client),
 		volSnapshotControl: volsnapshot.NewVolumeSnapshotControl(client, cosmos.NewPodFilter(tmClient)),
