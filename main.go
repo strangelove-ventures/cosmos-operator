@@ -162,28 +162,28 @@ func startManager(cmd *cobra.Command, args []string) error {
 
 	if err = controllers.NewFullNode(
 		mgr.GetClient(),
-		mgr.GetEventRecorderFor("CosmosFullNode"),
+		mgr.GetEventRecorderFor(cosmosv1.CosmosFullNodeController),
 	).SetupWithManager(ctx, mgr); err != nil {
 		return fmt.Errorf("unable to create CosmosFullNode controller: %w", err)
 	}
 
 	if err = controllers.NewSelfHealing(
 		mgr.GetClient(),
-		mgr.GetEventRecorderFor("SelfHealing"),
+		mgr.GetEventRecorderFor(cosmosv1.SelfHealingController),
 	).SetupWithManager(ctx, mgr); err != nil {
 		return fmt.Errorf("unable to create SelfHealing controller: %w", err)
 	}
 
 	if err = controllers.NewStatefulJob(
 		mgr.GetClient(),
-		mgr.GetEventRecorderFor("StatefulJob"),
+		mgr.GetEventRecorderFor(cosmosv1alpha1.StatefulJobController),
 	).SetupWithManager(ctx, mgr); err != nil {
 		return fmt.Errorf("unable to create StatefulJob controller: %w", err)
 	}
 
 	if err = controllers.NewScheduledVolumeSnapshotReconciler(
 		mgr.GetClient(),
-		mgr.GetEventRecorderFor("ScheduledVolumeSnapshot"),
+		mgr.GetEventRecorderFor(cosmosv1alpha1.ScheduledVolumeSnapshotController),
 	).SetupWithManager(ctx, mgr); err != nil {
 		return fmt.Errorf("unable to create ScheduledVolumeSnapshot controller: %w", err)
 	}

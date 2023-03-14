@@ -62,7 +62,11 @@ latest-snapshot: ## Get latest snapshot from polkachu. Must set CHAIN_NAME flag 
 
 .PHONY: test
 test: manifests generate ## Run unit tests.
+ifndef SKIP_TEST
 	go test -race -short -cover -timeout=60s ./...
+else
+	echo "Warning: SKIP_TEST=$(SKIP_TEST). Skipping all tests!"
+endif
 
 .PHONY: tools
 tools: ## Install dev tools.

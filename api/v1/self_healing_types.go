@@ -5,6 +5,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// SelfHealingController is the canonical controller name.
+const SelfHealingController = "SelfHealing"
+
 // SelfHealSpec is part of a CosmosFullNode but is managed by a separate controller, SelfHealingReconciler.
 // This is an effort to reduce complexity in the CosmosFullNodeReconciler.
 // The controller only modifies the CosmosFullNode's status subresource relying on the CosmosFullNodeReconciler

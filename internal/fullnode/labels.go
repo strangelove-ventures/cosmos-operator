@@ -25,7 +25,7 @@ func defaultLabels(crd *cosmosv1.CosmosFullNode, kvPairs ...string) map[string]s
 	}
 	labels := map[string]string{
 		kube.ControllerLabel: "cosmos-operator",
-		kube.ComponentLabel:  "CosmosFullNode",
+		kube.ComponentLabel:  cosmosv1.CosmosFullNodeController,
 		kube.NameLabel:       appName(crd),
 		kube.VersionLabel:    kube.ParseImageVersion(crd.Spec.PodTemplate.Image),
 		networkLabel:         crd.Spec.ChainSpec.Network,

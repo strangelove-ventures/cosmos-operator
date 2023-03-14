@@ -51,7 +51,7 @@ func NewSelfHealing(client client.Client, recorder record.EventRecorder) *SelfHe
 // updates a CosmosFullNode status subresource thus triggering another reconcile loop. The CosmosFullNode
 // uses the status object to reconcile its state.
 func (r *SelfHealingReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := log.FromContext(ctx).WithName("SelfHealing")
+	logger := log.FromContext(ctx).WithName(cosmosv1.SelfHealingController)
 	logger.V(1).Info("Entering reconcile loop", "request", req.NamespacedName)
 
 	crd := new(cosmosv1.CosmosFullNode)
