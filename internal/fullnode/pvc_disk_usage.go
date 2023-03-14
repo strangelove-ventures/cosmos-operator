@@ -14,6 +14,7 @@ import (
 	"go.uber.org/multierr"
 	"golang.org/x/sync/errgroup"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -23,17 +24,27 @@ type DiskUsager interface {
 }
 
 type PVCDiskUsage struct {
-	Name        string // pod name
+	Name        string // pvc name
 	PercentUsed int
+	Capacity    resource.Quantity
 }
 
-// CollectDiskUsage retrieves the disk usage information for all Pods belonging to the specified CosmosFullNode.
+type DiskUsageCollector struct {
+	diskClient DiskUsager
+	client     Reader
+}
+
+func NewDiskUsageCollector(diskClient DiskUsager, lister Reader) *DiskUsageCollector {
+	return &DiskUsageCollector{diskClient: diskClient, client: lister}
+}
+
+// CollectDiskUsage retrieves the disk usage information for all pods belonging to the specified CosmosFullNode.
 //
-// It returns a slice of PVCDiskUsage objects representing the disk usage information for each Pod or an error
-// if fetching disk usage from all pods was unsuccessful.
-func CollectDiskUsage(ctx context.Context, crd *cosmosv1.CosmosFullNode, lister Lister, diskClient DiskUsager) ([]PVCDiskUsage, error) {
+// It returns a slice of PVCDiskUsage objects representing the disk usage information for each PVC or an error
+// if fetching disk usage via all pods was unsuccessful.
+func (c DiskUsageCollector) CollectDiskUsage(ctx context.Context, crd *cosmosv1.CosmosFullNode) ([]PVCDiskUsage, error) {
 	var pods corev1.PodList
-	if err := lister.List(ctx, &pods,
+	if err := c.client.List(ctx, &pods,
 		client.InNamespace(crd.Namespace),
 		client.MatchingFields{kube.ControllerOwnerField: crd.Name},
 	); err != nil {
@@ -56,12 +67,22 @@ func CollectDiskUsage(ctx context.Context, crd *cosmosv1.CosmosFullNode, lister 
 			pod := pods.Items[i]
 			cctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 			defer cancel()
-			resp, err := diskClient.DiskUsage(cctx, "http://"+pod.Status.PodIP)
+			resp, err := c.diskClient.DiskUsage(cctx, "http://"+pod.Status.PodIP)
 			if err != nil {
 				errs[i] = fmt.Errorf("pod %s: %w", pod.Name, err)
 				return nil
 			}
-			found[i].Name = pod.Name
+
+			// Find matching PVC to capture its actual capacity
+			name := PVCName(&pod)
+			key := client.ObjectKey{Namespace: pod.Namespace, Name: name}
+			var pvc corev1.PersistentVolumeClaim
+			if err = c.client.Get(ctx, key, &pvc); err != nil {
+				errs[i] = fmt.Errorf("get pvc %s: %w", key, err)
+			}
+
+			found[i].Name = name
+			found[i].Capacity = pvc.Status.Capacity[corev1.ResourceStorage]
 			n := (float64(resp.AllBytes-resp.FreeBytes) / float64(resp.AllBytes)) * 100
 			n = math.Round(n)
 			found[i].PercentUsed = int(n)

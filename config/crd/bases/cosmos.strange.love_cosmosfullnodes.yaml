@@ -1466,12 +1466,12 @@ spec:
                 format: int32
                 minimum: 0
                 type: integer
-              selfHealing:
+              selfHeal:
                 description: Strategies for automatic recovery of faults and errors.
-                  SelfHealing is managed by a separate controller, SelfHealingController,
-                  in an effort to reduce complexity of the CosmosFullNodeController.
+                  Managed by a separate controller, SelfHealingController, in an effort
+                  to reduce complexity of the CosmosFullNodeController.
                 properties:
-                  pvcAutoScaling:
+                  pvcAutoScale:
                     description: "Automatically increases PVC storage as they approach
                       capacity. \n Your cluster must support and use the ExpandInUsePersistentVolumes
                       feature gate. This allows volumes to expand while a pod is attached
@@ -1488,10 +1488,14 @@ spec:
                           (e.g. 100Gi), increases by that amount."
                         type: string
                       maxSize:
+                        anyOf:
+                        - type: integer
+                        - type: string
                         description: A resource storage quantity (e.g. 2000Gi). When
                           increasing PVC capacity reaches >= MaxSize, autoscaling
-                          ceases. Safeguards against storage quotas.
-                        type: string
+                          ceases. Safeguards against storage quotas and costs.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
                       usedSpacePercentage:
                         description: The percentage of used disk space required to
                           trigger scaling. Example, if set to 80, autoscaling will
@@ -1760,6 +1764,29 @@ spec:
                   created the status.
                 type: object
                 x-kubernetes-map-type: granular
+              selfHealing:
+                description: Status set by the SelfHealing controller.
+                properties:
+                  pvcAutoScale:
+                    description: Status resulting from the PVC auto-scaling.
+                    properties:
+                      requestedAt:
+                        description: The timestamp the SelfHealing controller requested
+                          a PVC increase.
+                        format: date-time
+                        type: string
+                      requestedSize:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: The PVC size requested by the SelfHealing controller.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                    required:
+                    - requestedAt
+                    - requestedSize
+                    type: object
+                type: object
               status:
                 description: A generic message for the user. May contain errors.
                 type: string
