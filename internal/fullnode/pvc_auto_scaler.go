@@ -15,14 +15,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+type StatusSyncer interface {
+	SyncUpdate(ctx context.Context, key client.ObjectKey, update func(status *cosmosv1.FullNodeStatus)) error
+}
+
 type PVCAutoScaler struct {
-	// TODO make interface
-	client *StatusClient
+	client StatusSyncer
 	now    func() time.Time
 }
 
-// TODO: take interface
-func NewPVCAutoScaler(client *StatusClient) *PVCAutoScaler {
+func NewPVCAutoScaler(client StatusSyncer) *PVCAutoScaler {
 	return &PVCAutoScaler{
 		client: client,
 		now:    time.Now,
