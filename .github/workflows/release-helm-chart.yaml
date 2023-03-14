@@ -27,14 +27,12 @@ jobs:
 
       - name: Configure Git
         run: |
+          apt update && apt install git -y
           git config user.name "$GITHUB_ACTOR"
           git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
 
-      - name: setup helmify
-        uses: imranismail/setup-kustomize@v2
-
-      - name: Pipe kustomize output to helmify 
-        run: |
+      - uses: imranismail/setup-kustomize@v2
+      - run: |
           go install github.com/arttor/helmify@latest/cmd/helmify
           kustomize edit set image  ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           kustomize build config/default | helmify cosmos-operator && mv cosmos-operator -R ./charts/
