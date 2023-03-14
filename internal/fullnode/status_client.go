@@ -31,8 +31,10 @@ func NewStatusClient(c client.Client) *StatusClient {
 	return &StatusClient{client: c}
 }
 
-// SyncUpdate synchronizes updates to a CosmosFullNode's status subresource. There are several controllers that update
-// a fullnode's status to signal the fullnode controller to take action and update the cluster state.
+// SyncUpdate synchronizes updates to a CosmosFullNode's status subresource per client.ObjectKey.
+// There are several controllers that update a fullnode's status to signal the fullnode controller to take action
+// and update the cluster state.
+//
 // This method minimizes accidentally overwriting status fields by several actors.
 //
 // Server-side-apply, in theory, would be a solution. During testing, however, it resulted in many conflict errors
