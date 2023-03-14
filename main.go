@@ -161,7 +161,7 @@ func startManager(cmd *cobra.Command, args []string) error {
 
 	ctx := cmd.Context()
 
-	statusClient := &fullnode.StatusClient{Client: mgr.GetClient()}
+	statusClient := fullnode.NewStatusClient(mgr.GetClient())
 
 	if err = controllers.NewFullNode(
 		mgr.GetClient(),

@@ -7,6 +7,7 @@ import (
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -34,6 +35,7 @@ type mockClient[T client.Object] struct {
 
 	LastUpdateObject T
 	UpdateCount      int
+	UpdateErr        error
 }
 
 func (m *mockClient[T]) Get(ctx context.Context, key client.ObjectKey, obj client.Object, _ ...client.GetOption) error {
@@ -53,6 +55,8 @@ func (m *mockClient[T]) Get(ctx context.Context, key client.ObjectKey, obj clien
 		*ref = m.Object.(corev1.ConfigMap)
 	case *corev1.PersistentVolumeClaim:
 		*ref = m.Object.(corev1.PersistentVolumeClaim)
+	case *cosmosv1.CosmosFullNode:
+		*ref = m.Object.(cosmosv1.CosmosFullNode)
 	default:
 		panic(fmt.Errorf("unknown Object type: %T", m.ObjectList))
 	}
@@ -121,7 +125,7 @@ func (m *mockClient[T]) Update(ctx context.Context, obj client.Object, opts ...c
 	}
 	m.UpdateCount++
 	m.LastUpdateObject = obj.(T)
-	return nil
+	return m.UpdateErr
 }
 
 func (m *mockClient[T]) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
@@ -150,6 +154,14 @@ func (m *mockClient[T]) Scheme() *runtime.Scheme {
 		panic(err)
 	}
 	return scheme
+}
+
+func (m *mockClient[T]) Status() client.StatusWriter {
+	return m
+}
+
+func (m *mockClient[T]) RESTMapper() meta.RESTMapper {
+	panic("implement me")
 }
 
 type mockDiffer[T any] struct {
