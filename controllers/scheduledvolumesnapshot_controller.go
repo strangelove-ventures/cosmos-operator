@@ -40,7 +40,6 @@ type ScheduledVolumeSnapshotReconciler struct {
 	recorder           record.EventRecorder
 	scheduler          *volsnapshot.Scheduler
 	volSnapshotControl *volsnapshot.VolumeSnapshotControl
-	statusClient       *fullnode.StatusClient
 }
 
 var sharedHTTPClient = &http.Client{Timeout: 60 * time.Second}
