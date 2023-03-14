@@ -8,8 +8,22 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+type semaphore chan struct{}
+
+func newSem() semaphore {
+	return make(semaphore, 1)
+}
+
+func (s semaphore) Acquire() {
+	s <- struct{}{}
+}
+
+func (s semaphore) Release() {
+	<-s
+}
+
 type StatusClient struct {
-	mu     sync.Mutex
+	sems   sync.Map
 	client client.Client
 }
 
@@ -24,8 +38,9 @@ func NewStatusClient(c client.Client) *StatusClient {
 // Server-side-apply, in theory, would be a solution. During testing, however, it resulted in many conflict errors
 // and would require non-trivial migration to clear existing deployment's metadata.managedFields.
 func (client *StatusClient) SyncUpdate(ctx context.Context, key client.ObjectKey, update func(status *cosmosv1.FullNodeStatus)) error {
-	client.mu.Lock()
-	defer client.mu.Unlock()
+	sem, _ := client.sems.LoadOrStore(key, newSem())
+	sem.(semaphore).Acquire()
+	defer sem.(semaphore).Release()
 
 	var crd cosmosv1.CosmosFullNode
 	if err := client.client.Get(ctx, key, &crd); err != nil {

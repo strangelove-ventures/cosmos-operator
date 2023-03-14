@@ -3,10 +3,12 @@ package fullnode
 import (
 	"context"
 	"errors"
+	"strconv"
 	"testing"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/sync/errgroup"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -42,6 +44,36 @@ func TestStatusClient_SyncUpdate(t *testing.T) {
 		want.Status.StatusMessage = msg
 		require.Equal(t, want.ObjectMeta, updated.ObjectMeta)
 		require.Equal(t, want.Status, updated.Status)
+	})
+
+	t.Run("concurrency", func(t *testing.T) {
+		var (
+			mock    mClient
+			stubCRD cosmosv1.CosmosFullNode
+		)
+		stubCRD.Status.Phase = "test-phase"
+		stubCRD.Name = "test"
+		stubCRD.Namespace = "default"
+		mock.Object = stubCRD
+
+		c := NewStatusClient(&mock)
+		key := client.ObjectKey{Name: "test", Namespace: "default"}
+		msg := ptr("Here's test message")
+		const total = 10
+		var eg errgroup.Group
+		for i := 0; i < total; i++ {
+			suf := i % 2
+			key := key
+			eg.Go(func() error {
+				key.Name += strconv.Itoa(suf)
+				return c.SyncUpdate(ctx, key, func(status *cosmosv1.FullNodeStatus) {
+					status.StatusMessage = msg
+				})
+			})
+		}
+
+		require.NoError(t, eg.Wait())
+		require.Equal(t, 10, mock.UpdateCount)
 	})
 
 	t.Run("get error", func(t *testing.T) {
