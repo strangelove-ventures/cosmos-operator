@@ -183,8 +183,6 @@ func (r *CosmosFullNodeReconciler) updateStatus(ctx context.Context, crd *cosmos
 	}); err != nil {
 		log.FromContext(ctx).Error(err, "Failed to patch status")
 	}
-	//if err := r.Status().Patch(ctx, &patchCRD, client.Merge); err != nil {
-	//}
 }
 
 // SetupWithManager sets up the controller with the Manager.

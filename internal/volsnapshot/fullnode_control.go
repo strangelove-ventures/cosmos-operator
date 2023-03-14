@@ -47,7 +47,6 @@ func (control FullNodeControl) SignalPodDeletion(ctx context.Context, crd *cosmo
 // the k8s API: "The request is invalid: the server rejected our request due to an error in our request"
 func (control FullNodeControl) SignalPodRestoration(ctx context.Context, crd *cosmosalpha.ScheduledVolumeSnapshot) error {
 	key := control.sourceKey(crd)
-	//raw := client.RawPatch(types.JSONPatchType, []byte(fmt.Sprintf(`[{"op":"remove","path":"/status/scheduledSnapshotStatus/%s"}]`, key)))
 	objKey := client.ObjectKey{Name: crd.Spec.FullNodeRef.Name, Namespace: crd.Namespace}
 	return control.statusClient.SyncUpdate(ctx, objKey, func(status *cosmosv1.FullNodeStatus) {
 		delete(status.ScheduledSnapshotStatus, key)
