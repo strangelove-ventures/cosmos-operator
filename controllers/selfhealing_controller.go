@@ -38,12 +38,12 @@ type SelfHealingReconciler struct {
 	pvcAutoScaler *fullnode.PVCAutoScaler
 }
 
-func NewSelfHealing(client client.Client, recorder record.EventRecorder) *SelfHealingReconciler {
+func NewSelfHealing(client client.Client, recorder record.EventRecorder, statusClient *fullnode.StatusClient) *SelfHealingReconciler {
 	return &SelfHealingReconciler{
 		Client:        client,
 		recorder:      recorder,
 		diskClient:    fullnode.NewDiskUsageCollector(healthcheck.NewClient(sharedHTTPClient), client),
-		pvcAutoScaler: fullnode.NewPVCAutoScaler(client.Status()),
+		pvcAutoScaler: fullnode.NewPVCAutoScaler(statusClient),
 	}
 }
 

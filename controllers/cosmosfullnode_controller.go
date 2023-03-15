@@ -48,10 +48,11 @@ type CosmosFullNodeReconciler struct {
 	pvcControl       fullnode.PVCControl
 	recorder         record.EventRecorder
 	serviceControl   fullnode.ServiceControl
+	statusClient     *fullnode.StatusClient
 }
 
 // NewFullNode returns a valid CosmosFullNode controller.
-func NewFullNode(client client.Client, recorder record.EventRecorder) *CosmosFullNodeReconciler {
+func NewFullNode(client client.Client, recorder record.EventRecorder, statusClient *fullnode.StatusClient) *CosmosFullNodeReconciler {
 	var (
 		podFilter = cosmos.NewPodFilter(cosmos.NewTendermintClient(sharedHTTPClient))
 	)
@@ -62,6 +63,7 @@ func NewFullNode(client client.Client, recorder record.EventRecorder) *CosmosFul
 		pvcControl:       fullnode.NewPVCControl(client),
 		recorder:         recorder,
 		serviceControl:   fullnode.NewServiceControl(client),
+		statusClient:     statusClient,
 	}
 }
 
@@ -99,7 +101,7 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	reporter := kube.NewEventReporter(logger, r.recorder, crd)
 
 	fullnode.ResetStatus(crd)
-	defer r.patchStatus(ctx, crd)
+	defer r.updateStatus(ctx, crd)
 
 	errs := &kube.ReconcileErrors{}
 
@@ -168,14 +170,17 @@ func (r *CosmosFullNodeReconciler) resultWithErr(crd *cosmosv1.CosmosFullNode, e
 	return finishResult, err
 }
 
-func (r *CosmosFullNodeReconciler) patchStatus(ctx context.Context, crd *cosmosv1.CosmosFullNode) {
+func (r *CosmosFullNodeReconciler) updateStatus(ctx context.Context, crd *cosmosv1.CosmosFullNode) {
 	// Use patch with new CRD to prevent error: the object has been modified; please apply your changes to the latest version and try again
 	// The ScheduledVolumeSnapshot controller may also update the fullnode's status in tandem with this controller.
 	var patchCRD cosmosv1.CosmosFullNode
 	patchCRD.Name = crd.Name
 	patchCRD.Namespace = crd.Namespace
-	patchCRD.Status = crd.Status
-	if err := r.Status().Patch(ctx, &patchCRD, client.Merge); err != nil {
+	if err := r.statusClient.SyncUpdate(ctx, client.ObjectKeyFromObject(&patchCRD), func(status *cosmosv1.FullNodeStatus) {
+		status.ObservedGeneration = crd.Status.ObservedGeneration
+		status.Phase = crd.Status.Phase
+		status.StatusMessage = crd.Status.StatusMessage
+	}); err != nil {
 		log.FromContext(ctx).Error(err, "Failed to patch status")
 	}
 }

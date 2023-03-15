@@ -27,6 +27,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/strangelove-ventures/cosmos-operator/controllers"
+	"github.com/strangelove-ventures/cosmos-operator/internal/fullnode"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -160,9 +161,12 @@ func startManager(cmd *cobra.Command, args []string) error {
 
 	ctx := cmd.Context()
 
+	statusClient := fullnode.NewStatusClient(mgr.GetClient())
+
 	if err = controllers.NewFullNode(
 		mgr.GetClient(),
 		mgr.GetEventRecorderFor(cosmosv1.CosmosFullNodeController),
+		statusClient,
 	).SetupWithManager(ctx, mgr); err != nil {
 		return fmt.Errorf("unable to create CosmosFullNode controller: %w", err)
 	}
@@ -170,8 +174,17 @@ func startManager(cmd *cobra.Command, args []string) error {
 	if err = controllers.NewSelfHealing(
 		mgr.GetClient(),
 		mgr.GetEventRecorderFor(cosmosv1.SelfHealingController),
+		statusClient,
 	).SetupWithManager(ctx, mgr); err != nil {
 		return fmt.Errorf("unable to create SelfHealing controller: %w", err)
+	}
+
+	if err = controllers.NewScheduledVolumeSnapshotReconciler(
+		mgr.GetClient(),
+		mgr.GetEventRecorderFor(cosmosv1alpha1.ScheduledVolumeSnapshotController),
+		statusClient,
+	).SetupWithManager(ctx, mgr); err != nil {
+		return fmt.Errorf("unable to create ScheduledVolumeSnapshot controller: %w", err)
 	}
 
 	if err = controllers.NewStatefulJob(
@@ -179,13 +192,6 @@ func startManager(cmd *cobra.Command, args []string) error {
 		mgr.GetEventRecorderFor(cosmosv1alpha1.StatefulJobController),
 	).SetupWithManager(ctx, mgr); err != nil {
 		return fmt.Errorf("unable to create StatefulJob controller: %w", err)
-	}
-
-	if err = controllers.NewScheduledVolumeSnapshotReconciler(
-		mgr.GetClient(),
-		mgr.GetEventRecorderFor(cosmosv1alpha1.ScheduledVolumeSnapshotController),
-	).SetupWithManager(ctx, mgr); err != nil {
-		return fmt.Errorf("unable to create ScheduledVolumeSnapshot controller: %w", err)
 	}
 
 	//+kubebuilder:scaffold:builder

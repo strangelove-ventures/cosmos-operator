@@ -10,23 +10,19 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	k8stypes "k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type mockPatcher func(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error
+type mockStatusSyncer func(ctx context.Context, key client.ObjectKey, update func(status *cosmosv1.FullNodeStatus)) error
 
-func (fn mockPatcher) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+func (fn mockStatusSyncer) SyncUpdate(ctx context.Context, key client.ObjectKey, update func(status *cosmosv1.FullNodeStatus)) error {
 	if ctx == nil {
 		panic("nil context")
 	}
-	if len(opts) > 0 {
-		panic("unexpected opts")
-	}
-	return fn(ctx, obj, patch)
+	return fn(ctx, key, update)
 }
 
-var nopPatcher = mockPatcher(func(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+var nopSyncer = mockStatusSyncer(func(ctx context.Context, key client.ObjectKey, update func(status *cosmosv1.FullNodeStatus)) error {
 	return nil
 })
 
@@ -79,35 +75,35 @@ func TestFullNodeControl_SignalPodDeletion(t *testing.T) {
 	}
 
 	t.Run("happy path", func(t *testing.T) {
-		var didPatch bool
-		patcher := mockPatcher(func(_ context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
-			var want cosmosv1.CosmosFullNode
-			want.Name = "my-node"
-			want.Namespace = "default/"
-			want.Status.ScheduledSnapshotStatus = map[string]cosmosv1.FullNodeSnapshotStatus{
+		var didSync bool
+		syncer := mockStatusSyncer(func(ctx context.Context, key client.ObjectKey, update func(status *cosmosv1.FullNodeStatus)) error {
+			require.Equal(t, "my-node", key.Name)
+			require.Equal(t, "default/", key.Namespace)
+
+			var got cosmosv1.FullNodeStatus
+			update(&got)
+			want := map[string]cosmosv1.FullNodeSnapshotStatus{
 				"default.my-snapshot.v1alpha1.cosmos.strange.love": {PodCandidate: "target-pod"},
 			}
-			require.Equal(t, client.Object(&want), obj)
+			require.Equal(t, want, got.ScheduledSnapshotStatus)
 
-			require.Equal(t, client.Merge, patch)
-
-			didPatch = true
+			didSync = true
 			return nil
 		})
 
-		control := NewFullNodeControl(patcher, nopReader)
+		control := NewFullNodeControl(syncer, nopReader)
 		err := control.SignalPodDeletion(ctx, &crd)
 
 		require.NoError(t, err)
-		require.True(t, didPatch)
+		require.True(t, didSync)
 	})
 
 	t.Run("patch failed", func(t *testing.T) {
-		patcher := mockPatcher(func(_ context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+		syncer := mockStatusSyncer(func(ctx context.Context, key client.ObjectKey, update func(status *cosmosv1.FullNodeStatus)) error {
 			return errors.New("boom")
 		})
 
-		control := NewFullNodeControl(patcher, nopReader)
+		control := NewFullNodeControl(syncer, nopReader)
 		err := control.SignalPodDeletion(ctx, &crd)
 
 		require.Error(t, err)
@@ -129,33 +125,45 @@ func TestFullNodeControl_SignalPodRestoration(t *testing.T) {
 	}
 
 	t.Run("happy path", func(t *testing.T) {
-		var didPatch bool
-		patcher := mockPatcher(func(_ context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
-			var wantObj cosmosv1.CosmosFullNode
-			wantObj.Name = "my-node"
-			wantObj.Namespace = "default/"
-			require.Equal(t, client.Object(&wantObj), obj)
+		var didSync bool
+		syncer := mockStatusSyncer(func(ctx context.Context, key client.ObjectKey, update func(status *cosmosv1.FullNodeStatus)) error {
+			require.Equal(t, "my-node", key.Name)
+			require.Equal(t, "default/", key.Namespace)
 
-			wantPatch := client.RawPatch(k8stypes.JSONPatchType, []byte(`[{"op":"remove","path":"/status/scheduledSnapshotStatus/default.my-snapshot.v1alpha1.cosmos.strange.love"}]`))
-			require.Equal(t, wantPatch, patch)
+			var got cosmosv1.FullNodeStatus
+			got.ScheduledSnapshotStatus = map[string]cosmosv1.FullNodeSnapshotStatus{
+				"default.my-snapshot.v1alpha1.cosmos.strange.love": {PodCandidate: "target-pod"},
+			}
+			update(&got)
+			require.Empty(t, got.ScheduledSnapshotStatus)
 
-			didPatch = true
+			got.ScheduledSnapshotStatus = map[string]cosmosv1.FullNodeSnapshotStatus{
+				"default.my-snapshot.v1alpha1.cosmos.strange.love":      {PodCandidate: "target-pod"},
+				"default.another-snapshot.v1alpha1.cosmos.strange.love": {PodCandidate: "another-pod"},
+			}
+			update(&got)
+			want := map[string]cosmosv1.FullNodeSnapshotStatus{
+				"default.another-snapshot.v1alpha1.cosmos.strange.love": {PodCandidate: "another-pod"},
+			}
+			require.Equal(t, want, got.ScheduledSnapshotStatus)
+
+			didSync = true
 			return nil
 		})
 
-		control := NewFullNodeControl(patcher, nopReader)
+		control := NewFullNodeControl(syncer, nopReader)
 		err := control.SignalPodRestoration(ctx, &crd)
 
 		require.NoError(t, err)
-		require.True(t, didPatch)
+		require.True(t, didSync)
 	})
 
 	t.Run("patch failed", func(t *testing.T) {
-		patcher := mockPatcher(func(_ context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+		syncer := mockStatusSyncer(func(ctx context.Context, key client.ObjectKey, update func(status *cosmosv1.FullNodeStatus)) error {
 			return errors.New("boom")
 		})
 
-		control := NewFullNodeControl(patcher, nopReader)
+		control := NewFullNodeControl(syncer, nopReader)
 		err := control.SignalPodRestoration(ctx, &crd)
 
 		require.Error(t, err)
@@ -196,7 +204,7 @@ func TestFullNodeControl_ConfirmPodRestoration(t *testing.T) {
 				return nil
 			}
 
-			control := NewFullNodeControl(nopPatcher, reader)
+			control := NewFullNodeControl(nopSyncer, reader)
 
 			err := control.ConfirmPodRestoration(ctx, &crd)
 			require.NoError(t, err, tt)
@@ -212,7 +220,7 @@ func TestFullNodeControl_ConfirmPodRestoration(t *testing.T) {
 			return nil
 		}
 
-		control := NewFullNodeControl(nopPatcher, reader)
+		control := NewFullNodeControl(nopSyncer, reader)
 		err := control.ConfirmPodRestoration(ctx, &crd)
 
 		require.Error(t, err)
@@ -225,7 +233,7 @@ func TestFullNodeControl_ConfirmPodRestoration(t *testing.T) {
 			return errors.New("boom")
 		}
 
-		control := NewFullNodeControl(nopPatcher, reader)
+		control := NewFullNodeControl(nopSyncer, reader)
 		err := control.ConfirmPodRestoration(ctx, &crd)
 
 		require.Error(t, err)
@@ -267,7 +275,7 @@ func TestFullNodeControl_ConfirmPodDeletion(t *testing.T) {
 			return nil
 		}
 
-		control := NewFullNodeControl(nopPatcher, reader)
+		control := NewFullNodeControl(nopSyncer, reader)
 
 		err := control.ConfirmPodDeletion(ctx, &crd)
 		require.NoError(t, err)
@@ -276,7 +284,7 @@ func TestFullNodeControl_ConfirmPodDeletion(t *testing.T) {
 	})
 
 	t.Run("happy path - no items", func(t *testing.T) {
-		control := NewFullNodeControl(nopPatcher, nopReader)
+		control := NewFullNodeControl(nopSyncer, nopReader)
 		err := control.ConfirmPodDeletion(ctx, &crd)
 
 		require.NoError(t, err)
@@ -293,7 +301,7 @@ func TestFullNodeControl_ConfirmPodDeletion(t *testing.T) {
 			return nil
 		}
 
-		control := NewFullNodeControl(nopPatcher, reader)
+		control := NewFullNodeControl(nopSyncer, reader)
 		err := control.ConfirmPodDeletion(ctx, &crd)
 
 		require.Error(t, err)
@@ -306,7 +314,7 @@ func TestFullNodeControl_ConfirmPodDeletion(t *testing.T) {
 			return errors.New("boom")
 		}
 
-		control := NewFullNodeControl(nopPatcher, reader)
+		control := NewFullNodeControl(nopSyncer, reader)
 		err := control.ConfirmPodDeletion(ctx, &crd)
 
 		require.Error(t, err)

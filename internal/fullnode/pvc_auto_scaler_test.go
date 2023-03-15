@@ -14,16 +14,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type mockPatcher func(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error
+type mockStatusSyncer func(ctx context.Context, key client.ObjectKey, update func(status *cosmosv1.FullNodeStatus)) error
 
-func (fn mockPatcher) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+func (fn mockStatusSyncer) SyncUpdate(ctx context.Context, key client.ObjectKey, update func(status *cosmosv1.FullNodeStatus)) error {
 	if ctx == nil {
 		panic("nil context")
 	}
-	if len(opts) > 0 {
-		panic("unexpected opts")
-	}
-	return fn(ctx, obj, patch, opts...)
+	return fn(ctx, key, update)
 }
 
 func TestPVCAutoScaler_SignalPVCResize(t *testing.T) {
@@ -32,8 +29,8 @@ func TestPVCAutoScaler_SignalPVCResize(t *testing.T) {
 
 	ctx := context.Background()
 
-	panicPatcher := mockPatcher(func(_ context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
-		panic("patch should not be called")
+	panicSyncer := mockStatusSyncer(func(ctx context.Context, key client.ObjectKey, update func(status *cosmosv1.FullNodeStatus)) error {
+		panic("should not be called")
 	})
 
 	t.Run("happy path", func(t *testing.T) {
@@ -73,27 +70,21 @@ func TestPVCAutoScaler_SignalPVCResize(t *testing.T) {
 			}
 
 			var patchCalled bool
-			patcher := mockPatcher(func(_ context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
-				var want cosmosv1.CosmosFullNode
-				want.Name = name
-				want.Namespace = namespace
-				want.TypeMeta = crd.TypeMeta
+			syncer := mockStatusSyncer(func(ctx context.Context, key client.ObjectKey, update func(status *cosmosv1.FullNodeStatus)) error {
+				require.Equal(t, name, key.Name)
+				require.Equal(t, namespace, key.Namespace)
 
-				got := obj.(*cosmosv1.CosmosFullNode)
-				require.Equal(t, want.ObjectMeta, got.ObjectMeta, tt)
-				require.Equal(t, want.TypeMeta, got.TypeMeta, tt)
-				require.Empty(t, got.Spec, tt) // Asserts we just patch the status
-
-				gotStatus := got.Status.SelfHealing.PVCAutoScale
+				var got cosmosv1.FullNodeStatus
+				update(&got)
+				gotStatus := got.SelfHealing.PVCAutoScale
 				require.Equal(t, stubNow, gotStatus.RequestedAt.Time, tt)
 				require.Truef(t, tt.Want.Equal(gotStatus.RequestedSize), "%s:\nwant %+v\ngot  %+v", tt, tt.Want, gotStatus.RequestedSize)
-
-				require.Equal(t, client.Merge, patch)
 
 				patchCalled = true
 				return nil
 			})
-			scaler := NewPVCAutoScaler(patcher)
+
+			scaler := NewPVCAutoScaler(syncer)
 			scaler.now = func() time.Time {
 				return stubNow
 			}
@@ -129,16 +120,17 @@ func TestPVCAutoScaler_SignalPVCResize(t *testing.T) {
 		}
 
 		var patchCalled bool
-		patcher := mockPatcher(func(_ context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
-			got := obj.(*cosmosv1.CosmosFullNode)
-			gotStatus := got.Status.SelfHealing.PVCAutoScale
+		syncer := mockStatusSyncer(func(ctx context.Context, key client.ObjectKey, update func(status *cosmosv1.FullNodeStatus)) error {
+			var got cosmosv1.FullNodeStatus
+			update(&got)
+			gotStatus := got.SelfHealing.PVCAutoScale
 			require.Equal(t, maxSize.Value(), gotStatus.RequestedSize.Value())
 			require.Equal(t, maxSize.Format, gotStatus.RequestedSize.Format)
 
 			patchCalled = true
 			return nil
 		})
-		scaler := NewPVCAutoScaler(patcher)
+		scaler := NewPVCAutoScaler(syncer)
 
 		usage := []PVCDiskUsage{
 			{PercentUsed: 80, Capacity: capacity},
@@ -168,7 +160,7 @@ func TestPVCAutoScaler_SignalPVCResize(t *testing.T) {
 				},
 			}
 
-			scaler := NewPVCAutoScaler(panicPatcher)
+			scaler := NewPVCAutoScaler(panicSyncer)
 			usage := []PVCDiskUsage{
 				{PercentUsed: 80, Capacity: tt.Capacity},
 			}
@@ -198,7 +190,7 @@ func TestPVCAutoScaler_SignalPVCResize(t *testing.T) {
 				},
 			}
 
-			scaler := NewPVCAutoScaler(panicPatcher)
+			scaler := NewPVCAutoScaler(panicSyncer)
 			got, err := scaler.SignalPVCResize(ctx, &crd, lo.Shuffle(tt.DiskUsage))
 
 			require.NoError(t, err)
@@ -220,7 +212,7 @@ func TestPVCAutoScaler_SignalPVCResize(t *testing.T) {
 			RequestedSize: resource.MustParse("100Gi"),
 		}
 
-		scaler := NewPVCAutoScaler(panicPatcher)
+		scaler := NewPVCAutoScaler(panicSyncer)
 		usage := []PVCDiskUsage{
 			{PercentUsed: usedSpacePercentage, Capacity: resource.MustParse("90Gi")},
 		}
@@ -247,7 +239,7 @@ func TestPVCAutoScaler_SignalPVCResize(t *testing.T) {
 				},
 			}
 
-			scaler := NewPVCAutoScaler(panicPatcher)
+			scaler := NewPVCAutoScaler(panicSyncer)
 			usage := []PVCDiskUsage{
 				{PercentUsed: usedSpacePercentage},
 			}
@@ -269,7 +261,7 @@ func TestPVCAutoScaler_SignalPVCResize(t *testing.T) {
 			},
 		}
 
-		scaler := NewPVCAutoScaler(mockPatcher(func(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+		scaler := NewPVCAutoScaler(mockStatusSyncer(func(ctx context.Context, key client.ObjectKey, update func(status *cosmosv1.FullNodeStatus)) error {
 			return errors.New("boom")
 		}))
 		usage := []PVCDiskUsage{

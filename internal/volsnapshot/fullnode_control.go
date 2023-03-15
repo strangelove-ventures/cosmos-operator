@@ -9,22 +9,20 @@ import (
 	cosmosalpha "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// StatusPatcher patches the status subresource of a CosmosFullNode.
-type StatusPatcher interface {
-	Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error
+type StatusSyncer interface {
+	SyncUpdate(ctx context.Context, key client.ObjectKey, update func(status *cosmosv1.FullNodeStatus)) error
 }
 
 // FullNodeControl manages a ScheduledVolumeSnapshot's spec.fullNodeRef.
 type FullNodeControl struct {
 	client       client.Reader
-	statusClient StatusPatcher
+	statusClient StatusSyncer
 }
 
-func NewFullNodeControl(statusClient StatusPatcher, client client.Reader) *FullNodeControl {
+func NewFullNodeControl(statusClient StatusSyncer, client client.Reader) *FullNodeControl {
 	return &FullNodeControl{client: client, statusClient: statusClient}
 }
 
@@ -33,29 +31,24 @@ func NewFullNodeControl(statusClient StatusPatcher, client client.Reader) *FullN
 // Assumes crd's status.candidate is set, otherwise this method panics.
 // Any error returned can be treated as transient and retried.
 func (control FullNodeControl) SignalPodDeletion(ctx context.Context, crd *cosmosalpha.ScheduledVolumeSnapshot) error {
-	var fn cosmosv1.CosmosFullNode
-	fn.Name = crd.Spec.FullNodeRef.Name
-	fn.Namespace = crd.Namespace
-	fn.Status.ScheduledSnapshotStatus = make(map[string]cosmosv1.FullNodeSnapshotStatus)
-
 	key := control.sourceKey(crd)
-	fn.Status.ScheduledSnapshotStatus[key] = cosmosv1.FullNodeSnapshotStatus{
-		PodCandidate: crd.Status.Candidate.PodName,
-	}
-	return control.statusClient.Patch(ctx, &fn, client.Merge)
+	objKey := client.ObjectKey{Name: crd.Spec.FullNodeRef.Name, Namespace: crd.Namespace}
+	return control.statusClient.SyncUpdate(ctx, objKey, func(status *cosmosv1.FullNodeStatus) {
+		if status.ScheduledSnapshotStatus == nil {
+			status.ScheduledSnapshotStatus = make(map[string]cosmosv1.FullNodeSnapshotStatus)
+		}
+		status.ScheduledSnapshotStatus[key] = cosmosv1.FullNodeSnapshotStatus{PodCandidate: crd.Status.Candidate.PodName}
+	})
 }
 
 // SignalPodRestoration updates the LocalFullNodeRef's status to indicate it should recreate the pod candidate.
 // Any error returned can be treated as transient and retried.
-// This method will error if the scheduledSnapshotStatus map key does not exist. You get an unhelpful error message from
-// the k8s API: "The request is invalid: the server rejected our request due to an error in our request"
 func (control FullNodeControl) SignalPodRestoration(ctx context.Context, crd *cosmosalpha.ScheduledVolumeSnapshot) error {
-	var fn cosmosv1.CosmosFullNode
-	fn.Name = crd.Spec.FullNodeRef.Name
-	fn.Namespace = crd.Namespace
 	key := control.sourceKey(crd)
-	raw := client.RawPatch(types.JSONPatchType, []byte(fmt.Sprintf(`[{"op":"remove","path":"/status/scheduledSnapshotStatus/%s"}]`, key)))
-	return control.statusClient.Patch(ctx, &fn, raw)
+	objKey := client.ObjectKey{Name: crd.Spec.FullNodeRef.Name, Namespace: crd.Namespace}
+	return control.statusClient.SyncUpdate(ctx, objKey, func(status *cosmosv1.FullNodeStatus) {
+		delete(status.ScheduledSnapshotStatus, key)
+	})
 }
 
 // ConfirmPodRestoration verifies the pod has been restored.
