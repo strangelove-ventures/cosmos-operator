@@ -187,5 +187,9 @@ func FuzzBuildPVCs(f *testing.F) {
 
 		// Test determinism because maps are involved.
 		require.Equal(t, pvc4.Labels[kube.RevisionLabel], BuildPVCs(&crd)[0].Labels[kube.RevisionLabel])
+
+		crd.Status.SelfHealing.PVCAutoScale = &cosmosv1.PVCAutoScaleStatus{}
+		pvc5 := BuildPVCs(&crd)[0]
+		require.NotEqual(t, pvc4.Labels[kube.RevisionLabel], pvc5.Labels[kube.RevisionLabel])
 	})
 }

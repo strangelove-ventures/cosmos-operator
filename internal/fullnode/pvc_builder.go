@@ -85,6 +85,7 @@ func pvcName(crd *cosmosv1.CosmosFullNode, ordinal int32) string {
 func pvcRevisionHash(crd *cosmosv1.CosmosFullNode) string {
 	h := fnv.New32()
 	mustWrite(h, mustMarshalJSON(crd.Spec.VolumeClaimTemplate))
+	mustWrite(h, mustMarshalJSON(crd.Status.SelfHealing.PVCAutoScale))
 
 	keys := maps.Keys(crd.Spec.InstanceOverrides)
 	sort.Strings(keys)
