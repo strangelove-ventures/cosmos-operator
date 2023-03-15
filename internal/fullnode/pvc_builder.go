@@ -54,7 +54,7 @@ func BuildPVCs(crd *cosmosv1.CosmosFullNode) []*corev1.PersistentVolumeClaim {
 
 		pvc.Spec = corev1.PersistentVolumeClaimSpec{
 			AccessModes:      sliceOrDefault(tpl.AccessModes, defaultAccessModes),
-			Resources:        tpl.Resources,
+			Resources:        pvcResources(crd),
 			StorageClassName: ptr(tpl.StorageClassName),
 			VolumeMode:       valOrDefault(tpl.VolumeMode, ptr(corev1.PersistentVolumeFilesystem)),
 			DataSource:       tpl.DataSource,
@@ -78,6 +78,19 @@ func pvcDisabled(crd *cosmosv1.CosmosFullNode, ordinal int32) bool {
 func pvcName(crd *cosmosv1.CosmosFullNode, ordinal int32) string {
 	name := fmt.Sprintf("pvc-%s-%d", appName(crd), ordinal)
 	return kube.ToName(name)
+}
+
+func pvcResources(crd *cosmosv1.CosmosFullNode) corev1.ResourceRequirements {
+	var (
+		reqs = crd.Spec.VolumeClaimTemplate.Resources
+		size = reqs.Requests[corev1.ResourceStorage]
+	)
+	if autoScale := crd.Status.SelfHealing.PVCAutoScale; autoScale != nil {
+		if autoScale.RequestedSize.Cmp(size) > 0 {
+			reqs.Requests[corev1.ResourceStorage] = autoScale.RequestedSize
+		}
+	}
+	return reqs
 }
 
 // Attempts to produce a deterministic hash based on the pvc template, so we can detect updates.

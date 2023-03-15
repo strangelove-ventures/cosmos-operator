@@ -24,7 +24,7 @@ func TestBuildPVCs(t *testing.T) {
 		crd.Spec.VolumeClaimTemplate = cosmosv1.PersistentVolumeClaimSpec{
 			StorageClassName: "test-storage-class",
 			Resources: corev1.ResourceRequirements{
-				Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceStorage: resource.MustParse("100G")},
+				Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("100G")},
 			},
 		}
 		crd.Spec.InstanceOverrides = map[string]cosmosv1.InstanceOverridesSpec{
@@ -146,6 +146,32 @@ func TestBuildPVCs(t *testing.T) {
 
 		for _, got := range pvcs {
 			test.RequireValidMetadata(t, got)
+		}
+	})
+
+	t.Run("pvc auto scale", func(t *testing.T) {
+		for _, tt := range []struct {
+			SpecQuant, AutoScaleQuant, WantQuant string
+		}{
+			{"100G", "99G", "100G"},
+			{"100G", "101G", "101G"},
+		} {
+			crd := defaultCRD()
+			crd.Spec.Replicas = 1
+			crd.Spec.VolumeClaimTemplate = cosmosv1.PersistentVolumeClaimSpec{
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(tt.SpecQuant)},
+				},
+			}
+			crd.Status.SelfHealing.PVCAutoScale = &cosmosv1.PVCAutoScaleStatus{
+				RequestedSize: resource.MustParse(tt.AutoScaleQuant),
+			}
+
+			pvcs := BuildPVCs(&crd)
+			require.Len(t, pvcs, 1, tt)
+
+			want := corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(tt.WantQuant)}
+			require.Equal(t, want, pvcs[0].Spec.Resources.Requests, tt)
 		}
 	})
 }
