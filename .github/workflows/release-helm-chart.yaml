@@ -1,9 +1,9 @@
 name: Release Helm Chart
 
-on:                                                                                                           
-  push:                                                                                                       
-    branches:                                                                                                 
-      - main
+on:
+  pull_request:
+    types:
+      - closed
 
 env:
   REGISTRY: ghcr.io
