@@ -189,10 +189,11 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 	pod.Spec.InitContainers = initContainers(b.crd, name)
 
 	const (
-		volChainHome = "vol-chain-home" // Stores live chain data and config files.
-		volTmp       = "vol-tmp"        // Stores temporary config files for manipulation later.
-		volConfig    = "vol-config"     // Items from ConfigMap.
-		volSystemTmp = "vol-system-tmp" // Necessary for statesync or else you may see the error: ERR State sync failed err="failed to create chunk queue: unable to create temp dir for state sync chunks: stat /tmp: no such file or directory" module=statesync
+		volChainHome   = "vol-chain-home"   // Stores live chain data and config files.
+		volTmp         = "vol-tmp"          // Stores temporary config files for manipulation later.
+		volConfig      = "vol-config"       // Items from ConfigMap.
+		volSystemTmp   = "vol-system-tmp"   // Necessary for statesync or else you may see the error: ERR State sync failed err="failed to create chunk queue: unable to create temp dir for state sync chunks: stat /tmp: no such file or directory" module=statesync
+		volDefaultHome = "vol-default-home" // TODO
 	)
 	pod.Spec.Volumes = []corev1.Volume{
 		{
@@ -225,12 +226,25 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
+		{
+			Name: volSystemTmp,
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+		{
+			Name: volDefaultHome,
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
 	}
 
 	// Mounts required by all containers.
 	mounts := []corev1.VolumeMount{
 		{Name: volChainHome, MountPath: ChainHomeDir},
 		{Name: volSystemTmp, MountPath: systemTmpDir},
+		{Name: volSystemTmp, MountPath: ".osmosisd"}, // TODO: make dynamic
 	}
 	// Additional mounts only needed for init containers.
 	for i := range pod.Spec.InitContainers {
