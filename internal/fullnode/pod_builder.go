@@ -244,7 +244,7 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 	mounts := []corev1.VolumeMount{
 		{Name: volChainHome, MountPath: ChainHomeDir},
 		{Name: volSystemTmp, MountPath: systemTmpDir},
-		{Name: volSystemTmp, MountPath: ".osmosisd"}, // TODO: make dynamic
+		{Name: volDefaultHome, MountPath: ".osmosisd"}, // TODO: make dynamic
 	}
 	// Additional mounts only needed for init containers.
 	for i := range pod.Spec.InitContainers {
