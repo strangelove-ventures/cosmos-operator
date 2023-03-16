@@ -250,7 +250,7 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 const (
 	workDir = "/home/operator"
 	// ChainHomeDir is the abs filepath for the chain's home directory.
-	ChainHomeDir = workDir + "/cosmos"
+	ChainHomeDir = workDir + "/.osmosisd" // TODO: here is the hack
 
 	tmpDir         = workDir + "/.tmp"
 	tmpConfigDir   = workDir + "/.config"
