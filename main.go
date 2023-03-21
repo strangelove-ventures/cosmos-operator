@@ -94,8 +94,8 @@ var (
 
 func rootCmd() *cobra.Command {
 	root := &cobra.Command{
-		Short:        "Run the operator",
 		Use:          "manager",
+		Short:        "Run the operator",
 		Version:      vcsRevision,
 		RunE:         startManager,
 		SilenceUsage: true,
@@ -116,6 +116,7 @@ func rootCmd() *cobra.Command {
 
 	// Add subcommands here
 	root.AddCommand(healthcheckCmd())
+	root.AddCommand(initFullNodeCmd())
 
 	return root
 }

@@ -18,8 +18,8 @@ import (
 
 func healthcheckCmd() *cobra.Command {
 	hc := &cobra.Command{
-		Short:        "Start health check probe",
 		Use:          "healthcheck",
+		Short:        "Start health check probe",
 		RunE:         startHealthCheckServer,
 		SilenceUsage: true,
 	}
