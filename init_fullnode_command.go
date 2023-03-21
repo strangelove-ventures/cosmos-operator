@@ -20,6 +20,7 @@ TODO:
 - Manage files created from the chain's init command.
 - Download genesis files.
 - Download and extract snapshots.
+- Merge toml files.
 `,
 		RunE:         initFullNode,
 		SilenceUsage: true,
