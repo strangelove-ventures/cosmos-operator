@@ -90,6 +90,10 @@ spec:
     probes:
       # Disable all probes.
       strategy: None
+    # Add extra volumes to every pod
+    volumes: []
+    # Mount extra volumes to every container
+    volumeMounts: []
 
   # Configures kube services created by the operator.
   service:
