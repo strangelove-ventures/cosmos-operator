@@ -240,6 +240,14 @@ type PodSpec struct {
 	// Configure probes for the pods managed by the controller.
 	// +optional
 	Probes FullNodeProbesSpec `json:"probes"`
+
+	// Add additional volumes to the pod.
+	// +optional
+	Volumes []corev1.Volume `json:"volumes"`
+
+	// Add additional volume mounts to every pod container.
+	// +optional
+	VolumeMounts []corev1.VolumeMount `json:"volumeMounts"`
 }
 
 type FullNodeProbeStrategy string
