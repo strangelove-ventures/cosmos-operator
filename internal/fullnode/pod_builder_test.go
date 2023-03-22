@@ -331,7 +331,7 @@ func TestPodBuilder(t *testing.T) {
 		}
 	})
 
-	t.Run("user supplied additional volumes", func(t *testing.T) {
+	t.Run("user supplied volumes and mounts", func(t *testing.T) {
 		crd := defaultCRD()
 
 		const (
@@ -355,6 +355,7 @@ func TestPodBuilder(t *testing.T) {
 
 		vols := pod.Spec.Volumes
 		require.Equal(t, 5, len(vols))
+		require.Equal(t, 5, len(lo.UniqBy(vols, func(v corev1.Volume) string { return v.Name })))
 
 		require.Equal(t, "vol-chain-home", vols[0].Name)
 		require.Equal(t, "pvc-osmosis-1", vols[0].PersistentVolumeClaim.ClaimName)
@@ -364,6 +365,8 @@ func TestPodBuilder(t *testing.T) {
 
 		for _, c := range pod.Spec.Containers {
 			require.Len(t, c.VolumeMounts, 3)
+			require.Equal(t, 3, len(lo.UniqBy(c.VolumeMounts, func(v corev1.VolumeMount) string { return v.Name })))
+
 			mount := c.VolumeMounts[0]
 			require.Equal(t, "vol-chain-home", mount.Name, c.Name)
 			require.Equal(t, "/home/operator/cosmos", mount.MountPath, c.Name)
