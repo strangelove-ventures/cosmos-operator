@@ -116,7 +116,7 @@ func rootCmd() *cobra.Command {
 
 	// Add subcommands here
 	root.AddCommand(healthcheckCmd())
-	root.AddCommand(initFullNodeCmd())
+	root.AddCommand(fullNodeMigrateCmd())
 
 	return root
 }
