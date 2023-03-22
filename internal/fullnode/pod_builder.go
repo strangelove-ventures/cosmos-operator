@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/internal/healthcheck"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
@@ -228,25 +229,42 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 			},
 		},
 	}
-	pod.Spec.Volumes = append(pod.Spec.Volumes, b.crd.Spec.PodTemplate.Volumes...)
+
+	// Don't allow user to override default volumes.
+	volNames := lo.Map(pod.Spec.Volumes, func(v corev1.Volume, _ int) string { return v.Name })
+	for _, extra := range b.crd.Spec.PodTemplate.Volumes {
+		if lo.Contains(volNames, extra.Name) {
+			continue
+		}
+		pod.Spec.Volumes = append(pod.Spec.Volumes, extra)
+	}
 
 	// Mounts required by all containers.
 	mounts := []corev1.VolumeMount{
 		{Name: volChainHome, MountPath: ChainHomeDir},
 		{Name: volSystemTmp, MountPath: systemTmpDir},
 	}
+	// Don't allow user to override default volume mounts.
+	for _, extra := range b.crd.Spec.PodTemplate.VolumeMounts {
+		if lo.Contains(volNames, extra.Name) {
+			continue
+		}
+		mounts = append(mounts, extra)
+	}
 	for i := range pod.Spec.Containers {
-		pod.Spec.Containers[i].VolumeMounts = append(mounts, b.crd.Spec.PodTemplate.VolumeMounts...)
+		pod.Spec.Containers[i].VolumeMounts = mounts
 	}
 
 	// Additional mounts only needed for init containers.
+	initMounts := append(mounts, []corev1.VolumeMount{
+		{Name: volTmp, MountPath: tmpDir},
+		{Name: volConfig, MountPath: tmpConfigDir},
+	}...)
+
 	for i := range pod.Spec.InitContainers {
-		pod.Spec.InitContainers[i].VolumeMounts = append(mounts, []corev1.VolumeMount{
-			{Name: volTmp, MountPath: tmpDir},
-			{Name: volConfig, MountPath: tmpConfigDir},
-		}...)
-		pod.Spec.InitContainers[i].VolumeMounts = append(pod.Spec.InitContainers[i].VolumeMounts, b.crd.Spec.PodTemplate.VolumeMounts...)
+		pod.Spec.InitContainers[i].VolumeMounts = initMounts
 	}
+
 	b.pod = pod
 	return b
 }

@@ -342,12 +342,12 @@ func TestPodBuilder(t *testing.T) {
 		crd.Spec.PodTemplate.Volumes = []corev1.Volume{
 			{Name: customVol, VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
 			// Tests user cannot override the default volumes
-			//{Name: volChainHome, VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+			{Name: volChainHome, VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
 		}
 		crd.Spec.PodTemplate.VolumeMounts = []corev1.VolumeMount{
 			{Name: customVol, MountPath: customMount},
 			// Tests user cannot override the default mounts
-			//{Name: volChainHome, MountPath: "should-not-see-me"},
+			{Name: volChainHome, MountPath: "should-not-see-me"},
 		}
 
 		builder := NewPodBuilder(&crd)
@@ -379,7 +379,7 @@ func TestPodBuilder(t *testing.T) {
 			require.Equal(t, "vol-chain-home", mount.Name, c.Name)
 			require.Equal(t, "/home/operator/cosmos", mount.MountPath, c.Name)
 
-			mount = c.VolumeMounts[4]
+			mount = c.VolumeMounts[2]
 			require.Equal(t, customVol, mount.Name, c.Name)
 			require.Equal(t, customMount, mount.MountPath, c.Name)
 		}
