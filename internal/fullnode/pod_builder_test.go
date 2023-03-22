@@ -331,6 +331,60 @@ func TestPodBuilder(t *testing.T) {
 		}
 	})
 
+	t.Run("user supplied additional volumes", func(t *testing.T) {
+		crd := defaultCRD()
+
+		const (
+			customVol   = "vol-1"
+			customMount = "/mnt/vol-1"
+		)
+
+		crd.Spec.PodTemplate.Volumes = []corev1.Volume{
+			{Name: customVol, VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+			// Tests user cannot override the default volumes
+			//{Name: volChainHome, VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+		}
+		crd.Spec.PodTemplate.VolumeMounts = []corev1.VolumeMount{
+			{Name: customVol, MountPath: customMount},
+			// Tests user cannot override the default mounts
+			//{Name: volChainHome, MountPath: "should-not-see-me"},
+		}
+
+		builder := NewPodBuilder(&crd)
+		pod := builder.WithOrdinal(1).Build()
+
+		vols := pod.Spec.Volumes
+		require.Equal(t, 5, len(vols))
+
+		require.Equal(t, "vol-chain-home", vols[0].Name)
+		require.Equal(t, "pvc-osmosis-1", vols[0].PersistentVolumeClaim.ClaimName)
+
+		require.Equal(t, customVol, vols[4].Name)
+		require.NotNil(t, vols[4].EmptyDir)
+
+		for _, c := range pod.Spec.Containers {
+			require.Len(t, c.VolumeMounts, 3)
+			mount := c.VolumeMounts[0]
+			require.Equal(t, "vol-chain-home", mount.Name, c.Name)
+			require.Equal(t, "/home/operator/cosmos", mount.MountPath, c.Name)
+
+			mount = c.VolumeMounts[2]
+			require.Equal(t, customVol, mount.Name, c.Name)
+			require.Equal(t, customMount, mount.MountPath, c.Name)
+		}
+
+		for _, c := range pod.Spec.InitContainers {
+			require.Len(t, c.VolumeMounts, 5)
+			mount := c.VolumeMounts[0]
+			require.Equal(t, "vol-chain-home", mount.Name, c.Name)
+			require.Equal(t, "/home/operator/cosmos", mount.MountPath, c.Name)
+
+			mount = c.VolumeMounts[4]
+			require.Equal(t, customVol, mount.Name, c.Name)
+			require.Equal(t, customMount, mount.MountPath, c.Name)
+		}
+	})
+
 	t.Run("start container command", func(t *testing.T) {
 		cmdCrd := defaultCRD()
 		cmdCrd.Spec.ChainSpec.Binary = "gaiad"

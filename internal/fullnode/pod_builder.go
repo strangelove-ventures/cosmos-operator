@@ -176,6 +176,14 @@ func (b PodBuilder) Build() *corev1.Pod {
 	return b.pod
 }
 
+// Default Volumes
+const (
+	volChainHome = "vol-chain-home" // Stores live chain data and config files.
+	volTmp       = "vol-tmp"        // Stores temporary config files for manipulation later.
+	volConfig    = "vol-config"     // Items from ConfigMap.
+	volSystemTmp = "vol-system-tmp" // Necessary for statesync or else you may see the error: ERR State sync failed err="failed to create chunk queue: unable to create temp dir for state sync chunks: stat /tmp: no such file or directory" module=statesync
+)
+
 // WithOrdinal updates adds name and other metadata to the pod using "ordinal" which is the pod's
 // ordered sequence. Pods have deterministic, consistent names similar to a StatefulSet instead of generated names.
 func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
@@ -188,12 +196,6 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 	pod.Name = name
 	pod.Spec.InitContainers = initContainers(b.crd, name)
 
-	const (
-		volChainHome = "vol-chain-home" // Stores live chain data and config files.
-		volTmp       = "vol-tmp"        // Stores temporary config files for manipulation later.
-		volConfig    = "vol-config"     // Items from ConfigMap.
-		volSystemTmp = "vol-system-tmp" // Necessary for statesync or else you may see the error: ERR State sync failed err="failed to create chunk queue: unable to create temp dir for state sync chunks: stat /tmp: no such file or directory" module=statesync
-	)
 	pod.Spec.Volumes = []corev1.Volume{
 		{
 			Name: volChainHome,
@@ -226,23 +228,25 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 			},
 		},
 	}
+	pod.Spec.Volumes = append(pod.Spec.Volumes, b.crd.Spec.PodTemplate.Volumes...)
 
 	// Mounts required by all containers.
 	mounts := []corev1.VolumeMount{
 		{Name: volChainHome, MountPath: ChainHomeDir},
 		{Name: volSystemTmp, MountPath: systemTmpDir},
 	}
+	for i := range pod.Spec.Containers {
+		pod.Spec.Containers[i].VolumeMounts = append(mounts, b.crd.Spec.PodTemplate.VolumeMounts...)
+	}
+
 	// Additional mounts only needed for init containers.
 	for i := range pod.Spec.InitContainers {
 		pod.Spec.InitContainers[i].VolumeMounts = append(mounts, []corev1.VolumeMount{
 			{Name: volTmp, MountPath: tmpDir},
 			{Name: volConfig, MountPath: tmpConfigDir},
 		}...)
+		pod.Spec.InitContainers[i].VolumeMounts = append(pod.Spec.InitContainers[i].VolumeMounts, b.crd.Spec.PodTemplate.VolumeMounts...)
 	}
-	for i := range pod.Spec.Containers {
-		pod.Spec.Containers[i].VolumeMounts = mounts
-	}
-
 	b.pod = pod
 	return b
 }
