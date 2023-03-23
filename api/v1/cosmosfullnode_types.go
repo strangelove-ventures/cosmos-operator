@@ -58,6 +58,17 @@ type FullNodeSpec struct {
 	// Creates 1 pod per replica.
 	PodTemplate PodSpec `json:"podTemplate"`
 
+	// Patches the pods created via the podTemplate.
+	// This patch takes precedence and overrides the default pods created by the podTemplate.
+	// Take extreme caution when using this feature. Use only for critical bugs.
+	// It will be easy to create a broken deployment.
+	// Some chains do not follow conventions or best practices, so this serves as an "escape hatch" for the user
+	// at the cost of operator maintainability.
+	// Examples: Adding new volumes, changing init scripts, adding init containers, tweaking commands, etc.
+	// This feature is not guaranteed to be backwards compatible for new versions of the operator.
+	// +optional
+	PodPatch *PodPatch `json:"podPatch"`
+
 	// How to scale pods when performing an update.
 	// +optional
 	RolloutStrategy RolloutStrategy `json:"strategy"`
@@ -256,6 +267,25 @@ type FullNodeProbesSpec struct {
 	// +optional
 	Strategy FullNodeProbeStrategy `json:"strategy"`
 }
+
+type PodPatch struct {
+	// The patch type to use when applying the patch.
+	// Currently only supports StrategicMergePatchType.
+	// In the future, may support JSONPatchType, MergePatchType, and ApplyPatchType.
+	// Defaults to StrategicMergePatchType.
+	// +optional
+	PatchType PatchType `json:"patchType"`
+
+	// The patch to apply to the pod spec.
+	Spec corev1.PodSpec `json:"spec"`
+}
+
+type PatchType string
+
+const (
+	StrategicMergePatchType PatchType = "StrategicMergePatch"
+	// TODO: Add support for JSONPatchType, MergePatchType, and ApplyPatchType
+)
 
 // PersistentVolumeClaimSpec describes the common attributes of storage devices
 // and allows a Source for provider-specific attributes
