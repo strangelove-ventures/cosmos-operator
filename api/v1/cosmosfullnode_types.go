@@ -58,17 +58,6 @@ type FullNodeSpec struct {
 	// Creates 1 pod per replica.
 	PodTemplate PodSpec `json:"podTemplate"`
 
-	// Patches the pods created via the podTemplate.
-	// This patch takes precedence and overrides the default pods created by the podTemplate.
-	// Take extreme caution when using this feature. Use only for critical bugs.
-	// It will be easy to create a broken deployment.
-	// Some chains do not follow conventions or best practices, so this serves as an "escape hatch" for the user
-	// at the cost of operator maintainability.
-	// Examples: Adding new volumes, changing init scripts, adding init containers, tweaking commands, etc.
-	// This feature is not guaranteed to be backwards compatible for new versions of the operator.
-	// +optional
-	PodPatch *PodPatch `json:"podPatch"`
-
 	// How to scale pods when performing an update.
 	// +optional
 	RolloutStrategy RolloutStrategy `json:"strategy"`
@@ -251,6 +240,18 @@ type PodSpec struct {
 	// Configure probes for the pods managed by the controller.
 	// +optional
 	Probes FullNodeProbesSpec `json:"probes"`
+
+	// Patches the pods created via the podTemplate.
+	// A subset of corev1.PodSpec is supported, notably containers and volumes.
+	// This patch takes precedence and overrides the default pods created by the podTemplate.
+	// Take extreme caution when using this feature. Use only for critical bugs.
+	// It will be easy to create a broken deployment.
+	// Some chains do not follow conventions or best practices, so this serves as an "escape hatch" for the user
+	// at the cost of maintainability.
+	// Examples: Adding new volumes, changing init scripts, adding init containers, tweaking commands, etc.
+	// This feature is not guaranteed to be backwards compatible for new versions of the operator.
+	// +optional
+	PodPatch *PodPatchSpec `json:"patch"`
 }
 
 type FullNodeProbeStrategy string
@@ -268,22 +269,40 @@ type FullNodeProbesSpec struct {
 	Strategy FullNodeProbeStrategy `json:"strategy"`
 }
 
-type PodPatch struct {
+type PodPatchSpec struct {
 	// The patch type to use when applying the patch.
-	// Currently only supports StrategicMergePatchType.
-	// In the future, may support JSONPatchType, MergePatchType, and ApplyPatchType.
+	// Currently only supports strategic merge.
+	// In the future, may support json, merge, and apply patches.
 	// Defaults to StrategicMergePatchType.
 	// +optional
 	PatchType PatchType `json:"patchType"`
 
-	// The patch to apply to the pod spec.
-	Spec corev1.PodSpec `json:"spec"`
+	// List of volumes that can be mounted by containers belonging to the pod.
+	// More info: https://kubernetes.io/docs/concepts/storage/volumes
+	// +optional
+	Volumes []corev1.Volume `json:"volumes"`
+	// List of initialization containers belonging to the pod.
+	// Init containers are executed in order prior to containers being started. If any
+	// init container fails, the pod is considered to have failed and is handled according
+	// to its restartPolicy. The name for an init container or normal container must be
+	// unique among all containers.
+	// Init containers may not have Lifecycle actions, Readiness probes, Liveness probes, or Startup probes.
+	// The resourceRequirements of an init container are taken into account during scheduling
+	// by finding the highest request/limit for each resource type, and then using the max of
+	// of that value or the sum of the normal containers. Limits are applied to init containers
+	// in a similar fashion.
+	// More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
+	// +optional
+	InitContainers []corev1.Container `json:"initContainers"`
+	// List of containers belonging to the pod.
+	// +optional
+	Containers []corev1.Container `json:"containers"`
 }
 
 type PatchType string
 
 const (
-	StrategicMergePatchType PatchType = "StrategicMergePatch"
+	StrategicMergePatchType PatchType = "StrategicMerge"
 	// TODO: Add support for JSONPatchType, MergePatchType, and ApplyPatchType
 )
 
