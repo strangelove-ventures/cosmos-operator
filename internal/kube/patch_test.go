@@ -28,7 +28,7 @@ func TestStrategicPatch(t *testing.T) {
 					},
 					{
 						Name:  "second",
-						Image: "myapp:v2",
+						Image: "v2",
 					},
 				},
 			},
