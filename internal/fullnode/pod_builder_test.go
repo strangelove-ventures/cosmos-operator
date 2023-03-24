@@ -447,6 +447,32 @@ gaiad start --home /home/operator/cosmos`
 		require.Equal(t, "healthcheck", sidecar.Name)
 		require.Nil(t, sidecar.ReadinessProbe)
 	})
+
+	t.Run("pod patch", func(t *testing.T) {
+		crd := defaultCRD()
+		crd.Spec.PodTemplate.PodPatch = &cosmosv1.PodPatchSpec{
+			Volumes: []corev1.Volume{
+				{Name: "foo-vol", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+			},
+			InitContainers: []corev1.Container{
+				{Name: "chain-init", Image: "foo:latest", VolumeMounts: []corev1.VolumeMount{
+					{Name: "foo-vol", MountPath: "/foo"}, // Should be merged with existing.
+				}},
+				{Name: "new-init", Image: "new-init:latest"}, // New container.
+			},
+			Containers: []corev1.Container{
+				{Name: "node", VolumeMounts: []corev1.VolumeMount{
+					{Name: "foo-vol", MountPath: "/foo"}, // Should be merged with existing.
+				}},
+				{Name: "new-sidecar", Image: "new-sidecar:latest"}, // New container.
+			},
+		}
+
+		builder := NewPodBuilder(&crd)
+		pod := builder.WithOrdinal(0).Build()
+
+		require.Equal(t, 5, len(pod.Spec.Volumes))
+	})
 }
 
 func FuzzPodBuilderBuild(f *testing.F) {
