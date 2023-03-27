@@ -244,7 +244,6 @@ type PodSpec struct {
 	// List of volumes that can be mounted by containers belonging to the pod.
 	// More info: https://kubernetes.io/docs/concepts/storage/volumes
 	// A strategic merge patch is applied to the default volumes created by the controller.
-	// This patch overrides the default volumes.
 	// Take extreme caution when using this feature. Use only for critical bugs.
 	// Some chains do not follow conventions or best practices, so this serves as an "escape hatch" for the user
 	// at the cost of maintainability.
@@ -252,10 +251,9 @@ type PodSpec struct {
 	Volumes []corev1.Volume `json:"volumes"`
 
 	// List of initialization containers belonging to the pod.
-	// A strategic merge patch is applied to the default init containers created by the controller.
-	// This patch overrides the default init containers.
-	// Take extreme caution when using this feature. Use only for critical bugs.
 	// More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
+	// A strategic merge patch is applied to the default init containers created by the controller.
+	// Take extreme caution when using this feature. Use only for critical bugs.
 	// Some chains do not follow conventions or best practices, so this serves as an "escape hatch" for the user
 	// at the cost of maintainability.
 	// +optional
@@ -263,7 +261,6 @@ type PodSpec struct {
 
 	// List of containers belonging to the pod.
 	// A strategic merge patch is applied to the default containers created by the controller.
-	// This patch overrides the default containers.
 	// Take extreme caution when using this feature. Use only for critical bugs.
 	// Some chains do not follow conventions or best practices, so this serves as an "escape hatch" for the user
 	// at the cost of maintainability.
