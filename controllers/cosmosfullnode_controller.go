@@ -149,6 +149,7 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	if p2pAddresses.Incomplete() {
 		reporter.Info("Requeueing due to incomplete p2p external addresses")
 		reporter.RecordInfo("P2PIncomplete", "Waiting for p2p service IPs or Hostnames to be ready.")
+		crd.Status.Phase = cosmosv1.FullNodePhaseP2PServices
 		// Allow more time to requeue while p2p services create their load balancers.
 		return ctrl.Result{RequeueAfter: 15 * time.Second}, nil
 	}
