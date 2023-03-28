@@ -8,7 +8,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func TestStrategicPatch(t *testing.T) {
+func TestApplyStrategicMergePatch(t *testing.T) {
+	t.Parallel()
+
 	t.Run("happy path", func(t *testing.T) {
 		target := &corev1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
@@ -51,7 +53,7 @@ func TestStrategicPatch(t *testing.T) {
 			},
 		}
 
-		err := ApplyStrategicPatch(target, patch)
+		err := ApplyStrategicMergePatch(target, patch)
 
 		require.NoError(t, err)
 
@@ -107,7 +109,7 @@ func TestStrategicPatch(t *testing.T) {
 
 		want := obj.DeepCopy()
 
-		err := ApplyStrategicPatch(obj, obj)
+		err := ApplyStrategicMergePatch(obj, obj)
 		require.NoError(t, err)
 		require.Equal(t, want, obj)
 	})
