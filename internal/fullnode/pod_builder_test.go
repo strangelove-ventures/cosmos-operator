@@ -267,13 +267,6 @@ func TestPodBuilder(t *testing.T) {
 		require.Contains(t, mergeConfig.Args[1], `config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CONFIG_DIR/app.toml`)
 	})
 
-	t.Run("optional containers", func(t *testing.T) {
-		crd := defaultCRD()
-		pod := NewPodBuilder(&crd).WithOrdinal(0).Build()
-
-		require.Equal(t, 3, len(pod.Spec.InitContainers))
-	})
-
 	t.Run("volumes", func(t *testing.T) {
 		crd := defaultCRD()
 		builder := NewPodBuilder(&crd)
@@ -448,30 +441,40 @@ gaiad start --home /home/operator/cosmos`
 		require.Nil(t, sidecar.ReadinessProbe)
 	})
 
-	t.Run("pod patch", func(t *testing.T) {
+	t.Run("strategic merge fields", func(t *testing.T) {
 		crd := defaultCRD()
-		crd.Spec.PodTemplate.PodPatch = &cosmosv1.PodPatchSpec{
-			Volumes: []corev1.Volume{
-				{Name: "foo-vol", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
-			},
-			InitContainers: []corev1.Container{
-				{Name: "chain-init", Image: "foo:latest", VolumeMounts: []corev1.VolumeMount{
-					{Name: "foo-vol", MountPath: "/foo"}, // Should be merged with existing.
-				}},
-				{Name: "new-init", Image: "new-init:latest"}, // New container.
-			},
-			Containers: []corev1.Container{
-				{Name: "node", VolumeMounts: []corev1.VolumeMount{
-					{Name: "foo-vol", MountPath: "/foo"}, // Should be merged with existing.
-				}},
-				{Name: "new-sidecar", Image: "new-sidecar:latest"}, // New container.
-			},
+		crd.Spec.PodTemplate.Volumes = []corev1.Volume{
+			{Name: "foo-vol", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+		}
+		crd.Spec.PodTemplate.InitContainers = []corev1.Container{
+			{Name: "chain-init", Image: "foo:latest", VolumeMounts: []corev1.VolumeMount{
+				{Name: "foo-vol", MountPath: "/foo"}, // Should be merged with existing.
+			}},
+			{Name: "new-init", Image: "new-init:latest"}, // New container.
+		}
+		crd.Spec.PodTemplate.Containers = []corev1.Container{
+			{Name: "node", VolumeMounts: []corev1.VolumeMount{
+				{Name: "foo-vol", MountPath: "/foo"}, // Should be merged with existing.
+			}},
+			{Name: "new-sidecar", Image: "new-sidecar:latest"}, // New container.
 		}
 
 		builder := NewPodBuilder(&crd)
 		pod := builder.WithOrdinal(0).Build()
 
-		require.Equal(t, 5, len(pod.Spec.Volumes))
+		vols := lo.SliceToMap(pod.Spec.Volumes, func(v corev1.Volume) (string, corev1.Volume) { return v.Name, v })
+		require.ElementsMatch(t, []string{"foo-vol", "vol-tmp", "vol-system-tmp", "vol-config", "vol-chain-home"}, lo.Keys(vols))
+		require.Equal(t, &corev1.EmptyDirVolumeSource{}, vols["foo-vol"].VolumeSource.EmptyDir)
+
+		containers := lo.SliceToMap(pod.Spec.Containers, func(c corev1.Container) (string, corev1.Container) { return c.Name, c })
+		require.ElementsMatch(t, []string{"node", "new-sidecar", "healthcheck"}, lo.Keys(containers))
+
+		extraVol := lo.Filter(containers["node"].VolumeMounts, func(vm corev1.VolumeMount, _ int) bool { return vm.Name == "foo-vol" })
+		require.Equal(t, "/foo", extraVol[0].MountPath)
+
+		initConts := lo.SliceToMap(pod.Spec.InitContainers, func(c corev1.Container) (string, corev1.Container) { return c.Name, c })
+		require.ElementsMatch(t, []string{"chain-init", "new-init", "genesis-init", "config-merge"}, lo.Keys(initConts))
+		require.Equal(t, "foo:latest", initConts["chain-init"].Image)
 	})
 }
 
