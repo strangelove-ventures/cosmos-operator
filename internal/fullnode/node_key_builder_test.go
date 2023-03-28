@@ -66,6 +66,9 @@ func TestBuildNodeKeySecrets(t *testing.T) {
 	})
 
 	t.Run("zero replicas", func(t *testing.T) {
-		t.Fatal("TODO")
+		var crd cosmosv1.CosmosFullNode
+		secrets, err := BuildNodeKeySecrets(nil, &crd)
+		require.NoError(t, err)
+		require.Empty(t, secrets)
 	})
 }
