@@ -29,7 +29,8 @@ func TestBuildPods(t *testing.T) {
 			},
 		}
 
-		pods := BuildPods(crd)
+		pods, err := BuildPods(crd)
+		require.NoError(t, err)
 		require.Equal(t, 5, len(pods))
 
 		want := lo.Map([]int{0, 1, 2, 3, 4}, func(_ int, i int) string {
@@ -38,7 +39,8 @@ func TestBuildPods(t *testing.T) {
 		got := lo.Map(pods, func(pod *corev1.Pod, _ int) string { return pod.Name })
 		require.Equal(t, want, got)
 
-		pod := NewPodBuilder(crd).WithOrdinal(0).Build()
+		pod, err := NewPodBuilder(crd).WithOrdinal(0).Build()
+		require.NoError(t, err)
 		require.Equal(t, pod, pods[0])
 	})
 
@@ -56,7 +58,8 @@ func TestBuildPods(t *testing.T) {
 			},
 		}
 
-		pods := BuildPods(crd)
+		pods, err := BuildPods(crd)
+		require.NoError(t, err)
 		require.Equal(t, 4, len(pods))
 
 		want := lo.Map([]int{0, 1, 3, 5}, func(i int, _ int) string {
@@ -83,7 +86,8 @@ func TestBuildPods(t *testing.T) {
 			},
 		}
 
-		pods := BuildPods(crd)
+		pods, err := BuildPods(crd)
+		require.NoError(t, err)
 		require.Equal(t, 4, len(pods))
 
 		want := lo.Map([]int{0, 3, 4, 5}, func(i int, _ int) string {

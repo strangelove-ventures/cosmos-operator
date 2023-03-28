@@ -38,7 +38,10 @@ func TestCollectDiskUsage(t *testing.T) {
 
 	builder := NewPodBuilder(&crd)
 	validPods := lo.Map(lo.Range(3), func(_ int, index int) corev1.Pod {
-		pod := builder.WithOrdinal(int32(index)).Build()
+		pod, err := builder.WithOrdinal(int32(index)).Build()
+		if err != nil {
+			panic(err)
+		}
 		pod.Status.PodIP = fmt.Sprintf("10.0.0.%d", index)
 		return *pod
 	})

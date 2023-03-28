@@ -98,7 +98,8 @@ func TestVolumeSnapshotControl_FindCandidate(t *testing.T) {
 		fullnodeCRD.Name = "osmosis"
 		// Purposefully using PodBuilder to cross-test any breaking changes in PodBuilder which affects
 		// finding the PVC name.
-		candidate := fullnode.NewPodBuilder(&fullnodeCRD).WithOrdinal(1).Build()
+		candidate, err := fullnode.NewPodBuilder(&fullnodeCRD).WithOrdinal(1).Build()
+		require.NoError(t, err)
 
 		control := NewVolumeSnapshotControl(&mClient, mockPodFilter{
 			SyncedPodsFn: func(ctx context.Context, _ kube.Logger, candidates []*corev1.Pod) []*corev1.Pod {

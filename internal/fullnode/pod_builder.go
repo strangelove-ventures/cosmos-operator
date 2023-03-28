@@ -163,9 +163,13 @@ func podRevisionHash(crd *cosmosv1.CosmosFullNode) string {
 }
 
 // Build assigns the CosmosFullNode crd as the owner and returns a fully constructed pod.
-func (b PodBuilder) Build() *corev1.Pod {
-	kube.NormalizeMetadata(&b.pod.ObjectMeta)
-	return b.pod
+func (b PodBuilder) Build() (*corev1.Pod, error) {
+	pod := b.pod.DeepCopy()
+	if err := kube.ApplyStrategicMergePatch(pod, podPatch(b.crd)); err != nil {
+		return nil, err
+	}
+	kube.NormalizeMetadata(&pod.ObjectMeta)
+	return pod, nil
 }
 
 // WithOrdinal updates adds name and other metadata to the pod using "ordinal" which is the pod's
@@ -233,10 +237,6 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 	}
 	for i := range pod.Spec.Containers {
 		pod.Spec.Containers[i].VolumeMounts = mounts
-	}
-
-	if err := kube.ApplyStrategicMergePatch(pod, podPatch(b.crd)); err != nil {
-		panic(err)
 	}
 
 	b.pod = pod

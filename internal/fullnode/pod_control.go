@@ -66,11 +66,12 @@ func (pc PodControl) Reconcile(ctx context.Context, reporter kube.Reporter, crd 
 		return false, kube.TransientError(fmt.Errorf("list existing pods: %w", err))
 	}
 
-	var (
-		currentPods = ptrSlice(pods.Items)
-		wantPods    = BuildPods(crd)
-		diff        = pc.diffFactory(kube.OrdinalAnnotation, kube.RevisionLabel, currentPods, wantPods)
-	)
+	wantPods, err := BuildPods(crd)
+	if err != nil {
+		return false, kube.UnrecoverableError(fmt.Errorf("build pods: %w", err))
+	}
+	currentPods := ptrSlice(pods.Items)
+	diff := pc.diffFactory(kube.OrdinalAnnotation, kube.RevisionLabel, currentPods, wantPods)
 
 	for _, pod := range diff.Creates() {
 		reporter.Info("Creating pod", "podName", pod.Name)
