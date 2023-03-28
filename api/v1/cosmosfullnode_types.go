@@ -113,6 +113,7 @@ type FullNodeStatus struct {
 	// The current phase of the fullnode deployment.
 	// "Progressing" means the deployment is under way.
 	// "Complete" means the deployment is complete and reconciliation is finished.
+	// "WaitingForP2PServices" means the deployment is complete but the p2p services are not yet ready.
 	// "Error" means an unrecoverable error occurred, which needs human intervention.
 	Phase FullNodePhase `json:"phase"`
 
@@ -144,6 +145,7 @@ const (
 	FullNodePhaseProgressing FullNodePhase = "Progressing"
 	FullNodePhaseCompete     FullNodePhase = "Complete"
 	FullNodePhaseError       FullNodePhase = "Error"
+	FullNodePhaseP2PServices FullNodePhase = "WaitingForP2PServices"
 )
 
 // Metadata is a subset of k8s object metadata.
