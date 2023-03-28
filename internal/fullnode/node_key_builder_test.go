@@ -1,6 +1,7 @@
 package fullnode
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"testing"
@@ -21,7 +22,8 @@ func TestBuildNodeKeySecrets(t *testing.T) {
 		crd.Spec.ChainSpec.Network = "mainnet"
 		crd.Spec.PodTemplate.Image = "ghcr.io/juno:v1.2.3"
 
-		secrets := BuildNodeKeySecrets(nil, &crd)
+		secrets, err := BuildNodeKeySecrets(nil, &crd)
+		require.NoError(t, err)
 		require.Len(t, secrets, 3)
 
 		for i, got := range secrets {
@@ -43,7 +45,6 @@ func TestBuildNodeKeySecrets(t *testing.T) {
 			wantAnnotations := map[string]string{
 				"app.kubernetes.io/ordinal": strconv.Itoa(i),
 			}
-
 			require.Equal(t, wantAnnotations, got.Annotations)
 
 			require.True(t, *got.Immutable)
@@ -51,6 +52,12 @@ func TestBuildNodeKeySecrets(t *testing.T) {
 
 			nodeKey := got.Data["node_key.json"]
 			require.NotEmpty(t, nodeKey)
+
+			var gotJSON map[string]map[string]string
+			err = json.Unmarshal(nodeKey, &gotJSON)
+			require.NoError(t, err)
+			require.Equal(t, gotJSON["priv_key"]["type"], "tendermint/PrivKeyEd25519")
+			require.NotEmpty(t, gotJSON["priv_key"]["value"])
 		}
 	})
 
