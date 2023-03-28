@@ -90,6 +90,11 @@ spec:
     probes:
       # Disable all probes.
       strategy: None
+    # The following fields are strategically merged into the default pod spec.
+    # Use only in extreme circumstances. Serves as an "escape hatch" in case a chain does not adhere to standards.
+    initContainers: []
+    containers: []
+    volumes: []
 
   # Configures kube services created by the operator.
   service:

@@ -53,17 +53,9 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 			Labels: defaultLabels(crd,
 				kube.RevisionLabel, podRevisionHash(crd),
 			),
-			// TODO: prom metrics
 			Annotations: make(map[string]string),
 		},
 		Spec: corev1.PodSpec{
-			TerminationGracePeriodSeconds: valOrDefault(tpl.TerminationGracePeriodSeconds, ptr(int64(30))),
-			Affinity:                      tpl.Affinity,
-			NodeSelector:                  tpl.NodeSelector,
-			Tolerations:                   tpl.Tolerations,
-			PriorityClassName:             tpl.PriorityClassName,
-			Priority:                      tpl.Priority,
-			ImagePullSecrets:              tpl.ImagePullSecrets,
 			SecurityContext: &corev1.PodSecurityContext{
 				RunAsUser:           ptr(int64(1025)),
 				RunAsGroup:          ptr(int64(1025)),
@@ -171,9 +163,13 @@ func podRevisionHash(crd *cosmosv1.CosmosFullNode) string {
 }
 
 // Build assigns the CosmosFullNode crd as the owner and returns a fully constructed pod.
-func (b PodBuilder) Build() *corev1.Pod {
-	kube.NormalizeMetadata(&b.pod.ObjectMeta)
-	return b.pod
+func (b PodBuilder) Build() (*corev1.Pod, error) {
+	pod := b.pod.DeepCopy()
+	if err := kube.ApplyStrategicMergePatch(pod, podPatch(b.crd)); err != nil {
+		return nil, err
+	}
+	kube.NormalizeMetadata(&pod.ObjectMeta)
+	return pod, nil
 }
 
 // WithOrdinal updates adds name and other metadata to the pod using "ordinal" which is the pod's
@@ -383,6 +379,24 @@ func startCommandArgs(cfg cosmosv1.ChainSpec) []string {
 
 func willRestoreFromSnapshot(crd *cosmosv1.CosmosFullNode) bool {
 	return crd.Spec.ChainSpec.SnapshotURL != nil || crd.Spec.ChainSpec.SnapshotScript != nil
+}
+
+func podPatch(crd *cosmosv1.CosmosFullNode) *corev1.Pod {
+	tpl := crd.Spec.PodTemplate
+	// For fields with sliceOrDefault if you pass nil, the field is deleted.
+	spec := corev1.PodSpec{
+		Affinity:                      tpl.Affinity,
+		Containers:                    sliceOrDefault(tpl.Containers, []corev1.Container{}),
+		ImagePullSecrets:              sliceOrDefault(tpl.ImagePullSecrets, []corev1.LocalObjectReference{}),
+		InitContainers:                sliceOrDefault(tpl.InitContainers, []corev1.Container{}),
+		NodeSelector:                  tpl.NodeSelector,
+		Priority:                      tpl.Priority,
+		PriorityClassName:             tpl.PriorityClassName,
+		TerminationGracePeriodSeconds: valOrDefault(tpl.TerminationGracePeriodSeconds, ptr(int64(30))),
+		Tolerations:                   sliceOrDefault(tpl.Tolerations, []corev1.Toleration{}),
+		Volumes:                       sliceOrDefault(tpl.Volumes, []corev1.Volume{}),
+	}
+	return &corev1.Pod{Spec: spec}
 }
 
 // PVCName returns the primary PVC holding the chain data associated with the pod.

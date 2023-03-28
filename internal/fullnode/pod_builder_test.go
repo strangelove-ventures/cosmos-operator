@@ -53,7 +53,8 @@ func TestPodBuilder(t *testing.T) {
 	t.Run("happy path - critical fields", func(t *testing.T) {
 		crd := defaultCRD()
 		builder := NewPodBuilder(&crd)
-		pod := builder.WithOrdinal(5).Build()
+		pod, err := builder.WithOrdinal(5).Build()
+		require.NoError(t, err)
 
 		require.Equal(t, "Pod", pod.Kind)
 		require.Equal(t, "v1", pod.APIVersion)
@@ -91,16 +92,19 @@ func TestPodBuilder(t *testing.T) {
 		require.Equal(t, corev1.SeccompProfileTypeRuntimeDefault, sc.SeccompProfile.Type)
 
 		// Test we don't share or leak data per invocation.
-		pod = builder.Build()
+		pod, err = builder.Build()
+		require.NoError(t, err)
 		require.Empty(t, pod.Name)
 
-		pod = builder.WithOrdinal(123).Build()
+		pod, err = builder.WithOrdinal(123).Build()
+		require.NoError(t, err)
 		require.Equal(t, "osmosis-123", pod.Name)
 	})
 
 	t.Run("happy path - ports", func(t *testing.T) {
 		crd := defaultCRD()
-		pod := NewPodBuilder(&crd).Build()
+		pod, err := NewPodBuilder(&crd).Build()
+		require.NoError(t, err)
 		ports := pod.Spec.Containers[0].Ports
 
 		require.Equal(t, 7, len(ports))
@@ -129,7 +133,8 @@ func TestPodBuilder(t *testing.T) {
 		crd := defaultCRD()
 		crd.Spec.Type = cosmosv1.FullNodeSentry
 
-		pod := NewPodBuilder(&crd).Build()
+		pod, err := NewPodBuilder(&crd).Build()
+		require.NoError(t, err)
 		ports := pod.Spec.Containers[0].Ports
 
 		require.Equal(t, 8, len(ports))
@@ -162,7 +167,8 @@ func TestPodBuilder(t *testing.T) {
 		optCrd.Spec.PodTemplate.TerminationGracePeriodSeconds = ptr(int64(40))
 
 		builder := NewPodBuilder(&optCrd)
-		pod := builder.WithOrdinal(9).Build()
+		pod, err := builder.WithOrdinal(9).Build()
+		require.NoError(t, err)
 
 		require.Equal(t, "label", pod.Labels["custom"])
 		// Operator label takes precedence.
@@ -189,7 +195,8 @@ func TestPodBuilder(t *testing.T) {
 		longCrd.Name = strings.Repeat("a", 253)
 
 		builder := NewPodBuilder(&longCrd)
-		pod := builder.WithOrdinal(125).Build()
+		pod, err := builder.WithOrdinal(125).Build()
+		require.NoError(t, err)
 
 		require.Regexp(t, `a.*-125`, pod.Name)
 
@@ -204,7 +211,8 @@ func TestPodBuilder(t *testing.T) {
 		crd.Spec.ChainSpec.SnapshotURL = ptr("https://example.com/snapshot.tar")
 		crd.Spec.PodTemplate.Image = "main-image:v1.2.3"
 		builder := NewPodBuilder(&crd)
-		pod := builder.WithOrdinal(6).Build()
+		pod, err := builder.WithOrdinal(6).Build()
+		require.NoError(t, err)
 
 		require.Len(t, pod.Spec.Containers, 2)
 
@@ -267,17 +275,11 @@ func TestPodBuilder(t *testing.T) {
 		require.Contains(t, mergeConfig.Args[1], `config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CONFIG_DIR/app.toml`)
 	})
 
-	t.Run("optional containers", func(t *testing.T) {
-		crd := defaultCRD()
-		pod := NewPodBuilder(&crd).WithOrdinal(0).Build()
-
-		require.Equal(t, 3, len(pod.Spec.InitContainers))
-	})
-
 	t.Run("volumes", func(t *testing.T) {
 		crd := defaultCRD()
 		builder := NewPodBuilder(&crd)
-		pod := builder.WithOrdinal(5).Build()
+		pod, err := builder.WithOrdinal(5).Build()
+		require.NoError(t, err)
 
 		vols := pod.Spec.Volumes
 		require.Len(t, vols, 4)
@@ -336,7 +338,8 @@ func TestPodBuilder(t *testing.T) {
 		cmdCrd.Spec.ChainSpec.Binary = "gaiad"
 		cmdCrd.Spec.PodTemplate.Image = "ghcr.io/cosmoshub:v1.2.3"
 
-		pod := NewPodBuilder(&cmdCrd).WithOrdinal(1).Build()
+		pod, err := NewPodBuilder(&cmdCrd).WithOrdinal(1).Build()
+		require.NoError(t, err)
 		c := pod.Spec.Containers[0]
 
 		require.Equal(t, "ghcr.io/cosmoshub:v1.2.3", c.Image)
@@ -345,7 +348,8 @@ func TestPodBuilder(t *testing.T) {
 		require.Equal(t, []string{"start", "--home", "/home/operator/cosmos"}, c.Args)
 
 		cmdCrd.Spec.ChainSpec.SkipInvariants = true
-		pod = NewPodBuilder(&cmdCrd).WithOrdinal(1).Build()
+		pod, err = NewPodBuilder(&cmdCrd).WithOrdinal(1).Build()
+		require.NoError(t, err)
 		c = pod.Spec.Containers[0]
 
 		require.Equal(t, []string{"gaiad"}, c.Command)
@@ -353,7 +357,8 @@ func TestPodBuilder(t *testing.T) {
 
 		cmdCrd.Spec.ChainSpec.LogLevel = ptr("debug")
 		cmdCrd.Spec.ChainSpec.LogFormat = ptr("json")
-		pod = NewPodBuilder(&cmdCrd).WithOrdinal(1).Build()
+		pod, err = NewPodBuilder(&cmdCrd).WithOrdinal(1).Build()
+		require.NoError(t, err)
 		c = pod.Spec.Containers[0]
 
 		require.Equal(t, []string{"start", "--home", "/home/operator/cosmos", "--x-crisis-skip-assert-invariants", "--log_level", "debug", "--log_format", "json"}, c.Args)
@@ -364,7 +369,8 @@ func TestPodBuilder(t *testing.T) {
 		cmdCrd.Spec.ChainSpec.Binary = "gaiad"
 		cmdCrd.Spec.Type = cosmosv1.FullNodeSentry
 
-		pod := NewPodBuilder(&cmdCrd).WithOrdinal(1).Build()
+		pod, err := NewPodBuilder(&cmdCrd).WithOrdinal(1).Build()
+		require.NoError(t, err)
 		c := pod.Spec.Containers[0]
 
 		require.Equal(t, []string{"sh"}, c.Command)
@@ -373,7 +379,8 @@ gaiad start --home /home/operator/cosmos`
 		require.Equal(t, []string{"-c", wantBody1}, c.Args)
 
 		cmdCrd.Spec.ChainSpec.PrivvalSleepSeconds = ptr(int32(60))
-		pod = NewPodBuilder(&cmdCrd).WithOrdinal(1).Build()
+		pod, err = NewPodBuilder(&cmdCrd).WithOrdinal(1).Build()
+		require.NoError(t, err)
 		c = pod.Spec.Containers[0]
 
 		const wantBody2 = `sleep 60
@@ -381,7 +388,8 @@ gaiad start --home /home/operator/cosmos`
 		require.Equal(t, []string{"-c", wantBody2}, c.Args)
 
 		cmdCrd.Spec.ChainSpec.PrivvalSleepSeconds = ptr(int32(0))
-		pod = NewPodBuilder(&cmdCrd).WithOrdinal(1).Build()
+		pod, err = NewPodBuilder(&cmdCrd).WithOrdinal(1).Build()
+		require.NoError(t, err)
 		c = pod.Spec.Containers[0]
 
 		require.Equal(t, []string{"gaiad"}, c.Command)
@@ -390,7 +398,8 @@ gaiad start --home /home/operator/cosmos`
 	t.Run("rpc probes", func(t *testing.T) {
 		crd := defaultCRD()
 		builder := NewPodBuilder(&crd)
-		pod := builder.WithOrdinal(1).Build()
+		pod, err := builder.WithOrdinal(1).Build()
+		require.NoError(t, err)
 
 		want := &corev1.Probe{
 			ProbeHandler: corev1.ProbeHandler{
@@ -434,7 +443,8 @@ gaiad start --home /home/operator/cosmos`
 		crd.Spec.PodTemplate.Probes = cosmosv1.FullNodeProbesSpec{Strategy: cosmosv1.FullNodeProbeStrategyNone}
 
 		builder := NewPodBuilder(&crd)
-		pod := builder.WithOrdinal(1).Build()
+		pod, err := builder.WithOrdinal(1).Build()
+		require.NoError(t, err)
 
 		for i, cont := range pod.Spec.Containers {
 			require.Nilf(t, cont.ReadinessProbe, "container %d", i)
@@ -447,6 +457,43 @@ gaiad start --home /home/operator/cosmos`
 		require.Equal(t, "healthcheck", sidecar.Name)
 		require.Nil(t, sidecar.ReadinessProbe)
 	})
+
+	t.Run("strategic merge fields", func(t *testing.T) {
+		crd := defaultCRD()
+		crd.Spec.PodTemplate.Volumes = []corev1.Volume{
+			{Name: "foo-vol", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+		}
+		crd.Spec.PodTemplate.InitContainers = []corev1.Container{
+			{Name: "chain-init", Image: "foo:latest", VolumeMounts: []corev1.VolumeMount{
+				{Name: "foo-vol", MountPath: "/foo"}, // Should be merged with existing.
+			}},
+			{Name: "new-init", Image: "new-init:latest"}, // New container.
+		}
+		crd.Spec.PodTemplate.Containers = []corev1.Container{
+			{Name: "node", VolumeMounts: []corev1.VolumeMount{
+				{Name: "foo-vol", MountPath: "/foo"}, // Should be merged with existing.
+			}},
+			{Name: "new-sidecar", Image: "new-sidecar:latest"}, // New container.
+		}
+
+		builder := NewPodBuilder(&crd)
+		pod, err := builder.WithOrdinal(0).Build()
+		require.NoError(t, err)
+
+		vols := lo.SliceToMap(pod.Spec.Volumes, func(v corev1.Volume) (string, corev1.Volume) { return v.Name, v })
+		require.ElementsMatch(t, []string{"foo-vol", "vol-tmp", "vol-system-tmp", "vol-config", "vol-chain-home"}, lo.Keys(vols))
+		require.Equal(t, &corev1.EmptyDirVolumeSource{}, vols["foo-vol"].VolumeSource.EmptyDir)
+
+		containers := lo.SliceToMap(pod.Spec.Containers, func(c corev1.Container) (string, corev1.Container) { return c.Name, c })
+		require.ElementsMatch(t, []string{"node", "new-sidecar", "healthcheck"}, lo.Keys(containers))
+
+		extraVol := lo.Filter(containers["node"].VolumeMounts, func(vm corev1.VolumeMount, _ int) bool { return vm.Name == "foo-vol" })
+		require.Equal(t, "/foo", extraVol[0].MountPath)
+
+		initConts := lo.SliceToMap(pod.Spec.InitContainers, func(c corev1.Container) (string, corev1.Container) { return c.Name, c })
+		require.ElementsMatch(t, []string{"chain-init", "new-init", "genesis-init", "config-merge"}, lo.Keys(initConts))
+		require.Equal(t, "foo:latest", initConts["chain-init"].Image)
+	})
 }
 
 func FuzzPodBuilderBuild(f *testing.F) {
@@ -457,8 +504,10 @@ func FuzzPodBuilderBuild(f *testing.F) {
 		crd.Spec.PodTemplate.Resources = corev1.ResourceRequirements{
 			Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceName(resourceName): resource.MustParse("1")},
 		}
-		pod1 := NewPodBuilder(&crd).Build()
-		pod2 := NewPodBuilder(&crd).Build()
+		pod1, err := NewPodBuilder(&crd).Build()
+		require.NoError(t, err)
+		pod2, err := NewPodBuilder(&crd).Build()
+		require.NoError(t, err)
 
 		require.NotEmpty(t, pod1.Labels[kube.RevisionLabel], image)
 		require.NotEmpty(t, pod2.Labels[kube.RevisionLabel], image)
@@ -468,18 +517,21 @@ func FuzzPodBuilderBuild(f *testing.F) {
 		crd.Spec.PodTemplate.Resources = corev1.ResourceRequirements{
 			Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceName(resourceName): resource.MustParse("2")}, // Changed value here.
 		}
-		pod3 := NewPodBuilder(&crd).Build()
+		pod3, err := NewPodBuilder(&crd).Build()
+		require.NoError(t, err)
 
 		require.NotEqual(t, pod1.Labels[kube.RevisionLabel], pod3.Labels[kube.RevisionLabel])
 
 		crd.Spec.ChainSpec.ChainID = "mychain-1"
 		crd.Spec.ChainSpec.Network = "newnetwork"
-		pod4 := NewPodBuilder(&crd).Build()
+		pod4, err := NewPodBuilder(&crd).Build()
+		require.NoError(t, err)
 
 		require.NotEqual(t, pod3.Labels[kube.RevisionLabel], pod4.Labels[kube.RevisionLabel])
 
 		crd.Spec.Type = cosmosv1.FullNodeSentry
-		pod5 := NewPodBuilder(&crd).Build()
+		pod5, err := NewPodBuilder(&crd).Build()
+		require.NoError(t, err)
 
 		require.NotEqual(t, pod4.Labels[kube.RevisionLabel], pod5.Labels[kube.RevisionLabel])
 	})
@@ -488,6 +540,7 @@ func FuzzPodBuilderBuild(f *testing.F) {
 func TestPVCName(t *testing.T) {
 	crd := defaultCRD()
 	builder := NewPodBuilder(&crd)
-	pod := builder.WithOrdinal(5).Build()
+	pod, err := builder.WithOrdinal(5).Build()
+	require.NoError(t, err)
 	require.Equal(t, "pvc-osmosis-5", PVCName(pod))
 }

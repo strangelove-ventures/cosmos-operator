@@ -6,7 +6,7 @@ import (
 )
 
 // BuildPods creates the final state of pods given the crd.
-func BuildPods(crd *cosmosv1.CosmosFullNode) []*corev1.Pod {
+func BuildPods(crd *cosmosv1.CosmosFullNode) ([]*corev1.Pod, error) {
 	var (
 		builder   = NewPodBuilder(crd)
 		overrides = crd.Spec.InstanceOverrides
@@ -14,7 +14,10 @@ func BuildPods(crd *cosmosv1.CosmosFullNode) []*corev1.Pod {
 	)
 	candidates := podCandidates(crd)
 	for i := int32(0); i < crd.Spec.Replicas; i++ {
-		pod := builder.WithOrdinal(i).Build()
+		pod, err := builder.WithOrdinal(i).Build()
+		if err != nil {
+			return nil, err
+		}
 		if disable := overrides[pod.Name].DisableStrategy; disable != nil {
 			continue
 		}
@@ -23,7 +26,7 @@ func BuildPods(crd *cosmosv1.CosmosFullNode) []*corev1.Pod {
 		}
 		pods = append(pods, pod)
 	}
-	return pods
+	return pods, nil
 }
 
 func podCandidates(crd *cosmosv1.CosmosFullNode) map[string]struct{} {

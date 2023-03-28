@@ -240,6 +240,32 @@ type PodSpec struct {
 	// Configure probes for the pods managed by the controller.
 	// +optional
 	Probes FullNodeProbesSpec `json:"probes"`
+
+	// List of volumes that can be mounted by containers belonging to the pod.
+	// More info: https://kubernetes.io/docs/concepts/storage/volumes
+	// A strategic merge patch is applied to the default volumes created by the controller.
+	// Take extreme caution when using this feature. Use only for critical bugs.
+	// Some chains do not follow conventions or best practices, so this serves as an "escape hatch" for the user
+	// at the cost of maintainability.
+	// +optional
+	Volumes []corev1.Volume `json:"volumes"`
+
+	// List of initialization containers belonging to the pod.
+	// More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
+	// A strategic merge patch is applied to the default init containers created by the controller.
+	// Take extreme caution when using this feature. Use only for critical bugs.
+	// Some chains do not follow conventions or best practices, so this serves as an "escape hatch" for the user
+	// at the cost of maintainability.
+	// +optional
+	InitContainers []corev1.Container `json:"initContainers"`
+
+	// List of containers belonging to the pod.
+	// A strategic merge patch is applied to the default containers created by the controller.
+	// Take extreme caution when using this feature. Use only for critical bugs.
+	// Some chains do not follow conventions or best practices, so this serves as an "escape hatch" for the user
+	// at the cost of maintainability.
+	// +optional
+	Containers []corev1.Container `json:"containers"`
 }
 
 type FullNodeProbeStrategy string
