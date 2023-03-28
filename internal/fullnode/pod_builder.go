@@ -383,6 +383,7 @@ func willRestoreFromSnapshot(crd *cosmosv1.CosmosFullNode) bool {
 
 func podPatch(crd *cosmosv1.CosmosFullNode) *corev1.Pod {
 	tpl := crd.Spec.PodTemplate
+	// For fields with sliceOrDefault if you pass nil, the field is deleted.
 	spec := corev1.PodSpec{
 		Affinity:                      tpl.Affinity,
 		Containers:                    sliceOrDefault(tpl.Containers, []corev1.Container{}),
