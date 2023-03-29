@@ -542,5 +542,10 @@ func TestPVCName(t *testing.T) {
 	builder := NewPodBuilder(&crd)
 	pod, err := builder.WithOrdinal(5).Build()
 	require.NoError(t, err)
+
+	require.Equal(t, "pvc-osmosis-5", PVCName(pod))
+
+	pod.Spec.Volumes = append([]corev1.Volume{{Name: "foo"}}, pod.Spec.Volumes...)
+
 	require.Equal(t, "pvc-osmosis-5", PVCName(pod))
 }
