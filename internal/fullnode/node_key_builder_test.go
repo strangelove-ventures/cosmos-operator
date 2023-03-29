@@ -62,7 +62,23 @@ func TestBuildNodeKeySecrets(t *testing.T) {
 	})
 
 	t.Run("with existing", func(t *testing.T) {
-		t.Fatal("TODO")
+		const namespace = "test-namespace"
+		var crd cosmosv1.CosmosFullNode
+		crd.Namespace = namespace
+		crd.Name = "juno"
+		crd.Spec.Replicas = 3
+
+		var existing corev1.Secret
+		existing.Name = "juno-node-key-0"
+		existing.Namespace = namespace
+		existing.Data = map[string][]byte{"node_key.json": []byte("existing")}
+
+		secrets, err := BuildNodeKeySecrets([]*corev1.Secret{&existing}, &crd)
+		require.NoError(t, err)
+		require.Equal(t, 3, len(secrets))
+
+		nodeKey := secrets[0].Data["node_key.json"]
+		require.Equal(t, "existing", string(nodeKey))
 	})
 
 	t.Run("zero replicas", func(t *testing.T) {
