@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/internal/healthcheck"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
@@ -172,6 +173,13 @@ func (b PodBuilder) Build() (*corev1.Pod, error) {
 	return pod, nil
 }
 
+const (
+	volChainHome = "vol-chain-home" // Stores live chain data and config files.
+	volTmp       = "vol-tmp"        // Stores temporary config files for manipulation later.
+	volConfig    = "vol-config"     // Items from ConfigMap.
+	volSystemTmp = "vol-system-tmp" // Necessary for statesync or else you may see the error: ERR State sync failed err="failed to create chunk queue: unable to create temp dir for state sync chunks: stat /tmp: no such file or directory" module=statesync
+)
+
 // WithOrdinal updates adds name and other metadata to the pod using "ordinal" which is the pod's
 // ordered sequence. Pods have deterministic, consistent names similar to a StatefulSet instead of generated names.
 func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
@@ -184,12 +192,6 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 	pod.Name = name
 	pod.Spec.InitContainers = initContainers(b.crd, name)
 
-	const (
-		volChainHome = "vol-chain-home" // Stores live chain data and config files.
-		volTmp       = "vol-tmp"        // Stores temporary config files for manipulation later.
-		volConfig    = "vol-config"     // Items from ConfigMap.
-		volSystemTmp = "vol-system-tmp" // Necessary for statesync or else you may see the error: ERR State sync failed err="failed to create chunk queue: unable to create temp dir for state sync chunks: stat /tmp: no such file or directory" module=statesync
-	)
 	pod.Spec.Volumes = []corev1.Volume{
 		{
 			Name: volChainHome,
@@ -401,10 +403,12 @@ func podPatch(crd *cosmosv1.CosmosFullNode) *corev1.Pod {
 
 // PVCName returns the primary PVC holding the chain data associated with the pod.
 func PVCName(pod *corev1.Pod) string {
-	if vols := pod.Spec.Volumes; len(vols) > 0 {
-		if claim := vols[0].PersistentVolumeClaim; claim != nil {
-			return claim.ClaimName
-		}
+	found, ok := lo.Find(pod.Spec.Volumes, func(v corev1.Volume) bool { return v.Name == volChainHome })
+	if !ok {
+		return ""
 	}
-	return ""
+	if found.PersistentVolumeClaim == nil {
+		return ""
+	}
+	return found.PersistentVolumeClaim.ClaimName
 }
