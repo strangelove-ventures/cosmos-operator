@@ -13,6 +13,9 @@ import (
 
 const nodeKeySecret = "node_key.json"
 
+// BuildNodeKeySecrets builds the node key secrets for the given CRD.
+// If the secret already has a node key, it is reused.
+// Returns an error if a new node key cannot be serialized. (Should never happen.)
 func BuildNodeKeySecrets(existing []*corev1.Secret, crd *cosmosv1.CosmosFullNode) ([]*corev1.Secret, error) {
 	secrets := make([]*corev1.Secret, crd.Spec.Replicas)
 	for i := int32(0); i < crd.Spec.Replicas; i++ {
