@@ -31,18 +31,18 @@ func BuildNodeKeySecrets(existing []*corev1.Secret, crd *cosmosv1.CosmosFullNode
 		s.Immutable = ptr(true)
 		s.Type = corev1.SecretTypeOpaque
 
-		if s.Data[nodeKeySecret] != nil {
-			continue
+		// Create node key if it doesn't exist
+		if s.Data[nodeKeySecret] == nil {
+			nodeKey := p2p.NodeKey{PrivKey: ed25519.GenPrivKey()}
+			b, err := cmtjson.Marshal(nodeKey)
+			if err != nil {
+				return nil, err
+			}
+			s.Data = map[string][]byte{
+				nodeKeySecret: b,
+			}
 		}
 
-		nodeKey := p2p.NodeKey{PrivKey: ed25519.GenPrivKey()}
-		b, err := cmtjson.Marshal(nodeKey)
-		if err != nil {
-			return nil, err
-		}
-		s.Data = map[string][]byte{
-			nodeKeySecret: b,
-		}
 		secrets[i] = &s
 	}
 	return secrets, nil
