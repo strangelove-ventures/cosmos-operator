@@ -35,7 +35,7 @@ func TestFindOrDefault(t *testing.T) {
 		want.Annotations = map[string]string{}
 		want.Labels = map[string]string{}
 		want.Spec.Volumes = []corev1.Volume{
-			{Name: fmt.Sprintf("vol-1")},
+			{Name: "vol-1"},
 		}
 
 		require.Equal(t, &want, got)
