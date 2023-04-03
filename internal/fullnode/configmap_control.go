@@ -30,7 +30,7 @@ func NewConfigMapControl(client Client) ConfigMapControl {
 		build:  BuildConfigMaps,
 		client: client,
 		diffFactory: func(revisionLabelKey string, current, want []*corev1.ConfigMap) configmapDiffer {
-			return kube.NewDiff(revisionLabelKey, current, want)
+			return kube.NewRevisionDiff(revisionLabelKey, current, want)
 		},
 	}
 }

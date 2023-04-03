@@ -22,13 +22,12 @@ func BuildNodeKeySecrets(existing []*corev1.Secret, crd *cosmosv1.CosmosFullNode
 		var s corev1.Secret
 		s.Name = nodeKeySecretName(crd, i)
 		s.Namespace = crd.Namespace
-		s = *kube.FindOrDefault(existing, &s)
+		s = *kube.FindOrDefaultCopy(existing, &s)
 
 		s.Kind = "Secret"
 		s.APIVersion = "v1"
 		s.Labels = defaultLabels(crd)
 		s.Labels[kube.InstanceLabel] = instanceName(crd, i)
-		s.Annotations = make(map[string]string)
 		s.Annotations[kube.OrdinalAnnotation] = kube.ToIntegerValue(i)
 
 		s.Immutable = ptr(true)

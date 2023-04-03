@@ -5,67 +5,53 @@ import (
 	"fmt"
 	"sort"
 
+	"k8s.io/apimachinery/pkg/api/equality"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
-
-// Resource is a kubernetes resource.
-type Resource = client.Object
 
 // key is the resource name which must be unique per k8s conventions.
 type ordinalSet[T Resource] map[string]ordinalResource[T]
 
-// Diff computes steps needed to bring a current state equal to a new state.
+// Resource is a kubernetes resource.
+type Resource = client.Object
+
+// Diff computes a diff between two sets of resources.
+// The diff is computed by comparing the semantic equality of the resources.
+// This assumes building resources copies and modifies existing resources from kube, particularly regarding annotations.
+// Cloud providers commonly add custom annotations to resources.
+//
+// There are several O(N) or O(2N) operations; however, we expect N to be small.
 type Diff[T Resource] struct {
 	ordinalAnnotationKey string
-	revisionLabelKey     string
-	nonOrdinal           bool
+	isOrdinal            bool
 
 	creates, deletes, updates []T
 }
 
 // NewOrdinalDiff creates a valid Diff where ordinal positioning is required.
-// It computes differences between the "current" state needed to reconcile to the "want" state.
-//
-// Diff expects resources with annotations denoting ordinal positioning similar to a StatefulSet. E.g. pod-0, pod-1, pod-2.
-// The "ordinalAnnotationKey" allows Diff to sort resources deterministically.
-// Therefore, resources must have ordinalAnnotationKey set to an integer value such as "0", "1", "2"
-// otherwise this function panics.
-//
-// Diff also expects "revisionLabelKey" which is a label with a revision that is expected to change if the resource
-// has changed. A short hash is a common value for this label. We cannot simply diff the annotations and/or labels in case
-// a 3rd party injects annotations or labels.
-// For example, GKE injects other annotations beyond our control.
-//
-// For Updates to work properly, Diff uses ObjectHasChanges. Concretely, to detect updates the recommended path
-// is changing annotations or labels.
-//
-// There are several O(N) or O(2N) operations where N = number of resources.
-// However, we expect N to be small.
-func NewOrdinalDiff[T Resource](ordinalAnnotationKey string, revisionLabelKey string, current, want []T) *Diff[T] {
-	return newDiff(ordinalAnnotationKey, revisionLabelKey, current, want, false)
+func NewOrdinalDiff[T Resource](ordinalAnnotationKey string, current, want []T) *Diff[T] {
+	return newDiff(ordinalAnnotationKey, current, want, true)
 }
 
 // NewDiff creates a valid Diff where ordinal positioning is not required.
-// See NewOrdinalDiff for further details, ignoring requirements for ordinal annotations.
-func NewDiff[T Resource](revisionLabelKey string, current, want []T) *Diff[T] {
-	return newDiff("", revisionLabelKey, current, want, true)
+func NewDiff[T Resource](current, want []T) *Diff[T] {
+	return newDiff("", current, want, false)
 }
 
-func newDiff[T Resource](ordinalAnnotationKey string, revisionLabelKey string, current, want []T, nonOrdinal bool) *Diff[T] {
+func newDiff[T Resource](ordinalAnnotationKey string, current, want []T, isOrdinal bool) *Diff[T] {
 	d := &Diff[T]{
 		ordinalAnnotationKey: ordinalAnnotationKey,
-		revisionLabelKey:     revisionLabelKey,
-		nonOrdinal:           nonOrdinal,
+		isOrdinal:            isOrdinal,
 	}
 
 	currentSet := d.toSet(current)
 	if len(currentSet) != len(current) {
-		panic(errors.New("each resource in current must have unique .metadata.name"))
+		panic(errors.New("each resource in current must have unique .metadata.name and namespace combination"))
 	}
 
 	wantSet := d.toSet(want)
 	if len(wantSet) != len(want) {
-		panic(errors.New("each resource in want must have unique .metadata.name"))
+		panic(errors.New("each resource in want must have unique .metadata.name and namespace combination"))
 	}
 
 	d.creates = d.computeCreates(currentSet, wantSet)
@@ -99,8 +85,8 @@ func (diff *Diff[T]) Deletes() []T {
 
 func (diff *Diff[T]) computeDeletes(current, want ordinalSet[T]) []T {
 	var deletes []ordinalResource[T]
-	for name, resource := range current {
-		_, ok := want[name]
+	for objID, resource := range current {
+		_, ok := want[objID]
 		if !ok {
 			deletes = append(deletes, resource)
 		}
@@ -117,23 +103,11 @@ func (diff *Diff[T]) Updates() []T {
 func (diff *Diff[T]) computeUpdates(current, want ordinalSet[T]) []T {
 	var updates []ordinalResource[T]
 	for _, existing := range current {
-		target, ok := want[existing.Resource.GetName()]
+		target, ok := want[diff.objectKey(existing.Resource)]
 		if !ok {
 			continue
 		}
-		target.Resource.SetResourceVersion(existing.Resource.GetResourceVersion())
-		target.Resource.SetUID(existing.Resource.GetUID())
-		target.Resource.SetGeneration(existing.Resource.GetGeneration())
-		var (
-			oldRev = existing.Resource.GetLabels()[diff.revisionLabelKey]
-			newRev = target.Resource.GetLabels()[diff.revisionLabelKey]
-		)
-		if newRev == "" {
-			// If revision isn't found on new resources, indicates a serious error with the Operator.
-			panic(fmt.Errorf("%s missing revision label %s", existing.Resource.GetName(), diff.revisionLabelKey))
-		}
-
-		if oldRev != newRev {
+		if !equality.Semantic.DeepEqual(existing.Resource, target.Resource) {
 			updates = append(updates, target)
 		}
 	}
@@ -141,25 +115,24 @@ func (diff *Diff[T]) computeUpdates(current, want ordinalSet[T]) []T {
 	return diff.sortByOrdinal(updates)
 }
 
-type ordinalResource[T Resource] struct {
-	Resource T
-	Ordinal  int64
-}
-
 func (diff *Diff[T]) toSet(list []T) ordinalSet[T] {
 	m := make(map[string]ordinalResource[T])
 	for i := range list {
 		r := list[i]
 		var n int64
-		if !diff.nonOrdinal {
+		if diff.isOrdinal {
 			n = MustToInt(r.GetAnnotations()[diff.ordinalAnnotationKey])
 		}
-		m[r.GetName()] = ordinalResource[T]{
+		m[diff.objectKey(r)] = ordinalResource[T]{
 			Resource: r,
 			Ordinal:  n,
 		}
 	}
 	return m
+}
+
+func (diff *Diff[T]) objectKey(obj client.Object) string {
+	return fmt.Sprintf("%s/%s", obj.GetNamespace(), obj.GetName())
 }
 
 func (diff *Diff[T]) sortByOrdinal(list []ordinalResource[T]) []T {
