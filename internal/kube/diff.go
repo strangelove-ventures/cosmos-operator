@@ -9,25 +9,39 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// key is the resource name which must be unique per k8s conventions.
+type ordinalSet[T Resource] map[string]ordinalResource[T]
+
+// Resource is a kubernetes resource.
+type Resource = client.Object
+
+// Diff computes a diff between two sets of resources.
+// The diff is computed by comparing the semantic equality of the resources.
+// This assumes building resources copies and modifies existing resources from kube, particularly regarding annotations.
+// Cloud providers commonly add custom annotations to resources.
+//
+// There are several O(N) or O(2N) operations; however, we expect N to be small.
 type Diff[T Resource] struct {
 	ordinalAnnotationKey string
-	nonOrdinal           bool
+	isOrdinal            bool
 
 	creates, deletes, updates []T
 }
 
+// NewOrdinalDiff creates a valid Diff where ordinal positioning is required.
 func NewOrdinalDiff[T Resource](ordinalAnnotationKey string, current, want []T) *Diff[T] {
-	return newDiff(ordinalAnnotationKey, current, want, false)
+	return newDiff(ordinalAnnotationKey, current, want, true)
 }
 
+// NewDiff creates a valid Diff where ordinal positioning is not required.
 func NewDiff[T Resource](current, want []T) *Diff[T] {
-	return newDiff("", current, want, true)
+	return newDiff("", current, want, false)
 }
 
-func newDiff[T Resource](ordinalAnnotationKey string, current, want []T, nonOrdinal bool) *Diff[T] {
+func newDiff[T Resource](ordinalAnnotationKey string, current, want []T, isOrdinal bool) *Diff[T] {
 	d := &Diff[T]{
 		ordinalAnnotationKey: ordinalAnnotationKey,
-		nonOrdinal:           nonOrdinal,
+		isOrdinal:            isOrdinal,
 	}
 
 	currentSet := d.toSet(current)
@@ -106,7 +120,7 @@ func (diff *Diff[T]) toSet(list []T) ordinalSet[T] {
 	for i := range list {
 		r := list[i]
 		var n int64
-		if !diff.nonOrdinal {
+		if !diff.isOrdinal {
 			n = MustToInt(r.GetAnnotations()[diff.ordinalAnnotationKey])
 		}
 		m[diff.objectKey(r)] = ordinalResource[T]{

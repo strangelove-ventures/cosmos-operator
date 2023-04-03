@@ -4,18 +4,20 @@ import (
 	"errors"
 	"fmt"
 	"sort"
-
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
-
-// Resource is a kubernetes resource.
-type Resource = client.Object
-
-// key is the resource name which must be unique per k8s conventions.
-type ordinalSet[T Resource] map[string]ordinalResource[T]
 
 // RevisionDiff computes steps needed to bring a current state equal to a new state.
 // Diffing for updates is done by comparing a revision label.
+//
+// Prefer using Diff over RevisionDiff. Diff uses semantic equality to detect updates instead of a dedicated label.
+// RevisionDiff may eventually be deprecated.
+//
+// RevisionDiff expects "revisionLabelKey" which is a label with a revision that is expected to change if the resource
+// has changed. A short hash is a common value for this label. We cannot simply diff the annotations and/or labels in case
+// a 3rd party injects annotations or labels.
+// For example, GKE injects other annotations beyond our control.
+//
+// There are several O(N) or O(2N) operations; However, we expect N to be small.
 type RevisionDiff[T Resource] struct {
 	ordinalAnnotationKey string
 	revisionLabelKey     string
@@ -25,29 +27,11 @@ type RevisionDiff[T Resource] struct {
 }
 
 // NewOrdinalRevisionDiff creates a valid RevisionDiff where ordinal positioning is required.
-// It computes differences between the "current" state needed to reconcile to the "want" state.
-//
-// RevisionDiff expects resources with annotations denoting ordinal positioning similar to a StatefulSet. E.g. pod-0, pod-1, pod-2.
-// The "ordinalAnnotationKey" allows RevisionDiff to sort resources deterministically.
-// Therefore, resources must have ordinalAnnotationKey set to an integer value such as "0", "1", "2"
-// otherwise this function panics.
-//
-// RevisionDiff also expects "revisionLabelKey" which is a label with a revision that is expected to change if the resource
-// has changed. A short hash is a common value for this label. We cannot simply diff the annotations and/or labels in case
-// a 3rd party injects annotations or labels.
-// For example, GKE injects other annotations beyond our control.
-//
-// For Updates to work properly, RevisionDiff uses ObjectHasChanges. Concretely, to detect updates the recommended path
-// is changing annotations or labels.
-//
-// There are several O(N) or O(2N) operations where N = number of resources.
-// However, we expect N to be small.
 func NewOrdinalRevisionDiff[T Resource](ordinalAnnotationKey string, revisionLabelKey string, current, want []T) *RevisionDiff[T] {
 	return newRevisionDiff(ordinalAnnotationKey, revisionLabelKey, current, want, false)
 }
 
 // NewRevisionDiff creates a valid RevisionDiff where ordinal positioning is not required.
-// See NewOrdinalRevisionDiff for further details, ignoring requirements for ordinal annotations.
 func NewRevisionDiff[T Resource](revisionLabelKey string, current, want []T) *RevisionDiff[T] {
 	return newRevisionDiff("", revisionLabelKey, current, want, true)
 }
@@ -109,7 +93,7 @@ func (diff *RevisionDiff[T]) computeDeletes(current, want ordinalSet[T]) []T {
 	return diff.sortByOrdinal(deletes)
 }
 
-// Updates returns a list of resources that should be updated.
+// Updates returns a list of resources that should be updated by comparing the revision label.
 func (diff *RevisionDiff[T]) Updates() []T {
 	return diff.updates
 }
