@@ -48,7 +48,7 @@ func NewPodControl(client Client, filter PodFilter) PodControl {
 		client:    client,
 		podFilter: filter,
 		diffFactory: func(ordinalAnnotationKey, revisionLabelKey string, current, want []*corev1.Pod) podDiffer {
-			return kube.NewOrdinalDiff(ordinalAnnotationKey, revisionLabelKey, current, want)
+			return kube.NewOrdinalRevisionDiff(ordinalAnnotationKey, revisionLabelKey, current, want)
 		},
 		computeRollout: kube.ComputeRollout,
 	}
