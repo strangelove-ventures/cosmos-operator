@@ -25,7 +25,7 @@ func TestFindOrDefault(t *testing.T) {
 		cmp.Name = "pod-1"
 		cmp.Namespace = "default"
 
-		got := FindOrDefault(pods, &cmp)
+		got := FindOrDefaultCopy(pods, &cmp)
 
 		var want corev1.Pod
 		want.Name = "pod-1"
@@ -48,7 +48,7 @@ func TestFindOrDefault(t *testing.T) {
 		cmp.Name = "pod-1"
 		cmp.Namespace = "notsame"
 
-		got := FindOrDefault(pods, &cmp)
+		got := FindOrDefaultCopy(pods, &cmp)
 
 		want := cmp.DeepCopy()
 		want.Annotations = map[string]string{}

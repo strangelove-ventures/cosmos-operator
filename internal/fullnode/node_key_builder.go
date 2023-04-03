@@ -22,7 +22,7 @@ func BuildNodeKeySecrets(existing []*corev1.Secret, crd *cosmosv1.CosmosFullNode
 		var s corev1.Secret
 		s.Name = nodeKeySecretName(crd, i)
 		s.Namespace = crd.Namespace
-		s = *kube.FindOrDefault(existing, &s)
+		s = *kube.FindOrDefaultCopy(existing, &s)
 
 		s.Kind = "Secret"
 		s.APIVersion = "v1"

@@ -5,10 +5,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// FindOrDefault returns a deep copy of the object if it exists in the collection, otherwise it
+// FindOrDefaultCopy returns a deep copy of the object if it exists in the collection, otherwise it
 // returns a deep copy of the comparator.
 // Also defaults .metadata.labels and .metadata.annotations to an empty map if they are nil.
-func FindOrDefault[T client.Object](existing []T, comparator T) T {
+func FindOrDefaultCopy[T client.Object](existing []T, comparator T) T {
 	found := lo.FindOrElse(existing, comparator, func(item T) bool {
 		return item.GetName() == comparator.GetName() && item.GetNamespace() == comparator.GetNamespace()
 	})
