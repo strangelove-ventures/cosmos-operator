@@ -120,7 +120,7 @@ func (diff *Diff[T]) toSet(list []T) ordinalSet[T] {
 	for i := range list {
 		r := list[i]
 		var n int64
-		if !diff.isOrdinal {
+		if diff.isOrdinal {
 			n = MustToInt(r.GetAnnotations()[diff.ordinalAnnotationKey])
 		}
 		m[diff.objectKey(r)] = ordinalResource[T]{
