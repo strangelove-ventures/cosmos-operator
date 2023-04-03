@@ -19,84 +19,10 @@ func diffablePod(ordinal int) *corev1.Pod {
 	return p
 }
 
-//func TestNewDiff(t *testing.T) {
-//	t.Parallel()
-//
-//	const revision = "_revision_"
-//
-//	t.Run("non-unique names", func(t *testing.T) {
-//		dupeNames := []*corev1.Pod{
-//			revisionDiffablePod(0, revision),
-//			revisionDiffablePod(0, revision),
-//		}
-//		resources := []*corev1.Pod{
-//			revisionDiffablePod(0, revision),
-//		}
-//
-//		require.Panics(t, func() {
-//			NewOrdinalRevisionDiff(testOrdinalAnnotation, testRevisionLabel, dupeNames, resources)
-//		})
-//
-//		require.Panics(t, func() {
-//			NewOrdinalRevisionDiff(testOrdinalAnnotation, testRevisionLabel, resources, dupeNames)
-//		})
-//	})
-//
-//	t.Run("missing required annotations and labels", func(t *testing.T) {
-//		for _, tt := range []struct {
-//			OrdinalValue  string
-//			RevisionValue string
-//		}{
-//			{"", "revision"},
-//			{"should be a number", "revision"},
-//			{"1", ""},
-//		} {
-//			bad := []*corev1.Pod{
-//				{
-//					ObjectMeta: metav1.ObjectMeta{
-//						Name:        "pod-0",
-//						Annotations: map[string]string{testOrdinalAnnotation: tt.OrdinalValue},
-//						Labels:      map[string]string{testRevisionLabel: tt.RevisionValue},
-//					},
-//				},
-//			}
-//			good := []*corev1.Pod{
-//				revisionDiffablePod(0, "_new_resource_"),
-//			}
-//
-//			// A blank revision is ok for the exiting resources. Future proofs the unlikely event we change the revision label.
-//			if tt.RevisionValue != "" {
-//				require.Panics(t, func() {
-//					NewOrdinalRevisionDiff(testOrdinalAnnotation, testRevisionLabel, bad, good)
-//				}, tt)
-//			}
-//
-//			// Test the inverse.
-//			require.Panics(t, func() {
-//				NewOrdinalRevisionDiff(testOrdinalAnnotation, testRevisionLabel, good, bad)
-//			}, tt)
-//		}
-//	})
-//}
-
-//func TestNewDiff(t *testing.T) {
-//	resources := []*corev1.Pod{
-//		{
-//			ObjectMeta: metav1.ObjectMeta{
-//				Name:   "pod-0",
-//				Labels: map[string]string{testRevisionLabel: "revision"},
-//			},
-//		},
-//	}
-//	require.NotPanics(t, func() {
-//		NewRevisionDiff(testRevisionLabel, resources, resources)
-//	})
-//}
-
 func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 	t.Parallel()
 
-	t.Run("simple create", func(t *testing.T) {
+	t.Run("create", func(t *testing.T) {
 		current := []*corev1.Pod{
 			diffablePod(0),
 		}
@@ -118,7 +44,7 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 		require.Equal(t, diff.Creates()[1].Name, "pod-110")
 	})
 
-	t.Run("only create", func(t *testing.T) {
+	t.Run("creates brand new resources", func(t *testing.T) {
 		want := []*corev1.Pod{
 			diffablePod(0),
 			diffablePod(1),
@@ -132,27 +58,27 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 		require.Len(t, diff.Creates(), 2)
 	})
 
-	//t.Run("simple delete", func(t *testing.T) {
-	//	// Purposefully unordered.
-	//	current := []*corev1.Pod{
-	//		revisionDiffablePod(0, revision),
-	//		revisionDiffablePod(11, revision), // tests for numeric (not lexical) sorting
-	//		revisionDiffablePod(2, revision),
-	//	}
-	//
-	//	want := []*corev1.Pod{
-	//		revisionDiffablePod(0, revision),
-	//	}
-	//
-	//	diff := NewOrdinalRevisionDiff(testOrdinalAnnotation, testRevisionLabel, current, want)
-	//
-	//	require.Empty(t, diff.Updates())
-	//	require.Empty(t, diff.Creates())
-	//
-	//	require.Len(t, diff.Deletes(), 2)
-	//	require.Equal(t, diff.Deletes()[0].Name, "pod-2")
-	//	require.Equal(t, diff.Deletes()[1].Name, "pod-11")
-	//})
+	t.Run("deletes", func(t *testing.T) {
+		// Purposefully unordered.
+		current := []*corev1.Pod{
+			diffablePod(0),
+			diffablePod(11), // tests for numeric (not lexical) sorting
+			diffablePod(2),
+		}
+
+		want := []*corev1.Pod{
+			diffablePod(0), // Should not appear in deletes.
+		}
+
+		diff := NewOrdinalDiff(testOrdinalAnnotation, current, want)
+
+		require.Empty(t, diff.Updates())
+		require.Empty(t, diff.Creates())
+
+		require.Len(t, diff.Deletes(), 2)
+		require.Equal(t, diff.Deletes()[0].Name, "pod-2")
+		require.Equal(t, diff.Deletes()[1].Name, "pod-11")
+	})
 
 	t.Run("updates", func(t *testing.T) {
 		pod1 := diffablePod(2)
@@ -191,6 +117,9 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 			diffablePod(0),
 			diffablePod(1),
 		}
+
+		// Cause an update
+		want[0].Annotations["foo"] = "bar"
 
 		for _, tt := range []struct {
 			TestName string
