@@ -10,6 +10,8 @@ import (
 )
 
 func TestFindOrDefault(t *testing.T) {
+	t.Parallel()
+
 	pods := lo.Map(lo.Range(3), func(i int, _ int) *corev1.Pod {
 		var pod corev1.Pod
 		pod.Name = fmt.Sprintf("pod-%d", i)
