@@ -43,16 +43,16 @@ type RevisionDiff[T Resource] struct {
 // There are several O(N) or O(2N) operations where N = number of resources.
 // However, we expect N to be small.
 func NewOrdinalRevisionDiff[T Resource](ordinalAnnotationKey string, revisionLabelKey string, current, want []T) *RevisionDiff[T] {
-	return newDiff(ordinalAnnotationKey, revisionLabelKey, current, want, false)
+	return newRevisionDiff(ordinalAnnotationKey, revisionLabelKey, current, want, false)
 }
 
 // NewRevisionDiff creates a valid RevisionDiff where ordinal positioning is not required.
 // See NewOrdinalRevisionDiff for further details, ignoring requirements for ordinal annotations.
 func NewRevisionDiff[T Resource](revisionLabelKey string, current, want []T) *RevisionDiff[T] {
-	return newDiff("", revisionLabelKey, current, want, true)
+	return newRevisionDiff("", revisionLabelKey, current, want, true)
 }
 
-func newDiff[T Resource](ordinalAnnotationKey string, revisionLabelKey string, current, want []T, nonOrdinal bool) *RevisionDiff[T] {
+func newRevisionDiff[T Resource](ordinalAnnotationKey string, revisionLabelKey string, current, want []T, nonOrdinal bool) *RevisionDiff[T] {
 	d := &RevisionDiff[T]{
 		ordinalAnnotationKey: ordinalAnnotationKey,
 		revisionLabelKey:     revisionLabelKey,

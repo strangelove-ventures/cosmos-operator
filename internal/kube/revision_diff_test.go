@@ -15,7 +15,7 @@ const (
 	testRevisionLabel     = "revision"
 )
 
-func diffablePod(ordinal int, revision string) *corev1.Pod {
+func revisionDiffablePod(ordinal int, revision string) *corev1.Pod {
 	p := new(corev1.Pod)
 	p.Name = fmt.Sprintf("pod-%d", ordinal)
 	p.Annotations = map[string]string{
@@ -27,18 +27,18 @@ func diffablePod(ordinal int, revision string) *corev1.Pod {
 	return p
 }
 
-func TestNewOrdinalDiff(t *testing.T) {
+func TestNewOrdinalRevisionDiff(t *testing.T) {
 	t.Parallel()
 
 	const revision = "_revision_"
 
 	t.Run("non-unique names", func(t *testing.T) {
 		dupeNames := []*corev1.Pod{
-			diffablePod(0, revision),
-			diffablePod(0, revision),
+			revisionDiffablePod(0, revision),
+			revisionDiffablePod(0, revision),
 		}
 		resources := []*corev1.Pod{
-			diffablePod(0, revision),
+			revisionDiffablePod(0, revision),
 		}
 
 		require.Panics(t, func() {
@@ -69,7 +69,7 @@ func TestNewOrdinalDiff(t *testing.T) {
 				},
 			}
 			good := []*corev1.Pod{
-				diffablePod(0, "_new_resource_"),
+				revisionDiffablePod(0, "_new_resource_"),
 			}
 
 			// A blank revision is ok for the exiting resources. Future proofs the unlikely event we change the revision label.
@@ -87,7 +87,7 @@ func TestNewOrdinalDiff(t *testing.T) {
 	})
 }
 
-func TestNewDiff(t *testing.T) {
+func TestNewRevisionDiff(t *testing.T) {
 	resources := []*corev1.Pod{
 		{
 			ObjectMeta: metav1.ObjectMeta{
@@ -101,21 +101,21 @@ func TestNewDiff(t *testing.T) {
 	})
 }
 
-func TestDiff_CreatesDeletesUpdates(t *testing.T) {
+func TestRevisionDiff_CreatesDeletesUpdates(t *testing.T) {
 	t.Parallel()
 
 	const revision = "_revision_"
 
 	t.Run("simple create", func(t *testing.T) {
 		current := []*corev1.Pod{
-			diffablePod(0, revision),
+			revisionDiffablePod(0, revision),
 		}
 
 		// Purposefully unordered
 		want := []*corev1.Pod{
-			diffablePod(2, revision),
-			diffablePod(0, revision),
-			diffablePod(110, revision), // tests for numeric (not lexical) sorting
+			revisionDiffablePod(2, revision),
+			revisionDiffablePod(0, revision),
+			revisionDiffablePod(110, revision), // tests for numeric (not lexical) sorting
 		}
 
 		diff := NewOrdinalRevisionDiff(testOrdinalAnnotation, testRevisionLabel, current, want)
@@ -130,8 +130,8 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 
 	t.Run("only create", func(t *testing.T) {
 		want := []*corev1.Pod{
-			diffablePod(0, revision),
-			diffablePod(1, revision),
+			revisionDiffablePod(0, revision),
+			revisionDiffablePod(1, revision),
 		}
 
 		diff := NewOrdinalRevisionDiff(testOrdinalAnnotation, testRevisionLabel, nil, want)
@@ -145,13 +145,13 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 	t.Run("simple delete", func(t *testing.T) {
 		// Purposefully unordered.
 		current := []*corev1.Pod{
-			diffablePod(0, revision),
-			diffablePod(11, revision), // tests for numeric (not lexical) sorting
-			diffablePod(2, revision),
+			revisionDiffablePod(0, revision),
+			revisionDiffablePod(11, revision), // tests for numeric (not lexical) sorting
+			revisionDiffablePod(2, revision),
 		}
 
 		want := []*corev1.Pod{
-			diffablePod(0, revision),
+			revisionDiffablePod(0, revision),
 		}
 
 		diff := NewOrdinalRevisionDiff(testOrdinalAnnotation, testRevisionLabel, current, want)
@@ -165,12 +165,12 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 	})
 
 	t.Run("simple update", func(t *testing.T) {
-		pod1 := diffablePod(2, revision)
+		pod1 := revisionDiffablePod(2, revision)
 		pod1.SetUID("uuid1")
 		pod1.SetResourceVersion("1")
 		pod1.SetGeneration(100)
 
-		pod2 := diffablePod(22, revision)
+		pod2 := revisionDiffablePod(22, revision)
 		pod2.SetUID("uuid2")
 		pod2.SetResourceVersion("2")
 		pod2.SetGeneration(200)
@@ -179,8 +179,8 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 		current := []*corev1.Pod{pod2, pod1}
 
 		want := []*corev1.Pod{
-			diffablePod(22, "_new_version_"),
-			diffablePod(2, "_new_version_"),
+			revisionDiffablePod(22, "_new_version_"),
+			revisionDiffablePod(2, "_new_version_"),
 		}
 
 		diff := NewOrdinalRevisionDiff(testOrdinalAnnotation, testRevisionLabel, current, want)
@@ -200,14 +200,14 @@ func TestDiff_CreatesDeletesUpdates(t *testing.T) {
 
 	t.Run("combination", func(t *testing.T) {
 		current := []*corev1.Pod{
-			diffablePod(0, revision),
-			diffablePod(3, revision),
-			diffablePod(4, revision),
+			revisionDiffablePod(0, revision),
+			revisionDiffablePod(3, revision),
+			revisionDiffablePod(4, revision),
 		}
 
 		want := []*corev1.Pod{
-			diffablePod(0, "_new_version_"),
-			diffablePod(1, revision),
+			revisionDiffablePod(0, "_new_version_"),
+			revisionDiffablePod(1, revision),
 		}
 
 		for _, tt := range []struct {
