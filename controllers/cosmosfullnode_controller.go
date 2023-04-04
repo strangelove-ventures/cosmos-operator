@@ -44,6 +44,7 @@ type CosmosFullNodeReconciler struct {
 	client.Client
 
 	configMapControl fullnode.ConfigMapControl
+	nodeKeyControl   fullnode.NodeKeyControl
 	podControl       fullnode.PodControl
 	pvcControl       fullnode.PVCControl
 	recorder         record.EventRecorder
@@ -59,6 +60,7 @@ func NewFullNode(client client.Client, recorder record.EventRecorder, statusClie
 	return &CosmosFullNodeReconciler{
 		Client:           client,
 		configMapControl: fullnode.NewConfigMapControl(client),
+		nodeKeyControl:   fullnode.NewNodeKeyControl(client),
 		podControl:       fullnode.NewPodControl(client, podFilter),
 		pvcControl:       fullnode.NewPVCControl(client),
 		recorder:         recorder,
@@ -114,7 +116,13 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		errs.Append(err)
 	}
 
-	// Create or update ConfigMaps.
+	// Reconcile Secrets.
+	err = r.nodeKeyControl.Reconcile(ctx, reporter, crd)
+	if err != nil {
+		errs.Append(err)
+	}
+
+	// Reconcile ConfigMaps.
 	p2pAddresses, err := fullnode.CollectP2PAddresses(ctx, crd, r)
 	if err != nil {
 		p2pAddresses = make(fullnode.ExternalAddresses)

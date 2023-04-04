@@ -44,6 +44,9 @@ func (control NodeKeyControl) Reconcile(ctx context.Context, reporter kube.Repor
 		return kube.TransientError(fmt.Errorf("list existing node key secrets: %w", err))
 	}
 
+	// TODO: delete this
+	reporter.Info("Found secrets count", "secrets", len(secrets.Items))
+
 	existing := ptrSlice(secrets.Items)
 	want, serr := BuildNodeKeySecrets(existing, crd)
 	if serr != nil {
@@ -54,19 +57,20 @@ func (control NodeKeyControl) Reconcile(ctx context.Context, reporter kube.Repor
 
 	for _, secret := range diff.Creates() {
 		reporter.Info("Creating node key secret", "secret", secret.Name)
-		reporter.RecordInfo("CreatingNodeKey", secret.Name)
 		if err := ctrl.SetControllerReference(crd, secret, control.client.Scheme()); err != nil {
-			return kube.TransientError(fmt.Errorf("set controller reference on secret %q: %w", secret.Name, err))
+			return kube.TransientError(fmt.Errorf("set controller reference on node key secret %q: %w", secret.Name, err))
 		}
 		if err := control.client.Create(ctx, secret); kube.IgnoreAlreadyExists(err) != nil {
-			return kube.TransientError(fmt.Errorf("create service %q: %w", secret.Name, err))
+			return kube.TransientError(fmt.Errorf("create node key secret %q: %w", secret.Name, err))
 		}
 	}
 
 	for _, secret := range diff.Updates() {
-		reporter.Info("Creating node key secret", "secret", secret.Name)
+		reporter.Info("Updating node key secret", "secret", secret.Name)
 		if err := control.client.Update(ctx, secret); err != nil {
 			return kube.TransientError(fmt.Errorf("update node key secret %q: %w", secret.Name, err))
 		}
 	}
+
+	return nil
 }
