@@ -62,7 +62,7 @@ func (cmc ConfigMapControl) Reconcile(ctx context.Context, log kube.Logger, crd 
 			return kube.TransientError(fmt.Errorf("set controller reference on configmap %q: %w", cm.Name, err))
 		}
 		if err := cmc.client.Create(ctx, cm); kube.IgnoreAlreadyExists(err) != nil {
-			return kube.TransientError(fmt.Errorf("create service %q: %w", cm.Name, err))
+			return kube.TransientError(fmt.Errorf("create configmap %q: %w", cm.Name, err))
 		}
 	}
 
