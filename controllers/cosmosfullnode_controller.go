@@ -79,6 +79,7 @@ var (
 //+kubebuilder:rbac:groups=cosmos.strange.love,resources=cosmosfullnodes/finalizers,verbs=update
 // Generate RBAC roles to watch and update resources. IMPORTANT!!!! All resource names must be lowercase or cluster role will not work.
 //+kubebuilder:rbac:groups="",resources=pods;persistentvolumeclaims;services;configmaps,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch
 //+kubebuilder:rbac:groups="",resources=events,verbs=create;update;patch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
@@ -229,6 +230,17 @@ func (r *CosmosFullNodeReconciler) SetupWithManager(ctx context.Context, mgr ctr
 		return fmt.Errorf("configmap index field %s: %w", controllerOwnerField, err)
 	}
 
+	// Index Secrets.
+	err = mgr.GetFieldIndexer().IndexField(
+		ctx,
+		&corev1.Service{},
+		controllerOwnerField,
+		kube.IndexOwner[*corev1.Secret](cosmosv1.CosmosFullNodeController),
+	)
+	if err != nil {
+		return fmt.Errorf("secret index field %s: %w", controllerOwnerField, err)
+	}
+
 	// Index Services.
 	err = mgr.GetFieldIndexer().IndexField(
 		ctx,
@@ -248,6 +260,7 @@ func (r *CosmosFullNodeReconciler) SetupWithManager(ctx context.Context, mgr ctr
 		{Type: &corev1.PersistentVolumeClaim{}},
 		{Type: &corev1.ConfigMap{}},
 		{Type: &corev1.Service{}},
+		{Type: &corev1.Secret{}},
 	} {
 		cbuilder.Watches(
 			kind,
