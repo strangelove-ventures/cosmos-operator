@@ -39,13 +39,9 @@ func (control NodeKeyControl) Reconcile(ctx context.Context, reporter kube.Repor
 	if err := control.client.List(ctx, &secrets,
 		client.InNamespace(crd.Namespace),
 		client.MatchingFields{kube.ControllerOwnerField: crd.Name},
-		//SelectorLabels(crd), // TODO: let's see if I need this
 	); err != nil {
 		return kube.TransientError(fmt.Errorf("list existing node key secrets: %w", err))
 	}
-
-	// TODO: delete this
-	reporter.Info("Found secrets count", "secrets", len(secrets.Items))
 
 	existing := ptrSlice(secrets.Items)
 	want, serr := BuildNodeKeySecrets(existing, crd)
