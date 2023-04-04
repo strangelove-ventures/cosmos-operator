@@ -233,7 +233,7 @@ func (r *CosmosFullNodeReconciler) SetupWithManager(ctx context.Context, mgr ctr
 	// Index Secrets.
 	err = mgr.GetFieldIndexer().IndexField(
 		ctx,
-		&corev1.Service{},
+		&corev1.Secret{},
 		controllerOwnerField,
 		kube.IndexOwner[*corev1.Secret](cosmosv1.CosmosFullNodeController),
 	)
