@@ -33,7 +33,7 @@ func NewNodeKeyControl(client Client) NodeKeyControl {
 	}
 }
 
-// Reconcile is the control loop for node keys.
+// Reconcile is the control loop for node keys. The secrets are never deleted.
 func (control NodeKeyControl) Reconcile(ctx context.Context, reporter kube.Reporter, crd *cosmosv1.CosmosFullNode) kube.ReconcileError {
 	var secrets corev1.SecretList
 	if err := control.client.List(ctx, &secrets,
