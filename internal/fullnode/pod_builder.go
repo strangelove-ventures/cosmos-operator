@@ -178,6 +178,7 @@ const (
 	volTmp       = "vol-tmp"        // Stores temporary config files for manipulation later.
 	volConfig    = "vol-config"     // Items from ConfigMap.
 	volSystemTmp = "vol-system-tmp" // Necessary for statesync or else you may see the error: ERR State sync failed err="failed to create chunk queue: unable to create temp dir for state sync chunks: stat /tmp: no such file or directory" module=statesync
+	volNodeKey   = "vol-node-key"   // Secret containing the node key.
 )
 
 // WithOrdinal updates adds name and other metadata to the pod using "ordinal" which is the pod's
@@ -221,6 +222,14 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 			Name: volSystemTmp,
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+		{
+			Name: volNodeKey,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: nodeKeySecretName(b.crd, ordinal),
+				},
 			},
 		},
 	}

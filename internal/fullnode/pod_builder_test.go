@@ -282,7 +282,7 @@ func TestPodBuilder(t *testing.T) {
 		require.NoError(t, err)
 
 		vols := pod.Spec.Volumes
-		require.Len(t, vols, 4)
+		require.Equal(t, 5, len(vols))
 
 		require.Equal(t, "vol-chain-home", vols[0].Name)
 		require.Equal(t, "pvc-osmosis-5", vols[0].PersistentVolumeClaim.ClaimName)
@@ -292,6 +292,7 @@ func TestPodBuilder(t *testing.T) {
 
 		require.Equal(t, "vol-config", vols[2].Name)
 		require.Equal(t, "osmosis-5", vols[2].ConfigMap.Name)
+		// TODO: test with nil items to get default behavior.
 		wantItems := []corev1.KeyToPath{
 			{Key: "config-overlay.toml", Path: "config-overlay.toml"},
 			{Key: "app-overlay.toml", Path: "app-overlay.toml"},
@@ -301,6 +302,11 @@ func TestPodBuilder(t *testing.T) {
 		// Required for statesync
 		require.Equal(t, "vol-system-tmp", vols[3].Name)
 		require.NotNil(t, vols[3].EmptyDir)
+
+		// Node key
+		require.Equal(t, "vol-node-key", vols[4].Name)
+		require.Equal(t, "osmosis-node-key-5", vols[4].Secret.SecretName)
+		require.Empty(t, vols[4].Secret.Items)
 
 		for _, c := range pod.Spec.Containers {
 			require.Len(t, c.VolumeMounts, 2)
