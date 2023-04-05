@@ -249,7 +249,7 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 
 	// At this point, guaranteed to have at least one container.
 	pod.Spec.Containers[0].VolumeMounts = append(mounts, corev1.VolumeMount{
-		Name: volNodeKey, MountPath: path.Join(ChainHomeDir, "config", nodeKeySecret),
+		Name: volNodeKey, MountPath: path.Join(ChainHomeDir, "config"), SubPath: nodeKeySecret,
 	})
 
 	b.pod = pod
