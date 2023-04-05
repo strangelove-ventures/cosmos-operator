@@ -308,15 +308,25 @@ func TestPodBuilder(t *testing.T) {
 		require.Equal(t, "osmosis-node-key-5", vols[4].Secret.SecretName)
 		require.Empty(t, vols[4].Secret.Items)
 
-		for _, c := range pod.Spec.Containers {
-			require.Len(t, c.VolumeMounts, 2)
-			mount := c.VolumeMounts[0]
-			require.Equal(t, "vol-chain-home", mount.Name, c.Name)
-			require.Equal(t, "/home/operator/cosmos", mount.MountPath, c.Name)
+		c := pod.Spec.Containers[0]
+		require.Equal(t, "node", c.Name) // Sanity check
 
-			mount = c.VolumeMounts[1]
-			require.Equal(t, "vol-system-tmp", mount.Name, c.Name)
-			require.Equal(t, "/tmp", mount.MountPath, c.Name)
+		require.Len(t, c.VolumeMounts, 3)
+		mount := c.VolumeMounts[0]
+		require.Equal(t, "vol-chain-home", mount.Name, c.Name)
+		require.Equal(t, "/home/operator/cosmos", mount.MountPath, c.Name)
+
+		mount = c.VolumeMounts[1]
+		require.Equal(t, "vol-system-tmp", mount.Name, c.Name)
+		require.Equal(t, "/tmp", mount.MountPath, c.Name)
+
+		mount = c.VolumeMounts[2]
+		require.Equal(t, "vol-node-key", mount.Name, c.Name)
+		require.Equal(t, "/home/operator/cosmos/config/node_key.json", mount.MountPath, c.Name)
+
+		// Sidecars do not need volume mounts.
+		for _, c := range pod.Spec.Containers[1:] {
+			require.Empty(t, c.VolumeMounts)
 		}
 
 		for _, c := range pod.Spec.InitContainers {
@@ -487,7 +497,7 @@ gaiad start --home /home/operator/cosmos`
 		require.NoError(t, err)
 
 		vols := lo.SliceToMap(pod.Spec.Volumes, func(v corev1.Volume) (string, corev1.Volume) { return v.Name, v })
-		require.ElementsMatch(t, []string{"foo-vol", "vol-tmp", "vol-system-tmp", "vol-config", "vol-chain-home"}, lo.Keys(vols))
+		require.ElementsMatch(t, []string{"foo-vol", "vol-tmp", "vol-system-tmp", "vol-config", "vol-chain-home", "vol-node-key"}, lo.Keys(vols))
 		require.Equal(t, &corev1.EmptyDirVolumeSource{}, vols["foo-vol"].VolumeSource.EmptyDir)
 
 		containers := lo.SliceToMap(pod.Spec.Containers, func(c corev1.Container) (string, corev1.Container) { return c.Name, c })
