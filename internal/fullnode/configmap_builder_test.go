@@ -226,7 +226,6 @@ func TestBuildConfigMaps(t *testing.T) {
 			p2p := ExternalAddresses{
 				"osmosis-0": "1.1.1.1",
 				"osmosis-1": "2.2.2.2",
-				"osmosis-2": "3.3.3.3",
 			}
 			p2pCrd := crd.DeepCopy()
 			p2pCrd.Spec.Replicas = 3
@@ -240,9 +239,13 @@ func TestBuildConfigMaps(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, "1.1.1.1", decoded["p2p"].(decodedToml)["external_address"])
 
+			_, err = toml.Decode(cms[1].Data["config-overlay.toml"], &decoded)
+			require.NoError(t, err)
+			require.Equal(t, "2.2.2.2", decoded["p2p"].(decodedToml)["external_address"])
+
 			_, err = toml.Decode(cms[2].Data["config-overlay.toml"], &decoded)
 			require.NoError(t, err)
-			require.Equal(t, "3.3.3.3", decoded["p2p"].(decodedToml)["external_address"])
+			require.Empty(t, decoded["p2p"].(decodedToml)["external_address"])
 		})
 
 		t.Run("invalid toml", func(t *testing.T) {
