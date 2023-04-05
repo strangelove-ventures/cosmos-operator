@@ -12,7 +12,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
@@ -43,11 +42,6 @@ func defaultCRD() cosmosv1.CosmosFullNode {
 }
 
 func TestPodBuilder(t *testing.T) {
-	scheme := runtime.NewScheme()
-	if err := cosmosv1.AddToScheme(scheme); err != nil {
-		panic(err)
-	}
-
 	t.Parallel()
 
 	t.Run("happy path - critical fields", func(t *testing.T) {
