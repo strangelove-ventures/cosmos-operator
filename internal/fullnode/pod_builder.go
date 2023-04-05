@@ -329,6 +329,13 @@ set -eu
 CONFIG_DIR="$CHAIN_HOME/config"
 TMP_DIR="$HOME/.tmp/config"
 OVERLAY_DIR="$HOME/.config"
+
+# This is a hack to prevent adding another init container.
+# Ideally, this step is not concerned with merging config, so it would live elsewhere.
+# The node key is a secret mounted into the main "node" container, so we do not need this one.
+echo "Removing init'ed node key..."
+rm -rf "$CONFIG_DIR/node_key.json"
+
 echo "Merging config..."
 set -x
 config-merge -f toml "$TMP_DIR/config.toml" "$OVERLAY_DIR/config-overlay.toml" > "$CONFIG_DIR/config.toml"
