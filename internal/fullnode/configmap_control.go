@@ -19,9 +19,9 @@ type configmapDiffer interface {
 
 // ConfigMapControl creates or updates configmaps.
 type ConfigMapControl struct {
-	build       func(*cosmosv1.CosmosFullNode, ExternalAddresses) ([]*corev1.ConfigMap, error)
+	build       func([]*corev1.ConfigMap, *cosmosv1.CosmosFullNode, ExternalAddresses) ([]*corev1.ConfigMap, error)
 	client      Client
-	diffFactory func(revisionLabelKey string, current, want []*corev1.ConfigMap) configmapDiffer
+	diffFactory func(current, want []*corev1.ConfigMap) configmapDiffer
 }
 
 // NewConfigMapControl returns a valid ConfigMapControl.
@@ -29,8 +29,8 @@ func NewConfigMapControl(client Client) ConfigMapControl {
 	return ConfigMapControl{
 		build:  BuildConfigMaps,
 		client: client,
-		diffFactory: func(revisionLabelKey string, current, want []*corev1.ConfigMap) configmapDiffer {
-			return kube.NewRevisionDiff(revisionLabelKey, current, want)
+		diffFactory: func(current, want []*corev1.ConfigMap) configmapDiffer {
+			return kube.NewDiff(current, want)
 		},
 	}
 }
@@ -38,11 +38,6 @@ func NewConfigMapControl(client Client) ConfigMapControl {
 // Reconcile creates or updates configmaps containing items that are mounted into pods as files.
 // The ConfigMap is never deleted unless the CRD itself is deleted.
 func (cmc ConfigMapControl) Reconcile(ctx context.Context, log kube.Logger, crd *cosmosv1.CosmosFullNode, p2p ExternalAddresses) kube.ReconcileError {
-	want, err := cmc.build(crd, p2p)
-	if err != nil {
-		return kube.UnrecoverableError(err)
-	}
-
 	var cms corev1.ConfigMapList
 	if err := cmc.client.List(ctx, &cms,
 		client.InNamespace(crd.Namespace),
@@ -51,10 +46,14 @@ func (cmc ConfigMapControl) Reconcile(ctx context.Context, log kube.Logger, crd 
 		return kube.TransientError(fmt.Errorf("list existing configmaps: %w", err))
 	}
 
-	var (
-		current = ptrSlice(cms.Items)
-		diff    = cmc.diffFactory(kube.RevisionLabel, current, want)
-	)
+	current := ptrSlice(cms.Items)
+
+	want, err := cmc.build(current, crd, p2p)
+	if err != nil {
+		return kube.UnrecoverableError(err)
+	}
+
+	diff := cmc.diffFactory(current, want)
 
 	for _, cm := range diff.Creates() {
 		log.Info("Creating configmap", "configmapName", cm.Name)

@@ -31,8 +31,7 @@ func TestConfigMapControl_Reconcile(t *testing.T) {
 		crd.Name = "stargaze"
 		crd.Spec.ChainSpec.Network = "testnet"
 
-		control.diffFactory = func(revisionLabelKey string, current, want []*corev1.ConfigMap) configmapDiffer {
-			require.Equal(t, "app.kubernetes.io/revision", revisionLabelKey)
+		control.diffFactory = func(current, want []*corev1.ConfigMap) configmapDiffer {
 			require.Equal(t, 4, len(current))
 			require.EqualValues(t, 3, crd.Spec.Replicas)
 			return mockConfigDiffer{
@@ -70,7 +69,7 @@ func TestConfigMapControl_Reconcile(t *testing.T) {
 	t.Run("build error", func(t *testing.T) {
 		var mClient mockConfigClient
 		control := NewConfigMapControl(&mClient)
-		control.build = func(crd *cosmosv1.CosmosFullNode, _ ExternalAddresses) ([]*corev1.ConfigMap, error) {
+		control.build = func(_ []*corev1.ConfigMap, crd *cosmosv1.CosmosFullNode, _ ExternalAddresses) ([]*corev1.ConfigMap, error) {
 			return nil, errors.New("boom")
 		}
 

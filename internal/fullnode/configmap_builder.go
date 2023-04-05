@@ -3,20 +3,14 @@ package fullnode
 import (
 	"bytes"
 	_ "embed"
-	"encoding/hex"
 	"fmt"
-	"hash/fnv"
-	"sort"
 	"strconv"
-	"strings"
 
 	"github.com/BurntSushi/toml"
 	"github.com/peterbourgon/mergemap"
-	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -26,7 +20,7 @@ const (
 
 // BuildConfigMaps creates a ConfigMap with configuration to be mounted as files into containers.
 // Currently, the config.toml (for Tendermint) and app.toml (for the Cosmos SDK).
-func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, p2p ExternalAddresses) ([]*corev1.ConfigMap, error) {
+func BuildConfigMaps(existing []*corev1.ConfigMap, crd *cosmosv1.CosmosFullNode, p2p ExternalAddresses) ([]*corev1.ConfigMap, error) {
 	var (
 		buf = bufPool.Get().(*bytes.Buffer)
 		cms = make([]*corev1.ConfigMap, crd.Spec.Replicas)
@@ -46,17 +40,18 @@ func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, p2p ExternalAddresses) ([]*co
 		}
 		buf.Reset()
 
-		cm := corev1.ConfigMap{
-			TypeMeta: metav1.TypeMeta{Kind: "ConfigMap", APIVersion: "v1"},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      instanceName(crd, i),
-				Namespace: crd.Namespace,
-				Labels: defaultLabels(crd,
-					kube.InstanceLabel, instanceName(crd, i),
-					kube.RevisionLabel, configMapRevisionHash(crd, p2p),
-				),
-			},
-		}
+		var cm corev1.ConfigMap
+		cm.Name = instanceName(crd, i)
+		cm.Namespace = crd.Namespace
+		cm.Kind = "ConfigMap"
+		cm.APIVersion = "v1"
+
+		cm = *kube.FindOrDefaultCopy(existing, &cm)
+
+		cm.Labels = defaultLabels(crd,
+			kube.InstanceLabel, instanceName(crd, i),
+		)
+
 		cm.Data = data
 
 		kube.NormalizeMetadata(&cm.ObjectMeta)
@@ -64,21 +59,6 @@ func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, p2p ExternalAddresses) ([]*co
 	}
 
 	return cms, nil
-}
-
-func configMapRevisionHash(crd *cosmosv1.CosmosFullNode, addresses ExternalAddresses) string {
-	h := fnv.New32()
-	mustWrite(h, mustMarshalJSON(crd.Spec.ChainSpec))
-	mustWrite(h, mustMarshalJSON(crd.Spec.PodTemplate.Image))
-	mustWrite(h, mustMarshalJSON(crd.Spec.Type))
-
-	vals := lo.MapToSlice(addresses, func(v, k string) string {
-		return v + k
-	})
-	sort.Strings(vals)
-	mustWrite(h, strings.Join(vals, ""))
-
-	return hex.EncodeToString(h.Sum(nil))
 }
 
 type decodedToml = map[string]any

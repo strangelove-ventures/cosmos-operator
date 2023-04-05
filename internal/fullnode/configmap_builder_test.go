@@ -7,7 +7,6 @@ import (
 
 	"github.com/BurntSushi/toml"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
-	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	"github.com/strangelove-ventures/cosmos-operator/internal/test"
 	"github.com/stretchr/testify/require"
 )
@@ -39,7 +38,7 @@ func TestBuildConfigMaps(t *testing.T) {
 		crd.Spec.PodTemplate.Image = "agoric:v6.0.0"
 		crd.Spec.ChainSpec.Network = "testnet"
 
-		cms, err := BuildConfigMaps(&crd, nil)
+		cms, err := BuildConfigMaps(nil, &crd, nil)
 		require.NoError(t, err)
 		require.Equal(t, 3, len(cms))
 
@@ -47,9 +46,6 @@ func TestBuildConfigMaps(t *testing.T) {
 		require.Equal(t, "agoric-0", cm.Name)
 		require.Equal(t, "test", cm.Namespace)
 		require.Nil(t, cm.Immutable)
-
-		require.NotEmpty(t, cm.Labels[kube.RevisionLabel])
-		delete(cm.Labels, kube.RevisionLabel)
 
 		wantLabels := map[string]string{
 			"app.kubernetes.io/created-by": "cosmos-operator",
@@ -75,7 +71,7 @@ func TestBuildConfigMaps(t *testing.T) {
 		crd.Name = strings.Repeat("chain", 300)
 		crd.Spec.ChainSpec.Network = strings.Repeat("network", 300)
 
-		cms, err := BuildConfigMaps(&crd, nil)
+		cms, err := BuildConfigMaps(nil, &crd, nil)
 		require.NoError(t, err)
 		require.NotEmpty(t, cms)
 
@@ -103,7 +99,7 @@ func TestBuildConfigMaps(t *testing.T) {
 			custom.Spec.ChainSpec.Tendermint.MaxInboundPeers = ptr(int32(5))
 			custom.Spec.ChainSpec.Tendermint.MaxOutboundPeers = ptr(int32(15))
 
-			cms, err := BuildConfigMaps(custom, nil)
+			cms, err := BuildConfigMaps(nil, custom, nil)
 			require.NoError(t, err)
 
 			cm := cms[0]
@@ -125,7 +121,7 @@ func TestBuildConfigMaps(t *testing.T) {
 		})
 
 		t.Run("defaults", func(t *testing.T) {
-			cms, err := BuildConfigMaps(&crd, nil)
+			cms, err := BuildConfigMaps(nil, &crd, nil)
 			require.NoError(t, err)
 
 			cm := cms[0]
@@ -146,7 +142,7 @@ func TestBuildConfigMaps(t *testing.T) {
 		t.Run("validator sentry", func(t *testing.T) {
 			sentry := crd.DeepCopy()
 			sentry.Spec.Type = cosmosv1.FullNodeSentry
-			cms, err := BuildConfigMaps(sentry, nil)
+			cms, err := BuildConfigMaps(nil, sentry, nil)
 			require.NoError(t, err)
 
 			cm := cms[0]
@@ -183,7 +179,7 @@ func TestBuildConfigMaps(t *testing.T) {
 	`)
 
 			p2p := ExternalAddresses{"osmosis-0": "should not see me"}
-			cms, err := BuildConfigMaps(overrides, p2p)
+			cms, err := BuildConfigMaps(nil, overrides, p2p)
 			require.NoError(t, err)
 
 			cm := cms[0]
@@ -209,7 +205,7 @@ func TestBuildConfigMaps(t *testing.T) {
 			}
 			p2pCrd := crd.DeepCopy()
 			p2pCrd.Spec.Replicas = 3
-			cms, err := BuildConfigMaps(p2pCrd, p2p)
+			cms, err := BuildConfigMaps(nil, p2pCrd, p2p)
 			require.NoError(t, err)
 
 			require.Equal(t, 3, len(cms))
@@ -227,7 +223,7 @@ func TestBuildConfigMaps(t *testing.T) {
 		t.Run("invalid toml", func(t *testing.T) {
 			malformed := crd.DeepCopy()
 			malformed.Spec.ChainSpec.Tendermint.TomlOverrides = ptr(`invalid_toml = should be invalid`)
-			_, err := BuildConfigMaps(malformed, nil)
+			_, err := BuildConfigMaps(nil, malformed, nil)
 
 			require.Error(t, err)
 			require.Contains(t, err.Error(), "invalid toml in tendermint overrides")
@@ -254,7 +250,7 @@ func TestBuildConfigMaps(t *testing.T) {
 				MinRetainBlocks: ptr(uint32(271500)),
 			}
 
-			cms, err := BuildConfigMaps(custom, nil)
+			cms, err := BuildConfigMaps(nil, custom, nil)
 			require.NoError(t, err)
 
 			cm := cms[0]
@@ -276,7 +272,7 @@ func TestBuildConfigMaps(t *testing.T) {
 		})
 
 		t.Run("defaults", func(t *testing.T) {
-			cms, err := BuildConfigMaps(&crd, nil)
+			cms, err := BuildConfigMaps(nil, &crd, nil)
 			require.NoError(t, err)
 
 			cm := cms[0]
@@ -305,7 +301,7 @@ func TestBuildConfigMaps(t *testing.T) {
 	enable = false
 	new-field = "test"
 	`)
-			cms, err := BuildConfigMaps(overrides, nil)
+			cms, err := BuildConfigMaps(nil, overrides, nil)
 			require.NoError(t, err)
 
 			cm := cms[0]
@@ -326,44 +322,10 @@ func TestBuildConfigMaps(t *testing.T) {
 		t.Run("invalid toml", func(t *testing.T) {
 			malformed := crd.DeepCopy()
 			malformed.Spec.ChainSpec.App.TomlOverrides = ptr(`invalid_toml = should be invalid`)
-			_, err := BuildConfigMaps(malformed, nil)
+			_, err := BuildConfigMaps(nil, malformed, nil)
 
 			require.Error(t, err)
 			require.Contains(t, err.Error(), "invalid toml in app overrides")
 		})
-	})
-}
-
-func FuzzBuildConfigMaps(f *testing.F) {
-	crd := defaultCRD()
-	f.Add("gaiad", "abcd@1.2.3.4:26656")
-	f.Fuzz(func(t *testing.T, binary, peers string) {
-		crd.Spec.ChainSpec.ChainID = binary
-		crd.Spec.ChainSpec.Tendermint.PersistentPeers = peers
-		crd.Spec.Replicas = 1
-		cms1, err := BuildConfigMaps(&crd, nil)
-		require.NoError(t, err)
-		cms2, err := BuildConfigMaps(&crd, nil)
-		require.NoError(t, err)
-
-		require.NotEmpty(t, cms1[0].Labels[kube.RevisionLabel])
-		require.NotEmpty(t, cms2[0].Labels[kube.RevisionLabel])
-
-		require.Equal(t, cms1[0].Labels[kube.RevisionLabel], cms2[0].Labels[kube.RevisionLabel])
-
-		crd.Spec.PodTemplate.Image = "new-image:v3.4.5"
-		cms3, err := BuildConfigMaps(&crd, nil)
-		require.NoError(t, err)
-		require.NotEqual(t, cms1[0].Labels[kube.RevisionLabel], cms3[0].Labels[kube.RevisionLabel])
-
-		cms4, err := BuildConfigMaps(&crd, ExternalAddresses{"test": "value"})
-		require.NoError(t, err)
-		require.NotEqual(t, cms3[0].Labels[kube.RevisionLabel], cms4[0].Labels[kube.RevisionLabel])
-
-		crd.Spec.Type = cosmosv1.FullNodeSentry
-
-		cms5, err := BuildConfigMaps(&crd, ExternalAddresses{"test": "value"})
-		require.NoError(t, err)
-		require.NotEqual(t, cms4[0].Labels[kube.RevisionLabel], cms5[0].Labels[kube.RevisionLabel])
 	})
 }
