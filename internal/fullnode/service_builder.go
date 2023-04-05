@@ -57,19 +57,6 @@ func BuildServices(existing []*corev1.Service, crd *cosmosv1.CosmosFullNode) []*
 		svc.Spec.Selector = map[string]string{kube.InstanceLabel: instanceName(crd, ordinal)}
 		svc.Spec.Type = corev1.ServiceTypeLoadBalancer
 		svc.Spec.ExternalTrafficPolicy = corev1.ServiceExternalTrafficPolicyTypeLocal
-		svc.Spec = corev1.ServiceSpec{
-			Ports: []corev1.ServicePort{
-				{
-					Name:       "p2p",
-					Protocol:   corev1.ProtocolTCP,
-					Port:       p2pPort,
-					TargetPort: intstr.FromString("p2p"),
-				},
-			},
-			Selector:              map[string]string{kube.InstanceLabel: instanceName(crd, ordinal)},
-			Type:                  corev1.ServiceTypeLoadBalancer,
-			ExternalTrafficPolicy: corev1.ServiceExternalTrafficPolicyTypeLocal,
-		}
 
 		p2ps[i] = &svc
 	}
