@@ -46,7 +46,8 @@ func BuildServices(existing []*corev1.Service, crd *cosmosv1.CosmosFullNode) []*
 			kube.ComponentLabel, "p2p",
 		)
 
-		svc.Spec.Ports = []corev1.ServicePort{
+		var spec corev1.ServiceSpec
+		spec.Ports = []corev1.ServicePort{
 			{
 				Name:       "p2p",
 				Protocol:   corev1.ProtocolTCP,
@@ -54,9 +55,14 @@ func BuildServices(existing []*corev1.Service, crd *cosmosv1.CosmosFullNode) []*
 				TargetPort: intstr.FromString("p2p"),
 			},
 		}
-		svc.Spec.Selector = map[string]string{kube.InstanceLabel: instanceName(crd, ordinal)}
-		svc.Spec.Type = corev1.ServiceTypeLoadBalancer
-		svc.Spec.ExternalTrafficPolicy = corev1.ServiceExternalTrafficPolicyTypeLocal
+		spec.Selector = map[string]string{kube.InstanceLabel: instanceName(crd, ordinal)}
+		spec.Type = corev1.ServiceTypeLoadBalancer
+		spec.ExternalTrafficPolicy = corev1.ServiceExternalTrafficPolicyTypeLocal
+
+		// TODO: just a test
+		if err := kube.ApplyStrategicMergePatch(&svc.Spec, &spec); err != nil {
+			panic(err)
+		}
 
 		p2ps[i] = &svc
 	}
