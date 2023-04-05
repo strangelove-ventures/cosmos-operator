@@ -51,9 +51,7 @@ func TestConfigMapControl_Reconcile(t *testing.T) {
 		}
 		require.Equal(t, "test", listOpt.Namespace)
 		require.Zero(t, listOpt.Limit)
-		require.Equal(t, "app.kubernetes.io/name=stargaze", listOpt.LabelSelector.String())
-		// Oddly, fetching configmap list does not work with the owner field selector.
-		require.Nil(t, listOpt.FieldSelector)
+		require.Equal(t, ".metadata.controller=stargaze", listOpt.FieldSelector.String())
 
 		require.Equal(t, 1, mClient.CreateCount)
 
