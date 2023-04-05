@@ -85,6 +85,8 @@ func (m *mockClient[T]) List(ctx context.Context, list client.ObjectList, opts .
 		*ref = m.ObjectList.(corev1.ServiceList)
 	case *corev1.ConfigMapList:
 		*ref = m.ObjectList.(corev1.ConfigMapList)
+	case *corev1.SecretList:
+		*ref = m.ObjectList.(corev1.SecretList)
 	default:
 		panic(fmt.Errorf("unknown ObjectList type: %T", m.ObjectList))
 	}
