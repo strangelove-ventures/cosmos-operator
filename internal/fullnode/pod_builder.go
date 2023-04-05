@@ -229,6 +229,9 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: nodeKeySecretName(b.crd, ordinal),
+					Items: []corev1.KeyToPath{
+						{Key: nodeKeyFile, Path: nodeKeyFile},
+					},
 				},
 			},
 		},
@@ -249,7 +252,7 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 
 	// At this point, guaranteed to have at least one container.
 	pod.Spec.Containers[0].VolumeMounts = append(mounts, corev1.VolumeMount{
-		Name: volNodeKey, MountPath: path.Join(ChainHomeDir, "config"), SubPath: nodeKeySecret,
+		Name: volNodeKey, MountPath: path.Join(ChainHomeDir, "config"), SubPath: nodeKeyFile,
 	})
 
 	b.pod = pod

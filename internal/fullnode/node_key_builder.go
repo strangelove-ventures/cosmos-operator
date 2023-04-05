@@ -11,7 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-const nodeKeySecret = "node_key.json"
+const nodeKeyFile = "node_key.json"
 
 // BuildNodeKeySecrets builds the node key secrets for the given CRD.
 // If the secret already has a node key, it is reused.
@@ -34,14 +34,14 @@ func BuildNodeKeySecrets(existing []*corev1.Secret, crd *cosmosv1.CosmosFullNode
 		s.Type = corev1.SecretTypeOpaque
 
 		// Create node key if it doesn't exist
-		if s.Data[nodeKeySecret] == nil {
+		if s.Data[nodeKeyFile] == nil {
 			nodeKey := p2p.NodeKey{PrivKey: ed25519.GenPrivKey()}
 			b, err := cmtjson.Marshal(nodeKey)
 			if err != nil {
 				return nil, err
 			}
 			s.Data = map[string][]byte{
-				nodeKeySecret: b,
+				nodeKeyFile: b,
 			}
 		}
 
