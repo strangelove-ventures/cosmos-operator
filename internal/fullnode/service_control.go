@@ -55,7 +55,9 @@ func (sc ServiceControl) Reconcile(ctx context.Context, log kube.Logger, crd *co
 		if err := ctrl.SetControllerReference(crd, svc, sc.client.Scheme()); err != nil {
 			return kube.TransientError(fmt.Errorf("set controller reference on service %q: %w", svc.Name, err))
 		}
-		if err := sc.client.Create(ctx, svc); kube.IgnoreAlreadyExists(err) != nil {
+		// CreateOrUpdate (vs. only create) fixes a bug with current deployments where updating would remove the owner reference.
+		// It ensures we update the service with the owner reference.
+		if err := kube.CreateOrUpdate(ctx, sc.client, svc); err != nil {
 			return kube.TransientError(fmt.Errorf("create service %q: %w", svc.Name, err))
 		}
 	}
