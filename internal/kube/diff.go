@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/google/go-cmp/cmp"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -108,6 +109,8 @@ func (diff *Diff[T]) computeUpdates(current, want ordinalSet[T]) []T {
 			continue
 		}
 		if !equality.Semantic.DeepEqual(existing.Resource, target.Resource) {
+			// TODO: remove me
+			fmt.Println("Diff", cmp.Diff(existing.Resource, target.Resource))
 			updates = append(updates, target)
 		}
 	}
