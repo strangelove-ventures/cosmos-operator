@@ -29,8 +29,7 @@ func TestServiceControl_Reconcile(t *testing.T) {
 		mClient.ObjectList = corev1.ServiceList{Items: make([]corev1.Service, 4)}
 
 		control := NewServiceControl(&mClient)
-		control.diffFactory = func(revisionLabelKey string, current, want []*corev1.Service) svcDiffer {
-			require.Equal(t, "app.kubernetes.io/revision", revisionLabelKey)
+		control.diffFactory = func(current, want []*corev1.Service) svcDiffer {
 			require.Equal(t, 4, len(current))
 			require.EqualValues(t, 2, len(want)) // 1 p2p service and the rpc service.
 
@@ -43,14 +42,13 @@ func TestServiceControl_Reconcile(t *testing.T) {
 		err := control.Reconcile(ctx, nopReporter, &crd)
 		require.NoError(t, err)
 
-		require.Len(t, mClient.GotListOpts, 3)
+		require.Len(t, mClient.GotListOpts, 2)
 		var listOpt client.ListOptions
 		for _, opt := range mClient.GotListOpts {
 			opt.ApplyToList(&listOpt)
 		}
 		require.Equal(t, "test", listOpt.Namespace)
 		require.Zero(t, listOpt.Limit)
-		require.Equal(t, "app.kubernetes.io/name=osmosis", listOpt.LabelSelector.String())
 		require.Equal(t, ".metadata.controller=osmosis", listOpt.FieldSelector.String())
 
 		require.Equal(t, 1, mClient.CreateCount)
