@@ -32,6 +32,7 @@ func BuildConfigMaps(existing []*corev1.ConfigMap, crd *cosmosv1.CosmosFullNode,
 	for i := int32(0); i < crd.Spec.Replicas; i++ {
 		data := make(map[string]string)
 		instance := instanceName(crd, i)
+		fmt.Println("External address for instance:", instance, "address:", p2p[instance])
 		if err := addConfigToml(buf, data, crd, p2p[instance]); err != nil {
 			return nil, err
 		}
@@ -87,7 +88,6 @@ func defaultApp() decodedToml {
 }
 
 func addConfigToml(buf *bytes.Buffer, cmData map[string]string, crd *cosmosv1.CosmosFullNode, externalAddress string) error {
-	fmt.Println("External address for config toml:", externalAddress)
 	var (
 		spec = crd.Spec.ChainSpec
 		base = make(decodedToml)
