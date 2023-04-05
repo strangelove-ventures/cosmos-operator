@@ -28,11 +28,10 @@ func BuildConfigMaps(existing []*corev1.ConfigMap, crd *cosmosv1.CosmosFullNode,
 	defer bufPool.Put(buf)
 	defer buf.Reset()
 
-	fmt.Println("P2P external addresses:", p2p)
-
 	for i := int32(0); i < crd.Spec.Replicas; i++ {
 		data := make(map[string]string)
 		instance := instanceName(crd, i)
+		fmt.Println("External address for instance:", instance, "address:", p2p[instance])
 		if err := addConfigToml(buf, data, crd, p2p[instance]); err != nil {
 			return nil, err
 		}
@@ -55,8 +54,6 @@ func BuildConfigMaps(existing []*corev1.ConfigMap, crd *cosmosv1.CosmosFullNode,
 		)
 
 		cm.Data = data
-
-		fmt.Println("ConfigMap data for", instance, ":", data)
 
 		kube.NormalizeMetadata(&cm.ObjectMeta)
 		cms[i] = &cm
