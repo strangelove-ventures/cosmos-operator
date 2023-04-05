@@ -286,7 +286,6 @@ func TestPodBuilder(t *testing.T) {
 
 		require.Equal(t, "vol-config", vols[2].Name)
 		require.Equal(t, "osmosis-5", vols[2].ConfigMap.Name)
-		// TODO: test with nil items to get default behavior.
 		wantItems := []corev1.KeyToPath{
 			{Key: "config-overlay.toml", Path: "config-overlay.toml"},
 			{Key: "app-overlay.toml", Path: "app-overlay.toml"},
@@ -307,17 +306,17 @@ func TestPodBuilder(t *testing.T) {
 
 		require.Len(t, c.VolumeMounts, 3)
 		mount := c.VolumeMounts[0]
-		require.Equal(t, "vol-chain-home", mount.Name, c.Name)
-		require.Equal(t, "/home/operator/cosmos", mount.MountPath, c.Name)
+		require.Equal(t, "vol-chain-home", mount.Name)
+		require.Equal(t, "/home/operator/cosmos", mount.MountPath)
 
 		mount = c.VolumeMounts[1]
-		require.Equal(t, "vol-system-tmp", mount.Name, c.Name)
-		require.Equal(t, "/tmp", mount.MountPath, c.Name)
+		require.Equal(t, "vol-system-tmp", mount.Name)
+		require.Equal(t, "/tmp", mount.MountPath)
 
 		mount = c.VolumeMounts[2]
-		require.Equal(t, "vol-node-key", mount.Name, c.Name)
-		require.Equal(t, "/home/operator/cosmos/config/node_key.json", mount.MountPath, c.Name)
-		require.Equal(t, "node_key.json", mount.SubPath, c.Name)
+		require.Equal(t, "vol-node-key", mount.Name)
+		require.Equal(t, "/home/operator/cosmos/config/node_key.json", mount.MountPath)
+		require.Equal(t, "node_key.json", mount.SubPath)
 
 		// Sidecars do not need volume mounts.
 		for _, c := range pod.Spec.Containers[1:] {

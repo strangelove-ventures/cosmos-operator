@@ -336,7 +336,7 @@ OVERLAY_DIR="$HOME/.config"
 # This is a hack to prevent adding another init container.
 # Ideally, this step is not concerned with merging config, so it would live elsewhere.
 # The node key is a secret mounted into the main "node" container, so we do not need this one.
-echo "Removing init'ed node key..."
+echo "Removing node key from chain's init subcommand..."
 rm -rf "$CONFIG_DIR/node_key.json"
 
 echo "Merging config..."
