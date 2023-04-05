@@ -154,7 +154,7 @@ func TestBuildServices(t *testing.T) {
 		require.Equal(t, want, rpc.Spec.Ports)
 	})
 
-	t.Run("updates existing", func(t *testing.T) {
+	t.Run("preserves existing", func(t *testing.T) {
 		crd := defaultCRD()
 		crd.Spec.Replicas = 2
 		crd.Name = "terra"
@@ -171,6 +171,7 @@ func TestBuildServices(t *testing.T) {
 
 		svcs2, err := BuildServices(svcs, &crd)
 		require.NoError(t, err)
+		require.NotSame(t, svcs, svcs2)
 		require.Equal(t, valSlice(svcs), valSlice(svcs2))
 	})
 
