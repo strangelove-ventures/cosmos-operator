@@ -72,6 +72,24 @@ func TestBuildConfigMaps(t *testing.T) {
 		require.Equal(t, cms[0].Data, cms[1].Data)
 	})
 
+	t.Run("preserves existing", func(t *testing.T) {
+		crd := defaultCRD()
+		crd.Spec.Replicas = 3
+		crd.Name = "agoric"
+		crd.Namespace = "test"
+
+		cms, err := BuildConfigMaps(nil, &crd, nil)
+		require.NoError(t, err)
+		for i := range cms {
+			cms[i].Annotations = map[string]string{"foo": "bar"}
+		}
+
+		cms2, err := BuildConfigMaps(cms, &crd, nil)
+		require.NoError(t, err)
+		require.NotSame(t, cms, cms2)
+		require.Equal(t, valSlice(cms), valSlice(cms2))
+	})
+
 	t.Run("long name", func(t *testing.T) {
 		crd := defaultCRD()
 		crd.Spec.Replicas = 3
