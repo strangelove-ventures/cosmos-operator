@@ -129,8 +129,6 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		p2pAddresses = make(fullnode.ExternalAddresses)
 		errs.Append(err)
 	}
-	fmt.Printf("Found p2pAddresses: %v", p2pAddresses)
-
 	err = r.configMapControl.Reconcile(ctx, logger, crd, p2pAddresses)
 	if err != nil {
 		errs.Append(err)
