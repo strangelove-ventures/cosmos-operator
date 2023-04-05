@@ -31,7 +31,6 @@ func BuildConfigMaps(existing []*corev1.ConfigMap, crd *cosmosv1.CosmosFullNode,
 	for i := int32(0); i < crd.Spec.Replicas; i++ {
 		data := make(map[string]string)
 		instance := instanceName(crd, i)
-		fmt.Println("External address for instance:", instance, "address:", p2p[instance])
 		if err := addConfigToml(buf, data, crd, p2p[instance]); err != nil {
 			return nil, err
 		}
