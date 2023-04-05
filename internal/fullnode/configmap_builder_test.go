@@ -9,6 +9,7 @@ import (
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/internal/test"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
 )
 
 var (
@@ -38,7 +39,12 @@ func TestBuildConfigMaps(t *testing.T) {
 		crd.Spec.PodTemplate.Image = "agoric:v6.0.0"
 		crd.Spec.ChainSpec.Network = "testnet"
 
-		cms, err := BuildConfigMaps(nil, &crd, nil)
+		var existing corev1.ConfigMap
+		existing.Namespace = "test"
+		existing.Name = "agoric-0"
+		existing.UID = "1234"
+
+		cms, err := BuildConfigMaps([]*corev1.ConfigMap{&existing}, &crd, nil)
 		require.NoError(t, err)
 		require.Equal(t, 3, len(cms))
 
@@ -46,6 +52,7 @@ func TestBuildConfigMaps(t *testing.T) {
 		require.Equal(t, "agoric-0", cm.Name)
 		require.Equal(t, "test", cm.Namespace)
 		require.Nil(t, cm.Immutable)
+		require.Equal(t, "1234", string(cm.UID))
 
 		wantLabels := map[string]string{
 			"app.kubernetes.io/created-by": "cosmos-operator",
