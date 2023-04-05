@@ -45,6 +45,18 @@ func BuildServices(existing []*corev1.Service, crd *cosmosv1.CosmosFullNode) []*
 			kube.InstanceLabel, instanceName(crd, ordinal),
 			kube.ComponentLabel, "p2p",
 		)
+
+		svc.Spec.Ports = []corev1.ServicePort{
+			{
+				Name:       "p2p",
+				Protocol:   corev1.ProtocolTCP,
+				Port:       p2pPort,
+				TargetPort: intstr.FromString("p2p"),
+			},
+		}
+		svc.Spec.Selector = map[string]string{kube.InstanceLabel: instanceName(crd, ordinal)}
+		svc.Spec.Type = corev1.ServiceTypeLoadBalancer
+		svc.Spec.ExternalTrafficPolicy = corev1.ServiceExternalTrafficPolicyTypeLocal
 		svc.Spec = corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{
 				{
@@ -79,42 +91,41 @@ func rpcService(existing []*corev1.Service, crd *cosmosv1.CosmosFullNode) *corev
 		kube.ComponentLabel, "rpc",
 	)
 
-	svc.Spec = corev1.ServiceSpec{
-		Ports: []corev1.ServicePort{
-			{
-				Name:       "api",
-				Protocol:   corev1.ProtocolTCP,
-				Port:       apiPort,
-				TargetPort: intstr.FromString("api"),
-			},
-			{
-				Name:       "rosetta",
-				Protocol:   corev1.ProtocolTCP,
-				Port:       rosettaPort,
-				TargetPort: intstr.FromString("rosetta"),
-			},
-			{
-				Name:       "grpc",
-				Protocol:   corev1.ProtocolTCP,
-				Port:       grpcPort,
-				TargetPort: intstr.FromString("grpc"),
-			},
-			{
-				Name:       "rpc",
-				Protocol:   corev1.ProtocolTCP,
-				Port:       rpcPort,
-				TargetPort: intstr.FromString("rpc"),
-			},
-			{
-				Name:       "grpc-web",
-				Protocol:   corev1.ProtocolTCP,
-				Port:       grpcWebPort,
-				TargetPort: intstr.FromString("grpc-web"),
-			},
+	svc.Spec.Ports = []corev1.ServicePort{
+		{
+			Name:       "api",
+			Protocol:   corev1.ProtocolTCP,
+			Port:       apiPort,
+			TargetPort: intstr.FromString("api"),
 		},
-		Selector: map[string]string{kube.NameLabel: appName(crd)},
-		Type:     corev1.ServiceTypeClusterIP,
+		{
+			Name:       "rosetta",
+			Protocol:   corev1.ProtocolTCP,
+			Port:       rosettaPort,
+			TargetPort: intstr.FromString("rosetta"),
+		},
+		{
+			Name:       "grpc",
+			Protocol:   corev1.ProtocolTCP,
+			Port:       grpcPort,
+			TargetPort: intstr.FromString("grpc"),
+		},
+		{
+			Name:       "rpc",
+			Protocol:   corev1.ProtocolTCP,
+			Port:       rpcPort,
+			TargetPort: intstr.FromString("rpc"),
+		},
+		{
+			Name:       "grpc-web",
+			Protocol:   corev1.ProtocolTCP,
+			Port:       grpcWebPort,
+			TargetPort: intstr.FromString("grpc-web"),
+		},
 	}
+
+	svc.Spec.Selector = map[string]string{kube.NameLabel: appName(crd)}
+	svc.Spec.Type = corev1.ServiceTypeClusterIP
 
 	spec := crd.Spec.Service.RPCTemplate
 	preserveMergeInto(svc.Labels, spec.Metadata.Labels)
