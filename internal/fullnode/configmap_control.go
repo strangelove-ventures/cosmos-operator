@@ -60,6 +60,8 @@ func (cmc ConfigMapControl) Reconcile(ctx context.Context, log kube.Logger, crd 
 		if err := ctrl.SetControllerReference(crd, cm, cmc.client.Scheme()); err != nil {
 			return kube.TransientError(fmt.Errorf("set controller reference on configmap %s: %w", cm.Name, err))
 		}
+		// CreateOrUpdate (vs. only create) fixes a bug with current deployments where updating would remove the owner reference.
+		// This ensures we update the service with the owner reference.
 		if err := kube.CreateOrUpdate(ctx, cmc.client, cm); err != nil {
 			return kube.TransientError(fmt.Errorf("create configmap configmap %s: %w", cm.Name, err))
 		}
