@@ -23,7 +23,7 @@ const maxP2PServiceDefault = 1
 // tendermint. If using a single p2p service, an outside peer discovering a pod out of sync it could be
 // interpreted as byzantine behavior if the peer previously connected to a pod that was in sync through the same
 // external address.
-func BuildServices(existing []*corev1.Service, crd *cosmosv1.CosmosFullNode) []*corev1.Service {
+func BuildServices(existing []*corev1.Service, crd *cosmosv1.CosmosFullNode) ([]*corev1.Service, error) {
 	max := maxP2PServiceDefault
 	if v := crd.Spec.Service.MaxP2PExternalAddresses; v != nil {
 		max = int(*v)
@@ -59,19 +59,19 @@ func BuildServices(existing []*corev1.Service, crd *cosmosv1.CosmosFullNode) []*
 		spec.Type = corev1.ServiceTypeLoadBalancer
 		spec.ExternalTrafficPolicy = corev1.ServiceExternalTrafficPolicyTypeLocal
 
-		// TODO: just a test
+		// Preserves existing values such as NodePort values.
 		if err := kube.ApplyStrategicMergePatch(&svc.Spec, &spec); err != nil {
-			panic(err)
+			return nil, err
 		}
 
 		p2ps[i] = &svc
 	}
 
-	rpc := rpcService(existing, crd)
-	return append(p2ps, rpc)
+	rpc, err := rpcService(existing, crd)
+	return append(p2ps, rpc), err
 }
 
-func rpcService(existing []*corev1.Service, crd *cosmosv1.CosmosFullNode) *corev1.Service {
+func rpcService(existing []*corev1.Service, crd *cosmosv1.CosmosFullNode) (*corev1.Service, error) {
 	var svc corev1.Service
 	svc.Name = rpcServiceName(crd)
 	svc.Namespace = crd.Namespace
@@ -84,7 +84,8 @@ func rpcService(existing []*corev1.Service, crd *cosmosv1.CosmosFullNode) *corev
 		kube.ComponentLabel, "rpc",
 	)
 
-	svc.Spec.Ports = []corev1.ServicePort{
+	var spec corev1.ServiceSpec
+	spec.Ports = []corev1.ServicePort{
 		{
 			Name:       "api",
 			Protocol:   corev1.ProtocolTCP,
@@ -120,19 +121,24 @@ func rpcService(existing []*corev1.Service, crd *cosmosv1.CosmosFullNode) *corev
 	svc.Spec.Selector = map[string]string{kube.NameLabel: appName(crd)}
 	svc.Spec.Type = corev1.ServiceTypeClusterIP
 
-	spec := crd.Spec.Service.RPCTemplate
-	preserveMergeInto(svc.Labels, spec.Metadata.Labels)
-	preserveMergeInto(svc.Annotations, spec.Metadata.Annotations)
+	rpcSpec := crd.Spec.Service.RPCTemplate
+	preserveMergeInto(svc.Labels, rpcSpec.Metadata.Labels)
+	preserveMergeInto(svc.Annotations, rpcSpec.Metadata.Annotations)
 	kube.NormalizeMetadata(&svc.ObjectMeta)
 
-	if v := spec.ExternalTrafficPolicy; v != nil {
-		svc.Spec.ExternalTrafficPolicy = *v
+	if v := rpcSpec.ExternalTrafficPolicy; v != nil {
+		spec.ExternalTrafficPolicy = *v
 	}
-	if v := spec.Type; v != nil {
-		svc.Spec.Type = *v
+	if v := rpcSpec.Type; v != nil {
+		spec.Type = *v
 	}
 
-	return &svc
+	// Preserves existing values such as NodePort values.
+	if err := kube.ApplyStrategicMergePatch(&svc.Spec, &spec); err != nil {
+		return nil, err
+	}
+
+	return &svc, nil
 }
 
 func p2pServiceName(crd *cosmosv1.CosmosFullNode, ordinal int32) string {

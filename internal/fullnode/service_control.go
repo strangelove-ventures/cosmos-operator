@@ -44,11 +44,12 @@ func (sc ServiceControl) Reconcile(ctx context.Context, log kube.Logger, crd *co
 		return kube.TransientError(fmt.Errorf("list existing services: %w", err))
 	}
 
-	var (
-		current = ptrSlice(svcs.Items)
-		want    = BuildServices(current, crd)
-		diff    = sc.diffFactory(current, want)
-	)
+	current := ptrSlice(svcs.Items)
+	want, err := BuildServices(current, crd)
+	if err != nil {
+		return kube.UnrecoverableError(err)
+	}
+	diff := sc.diffFactory(current, want)
 
 	for _, svc := range diff.Creates() {
 		log.Info("Creating service", "svcName", svc.Name)

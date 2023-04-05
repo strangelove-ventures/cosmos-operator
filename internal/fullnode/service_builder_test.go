@@ -23,7 +23,8 @@ func TestBuildServices(t *testing.T) {
 		crd.Namespace = "test"
 		crd.Spec.ChainSpec.Network = "testnet"
 		crd.Spec.PodTemplate.Image = "terra:v6.0.0"
-		svcs := BuildServices(nil, &crd)
+		svcs, err := BuildServices(nil, &crd)
+		require.NoError(t, err)
 
 		require.Equal(t, 2, len(svcs)) // Includes single rpc service.
 
@@ -64,7 +65,8 @@ func TestBuildServices(t *testing.T) {
 
 		for i := 0; i < 5; i++ {
 			crd.Spec.Service.MaxP2PExternalAddresses = ptr(int32(i))
-			svcs := BuildServices(nil, &crd)
+			svcs, err := BuildServices(nil, &crd)
+			require.NoError(t, err)
 
 			got := lo.Filter(svcs, func(s *corev1.Service, _ int) bool {
 				return s.Labels[kube.ComponentLabel] == "p2p"
@@ -76,7 +78,9 @@ func TestBuildServices(t *testing.T) {
 		crd.Spec.Replicas = 1
 		crd.Spec.Service.MaxP2PExternalAddresses = ptr(int32(2))
 
-		svcs := BuildServices(nil, &crd)
+		svcs, err := BuildServices(nil, &crd)
+		require.NoError(t, err)
+
 		got := lo.Filter(svcs, func(s *corev1.Service, _ int) bool {
 			return s.Labels[kube.ComponentLabel] == "p2p"
 		})
@@ -91,7 +95,9 @@ func TestBuildServices(t *testing.T) {
 		crd.Namespace = "test"
 		crd.Spec.ChainSpec.Network = "testnet"
 		crd.Spec.PodTemplate.Image = "terra:v6.0.0"
-		svcs := BuildServices(nil, &crd)
+		svcs, err := BuildServices(nil, &crd)
+
+		require.NoError(t, err)
 
 		require.Equal(t, 2, len(svcs)) // Includes single p2p service.
 
@@ -148,6 +154,26 @@ func TestBuildServices(t *testing.T) {
 		require.Equal(t, want, rpc.Spec.Ports)
 	})
 
+	t.Run("updates existing", func(t *testing.T) {
+		crd := defaultCRD()
+		crd.Spec.Replicas = 2
+		crd.Name = "terra"
+
+		svcs, err := BuildServices(nil, &crd)
+		require.NoError(t, err)
+
+		for i := range svcs {
+			ports := svcs[i].Spec.Ports
+			for p := range ports {
+				ports[p].NodePort = 12345 // Set by kubernetes
+			}
+		}
+
+		svcs2, err := BuildServices(svcs, &crd)
+		require.NoError(t, err)
+		require.Equal(t, valSlice(svcs), valSlice(svcs2))
+	})
+
 	t.Run("rpc service with overrides", func(t *testing.T) {
 		crd := defaultCRD()
 		crd.Spec.Replicas = 0
@@ -163,7 +189,8 @@ func TestBuildServices(t *testing.T) {
 			Type:                  ptr(corev1.ServiceTypeNodePort),
 			ExternalTrafficPolicy: ptr(corev1.ServiceExternalTrafficPolicyTypeLocal),
 		}
-		svcs := BuildServices(nil, &crd)
+		svcs, err := BuildServices(nil, &crd)
+		require.NoError(t, err)
 
 		rpc := svcs[0]
 		require.Equal(t, map[string]string{"test": "value"}, rpc.Annotations)
@@ -180,7 +207,10 @@ func TestBuildServices(t *testing.T) {
 		name := strings.Repeat("Long", 500)
 		crd.Name = name
 
-		for _, svc := range BuildServices(nil, &crd) {
+		svcs, err := BuildServices(nil, &crd)
+		require.NoError(t, err)
+
+		for _, svc := range svcs {
 			test.RequireValidMetadata(t, svc)
 		}
 	})
