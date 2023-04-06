@@ -151,11 +151,7 @@ func (diff *Diff[T]) sortByOrdinal(list []Resource[T]) []Resource[T] {
 	sort.Slice(list, func(i, j int) bool {
 		return list[i].Ordinal() < list[j].Ordinal()
 	})
-	sorted := make([]Resource[T], len(list))
-	for i := range list {
-		sorted[i] = list[i]
-	}
-	return sorted
+	return list
 }
 
 func (diff *Diff[T]) toObjects(list []Resource[T]) []T {
