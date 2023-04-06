@@ -3,7 +3,6 @@ package fullnode
 import (
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"testing"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
@@ -26,7 +25,10 @@ func TestBuildNodeKeySecrets(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, secrets, 3)
 
-		for i, got := range secrets {
+		for i, s := range secrets {
+			require.Equal(t, int64(i), s.Ordinal())
+			require.NotEmpty(t, s.Revision())
+			got := s.Object()
 			require.Equal(t, crd.Namespace, got.Namespace)
 			require.Equal(t, fmt.Sprintf("juno-node-key-%d", i), got.Name)
 			require.Equal(t, "Secret", got.Kind)
@@ -42,10 +44,7 @@ func TestBuildNodeKeySecrets(t *testing.T) {
 			}
 			require.Equal(t, wantLabels, got.Labels)
 
-			wantAnnotations := map[string]string{
-				"app.kubernetes.io/ordinal": strconv.Itoa(i),
-			}
-			require.Equal(t, wantAnnotations, got.Annotations)
+			require.Empty(t, got.Annotations)
 
 			require.True(t, *got.Immutable)
 			require.Equal(t, corev1.SecretTypeOpaque, got.Type)
@@ -71,14 +70,17 @@ func TestBuildNodeKeySecrets(t *testing.T) {
 		var existing corev1.Secret
 		existing.Name = "juno-node-key-0"
 		existing.Namespace = namespace
+		existing.Annotations = map[string]string{"foo": "bar"}
 		existing.Data = map[string][]byte{"node_key.json": []byte("existing")}
 
-		secrets, err := BuildNodeKeySecrets([]*corev1.Secret{&existing}, &crd)
+		got, err := BuildNodeKeySecrets([]*corev1.Secret{&existing}, &crd)
 		require.NoError(t, err)
-		require.Equal(t, 3, len(secrets))
+		require.Equal(t, 3, len(got))
 
-		nodeKey := secrets[0].Data["node_key.json"]
+		nodeKey := got[0].Object().Data["node_key.json"]
 		require.Equal(t, "existing", string(nodeKey))
+
+		require.Empty(t, got[0].Object().Annotations)
 	})
 
 	t.Run("zero replicas", func(t *testing.T) {
