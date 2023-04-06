@@ -70,6 +70,7 @@ func TestBuildNodeKeySecrets(t *testing.T) {
 		var existing corev1.Secret
 		existing.Name = "juno-node-key-0"
 		existing.Namespace = namespace
+		existing.Annotations = map[string]string{"foo": "bar"}
 		existing.Data = map[string][]byte{"node_key.json": []byte("existing")}
 
 		got, err := BuildNodeKeySecrets([]*corev1.Secret{&existing}, &crd)
@@ -78,6 +79,8 @@ func TestBuildNodeKeySecrets(t *testing.T) {
 
 		nodeKey := got[0].Object().Data["node_key.json"]
 		require.Equal(t, "existing", string(nodeKey))
+
+		require.Empty(t, got[0].Object().Annotations)
 	})
 
 	t.Run("zero replicas", func(t *testing.T) {

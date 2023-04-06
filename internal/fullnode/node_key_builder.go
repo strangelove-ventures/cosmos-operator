@@ -25,29 +25,33 @@ func BuildNodeKeySecrets(existing []*corev1.Secret, crd *cosmosv1.CosmosFullNode
 		s.Namespace = crd.Namespace
 		s = *kube.FindOrDefaultCopy(existing, &s)
 
-		s.Kind = "Secret"
-		s.APIVersion = "v1"
-		s.Labels = defaultLabels(crd)
-		s.Labels = defaultLabels(crd,
+		var secret corev1.Secret
+		secret.Name = s.Name
+		secret.Namespace = s.Namespace
+		secret.Kind = "Secret"
+		secret.APIVersion = "v1"
+		secret.Data = s.Data
+
+		secret.Labels = defaultLabels(crd,
 			kube.InstanceLabel, instanceName(crd, i),
 		)
 
-		s.Immutable = ptr(true)
-		s.Type = corev1.SecretTypeOpaque
+		secret.Immutable = ptr(true)
+		secret.Type = corev1.SecretTypeOpaque
 
 		// Create node key if it doesn't exist
-		if s.Data[nodeKeyFile] == nil {
+		if secret.Data[nodeKeyFile] == nil {
 			nodeKey := p2p.NodeKey{PrivKey: ed25519.GenPrivKey()}
 			b, err := cmtjson.Marshal(nodeKey)
 			if err != nil {
 				return nil, err
 			}
-			s.Data = map[string][]byte{
+			secret.Data = map[string][]byte{
 				nodeKeyFile: b,
 			}
 		}
 
-		secrets[i] = diff.Adapt(&s, i)
+		secrets[i] = diff.Adapt(&secret, i)
 	}
 	return secrets, nil
 }
