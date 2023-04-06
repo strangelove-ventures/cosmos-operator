@@ -9,26 +9,30 @@ import (
 	"github.com/strangelove-ventures/cosmos-operator/internal/diff"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func TestConfigMapControl_Reconcile(t *testing.T) {
 	t.Parallel()
 
-	type (
-		mockConfigClient = mockClient[*corev1.ConfigMap]
-		mockConfigDiffer = mockDiffer[*corev1.ConfigMap]
-	)
+	type mockConfigClient = mockClient[*corev1.ConfigMap]
 	ctx := context.Background()
+	const namespace = "test"
 
 	t.Run("create", func(t *testing.T) {
 		var mClient mockConfigClient
-		mClient.ObjectList = corev1.ConfigMapList{Items: make([]corev1.ConfigMap, 4)}
+		mClient.ObjectList = corev1.ConfigMapList{Items: []corev1.ConfigMap{
+			{ObjectMeta: metav1.ObjectMeta{Name: "stargaze-0", Namespace: namespace}},  // update
+			{ObjectMeta: metav1.ObjectMeta{Name: "stargaze-1", Namespace: namespace}},  // update
+			{ObjectMeta: metav1.ObjectMeta{Name: "stargaze-99", Namespace: namespace}}, // delete
+		}}
 
 		control := NewConfigMapControl(&mClient)
 		crd := defaultCRD()
 		crd.Spec.Replicas = 3
 		crd.Name = "stargaze"
+		crd.Namespace = namespace
 		crd.Spec.ChainSpec.Network = "testnet"
 
 		err := control.Reconcile(ctx, nopReporter, &crd, nil)
@@ -51,7 +55,7 @@ func TestConfigMapControl_Reconcile(t *testing.T) {
 		require.True(t, *mClient.LastCreateObject.OwnerReferences[0].Controller)
 
 		require.Equal(t, 2, mClient.UpdateCount)
-		require.Equal(t, 3, mClient.DeleteCount)
+		require.Equal(t, 1, mClient.DeleteCount)
 	})
 
 	t.Run("build error", func(t *testing.T) {
