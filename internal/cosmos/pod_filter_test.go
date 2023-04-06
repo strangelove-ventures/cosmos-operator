@@ -3,9 +3,7 @@ package cosmos
 import (
 	"context"
 	"errors"
-	"math/rand"
 	"testing"
-	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/samber/lo"
@@ -23,7 +21,6 @@ var nopLogger = logr.Discard()
 
 func TestPodFilter_SyncedPods(t *testing.T) {
 	t.Parallel()
-	rand.Seed(time.Now().UnixNano())
 
 	ctx := context.Background()
 

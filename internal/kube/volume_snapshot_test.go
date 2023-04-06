@@ -3,7 +3,6 @@ package kube
 import (
 	"context"
 	"errors"
-	"math/rand"
 	"testing"
 	"time"
 
@@ -44,7 +43,6 @@ func (fn mockLister) List(ctx context.Context, list client.ObjectList, opts ...c
 
 func TestRecentVolumeSnapshot(t *testing.T) {
 	t.Parallel()
-	rand.Seed(time.Now().UnixNano())
 
 	var (
 		ctx      = context.Background()

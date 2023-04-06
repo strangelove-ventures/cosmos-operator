@@ -71,8 +71,8 @@ func TestMustToInt(t *testing.T) {
 
 	require.EqualValues(t, 123, MustToInt(ToIntegerValue(123)))
 
-	rand.Seed(time.Now().UnixNano())
-	n := rand.Intn(1000)
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	n := r.Intn(1000)
 	require.EqualValues(t, n, MustToInt(fmt.Sprintf("%d", n)))
 
 	for _, badValue := range []string{"", "1.2", "1-2"} {

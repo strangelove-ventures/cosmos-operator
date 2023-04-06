@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math/rand"
 	"strconv"
 	"testing"
 	"time"
@@ -309,7 +308,6 @@ func (m *mockVolumeSnapshotClient) Delete(ctx context.Context, obj client.Object
 
 func TestVolumeSnapshotControl_DeleteOldSnapshots(t *testing.T) {
 	t.Parallel()
-	rand.Seed(time.Now().UnixNano())
 
 	ctx := context.Background()
 
