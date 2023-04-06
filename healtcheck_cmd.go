@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"path"
 	"time"
 
 	"github.com/go-logr/zapr"
@@ -54,18 +53,14 @@ func startHealthCheckServer(cmd *cobra.Command, args []string) error {
 		tm   = healthcheck.NewTendermint(logger, tmClient, rpcHost, timeout)
 		disk = healthcheck.DiskUsage(fullnode.ChainHomeDir)
 	)
-	router := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch path.Clean(r.URL.Path) {
-		case "/disk":
-			disk.ServeHTTP(w, r)
-		default:
-			tm.ServeHTTP(w, r)
-		}
-	})
+
+	mux := http.NewServeMux()
+	mux.Handle("/", tm)
+	mux.Handle("/disk", disk)
 
 	srv := &http.Server{
 		Addr:         listenAddr,
-		Handler:      router,
+		Handler:      mux,
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 30 * time.Second,
 	}
