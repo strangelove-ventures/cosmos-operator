@@ -99,11 +99,13 @@ func TestOrdinalDiff_CreatesDeletesUpdates(t *testing.T) {
 		pod1.SetGeneration(2)
 		pod1.SetUID("uuid2")
 		pod1.SetResourceVersion("rv2")
+		pod1.SetOwnerReferences([]metav1.OwnerReference{{Name: "owner2"}})
 
 		pod2 := diffablePod(11, "rev-11")
 		pod2.SetGeneration(11)
 		pod2.SetUID("uuid11")
 		pod2.SetResourceVersion("rv11")
+		pod2.SetOwnerReferences([]metav1.OwnerReference{{Name: "owner11"}})
 
 		existing := []Resource[*corev1.Pod]{pod1, pod2}
 		diff := New(nil, existing)
@@ -123,6 +125,7 @@ func TestOrdinalDiff_CreatesDeletesUpdates(t *testing.T) {
 		require.Equal(t, int64(2), diff.Updates()[0].Generation)
 		require.Equal(t, "uuid2", string(diff.Updates()[0].UID))
 		require.Equal(t, "rv2", diff.Updates()[0].ResourceVersion)
+		require.Equal(t, "owner2", diff.Updates()[0].OwnerReferences[0].Name)
 
 		require.Equal(t, "pod-11", diff.Updates()[1].Name)
 		require.Equal(t, "changed-11", diff.Updates()[1].Labels["app.kubernetes.io/revision"])
@@ -130,6 +133,7 @@ func TestOrdinalDiff_CreatesDeletesUpdates(t *testing.T) {
 		require.Equal(t, int64(11), diff.Updates()[1].Generation)
 		require.Equal(t, "uuid11", string(diff.Updates()[1].UID))
 		require.Equal(t, "rv11", diff.Updates()[1].ResourceVersion)
+		require.Equal(t, "owner11", diff.Updates()[1].OwnerReferences[0].Name)
 
 		require.Empty(t, diff.Creates())
 		require.Empty(t, diff.Deletes())
