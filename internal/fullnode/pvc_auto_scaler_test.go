@@ -25,7 +25,7 @@ func (fn mockStatusSyncer) SyncUpdate(ctx context.Context, key client.ObjectKey,
 
 func TestPVCAutoScaler_SignalPVCResize(t *testing.T) {
 	t.Parallel()
-	rand.Seed(time.Now().UnixNano())
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	ctx := context.Background()
 
@@ -89,7 +89,7 @@ func TestPVCAutoScaler_SignalPVCResize(t *testing.T) {
 				return stubNow
 			}
 
-			trigger := 80 + rand.Intn(20)
+			trigger := 80 + r.Intn(20)
 			usage := []PVCDiskUsage{
 				{PercentUsed: trigger, Capacity: capacity},
 				{PercentUsed: 10},
