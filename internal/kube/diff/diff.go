@@ -16,6 +16,7 @@ const (
 // Resource is a diffable kubernetes object.
 type Resource[T client.Object] interface {
 	Object() T
+	// Revision returns a unique identifier for the resource. A simple hash of the resource is sufficient.
 	Revision() string
 	// Ordinal returns the ordinal position of the resource. If order doesn't matter, return 0.
 	Ordinal() int64
@@ -24,27 +25,14 @@ type Resource[T client.Object] interface {
 type ordinalSet[T client.Object] map[client.ObjectKey]Resource[T]
 
 // Diff computes steps needed to bring a current state equal to a new state.
-// Diffing for updates is done by comparing a revision label.
-//
-// Prefer using Diff over Diff. Diff uses semantic equality to detect updates instead of a dedicated label.
-// Diff may eventually be deprecated.
-//
-// Diff expects "revisionLabelKey" which is a label with a revision that is expected to change if the resource
-// has changed. A short hash is a common value for this label. We cannot simply diff the annotations and/or labels in case
-// a 3rd party injects annotations or labels.
-// For example, GKE injects other annotations beyond our control.
+// Diff will add annotations to created and updated resources required for future diffing.
 //
 // There are several O(N) or O(2N) operations; However, we expect N to be small.
 type Diff[T client.Object] struct {
 	creates, deletes, updates []T
 }
 
-// TODO
-//// NewOrdinalRevisionDiff creates a valid Diff where ordinal positioning is required.
-//func NewOrdinalRevisionDiff[T Resource](ordinalAnnotationKey string, revisionLabelKey string, current, want []T) *Diff[T] {
-//	return newDiff(ordinalAnnotationKey, revisionLabelKey, current, want, false)
-//}
-
+// New creates a valid Diff.
 func New[T client.Object](current []T, want []Resource[T]) *Diff[T] {
 	d := &Diff[T]{}
 
@@ -59,14 +47,14 @@ func New[T client.Object](current []T, want []Resource[T]) *Diff[T] {
 	}
 
 	d.creates = d.computeCreates(currentSet, wantSet)
-	//d.deletes = d.computeDeletes(currentSet, wantSet)
-
-	// updates must come last
-	//d.updates = d.computeUpdates(currentSet, wantSet)
+	d.deletes = d.computeDeletes(currentSet, wantSet)
+	d.updates = d.computeUpdates(currentSet, wantSet)
 	return d
 }
 
 // Creates returns a list of resources that should be created from scratch.
+// Calls are memoized, so you can call this method multiple times without incurring additional cost.
+// Adds labels and annotations on the resource to aid in future diffing.
 func (diff *Diff[T]) Creates() []T {
 	return diff.creates
 }
@@ -83,48 +71,50 @@ func (diff *Diff[T]) computeCreates(current, want ordinalSet[T]) []T {
 }
 
 // Deletes returns a list of resources that should be deleted.
-//func (diff *Diff[T]) Deletes() []T {
-//	return diff.deletes
-//}
-//
-//func (diff *Diff[T]) computeDeletes(current, want ordinalSet[T]) []T {
-//	var deletes []Resource
-//	for objKey, resource := range current {
-//		_, ok := want[objKey]
-//		if !ok {
-//			deletes = append(deletes, resource)
-//		}
-//	}
-//	return diff.sortByOrdinal(deletes)
-//}
+// Calls are memoized, so you can call this method multiple times without incurring additional cost.
+func (diff *Diff[T]) Deletes() []T {
+	return diff.deletes
+}
 
-// Updates returns a list of resources that should be updated by comparing the revision label.
-//func (diff *Diff[T]) Updates() []T {
-//	return diff.updates
-//}
+func (diff *Diff[T]) computeDeletes(current, want ordinalSet[T]) []T {
+	var deletes []Resource[T]
+	for objKey, resource := range current {
+		_, ok := want[objKey]
+		if !ok {
+			deletes = append(deletes, resource)
+		}
+	}
+	return diff.toObjects(diff.sortByOrdinal(deletes))
+}
 
-// uses the revisionLabelKey to determine if a resource has changed thus requiring an update.
-//func (diff *Diff[T]) computeUpdates(current, want ordinalSet[T]) []T {
-//	var updates []ordinalResource[T]
-//	for _, existing := range current {
-//		target, ok := want[client.ObjectKeyFromObject(existing.Resource)]
-//		if !ok {
-//			continue
-//		}
-//		target.Resource.SetResourceVersion(existing.Resource.GetResourceVersion())
-//		target.Resource.SetUID(existing.Resource.GetUID())
-//		target.Resource.SetGeneration(existing.Resource.GetGeneration())
-//		var (
-//			oldRev = existing.Resource.Revision()
-//			newRev = target.Resource.Revision()
-//		)
-//		if oldRev != newRev {
-//			updates = append(updates, target)
-//		}
-//	}
-//
-//	return diff.sortByOrdinal(updates)
-//}
+// Updates returns a list of resources that should be updated.
+// Calls are memoized, so you can call this method multiple times without incurring additional cost.
+func (diff *Diff[T]) Updates() []T {
+	return diff.updates
+}
+
+func (diff *Diff[T]) computeUpdates(current, want ordinalSet[T]) []T {
+	var updates []Resource[T]
+	for _, existing := range current {
+		target, ok := want[client.ObjectKeyFromObject(existing.Object())]
+		if !ok {
+			continue
+		}
+		// These values are necessary to be accepted by the API server.
+		target.Object().SetResourceVersion(existing.Object().GetResourceVersion())
+		target.Object().SetUID(existing.Object().GetUID())
+		target.Object().SetGeneration(existing.Object().GetGeneration())
+		var (
+			oldRev = existing.Revision()
+			newRev = target.Revision()
+		)
+		if oldRev != newRev {
+			updates = append(updates, target)
+		}
+	}
+
+	return diff.toObjects(diff.sortByOrdinal(updates))
+}
 
 type currentAdapter[T client.Object] struct {
 	obj T

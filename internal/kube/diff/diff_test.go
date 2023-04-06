@@ -4,14 +4,10 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-)
-
-const (
-	testOrdinalAnnotation = "ordinal"
-	testRevisionLabel     = "revision"
 )
 
 type diffAdapter struct {
@@ -34,11 +30,9 @@ func diffablePod(ordinal int, revision string) diffAdapter {
 func TestOrdinalDiff_CreatesDeletesUpdates(t *testing.T) {
 	t.Parallel()
 
-	const namespace = "default"
-
 	t.Run("create", func(t *testing.T) {
 		current := []*corev1.Pod{
-			{ObjectMeta: metav1.ObjectMeta{Name: "pod-0", Namespace: namespace}},
+			{ObjectMeta: metav1.ObjectMeta{Name: "pod-0", Namespace: "default", Labels: map[string]string{revisionLabel: "rev"}}},
 		}
 
 		// Purposefully unordered
@@ -60,9 +54,8 @@ func TestOrdinalDiff_CreatesDeletesUpdates(t *testing.T) {
 		require.Equal(t, "rev-110", diff.Creates()[1].Labels["app.kubernetes.io/revision"])
 		require.Equal(t, "110", diff.Creates()[1].Annotations["app.kubernetes.io/ordinal"])
 
-		t.Fail() // TODO
-		//require.Empty(t, diff.Deletes())
-		//require.Empty(t, diff.Updates())
+		require.Empty(t, diff.Deletes())
+		require.Empty(t, diff.Updates())
 	})
 
 	t.Run("no current resources", func(t *testing.T) {
@@ -74,98 +67,100 @@ func TestOrdinalDiff_CreatesDeletesUpdates(t *testing.T) {
 
 		require.Len(t, diff.Creates(), 1)
 
-		t.Fail() // TODO
-		//require.Empty(t, diff.Deletes())
-		//require.Empty(t, diff.Updates())
+		require.Empty(t, diff.Deletes())
+		require.Empty(t, diff.Updates())
 	})
 
-	//t.Run("simple delete", func(t *testing.T) {
-	//	// Purposefully unordered.
-	//	current := []*corev1.Pod{
-	//		revisionDiffablePod(0, revision),
-	//		revisionDiffablePod(11, revision), // tests for numeric (not lexical) sorting
-	//		revisionDiffablePod(2, revision),
-	//	}
-	//
-	//	want := []*corev1.Pod{
-	//		revisionDiffablePod(0, revision),
-	//	}
-	//
-	//	diff := NewOrdinalRevisionDiff(testOrdinalAnnotation, testRevisionLabel, current, want)
-	//
-	//	require.Empty(t, diff.Updates())
-	//	require.Empty(t, diff.Creates())
-	//
-	//	require.Len(t, diff.Deletes(), 2)
-	//	require.Equal(t, diff.Deletes()[0].Name, "pod-2")
-	//	require.Equal(t, diff.Deletes()[1].Name, "pod-11")
-	//})
-	//
-	//t.Run("simple update", func(t *testing.T) {
-	//	pod1 := revisionDiffablePod(2, revision)
-	//	pod1.SetUID("uuid1")
-	//	pod1.SetResourceVersion("1")
-	//	pod1.SetGeneration(100)
-	//
-	//	pod2 := revisionDiffablePod(22, revision)
-	//	pod2.SetUID("uuid2")
-	//	pod2.SetResourceVersion("2")
-	//	pod2.SetGeneration(200)
-	//
-	//	// Purposefully unordered to test for numeric (vs lexical) sorting.
-	//	current := []*corev1.Pod{pod2, pod1}
-	//
-	//	want := []*corev1.Pod{
-	//		revisionDiffablePod(22, "_new_version_"),
-	//		revisionDiffablePod(2, "_new_version_"),
-	//	}
-	//
-	//	diff := NewOrdinalRevisionDiff(testOrdinalAnnotation, testRevisionLabel, current, want)
-	//
-	//	require.Empty(t, diff.Creates())
-	//	require.Empty(t, diff.Deletes())
-	//
-	//	require.Len(t, diff.Updates(), 2)
-	//	require.Equal(t, diff.Updates()[0].Name, "pod-2")
-	//	require.Equal(t, diff.Updates()[1].Name, "pod-22")
-	//
-	//	gotPod := diff.Updates()[1]
-	//	require.Equal(t, "2", gotPod.GetResourceVersion())
-	//	require.EqualValues(t, "uuid2", gotPod.GetUID())
-	//	require.EqualValues(t, 200, gotPod.GetGeneration())
-	//})
-	//
-	//t.Run("combination", func(t *testing.T) {
-	//	current := []*corev1.Pod{
-	//		revisionDiffablePod(0, revision),
-	//		revisionDiffablePod(3, revision),
-	//		revisionDiffablePod(4, revision),
-	//	}
-	//
-	//	want := []*corev1.Pod{
-	//		revisionDiffablePod(0, "_new_version_"),
-	//		revisionDiffablePod(1, revision),
-	//	}
-	//
-	//	for _, tt := range []struct {
-	//		TestName string
-	//		Diff     *Diff[*corev1.Pod]
-	//	}{
-	//		{"ordinal", NewOrdinalRevisionDiff(testOrdinalAnnotation, testRevisionLabel, current, want)},
-	//		{"non-ordinal", NewRevisionDiff(testRevisionLabel, current, want)},
-	//	} {
-	//		diff := tt.Diff
-	//		require.Len(t, diff.Updates(), 1, tt.TestName)
-	//		require.Equal(t, "pod-0", diff.Updates()[0].Name, tt.TestName)
-	//
-	//		require.Len(t, diff.Creates(), 1, tt.TestName)
-	//		require.Equal(t, "pod-1", diff.Creates()[0].Name, tt.TestName)
-	//
-	//		deletes := lo.Map(diff.Deletes(), func(p *corev1.Pod, _ int) string {
-	//			return p.Name
-	//		})
-	//		require.Len(t, deletes, 2)
-	//		require.ElementsMatch(t, []string{"pod-3", "pod-4"}, deletes)
-	//	}
-	//})
+	t.Run("simple delete", func(t *testing.T) {
+		// Purposefully unordered to test lexical sorting.
+		existing := []Resource[*corev1.Pod]{
+			diffablePod(0, "doesn't matter"),
+			diffablePod(11, "doesn't matter"),
+			diffablePod(2, "doesn't matter"),
+		}
+		diff := New(nil, existing)
+		current := diff.Creates()
+
+		want := []Resource[*corev1.Pod]{
+			diffablePod(0, "doesn't matter"),
+		}
+		diff = New(current, want)
+
+		require.Len(t, diff.Deletes(), 2)
+		require.Equal(t, diff.Deletes()[0].Name, "pod-2")
+		require.Equal(t, diff.Deletes()[1].Name, "pod-11")
+
+		require.Empty(t, diff.Creates())
+		require.Empty(t, diff.Updates())
+	})
+
+	t.Run("updates", func(t *testing.T) {
+		pod1 := diffablePod(2, "rev-2")
+		pod1.SetGeneration(2)
+		pod1.SetUID("uuid2")
+		pod1.SetResourceVersion("rv2")
+
+		pod2 := diffablePod(11, "rev-11")
+		pod2.SetGeneration(11)
+		pod2.SetUID("uuid11")
+		pod2.SetResourceVersion("rv11")
+
+		existing := []Resource[*corev1.Pod]{pod1, pod2}
+		diff := New(nil, existing)
+		current := diff.Creates()
+
+		// Purposefully unordered to test lexical sorting.
+		want := []Resource[*corev1.Pod]{
+			diffablePod(11, "changed-11"),
+			diffablePod(2, "changed-2"),
+		}
+		diff = New(current, want)
+
+		require.Len(t, diff.Updates(), 2)
+		require.Equal(t, "pod-2", diff.Updates()[0].Name)
+		require.Equal(t, "changed-2", diff.Updates()[0].Labels["app.kubernetes.io/revision"])
+		require.Equal(t, "2", diff.Updates()[0].Annotations["app.kubernetes.io/ordinal"])
+		require.Equal(t, int64(2), diff.Updates()[0].Generation)
+		require.Equal(t, "uuid2", string(diff.Updates()[0].UID))
+		require.Equal(t, "rv2", diff.Updates()[0].ResourceVersion)
+
+		require.Equal(t, "pod-11", diff.Updates()[1].Name)
+		require.Equal(t, "changed-11", diff.Updates()[1].Labels["app.kubernetes.io/revision"])
+		require.Equal(t, "11", diff.Updates()[1].Annotations["app.kubernetes.io/ordinal"])
+		require.Equal(t, int64(11), diff.Updates()[1].Generation)
+		require.Equal(t, "uuid11", string(diff.Updates()[1].UID))
+		require.Equal(t, "rv11", diff.Updates()[1].ResourceVersion)
+
+		require.Empty(t, diff.Creates())
+		require.Empty(t, diff.Deletes())
+	})
+
+	t.Run("combination", func(t *testing.T) {
+		existing := []Resource[*corev1.Pod]{
+			diffablePod(0, "1"),
+			diffablePod(1, "1"),
+			diffablePod(2, "1"),
+		}
+		diff := New(nil, existing)
+		current := diff.Creates()
+
+		// Purposefully unordered to test lexical sorting.
+		want := []Resource[*corev1.Pod]{
+			diffablePod(0, "changed-1"),
+			diffablePod(1, "1"), // no change
+			// pod-2 is deleted
+			diffablePod(3, "doesn't mater"),
+		}
+
+		diff = New(current, want)
+
+		created := lo.Map(diff.Creates(), func(pod *corev1.Pod, _ int) string { return pod.Name })
+		require.Equal(t, []string{"pod-3"}, created)
+
+		updated := lo.Map(diff.Updates(), func(pod *corev1.Pod, _ int) string { return pod.Name })
+		require.Equal(t, []string{"pod-0"}, updated)
+
+		deleted := lo.Map(diff.Deletes(), func(pod *corev1.Pod, _ int) string { return pod.Name })
+		require.Equal(t, []string{"pod-2"}, deleted)
+	})
 }
