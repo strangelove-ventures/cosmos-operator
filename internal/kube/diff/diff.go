@@ -14,14 +14,14 @@ const (
 )
 
 // Resource is a diffable kubernetes object.
-type Resource interface {
-	Object() client.Object
+type Resource[T client.Object] interface {
+	Object() T
 	Revision() string
 	// Ordinal returns the ordinal position of the resource. If order doesn't matter, return 0.
 	Ordinal() int64
 }
 
-type ordinalSet map[client.ObjectKey]Resource
+type ordinalSet[T client.Object] map[client.ObjectKey]Resource[T]
 
 // Diff computes steps needed to bring a current state equal to a new state.
 // Diffing for updates is done by comparing a revision label.
@@ -45,7 +45,7 @@ type Diff[T client.Object] struct {
 //	return newDiff(ordinalAnnotationKey, revisionLabelKey, current, want, false)
 //}
 
-func New[T client.Object](current []T, want []Resource) *Diff[T] {
+func New[T client.Object](current []T, want []Resource[T]) *Diff[T] {
 	d := &Diff[T]{}
 
 	currentSet := d.currentToSet(current)
@@ -71,8 +71,8 @@ func (diff *Diff[T]) Creates() []T {
 	return diff.creates
 }
 
-func (diff *Diff[T]) computeCreates(current, want ordinalSet) []T {
-	var creates []Resource
+func (diff *Diff[T]) computeCreates(current, want ordinalSet[T]) []T {
+	var creates []Resource[T]
 	for objKey, resource := range want {
 		_, ok := current[objKey]
 		if !ok {
@@ -86,9 +86,9 @@ func (diff *Diff[T]) computeCreates(current, want ordinalSet) []T {
 //func (diff *Diff[T]) Deletes() []T {
 //	return diff.deletes
 //}
-
+//
 //func (diff *Diff[T]) computeDeletes(current, want ordinalSet[T]) []T {
-//	var deletes []ordinalResource[T]
+//	var deletes []Resource
 //	for objKey, resource := range current {
 //		_, ok := want[objKey]
 //		if !ok {
@@ -126,29 +126,29 @@ func (diff *Diff[T]) computeCreates(current, want ordinalSet) []T {
 //	return diff.sortByOrdinal(updates)
 //}
 
-type currentAdapter struct {
-	obj client.Object
+type currentAdapter[T client.Object] struct {
+	obj T
 }
 
-func (a currentAdapter) Object() client.Object { return a.obj }
-func (a currentAdapter) Revision() string      { return a.obj.GetLabels()[revisionLabel] }
+func (a currentAdapter[T]) Object() T        { return a.obj }
+func (a currentAdapter[T]) Revision() string { return a.obj.GetLabels()[revisionLabel] }
 
-func (a currentAdapter) Ordinal() int64 {
+func (a currentAdapter[T]) Ordinal() int64 {
 	val, _ := strconv.ParseInt(a.obj.GetAnnotations()[ordinalAnnotation], 10, 64)
 	return val
 }
 
-func (diff *Diff[T]) currentToSet(current []T) ordinalSet {
-	m := make(ordinalSet)
+func (diff *Diff[T]) currentToSet(current []T) ordinalSet[T] {
+	m := make(ordinalSet[T])
 	for i := range current {
 		r := current[i]
-		m[client.ObjectKeyFromObject(r)] = currentAdapter{r}
+		m[client.ObjectKeyFromObject(r)] = currentAdapter[T]{r}
 	}
 	return m
 }
 
-func (diff *Diff[T]) toSet(list []Resource) ordinalSet {
-	m := make(ordinalSet)
+func (diff *Diff[T]) toSet(list []Resource[T]) ordinalSet[T] {
+	m := make(ordinalSet[T])
 	for i := range list {
 		r := list[i]
 		m[client.ObjectKeyFromObject(r.Object())] = r
@@ -156,21 +156,21 @@ func (diff *Diff[T]) toSet(list []Resource) ordinalSet {
 	return m
 }
 
-func (diff *Diff[T]) sortByOrdinal(list []Resource) []Resource {
+func (diff *Diff[T]) sortByOrdinal(list []Resource[T]) []Resource[T] {
 	sort.Slice(list, func(i, j int) bool {
 		return list[i].Ordinal() < list[j].Ordinal()
 	})
-	sorted := make([]Resource, len(list))
+	sorted := make([]Resource[T], len(list))
 	for i := range list {
 		sorted[i] = list[i]
 	}
 	return sorted
 }
 
-func (diff *Diff[T]) toObjects(list []Resource) []T {
+func (diff *Diff[T]) toObjects(list []Resource[T]) []T {
 	objs := make([]T, len(list))
 	for i := range list {
-		obj := list[i].Object().(T)
+		obj := list[i].Object()
 
 		labels := obj.GetLabels()
 		if labels == nil {

@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -21,9 +20,9 @@ type diffAdapter struct {
 	ordinal  int64
 }
 
-func (d diffAdapter) Revision() string      { return d.revision }
-func (d diffAdapter) Ordinal() int64        { return d.ordinal }
-func (d diffAdapter) Object() client.Object { return d.Pod }
+func (d diffAdapter) Revision() string    { return d.revision }
+func (d diffAdapter) Ordinal() int64      { return d.ordinal }
+func (d diffAdapter) Object() *corev1.Pod { return d.Pod }
 
 func diffablePod(ordinal int, revision string) diffAdapter {
 	p := new(corev1.Pod)
@@ -43,7 +42,7 @@ func TestOrdinalDiff_CreatesDeletesUpdates(t *testing.T) {
 		}
 
 		// Purposefully unordered
-		want := []Resource{
+		want := []Resource[*corev1.Pod]{
 			diffablePod(110, "rev-110"),
 			diffablePod(1, "rev-1"),
 			diffablePod(0, "rev"),
@@ -68,7 +67,7 @@ func TestOrdinalDiff_CreatesDeletesUpdates(t *testing.T) {
 
 	t.Run("no current resources", func(t *testing.T) {
 		var current []*corev1.Pod
-		want := []Resource{
+		want := []Resource[*corev1.Pod]{
 			diffablePod(0, "rev"),
 		}
 		diff := New(current, want)
