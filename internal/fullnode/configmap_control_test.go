@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	"github.com/strangelove-ventures/cosmos-operator/internal/diff"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,31 +16,24 @@ import (
 func TestConfigMapControl_Reconcile(t *testing.T) {
 	t.Parallel()
 
-	type (
-		mockConfigClient = mockClient[*corev1.ConfigMap]
-		mockConfigDiffer = mockDiffer[*corev1.ConfigMap]
-	)
+	type mockConfigClient = mockClient[*corev1.ConfigMap]
 	ctx := context.Background()
+	const namespace = "test"
 
 	t.Run("create", func(t *testing.T) {
 		var mClient mockConfigClient
-		mClient.ObjectList = corev1.ConfigMapList{Items: make([]corev1.ConfigMap, 4)}
+		mClient.ObjectList = corev1.ConfigMapList{Items: []corev1.ConfigMap{
+			{ObjectMeta: metav1.ObjectMeta{Name: "stargaze-0", Namespace: namespace}},  // update
+			{ObjectMeta: metav1.ObjectMeta{Name: "stargaze-1", Namespace: namespace}},  // update
+			{ObjectMeta: metav1.ObjectMeta{Name: "stargaze-99", Namespace: namespace}}, // delete
+		}}
 
 		control := NewConfigMapControl(&mClient)
 		crd := defaultCRD()
 		crd.Spec.Replicas = 3
 		crd.Name = "stargaze"
+		crd.Namespace = namespace
 		crd.Spec.ChainSpec.Network = "testnet"
-
-		control.diffFactory = func(current, want []*corev1.ConfigMap) configmapDiffer {
-			require.Equal(t, 4, len(current))
-			require.EqualValues(t, 3, crd.Spec.Replicas)
-			return mockConfigDiffer{
-				StubCreates: []*corev1.ConfigMap{{ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "test"}}},
-				StubUpdates: ptrSlice(make([]corev1.ConfigMap, 2)),
-				StubDeletes: ptrSlice(make([]corev1.ConfigMap, 3)),
-			}
-		}
 
 		err := control.Reconcile(ctx, nopReporter, &crd, nil)
 		require.NoError(t, err)
@@ -61,13 +55,13 @@ func TestConfigMapControl_Reconcile(t *testing.T) {
 		require.True(t, *mClient.LastCreateObject.OwnerReferences[0].Controller)
 
 		require.Equal(t, 2, mClient.UpdateCount)
-		require.Equal(t, 3, mClient.DeleteCount)
+		require.Equal(t, 1, mClient.DeleteCount)
 	})
 
 	t.Run("build error", func(t *testing.T) {
 		var mClient mockConfigClient
 		control := NewConfigMapControl(&mClient)
-		control.build = func(_ []*corev1.ConfigMap, crd *cosmosv1.CosmosFullNode, _ ExternalAddresses) ([]*corev1.ConfigMap, error) {
+		control.build = func(crd *cosmosv1.CosmosFullNode, _ ExternalAddresses) ([]diff.Resource[*corev1.ConfigMap], error) {
 			return nil, errors.New("boom")
 		}
 

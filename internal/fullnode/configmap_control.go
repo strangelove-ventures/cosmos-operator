@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	"github.com/strangelove-ventures/cosmos-operator/internal/diff"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	corev1 "k8s.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -19,7 +20,7 @@ type configmapDiffer interface {
 
 // ConfigMapControl creates or updates configmaps.
 type ConfigMapControl struct {
-	build       func([]*corev1.ConfigMap, *cosmosv1.CosmosFullNode, ExternalAddresses) ([]*corev1.ConfigMap, error)
+	build       func(*cosmosv1.CosmosFullNode, ExternalAddresses) ([]diff.Resource[*corev1.ConfigMap], error)
 	client      Client
 	diffFactory func(current, want []*corev1.ConfigMap) configmapDiffer
 }
@@ -29,9 +30,6 @@ func NewConfigMapControl(client Client) ConfigMapControl {
 	return ConfigMapControl{
 		build:  BuildConfigMaps,
 		client: client,
-		diffFactory: func(current, want []*corev1.ConfigMap) configmapDiffer {
-			return kube.NewDiff(current, want)
-		},
 	}
 }
 
@@ -48,14 +46,14 @@ func (cmc ConfigMapControl) Reconcile(ctx context.Context, log kube.Logger, crd 
 
 	current := ptrSlice(cms.Items)
 
-	want, err := cmc.build(current, crd, p2p)
+	want, err := cmc.build(crd, p2p)
 	if err != nil {
 		return kube.UnrecoverableError(err)
 	}
 
-	diff := cmc.diffFactory(current, want)
+	diffed := diff.New(current, want)
 
-	for _, cm := range diff.Creates() {
+	for _, cm := range diffed.Creates() {
 		log.Info("Creating configmap", "configmapName", cm.Name)
 		if err := ctrl.SetControllerReference(crd, cm, cmc.client.Scheme()); err != nil {
 			return kube.TransientError(fmt.Errorf("set controller reference on configmap %s: %w", cm.Name, err))
@@ -67,14 +65,14 @@ func (cmc ConfigMapControl) Reconcile(ctx context.Context, log kube.Logger, crd 
 		}
 	}
 
-	for _, cm := range diff.Deletes() {
+	for _, cm := range diffed.Deletes() {
 		log.Info("Deleting configmap", "configmapName", cm.Name)
 		if err := cmc.client.Delete(ctx, cm); err != nil {
 			return kube.TransientError(fmt.Errorf("delete configmap %s: %w", cm.Name, err))
 		}
 	}
 
-	for _, cm := range diff.Updates() {
+	for _, cm := range diffed.Updates() {
 		log.Info("Updating configmap", "configmapName", cm.Name)
 		if err := cmc.client.Update(ctx, cm); err != nil {
 			return kube.TransientError(fmt.Errorf("update configmap %s: %w", cm.Name, err))

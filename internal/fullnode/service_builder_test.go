@@ -6,6 +6,7 @@ import (
 
 	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	"github.com/strangelove-ventures/cosmos-operator/internal/diff"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	"github.com/strangelove-ventures/cosmos-operator/internal/test"
 	"github.com/stretchr/testify/require"
@@ -23,12 +24,11 @@ func TestBuildServices(t *testing.T) {
 		crd.Namespace = "test"
 		crd.Spec.ChainSpec.Network = "testnet"
 		crd.Spec.PodTemplate.Image = "terra:v6.0.0"
-		svcs, err := BuildServices(nil, &crd)
-		require.NoError(t, err)
+		svcs := BuildServices(&crd)
 
 		require.Equal(t, 2, len(svcs)) // Includes single rpc service.
 
-		p2p := svcs[0]
+		p2p := svcs[0].Object()
 		require.Equal(t, "terra-p2p-0", p2p.Name)
 		require.Equal(t, "test", p2p.Namespace)
 
@@ -65,11 +65,10 @@ func TestBuildServices(t *testing.T) {
 
 		for i := 0; i < 5; i++ {
 			crd.Spec.Service.MaxP2PExternalAddresses = ptr(int32(i))
-			svcs, err := BuildServices(nil, &crd)
-			require.NoError(t, err)
+			svcs := BuildServices(&crd)
 
-			got := lo.Filter(svcs, func(s *corev1.Service, _ int) bool {
-				return s.Labels[kube.ComponentLabel] == "p2p"
+			got := lo.Filter(svcs, func(s diff.Resource[*corev1.Service], _ int) bool {
+				return s.Object().Labels[kube.ComponentLabel] == "p2p"
 			})
 
 			require.Equal(t, i, len(got))
@@ -78,11 +77,10 @@ func TestBuildServices(t *testing.T) {
 		crd.Spec.Replicas = 1
 		crd.Spec.Service.MaxP2PExternalAddresses = ptr(int32(2))
 
-		svcs, err := BuildServices(nil, &crd)
-		require.NoError(t, err)
+		svcs := BuildServices(&crd)
 
-		got := lo.Filter(svcs, func(s *corev1.Service, _ int) bool {
-			return s.Labels[kube.ComponentLabel] == "p2p"
+		got := lo.Filter(svcs, func(s diff.Resource[*corev1.Service], _ int) bool {
+			return s.Object().Labels[kube.ComponentLabel] == "p2p"
 		})
 
 		require.Equal(t, 1, len(got))
@@ -95,13 +93,11 @@ func TestBuildServices(t *testing.T) {
 		crd.Namespace = "test"
 		crd.Spec.ChainSpec.Network = "testnet"
 		crd.Spec.PodTemplate.Image = "terra:v6.0.0"
-		svcs, err := BuildServices(nil, &crd)
-
-		require.NoError(t, err)
+		svcs := BuildServices(&crd)
 
 		require.Equal(t, 2, len(svcs)) // Includes single p2p service.
 
-		rpc := svcs[1]
+		rpc := svcs[1].Object()
 		require.Equal(t, "terra-rpc", rpc.Name)
 		require.Equal(t, "test", rpc.Namespace)
 		require.Equal(t, corev1.ServiceTypeClusterIP, rpc.Spec.Type)
@@ -154,27 +150,6 @@ func TestBuildServices(t *testing.T) {
 		require.Equal(t, want, rpc.Spec.Ports)
 	})
 
-	t.Run("preserves existing", func(t *testing.T) {
-		crd := defaultCRD()
-		crd.Spec.Replicas = 2
-		crd.Name = "terra"
-
-		svcs, err := BuildServices(nil, &crd)
-		require.NoError(t, err)
-
-		for i := range svcs {
-			ports := svcs[i].Spec.Ports
-			for p := range ports {
-				ports[p].NodePort = 12345 // Set by kubernetes
-			}
-		}
-
-		svcs2, err := BuildServices(svcs, &crd)
-		require.NoError(t, err)
-		require.NotSame(t, svcs, svcs2)
-		require.Equal(t, valSlice(svcs), valSlice(svcs2))
-	})
-
 	t.Run("rpc service with overrides", func(t *testing.T) {
 		crd := defaultCRD()
 		crd.Spec.Replicas = 0
@@ -190,10 +165,9 @@ func TestBuildServices(t *testing.T) {
 			Type:                  ptr(corev1.ServiceTypeNodePort),
 			ExternalTrafficPolicy: ptr(corev1.ServiceExternalTrafficPolicyTypeLocal),
 		}
-		svcs, err := BuildServices(nil, &crd)
-		require.NoError(t, err)
+		svcs := BuildServices(&crd)
 
-		rpc := svcs[0]
+		rpc := svcs[0].Object()
 		require.Equal(t, map[string]string{"test": "value"}, rpc.Annotations)
 
 		require.Equal(t, "value", rpc.Labels["label"])
@@ -208,11 +182,10 @@ func TestBuildServices(t *testing.T) {
 		name := strings.Repeat("Long", 500)
 		crd.Name = name
 
-		svcs, err := BuildServices(nil, &crd)
-		require.NoError(t, err)
+		svcs := BuildServices(&crd)
 
 		for _, svc := range svcs {
-			test.RequireValidMetadata(t, svc)
+			test.RequireValidMetadata(t, svc.Object())
 		}
 	})
 }

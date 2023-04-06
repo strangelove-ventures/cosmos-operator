@@ -9,6 +9,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/peterbourgon/mergemap"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	"github.com/strangelove-ventures/cosmos-operator/internal/diff"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -20,10 +21,10 @@ const (
 
 // BuildConfigMaps creates a ConfigMap with configuration to be mounted as files into containers.
 // Currently, the config.toml (for Tendermint) and app.toml (for the Cosmos SDK).
-func BuildConfigMaps(existing []*corev1.ConfigMap, crd *cosmosv1.CosmosFullNode, p2p ExternalAddresses) ([]*corev1.ConfigMap, error) {
+func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, p2p ExternalAddresses) ([]diff.Resource[*corev1.ConfigMap], error) {
 	var (
 		buf = bufPool.Get().(*bytes.Buffer)
-		cms = make([]*corev1.ConfigMap, crd.Spec.Replicas)
+		cms = make([]diff.Resource[*corev1.ConfigMap], crd.Spec.Replicas)
 	)
 	defer bufPool.Put(buf)
 	defer buf.Reset()
@@ -45,17 +46,12 @@ func BuildConfigMaps(existing []*corev1.ConfigMap, crd *cosmosv1.CosmosFullNode,
 		cm.Namespace = crd.Namespace
 		cm.Kind = "ConfigMap"
 		cm.APIVersion = "v1"
-
-		cm = *kube.FindOrDefaultCopy(existing, &cm)
-
 		cm.Labels = defaultLabels(crd,
 			kube.InstanceLabel, instanceName(crd, i),
 		)
-
 		cm.Data = data
-
 		kube.NormalizeMetadata(&cm.ObjectMeta)
-		cms[i] = &cm
+		cms[i] = diff.Adapt(&cm, i)
 	}
 
 	return cms, nil
