@@ -51,9 +51,6 @@ func TestOrdinalDiff_CreatesDeletesUpdates(t *testing.T) {
 
 		diff := New(current, want)
 
-		//require.Empty(t, diff.Deletes())
-		//require.Empty(t, diff.Updates())
-
 		require.Len(t, diff.Creates(), 2)
 
 		require.Equal(t, "pod-1", diff.Creates()[0].Name)
@@ -63,22 +60,26 @@ func TestOrdinalDiff_CreatesDeletesUpdates(t *testing.T) {
 		require.Equal(t, "pod-110", diff.Creates()[1].Name)
 		require.Equal(t, "rev-110", diff.Creates()[1].Labels["app.kubernetes.io/revision"])
 		require.Equal(t, "110", diff.Creates()[1].Annotations["app.kubernetes.io/ordinal"])
+
+		t.Fail() // TODO
+		//require.Empty(t, diff.Deletes())
+		//require.Empty(t, diff.Updates())
 	})
 
-	//t.Run("only create", func(t *testing.T) {
-	//	want := []*corev1.Pod{
-	//		revisionDiffablePod(0, revision),
-	//		revisionDiffablePod(1, revision),
-	//	}
-	//
-	//	diff := NewOrdinalRevisionDiff(testOrdinalAnnotation, testRevisionLabel, nil, want)
-	//
-	//	require.Empty(t, diff.Deletes())
-	//	require.Empty(t, diff.Updates())
-	//
-	//	require.Len(t, diff.Creates(), 2)
-	//})
-	//
+	t.Run("no current resources", func(t *testing.T) {
+		var current []*corev1.Pod
+		want := []Resource{
+			diffablePod(0, "rev"),
+		}
+		diff := New(current, want)
+
+		require.Len(t, diff.Creates(), 1)
+
+		t.Fail() // TODO
+		//require.Empty(t, diff.Deletes())
+		//require.Empty(t, diff.Updates())
+	})
+
 	//t.Run("simple delete", func(t *testing.T) {
 	//	// Purposefully unordered.
 	//	current := []*corev1.Pod{
