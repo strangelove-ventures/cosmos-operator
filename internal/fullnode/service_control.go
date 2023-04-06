@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	"github.com/strangelove-ventures/cosmos-operator/internal/diff"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	corev1 "k8s.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -26,9 +27,6 @@ type ServiceControl struct {
 func NewServiceControl(client Client) ServiceControl {
 	return ServiceControl{
 		client: client,
-		diffFactory: func(current, want []*corev1.Service) svcDiffer {
-			return kube.NewDiff(current, want)
-		},
 	}
 }
 
@@ -45,13 +43,10 @@ func (sc ServiceControl) Reconcile(ctx context.Context, log kube.Logger, crd *co
 	}
 
 	current := ptrSlice(svcs.Items)
-	want, err := BuildServices(current, crd)
-	if err != nil {
-		return kube.UnrecoverableError(err)
-	}
-	diff := sc.diffFactory(current, want)
+	want := BuildServices(crd)
+	diffed := diff.New(current, want)
 
-	for _, svc := range diff.Creates() {
+	for _, svc := range diffed.Creates() {
 		log.Info("Creating service", "svcName", svc.Name)
 		if err := ctrl.SetControllerReference(crd, svc, sc.client.Scheme()); err != nil {
 			return kube.TransientError(fmt.Errorf("set controller reference on service %q: %w", svc.Name, err))
@@ -63,7 +58,7 @@ func (sc ServiceControl) Reconcile(ctx context.Context, log kube.Logger, crd *co
 		}
 	}
 
-	for _, svc := range diff.Updates() {
+	for _, svc := range diffed.Updates() {
 		log.Info("Updating service", "svcName", svc.Name)
 		if err := sc.client.Update(ctx, svc); err != nil {
 			return kube.TransientError(fmt.Errorf("update service %q: %w", svc.Name, err))
