@@ -29,12 +29,10 @@ func (addrs ExternalAddresses) Incomplete() bool {
 // CollectP2PAddresses collects external addresses from p2p services.
 func CollectP2PAddresses(ctx context.Context, crd *cosmosv1.CosmosFullNode, c Lister) (ExternalAddresses, kube.ReconcileError) {
 	var svcs corev1.ServiceList
-	selector := SelectorLabels(crd)
-	selector[kube.ComponentLabel] = "p2p"
 	if err := c.List(ctx, &svcs,
 		client.InNamespace(crd.Namespace),
 		client.MatchingFields{kube.ControllerOwnerField: crd.Name},
-		selector,
+		client.MatchingLabels{kube.ComponentLabel: "p2p"},
 	); err != nil {
 		return nil, kube.TransientError(fmt.Errorf("list existing services: %w", err))
 	}

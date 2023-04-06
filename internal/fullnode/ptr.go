@@ -12,6 +12,10 @@ func ptrSlice[T any](s []T) []*T {
 	return lo.Map(s, func(element T, _ int) *T { return &element })
 }
 
+func valSlice[T any](s []*T) []T {
+	return lo.Map(s, func(element *T, _ int) T { return *element })
+}
+
 func valOrDefault[T any](v *T, defaultVal *T) *T {
 	if v == nil {
 		return defaultVal

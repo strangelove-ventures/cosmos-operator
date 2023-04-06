@@ -23,16 +23,14 @@ func TestBuildServices(t *testing.T) {
 		crd.Namespace = "test"
 		crd.Spec.ChainSpec.Network = "testnet"
 		crd.Spec.PodTemplate.Image = "terra:v6.0.0"
-		svcs := BuildServices(&crd)
+		svcs, err := BuildServices(nil, &crd)
+		require.NoError(t, err)
 
 		require.Equal(t, 2, len(svcs)) // Includes single rpc service.
 
 		p2p := svcs[0]
 		require.Equal(t, "terra-p2p-0", p2p.Name)
 		require.Equal(t, "test", p2p.Namespace)
-
-		require.NotEmpty(t, p2p.Labels[kube.RevisionLabel])
-		delete(p2p.Labels, kube.RevisionLabel)
 
 		wantLabels := map[string]string{
 			"app.kubernetes.io/created-by": "cosmos-operator",
@@ -67,7 +65,8 @@ func TestBuildServices(t *testing.T) {
 
 		for i := 0; i < 5; i++ {
 			crd.Spec.Service.MaxP2PExternalAddresses = ptr(int32(i))
-			svcs := BuildServices(&crd)
+			svcs, err := BuildServices(nil, &crd)
+			require.NoError(t, err)
 
 			got := lo.Filter(svcs, func(s *corev1.Service, _ int) bool {
 				return s.Labels[kube.ComponentLabel] == "p2p"
@@ -79,7 +78,9 @@ func TestBuildServices(t *testing.T) {
 		crd.Spec.Replicas = 1
 		crd.Spec.Service.MaxP2PExternalAddresses = ptr(int32(2))
 
-		svcs := BuildServices(&crd)
+		svcs, err := BuildServices(nil, &crd)
+		require.NoError(t, err)
+
 		got := lo.Filter(svcs, func(s *corev1.Service, _ int) bool {
 			return s.Labels[kube.ComponentLabel] == "p2p"
 		})
@@ -94,7 +95,9 @@ func TestBuildServices(t *testing.T) {
 		crd.Namespace = "test"
 		crd.Spec.ChainSpec.Network = "testnet"
 		crd.Spec.PodTemplate.Image = "terra:v6.0.0"
-		svcs := BuildServices(&crd)
+		svcs, err := BuildServices(nil, &crd)
+
+		require.NoError(t, err)
 
 		require.Equal(t, 2, len(svcs)) // Includes single p2p service.
 
@@ -103,9 +106,6 @@ func TestBuildServices(t *testing.T) {
 		require.Equal(t, "test", rpc.Namespace)
 		require.Equal(t, corev1.ServiceTypeClusterIP, rpc.Spec.Type)
 		require.Equal(t, map[string]string{"app.kubernetes.io/name": "terra"}, rpc.Spec.Selector)
-
-		require.NotEmpty(t, rpc.Labels[kube.RevisionLabel])
-		delete(rpc.Labels, kube.RevisionLabel)
 
 		wantLabels := map[string]string{
 			"app.kubernetes.io/created-by": "cosmos-operator",
@@ -154,6 +154,27 @@ func TestBuildServices(t *testing.T) {
 		require.Equal(t, want, rpc.Spec.Ports)
 	})
 
+	t.Run("preserves existing", func(t *testing.T) {
+		crd := defaultCRD()
+		crd.Spec.Replicas = 2
+		crd.Name = "terra"
+
+		svcs, err := BuildServices(nil, &crd)
+		require.NoError(t, err)
+
+		for i := range svcs {
+			ports := svcs[i].Spec.Ports
+			for p := range ports {
+				ports[p].NodePort = 12345 // Set by kubernetes
+			}
+		}
+
+		svcs2, err := BuildServices(svcs, &crd)
+		require.NoError(t, err)
+		require.NotSame(t, svcs, svcs2)
+		require.Equal(t, valSlice(svcs), valSlice(svcs2))
+	})
+
 	t.Run("rpc service with overrides", func(t *testing.T) {
 		crd := defaultCRD()
 		crd.Spec.Replicas = 0
@@ -169,7 +190,8 @@ func TestBuildServices(t *testing.T) {
 			Type:                  ptr(corev1.ServiceTypeNodePort),
 			ExternalTrafficPolicy: ptr(corev1.ServiceExternalTrafficPolicyTypeLocal),
 		}
-		svcs := BuildServices(&crd)
+		svcs, err := BuildServices(nil, &crd)
+		require.NoError(t, err)
 
 		rpc := svcs[0]
 		require.Equal(t, map[string]string{"test": "value"}, rpc.Annotations)
@@ -186,33 +208,11 @@ func TestBuildServices(t *testing.T) {
 		name := strings.Repeat("Long", 500)
 		crd.Name = name
 
-		for _, svc := range BuildServices(&crd) {
+		svcs, err := BuildServices(nil, &crd)
+		require.NoError(t, err)
+
+		for _, svc := range svcs {
 			test.RequireValidMetadata(t, svc)
 		}
-	})
-}
-
-func FuzzBuildServices(f *testing.F) {
-	crd := defaultCRD()
-	crd.Spec.Replicas = 1
-
-	f.Add("abcd@1.2.3.4:26656", "NodePort")
-	f.Fuzz(func(t *testing.T, image, svcType string) {
-		crd.Spec.PodTemplate.Image = image
-		uniq := func(svcs []*corev1.Service) []string {
-			return lo.Uniq(lo.Map(svcs, func(s *corev1.Service, _ int) string {
-				return s.Labels[kube.RevisionLabel]
-			}))
-		}
-		svcs1 := BuildServices(&crd)
-		require.Len(t, uniq(svcs1), 1)
-		require.NotZero(t, uniq(svcs1)[0])
-
-		svcs2 := BuildServices(&crd)
-		require.Equal(t, uniq(svcs1), uniq(svcs2))
-
-		crd.Spec.Service.RPCTemplate.Type = ptr(corev1.ServiceType(svcType))
-		svcs3 := BuildServices(&crd)
-		require.NotEqual(t, uniq(svcs1), uniq(svcs3))
 	})
 }

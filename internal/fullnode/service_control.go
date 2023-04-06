@@ -20,14 +20,14 @@ type svcDiffer interface {
 // ServiceControl creates or updates Services.
 type ServiceControl struct {
 	client      Client
-	diffFactory func(revisionLabelKey string, current, want []*corev1.Service) svcDiffer
+	diffFactory func(current, want []*corev1.Service) svcDiffer
 }
 
 func NewServiceControl(client Client) ServiceControl {
 	return ServiceControl{
 		client: client,
-		diffFactory: func(revisionLabelKey string, current, want []*corev1.Service) svcDiffer {
-			return kube.NewRevisionDiff(revisionLabelKey, current, want)
+		diffFactory: func(current, want []*corev1.Service) svcDiffer {
+			return kube.NewDiff(current, want)
 		},
 	}
 }
@@ -40,23 +40,25 @@ func (sc ServiceControl) Reconcile(ctx context.Context, log kube.Logger, crd *co
 	if err := sc.client.List(ctx, &svcs,
 		client.InNamespace(crd.Namespace),
 		client.MatchingFields{kube.ControllerOwnerField: crd.Name},
-		SelectorLabels(crd),
 	); err != nil {
 		return kube.TransientError(fmt.Errorf("list existing services: %w", err))
 	}
 
-	var (
-		currentSvcs = ptrSlice(svcs.Items)
-		wantSvcs    = BuildServices(crd)
-		diff        = sc.diffFactory(kube.RevisionLabel, currentSvcs, wantSvcs)
-	)
+	current := ptrSlice(svcs.Items)
+	want, err := BuildServices(current, crd)
+	if err != nil {
+		return kube.UnrecoverableError(err)
+	}
+	diff := sc.diffFactory(current, want)
 
 	for _, svc := range diff.Creates() {
 		log.Info("Creating service", "svcName", svc.Name)
 		if err := ctrl.SetControllerReference(crd, svc, sc.client.Scheme()); err != nil {
 			return kube.TransientError(fmt.Errorf("set controller reference on service %q: %w", svc.Name, err))
 		}
-		if err := sc.client.Create(ctx, svc); kube.IgnoreAlreadyExists(err) != nil {
+		// CreateOrUpdate (vs. only create) fixes a bug with current deployments where updating would remove the owner reference.
+		// This ensures we update the service with the owner reference.
+		if err := kube.CreateOrUpdate(ctx, sc.client, svc); err != nil {
 			return kube.TransientError(fmt.Errorf("create service %q: %w", svc.Name, err))
 		}
 	}

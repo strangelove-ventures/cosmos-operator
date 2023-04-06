@@ -108,6 +108,8 @@ func (diff *Diff[T]) computeUpdates(current, want ordinalSet[T]) []T {
 			continue
 		}
 		if !equality.Semantic.DeepEqual(existing.Resource, target.Resource) {
+			// Hack to see what changed if updates seem too frequent.
+			// fmt.Println("Diff", cmp.Diff(existing.Resource, target.Resource))
 			updates = append(updates, target)
 		}
 	}

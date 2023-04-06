@@ -27,7 +27,9 @@ func BuildNodeKeySecrets(existing []*corev1.Secret, crd *cosmosv1.CosmosFullNode
 		s.Kind = "Secret"
 		s.APIVersion = "v1"
 		s.Labels = defaultLabels(crd)
-		s.Labels[kube.InstanceLabel] = instanceName(crd, i)
+		s.Labels = defaultLabels(crd,
+			kube.InstanceLabel, instanceName(crd, i),
+		)
 		s.Annotations[kube.OrdinalAnnotation] = kube.ToIntegerValue(i)
 
 		s.Immutable = ptr(true)
