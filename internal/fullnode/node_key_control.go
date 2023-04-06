@@ -5,31 +5,22 @@ import (
 	"fmt"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	"github.com/strangelove-ventures/cosmos-operator/internal/diff"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	corev1 "k8s.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type nodeKeyDiffer interface {
-	Creates() []*corev1.Secret
-	Updates() []*corev1.Secret
-	// We do not ever want to delete node keys in case replicas are scaled up again.
-}
-
 // NodeKeyControl reconciles node keys for a CosmosFullNode. Node keys are saved as secrets and later mounted
 // into pods.
 type NodeKeyControl struct {
-	client      Client
-	diffFactory func(current, want []*corev1.Secret) nodeKeyDiffer
+	client Client
 }
 
 func NewNodeKeyControl(client Client) NodeKeyControl {
 	return NodeKeyControl{
 		client: client,
-		diffFactory: func(current, want []*corev1.Secret) nodeKeyDiffer {
-			return kube.NewDiff(current, want)
-		},
 	}
 }
 
@@ -49,9 +40,9 @@ func (control NodeKeyControl) Reconcile(ctx context.Context, reporter kube.Repor
 		return kube.UnrecoverableError(fmt.Errorf("build node key secrets: %w", serr))
 	}
 
-	diff := control.diffFactory(existing, want)
+	diffed := diff.New(existing, want)
 
-	for _, secret := range diff.Creates() {
+	for _, secret := range diffed.Creates() {
 		reporter.Info("Creating node key secret", "secret", secret.Name)
 		if err := ctrl.SetControllerReference(crd, secret, control.client.Scheme()); err != nil {
 			return kube.TransientError(fmt.Errorf("set controller reference on node key secret %q: %w", secret.Name, err))
@@ -61,7 +52,7 @@ func (control NodeKeyControl) Reconcile(ctx context.Context, reporter kube.Repor
 		}
 	}
 
-	for _, secret := range diff.Updates() {
+	for _, secret := range diffed.Updates() {
 		reporter.Info("Updating node key secret", "secret", secret.Name)
 		if err := control.client.Update(ctx, secret); err != nil {
 			return kube.TransientError(fmt.Errorf("update node key secret %q: %w", secret.Name, err))
