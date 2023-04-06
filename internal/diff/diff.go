@@ -104,6 +104,7 @@ func (diff *Diff[T]) computeUpdates(current, want ordinalSet[T]) []T {
 		target.Object().SetResourceVersion(existing.Object().GetResourceVersion())
 		target.Object().SetUID(existing.Object().GetUID())
 		target.Object().SetGeneration(existing.Object().GetGeneration())
+		target.Object().SetOwnerReferences(existing.Object().GetOwnerReferences())
 		var (
 			oldRev = existing.Revision()
 			newRev = target.Revision()
