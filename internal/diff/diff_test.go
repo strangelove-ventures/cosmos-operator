@@ -75,7 +75,7 @@ func TestOrdinalDiff_CreatesDeletesUpdates(t *testing.T) {
 		// Purposefully unordered to test lexical sorting.
 		existing := []Resource[*corev1.Pod]{
 			diffablePod(0, "doesn't matter"),
-			diffablePod(11, "doesn't matter"),
+			diffablePod(22, "doesn't matter"),
 			diffablePod(2, "doesn't matter"),
 		}
 		diff := New(nil, existing)
@@ -88,18 +88,18 @@ func TestOrdinalDiff_CreatesDeletesUpdates(t *testing.T) {
 
 		require.Len(t, diff.Deletes(), 2)
 		require.Equal(t, diff.Deletes()[0].Name, "pod-2")
-		require.Equal(t, diff.Deletes()[1].Name, "pod-11")
+		require.Equal(t, diff.Deletes()[1].Name, "pod-22")
 
 		require.Empty(t, diff.Creates())
 		require.Empty(t, diff.Updates())
 	})
 
 	t.Run("updates", func(t *testing.T) {
-		pod1 := diffablePod(2, "rev-2")
-		pod1.SetGeneration(2)
-		pod1.SetUID("uuid2")
-		pod1.SetResourceVersion("rv2")
-		pod1.SetOwnerReferences([]metav1.OwnerReference{{Name: "owner2"}})
+		pod1 := diffablePod(1, "rev-1")
+		pod1.SetGeneration(1)
+		pod1.SetUID("uuid1")
+		pod1.SetResourceVersion("rv1")
+		pod1.SetOwnerReferences([]metav1.OwnerReference{{Name: "owner1"}})
 
 		pod2 := diffablePod(11, "rev-11")
 		pod2.SetGeneration(11)
@@ -114,18 +114,18 @@ func TestOrdinalDiff_CreatesDeletesUpdates(t *testing.T) {
 		// Purposefully unordered to test lexical sorting.
 		want := []Resource[*corev1.Pod]{
 			diffablePod(11, "changed-11"),
-			diffablePod(2, "changed-2"),
+			diffablePod(1, "changed-1"),
 		}
 		diff = New(current, want)
 
 		require.Len(t, diff.Updates(), 2)
-		require.Equal(t, "pod-2", diff.Updates()[0].Name)
-		require.Equal(t, "changed-2", diff.Updates()[0].Labels["app.kubernetes.io/revision"])
-		require.Equal(t, "2", diff.Updates()[0].Annotations["app.kubernetes.io/ordinal"])
-		require.Equal(t, int64(2), diff.Updates()[0].Generation)
-		require.Equal(t, "uuid2", string(diff.Updates()[0].UID))
-		require.Equal(t, "rv2", diff.Updates()[0].ResourceVersion)
-		require.Equal(t, "owner2", diff.Updates()[0].OwnerReferences[0].Name)
+		require.Equal(t, "pod-1", diff.Updates()[0].Name)
+		require.Equal(t, "changed-1", diff.Updates()[0].Labels["app.kubernetes.io/revision"])
+		require.Equal(t, "1", diff.Updates()[0].Annotations["app.kubernetes.io/ordinal"])
+		require.Equal(t, int64(1), diff.Updates()[0].Generation)
+		require.Equal(t, "uuid1", string(diff.Updates()[0].UID))
+		require.Equal(t, "rv1", diff.Updates()[0].ResourceVersion)
+		require.Equal(t, "owner1", diff.Updates()[0].OwnerReferences[0].Name)
 
 		require.Equal(t, "pod-11", diff.Updates()[1].Name)
 		require.Equal(t, "changed-11", diff.Updates()[1].Labels["app.kubernetes.io/revision"])
