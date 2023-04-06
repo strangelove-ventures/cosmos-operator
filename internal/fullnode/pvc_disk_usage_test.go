@@ -175,7 +175,7 @@ func TestCollectDiskUsage(t *testing.T) {
 		}}
 
 		diskClient := mockDiskUsager(func(ctx context.Context, host string) (healthcheck.DiskUsageResponse, error) {
-			return healthcheck.DiskUsageResponse{}, errors.New("boom")
+			return healthcheck.DiskUsageResponse{Dir: "/some/dir"}, errors.New("boom")
 		})
 
 		var crd cosmosv1.CosmosFullNode
@@ -184,7 +184,7 @@ func TestCollectDiskUsage(t *testing.T) {
 		_, err := coll.CollectDiskUsage(ctx, &crd)
 
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "pod 1: boom")
-		require.Contains(t, err.Error(), "pod 2: boom")
+		require.Contains(t, err.Error(), "pod 1 /some/dir: boom")
+		require.Contains(t, err.Error(), "pod 2 /some/dir: boom")
 	})
 }
