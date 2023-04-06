@@ -4,7 +4,15 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+// key is the resource name which must be unique per k8s conventions.
+type ordinalSet[T Resource] map[string]ordinalResource[T]
+
+// Resource is a kubernetes resource.
+type Resource = client.Object
 
 // RevisionDiff computes steps needed to bring a current state equal to a new state.
 // Diffing for updates is done by comparing a revision label.
