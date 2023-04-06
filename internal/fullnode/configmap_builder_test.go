@@ -9,7 +9,6 @@ import (
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/internal/test"
 	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
 )
 
 var (
@@ -39,20 +38,17 @@ func TestBuildConfigMaps(t *testing.T) {
 		crd.Spec.PodTemplate.Image = "agoric:v6.0.0"
 		crd.Spec.ChainSpec.Network = "testnet"
 
-		var existing corev1.ConfigMap
-		existing.Namespace = "test"
-		existing.Name = "agoric-0"
-		existing.UID = "1234"
-
-		cms, err := BuildConfigMaps([]*corev1.ConfigMap{&existing}, &crd, nil)
+		cms, err := BuildConfigMaps(&crd, nil)
 		require.NoError(t, err)
 		require.Equal(t, 3, len(cms))
 
-		cm := cms[0]
+		require.Equal(t, int64(0), cms[0].Ordinal())
+		require.NotEmpty(t, cms[0].Revision())
+
+		cm := cms[0].Object()
 		require.Equal(t, "agoric-0", cm.Name)
 		require.Equal(t, "test", cm.Namespace)
 		require.Nil(t, cm.Immutable)
-		require.Equal(t, "1234", string(cm.UID))
 
 		wantLabels := map[string]string{
 			"app.kubernetes.io/created-by": "cosmos-operator",
@@ -62,32 +58,15 @@ func TestBuildConfigMaps(t *testing.T) {
 			"app.kubernetes.io/version":    "v6.0.0",
 			"cosmos.strange.love/network":  "testnet",
 		}
+		require.Empty(t, cm.Annotations)
 
 		require.Equal(t, wantLabels, cm.Labels)
 
-		cm = cms[1]
+		cm = cms[1].Object()
 		require.Equal(t, "agoric-1", cm.Name)
 
-		require.NotEmpty(t, cms[0].Data)
-		require.Equal(t, cms[0].Data, cms[1].Data)
-	})
-
-	t.Run("preserves existing", func(t *testing.T) {
-		crd := defaultCRD()
-		crd.Spec.Replicas = 3
-		crd.Name = "agoric"
-		crd.Namespace = "test"
-
-		cms, err := BuildConfigMaps(nil, &crd, nil)
-		require.NoError(t, err)
-		for i := range cms {
-			cms[i].Annotations = map[string]string{"foo": "bar"}
-		}
-
-		cms2, err := BuildConfigMaps(cms, &crd, nil)
-		require.NoError(t, err)
-		require.NotSame(t, cms, cms2)
-		require.Equal(t, valSlice(cms), valSlice(cms2))
+		require.NotEmpty(t, cms[0].Object().Data)
+		require.Equal(t, cms[0].Object().Data, cms[1].Object().Data)
 	})
 
 	t.Run("long name", func(t *testing.T) {
@@ -96,12 +75,12 @@ func TestBuildConfigMaps(t *testing.T) {
 		crd.Name = strings.Repeat("chain", 300)
 		crd.Spec.ChainSpec.Network = strings.Repeat("network", 300)
 
-		cms, err := BuildConfigMaps(nil, &crd, nil)
+		cms, err := BuildConfigMaps(&crd, nil)
 		require.NoError(t, err)
 		require.NotEmpty(t, cms)
 
 		for _, cm := range cms {
-			test.RequireValidMetadata(t, cm)
+			test.RequireValidMetadata(t, cm.Object())
 		}
 	})
 
@@ -124,10 +103,10 @@ func TestBuildConfigMaps(t *testing.T) {
 			custom.Spec.ChainSpec.Tendermint.MaxInboundPeers = ptr(int32(5))
 			custom.Spec.ChainSpec.Tendermint.MaxOutboundPeers = ptr(int32(15))
 
-			cms, err := BuildConfigMaps(nil, custom, nil)
+			cms, err := BuildConfigMaps(custom, nil)
 			require.NoError(t, err)
 
-			cm := cms[0]
+			cm := cms[0].Object()
 
 			require.NotEmpty(t, cm.Data)
 			require.Empty(t, cm.BinaryData)
@@ -146,10 +125,10 @@ func TestBuildConfigMaps(t *testing.T) {
 		})
 
 		t.Run("defaults", func(t *testing.T) {
-			cms, err := BuildConfigMaps(nil, &crd, nil)
+			cms, err := BuildConfigMaps(&crd, nil)
 			require.NoError(t, err)
 
-			cm := cms[0]
+			cm := cms[0].Object()
 
 			var (
 				got  map[string]any
@@ -167,10 +146,10 @@ func TestBuildConfigMaps(t *testing.T) {
 		t.Run("validator sentry", func(t *testing.T) {
 			sentry := crd.DeepCopy()
 			sentry.Spec.Type = cosmosv1.FullNodeSentry
-			cms, err := BuildConfigMaps(nil, sentry, nil)
+			cms, err := BuildConfigMaps(sentry, nil)
 			require.NoError(t, err)
 
-			cm := cms[0]
+			cm := cms[0].Object()
 
 			var got map[string]any
 			_, err = toml.Decode(cm.Data["config-overlay.toml"], &got)
@@ -204,10 +183,10 @@ func TestBuildConfigMaps(t *testing.T) {
 	`)
 
 			p2p := ExternalAddresses{"osmosis-0": "should not see me"}
-			cms, err := BuildConfigMaps(nil, overrides, p2p)
+			cms, err := BuildConfigMaps(overrides, p2p)
 			require.NoError(t, err)
 
-			cm := cms[0]
+			cm := cms[0].Object()
 
 			var (
 				got  map[string]any
@@ -229,21 +208,21 @@ func TestBuildConfigMaps(t *testing.T) {
 			}
 			p2pCrd := crd.DeepCopy()
 			p2pCrd.Spec.Replicas = 3
-			cms, err := BuildConfigMaps(nil, p2pCrd, p2p)
+			cms, err := BuildConfigMaps(p2pCrd, p2p)
 			require.NoError(t, err)
 
 			require.Equal(t, 3, len(cms))
 
 			var decoded decodedToml
-			_, err = toml.Decode(cms[0].Data["config-overlay.toml"], &decoded)
+			_, err = toml.Decode(cms[0].Object().Data["config-overlay.toml"], &decoded)
 			require.NoError(t, err)
 			require.Equal(t, "1.1.1.1", decoded["p2p"].(decodedToml)["external_address"])
 
-			_, err = toml.Decode(cms[1].Data["config-overlay.toml"], &decoded)
+			_, err = toml.Decode(cms[1].Object().Data["config-overlay.toml"], &decoded)
 			require.NoError(t, err)
 			require.Equal(t, "2.2.2.2", decoded["p2p"].(decodedToml)["external_address"])
 
-			_, err = toml.Decode(cms[2].Data["config-overlay.toml"], &decoded)
+			_, err = toml.Decode(cms[2].Object().Data["config-overlay.toml"], &decoded)
 			require.NoError(t, err)
 			require.Empty(t, decoded["p2p"].(decodedToml)["external_address"])
 		})
@@ -251,7 +230,7 @@ func TestBuildConfigMaps(t *testing.T) {
 		t.Run("invalid toml", func(t *testing.T) {
 			malformed := crd.DeepCopy()
 			malformed.Spec.ChainSpec.Tendermint.TomlOverrides = ptr(`invalid_toml = should be invalid`)
-			_, err := BuildConfigMaps(nil, malformed, nil)
+			_, err := BuildConfigMaps(malformed, nil)
 
 			require.Error(t, err)
 			require.Contains(t, err.Error(), "invalid toml in tendermint overrides")
@@ -278,10 +257,10 @@ func TestBuildConfigMaps(t *testing.T) {
 				MinRetainBlocks: ptr(uint32(271500)),
 			}
 
-			cms, err := BuildConfigMaps(nil, custom, nil)
+			cms, err := BuildConfigMaps(custom, nil)
 			require.NoError(t, err)
 
-			cm := cms[0]
+			cm := cms[0].Object()
 
 			require.NotEmpty(t, cm.Data)
 			require.Empty(t, cm.BinaryData)
@@ -300,10 +279,10 @@ func TestBuildConfigMaps(t *testing.T) {
 		})
 
 		t.Run("defaults", func(t *testing.T) {
-			cms, err := BuildConfigMaps(nil, &crd, nil)
+			cms, err := BuildConfigMaps(&crd, nil)
 			require.NoError(t, err)
 
-			cm := cms[0]
+			cm := cms[0].Object()
 
 			var (
 				got  map[string]any
@@ -329,10 +308,10 @@ func TestBuildConfigMaps(t *testing.T) {
 	enable = false
 	new-field = "test"
 	`)
-			cms, err := BuildConfigMaps(nil, overrides, nil)
+			cms, err := BuildConfigMaps(overrides, nil)
 			require.NoError(t, err)
 
-			cm := cms[0]
+			cm := cms[0].Object()
 
 			var (
 				got  map[string]any
@@ -350,7 +329,7 @@ func TestBuildConfigMaps(t *testing.T) {
 		t.Run("invalid toml", func(t *testing.T) {
 			malformed := crd.DeepCopy()
 			malformed.Spec.ChainSpec.App.TomlOverrides = ptr(`invalid_toml = should be invalid`)
-			_, err := BuildConfigMaps(nil, malformed, nil)
+			_, err := BuildConfigMaps(malformed, nil)
 
 			require.Error(t, err)
 			require.Contains(t, err.Error(), "invalid toml in app overrides")

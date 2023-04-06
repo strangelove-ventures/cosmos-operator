@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	"github.com/strangelove-ventures/cosmos-operator/internal/diff"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -30,16 +30,6 @@ func TestConfigMapControl_Reconcile(t *testing.T) {
 		crd.Spec.Replicas = 3
 		crd.Name = "stargaze"
 		crd.Spec.ChainSpec.Network = "testnet"
-
-		control.diffFactory = func(current, want []*corev1.ConfigMap) configmapDiffer {
-			require.Equal(t, 4, len(current))
-			require.EqualValues(t, 3, crd.Spec.Replicas)
-			return mockConfigDiffer{
-				StubCreates: []*corev1.ConfigMap{{ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "test"}}},
-				StubUpdates: ptrSlice(make([]corev1.ConfigMap, 2)),
-				StubDeletes: ptrSlice(make([]corev1.ConfigMap, 3)),
-			}
-		}
 
 		err := control.Reconcile(ctx, nopReporter, &crd, nil)
 		require.NoError(t, err)
@@ -67,7 +57,7 @@ func TestConfigMapControl_Reconcile(t *testing.T) {
 	t.Run("build error", func(t *testing.T) {
 		var mClient mockConfigClient
 		control := NewConfigMapControl(&mClient)
-		control.build = func(_ []*corev1.ConfigMap, crd *cosmosv1.CosmosFullNode, _ ExternalAddresses) ([]*corev1.ConfigMap, error) {
+		control.build = func(crd *cosmosv1.CosmosFullNode, _ ExternalAddresses) ([]diff.Resource[*corev1.ConfigMap], error) {
 			return nil, errors.New("boom")
 		}
 
