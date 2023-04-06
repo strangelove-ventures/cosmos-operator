@@ -51,7 +51,7 @@ func (filter PodFilter) SyncedPods(ctx context.Context, log kube.Logger, candida
 				return nil
 			}
 			if resp.Result.SyncInfo.CatchingUp {
-				log.Info("Pod is still catching up", fields...)
+				log.Info("Pod is catching up", fields...)
 				return nil
 			}
 			inSync[i] = pod
