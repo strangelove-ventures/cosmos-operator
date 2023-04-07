@@ -2,10 +2,8 @@ package fullnode
 
 import (
 	"bytes"
-	"encoding/hex"
 	"errors"
 	"fmt"
-	"hash/fnv"
 	"path"
 	"strings"
 	"sync"
@@ -51,10 +49,8 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: crd.Namespace,
-			Labels: defaultLabels(crd,
-				kube.RevisionLabel, podRevisionHash(crd),
-			),
+			Namespace:   crd.Namespace,
+			Labels:      defaultLabels(crd),
 			Annotations: make(map[string]string),
 		},
 		Spec: corev1.PodSpec{
@@ -152,18 +148,6 @@ func podReadinessProbes(crd *cosmosv1.CosmosFullNode) []*corev1.Probe {
 	return []*corev1.Probe{mainProbe, sidecarProbe}
 }
 
-// Attempts to produce a deterministic hash based on the pod template, so we can detect updates.
-// encoding/gob was used at first but proved non-deterministic. JSON by nature is unordered, however thousands
-// of fuzz tests showed encoding/json to be deterministic. There are other json packages like jsoniter that sort keys
-// if stdlib encoding/json ever becomes a problem.
-func podRevisionHash(crd *cosmosv1.CosmosFullNode) string {
-	h := fnv.New32()
-	mustWrite(h, mustMarshalJSON(crd.Spec.PodTemplate))
-	mustWrite(h, mustMarshalJSON(crd.Spec.ChainSpec))
-	mustWrite(h, mustMarshalJSON(crd.Spec.Type))
-	return hex.EncodeToString(h.Sum(nil))
-}
-
 // Build assigns the CosmosFullNode crd as the owner and returns a fully constructed pod.
 func (b PodBuilder) Build() (*corev1.Pod, error) {
 	pod := b.pod.DeepCopy()
@@ -188,7 +172,6 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 	pod := b.pod.DeepCopy()
 	name := instanceName(b.crd, ordinal)
 
-	pod.Annotations[kube.OrdinalAnnotation] = kube.ToIntegerValue(ordinal)
 	pod.Labels[kube.InstanceLabel] = name
 
 	pod.Name = name
