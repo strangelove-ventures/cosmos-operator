@@ -310,10 +310,12 @@ func TestPodBuilder(t *testing.T) {
 		mount := c.VolumeMounts[0]
 		require.Equal(t, "vol-chain-home", mount.Name)
 		require.Equal(t, "/home/operator/cosmos", mount.MountPath)
+		require.False(t, mount.ReadOnly)
 
 		mount = c.VolumeMounts[1]
 		require.Equal(t, "vol-system-tmp", mount.Name)
 		require.Equal(t, "/tmp", mount.MountPath)
+		require.False(t, mount.ReadOnly)
 
 		mount = c.VolumeMounts[2]
 		require.Equal(t, "vol-node-key", mount.Name)
@@ -327,6 +329,7 @@ func TestPodBuilder(t *testing.T) {
 		mount = c.VolumeMounts[0]
 		require.Equal(t, "vol-chain-home", mount.Name)
 		require.Equal(t, "/home/operator/cosmos", mount.MountPath)
+		require.True(t, mount.ReadOnly)
 
 		for _, c := range pod.Spec.InitContainers {
 			require.Len(t, c.VolumeMounts, 4)
