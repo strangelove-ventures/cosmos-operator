@@ -7,6 +7,7 @@ import (
 
 	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	"github.com/strangelove-ventures/cosmos-operator/internal/diff"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	"github.com/strangelove-ventures/cosmos-operator/internal/test"
 	"github.com/stretchr/testify/require"
@@ -39,8 +40,7 @@ func TestPVCControl_Reconcile(t *testing.T) {
 		crd.Name = "hub"
 		crd.Namespace = namespace
 		crd.Spec.Replicas = 1
-
-		existing := BuildPVCs(&crd)[0].Object()
+		existing := diff.New(nil, BuildPVCs(&crd)).Creates()[0]
 		existing.Status.Phase = corev1.ClaimBound
 
 		var mClient mockPVCClient
@@ -64,6 +64,8 @@ func TestPVCControl_Reconcile(t *testing.T) {
 		require.Equal(t, namespace, listOpt.Namespace)
 		require.Zero(t, listOpt.Limit)
 		require.Equal(t, ".metadata.controller=hub", listOpt.FieldSelector.String())
+
+		require.Empty(t, mClient.LastPatchObject)
 	})
 
 	t.Run("scale phase", func(t *testing.T) {
