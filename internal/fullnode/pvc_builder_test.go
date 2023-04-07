@@ -7,6 +7,7 @@ import (
 
 	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	"github.com/strangelove-ventures/cosmos-operator/internal/diff"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	"github.com/strangelove-ventures/cosmos-operator/internal/test"
 	"github.com/stretchr/testify/require"
@@ -31,18 +32,17 @@ func TestBuildPVCs(t *testing.T) {
 			"juno-0": {},
 		}
 
-		pvcs := BuildPVCs(&crd)
+		for i, r := range BuildPVCs(&crd) {
+			require.Equal(t, int64(i), r.Ordinal())
+			require.NotEmpty(t, r.Revision())
+		}
+
+		pvcs := lo.Map(BuildPVCs(&crd), func(r diff.Resource[*corev1.PersistentVolumeClaim], _ int) *corev1.PersistentVolumeClaim { return r.Object() })
+
 		require.Len(t, pvcs, 3)
 
 		gotNames := lo.Map(pvcs, func(pvc *corev1.PersistentVolumeClaim, _ int) string { return pvc.Name })
 		require.Equal(t, []string{"pvc-juno-0", "pvc-juno-1", "pvc-juno-2"}, gotNames)
-
-		gotOrds := lo.Map(pvcs, func(pvc *corev1.PersistentVolumeClaim, _ int) string { return pvc.Annotations[kube.OrdinalAnnotation] })
-		require.Equal(t, []string{"0", "1", "2"}, gotOrds)
-
-		revisions := lo.Map(pvcs, func(pvc *corev1.PersistentVolumeClaim, _ int) string { return pvc.Labels[kube.RevisionLabel] })
-		require.NotEmpty(t, lo.Uniq(revisions))
-		require.Len(t, lo.Uniq(revisions), 1)
 
 		for i, got := range pvcs {
 			require.Equal(t, crd.Namespace, got.Namespace)
@@ -57,9 +57,6 @@ func TestBuildPVCs(t *testing.T) {
 				"app.kubernetes.io/version":    "v1.2.3",
 				"cosmos.strange.love/network":  "mainnet",
 			}
-			// These labels change and tested elsewhere.
-			delete(got.Labels, kube.RevisionLabel)
-
 			require.Equal(t, wantLabels, got.Labels)
 
 			require.Len(t, got.Spec.AccessModes, 1)
@@ -90,11 +87,10 @@ func TestBuildPVCs(t *testing.T) {
 		pvcs := BuildPVCs(&crd)
 		require.NotEmpty(t, pvcs)
 
-		got := pvcs[0]
+		got := pvcs[0].Object()
 		require.Equal(t, []corev1.PersistentVolumeAccessMode{corev1.ReadWriteMany}, got.Spec.AccessModes)
 		require.Equal(t, corev1.PersistentVolumeBlock, *got.Spec.VolumeMode)
 
-		require.Equal(t, "0", got.Annotations[kube.OrdinalAnnotation])
 		require.Equal(t, "value", got.Annotations["annot"])
 
 		require.Equal(t, "cosmos-operator", got.Labels[kube.ControllerLabel])
@@ -129,7 +125,7 @@ func TestBuildPVCs(t *testing.T) {
 		pvcs := BuildPVCs(&crd)
 		require.Equal(t, 2, len(pvcs))
 
-		got1, got2 := pvcs[0], pvcs[1]
+		got1, got2 := pvcs[0].Object(), pvcs[1].Object()
 
 		require.NotEqual(t, got1.Spec, got2.Spec)
 		require.Equal(t, []string{"pvc-cosmoshub-0", "pvc-cosmoshub-2"}, []string{got1.Name, got2.Name})
@@ -145,7 +141,7 @@ func TestBuildPVCs(t *testing.T) {
 		require.NotEmpty(t, pvcs)
 
 		for _, got := range pvcs {
-			test.RequireValidMetadata(t, got)
+			test.RequireValidMetadata(t, got.Object())
 		}
 	})
 
@@ -171,51 +167,7 @@ func TestBuildPVCs(t *testing.T) {
 			require.Len(t, pvcs, 1, tt)
 
 			want := corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(tt.WantQuant)}
-			require.Equal(t, want, pvcs[0].Spec.Resources.Requests, tt)
+			require.Equal(t, want, pvcs[0].Object().Spec.Resources.Requests, tt)
 		}
-	})
-}
-
-func FuzzBuildPVCs(f *testing.F) {
-	crd := defaultCRD()
-	crd.Spec.Replicas = 1
-
-	f.Add("premium-rwo", "storage")
-	f.Fuzz(func(t *testing.T, storageClass, resourceKey string) {
-		crd.Spec.VolumeClaimTemplate.StorageClassName = storageClass
-		crd.Spec.VolumeClaimTemplate.Resources = corev1.ResourceRequirements{
-			Requests: map[corev1.ResourceName]resource.Quantity{
-				corev1.ResourceName(resourceKey): resource.MustParse("100G"),
-			},
-		}
-
-		pvc1 := BuildPVCs(&crd)[0]
-		pvc2 := BuildPVCs(&crd)[0]
-
-		require.NotEmpty(t, pvc1.Labels[kube.RevisionLabel])
-		require.NotEmpty(t, pvc2.Labels[kube.RevisionLabel])
-
-		require.Equal(t, pvc1.Labels[kube.RevisionLabel], pvc2.Labels[kube.RevisionLabel])
-
-		crd.Spec.VolumeClaimTemplate.StorageClassName = "different"
-
-		pvc3 := BuildPVCs(&crd)[0]
-		require.NotEmpty(t, pvc3.Labels[kube.RevisionLabel])
-		require.NotEqual(t, pvc3.Labels[kube.RevisionLabel], pvc1.Labels[kube.RevisionLabel])
-
-		crd.Spec.InstanceOverrides = map[string]cosmosv1.InstanceOverridesSpec{
-			"osmosis-0": {VolumeClaimTemplate: &cosmosv1.PersistentVolumeClaimSpec{StorageClassName: storageClass + "new1"}},
-			"osmosis-1": {VolumeClaimTemplate: &cosmosv1.PersistentVolumeClaimSpec{StorageClassName: storageClass + "new2"}},
-		}
-		pvc4 := BuildPVCs(&crd)[0]
-		require.NotEmpty(t, pvc4.Labels[kube.RevisionLabel])
-		require.NotEqual(t, pvc3.Labels[kube.RevisionLabel], pvc4.Labels[kube.RevisionLabel])
-
-		// Test determinism because maps are involved.
-		require.Equal(t, pvc4.Labels[kube.RevisionLabel], BuildPVCs(&crd)[0].Labels[kube.RevisionLabel])
-
-		crd.Status.SelfHealing.PVCAutoScale = &cosmosv1.PVCAutoScaleStatus{}
-		pvc5 := BuildPVCs(&crd)[0]
-		require.NotEqual(t, pvc4.Labels[kube.RevisionLabel], pvc5.Labels[kube.RevisionLabel])
 	})
 }
