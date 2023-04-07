@@ -38,7 +38,6 @@ func (control PVCControl) Reconcile(ctx context.Context, reporter kube.Reporter,
 	if err := control.client.List(ctx, &vols,
 		client.InNamespace(crd.Namespace),
 		client.MatchingFields{kube.ControllerOwnerField: crd.Name},
-		SelectorLabels(crd),
 	); err != nil {
 		return false, kube.TransientError(fmt.Errorf("list existing pvcs: %w", err))
 	}

@@ -56,14 +56,13 @@ func TestPVCControl_Reconcile(t *testing.T) {
 		require.NoError(t, err)
 		require.False(t, requeue)
 
-		require.Len(t, mClient.GotListOpts, 3)
+		require.Len(t, mClient.GotListOpts, 2)
 		var listOpt client.ListOptions
 		for _, opt := range mClient.GotListOpts {
 			opt.ApplyToList(&listOpt)
 		}
 		require.Equal(t, namespace, listOpt.Namespace)
 		require.Zero(t, listOpt.Limit)
-		require.Equal(t, "app.kubernetes.io/name=hub", listOpt.LabelSelector.String())
 		require.Equal(t, ".metadata.controller=hub", listOpt.FieldSelector.String())
 	})
 
