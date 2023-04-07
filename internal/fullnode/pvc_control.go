@@ -7,6 +7,7 @@ import (
 	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
 	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	"github.com/strangelove-ventures/cosmos-operator/internal/diff"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -14,17 +15,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type pvcDiffer interface {
-	Creates() []*corev1.PersistentVolumeClaim
-	Updates() []*corev1.PersistentVolumeClaim
-	Deletes() []*corev1.PersistentVolumeClaim
-}
-
 // PVCControl reconciles volumes for a CosmosFullNode.
 // Unlike StatefulSet, PVCControl will update volumes by deleting and recreating volumes.
 type PVCControl struct {
 	client               Client
-	diffFactory          func(ordinalAnnotationKey, revisionLabelKey string, current, want []*corev1.PersistentVolumeClaim) pvcDiffer
 	recentVolumeSnapshot func(ctx context.Context, lister kube.Lister, namespace string, selector map[string]string) (*snapshotv1.VolumeSnapshot, error)
 }
 
@@ -33,9 +27,6 @@ func NewPVCControl(client Client) PVCControl {
 	return PVCControl{
 		client:               client,
 		recentVolumeSnapshot: kube.RecentVolumeSnapshot,
-		diffFactory: func(ordinalAnnotationKey, revisionLabelKey string, current, want []*corev1.PersistentVolumeClaim) pvcDiffer {
-			return kube.NewOrdinalRevisionDiff(ordinalAnnotationKey, revisionLabelKey, current, want)
-		},
 	}
 }
 
@@ -55,18 +46,16 @@ func (control PVCControl) Reconcile(ctx context.Context, reporter kube.Reporter,
 	var (
 		currentPVCs = ptrSlice(vols.Items)
 		wantPVCs    = BuildPVCs(crd)
-		diff        = control.diffFactory(kube.OrdinalAnnotation, kube.RevisionLabel, currentPVCs, wantPVCs)
+		diffed      = diff.New(currentPVCs, wantPVCs)
 	)
 
 	var dataSource *corev1.TypedLocalObjectReference
-	if len(diff.Creates()) > 0 {
-		dataSource = control.autoDataSource(ctx, reporter, crd)
+	if len(diffed.Creates()) > 0 {
+		dataSource = control.findDataSource(ctx, reporter, crd)
 	}
 
-	for _, pvc := range diff.Creates() {
-		if pvc.Spec.DataSource == nil && pvc.Spec.DataSourceRef == nil {
-			pvc.Spec.DataSource = dataSource
-		}
+	for _, pvc := range diffed.Creates() {
+		pvc.Spec.DataSource = dataSource
 		reporter.Info("Creating pvc", "pvc", pvc.Name)
 		if err := ctrl.SetControllerReference(crd, pvc, control.client.Scheme()); err != nil {
 			return true, kube.TransientError(fmt.Errorf("set controller reference on pvc %q: %w", pvc.Name, err))
@@ -78,34 +67,32 @@ func (control PVCControl) Reconcile(ctx context.Context, reporter kube.Reporter,
 
 	var deletes int
 	if !control.shouldRetain(crd) {
-		for _, pvc := range diff.Deletes() {
+		for _, pvc := range diffed.Deletes() {
 			reporter.Info("Deleting pvc", "pvc", pvc.Name)
 			if err := control.client.Delete(ctx, pvc, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
 				return true, kube.TransientError(fmt.Errorf("delete pvc %q: %w", pvc.Name, err))
 			}
 		}
-		deletes = len(diff.Deletes())
+		deletes = len(diffed.Deletes())
 	}
 
-	if deletes+len(diff.Creates()) > 0 {
+	if deletes+len(diffed.Creates()) > 0 {
 		// Scaling happens first; then updates. So requeue to handle updates after scaling finished.
 		return true, nil
 	}
 
-	var requeue bool
-	// PVCs have many immutable fields, so only update the storage size.
-	for _, pvc := range diff.Updates() {
-		// TODO(nix): Another leaky abstraction because diff.Updates() returns what the builder creates
-		// which are brand-new pvcs vs. pvcs gathered from a List call to the kube API.
-		// Only bound claims can be resized.
-		found, ok := findMatchingResource(pvc, currentPVCs)
-		if ok && found.Status.Phase != corev1.ClaimBound {
-			reporter.Info("PVC cannot be updated yet because it is not bound", "pvc", pvc.Name, "phase", found.Status.Phase)
-			reporter.RecordInfo("PVCUpdate", fmt.Sprintf("PVC %s cannot be updated yet because it is not bound; retrying", pvc.Name))
-			requeue = true
-			continue
-		}
+	if len(diffed.Updates()) == 0 {
+		return false, nil
+	}
 
+	if _, unbound := lo.Find(currentPVCs, func(pvc *corev1.PersistentVolumeClaim) bool {
+		return pvc.Status.Phase != corev1.ClaimBound
+	}); unbound {
+		return true, nil
+	}
+
+	// PVCs have many immutable fields, so only update the storage size.
+	for _, pvc := range diffed.Updates() {
 		reporter.Info("Patching pvc", "pvc", pvc.Name)
 		patch := corev1.PersistentVolumeClaim{
 			ObjectMeta: pvc.ObjectMeta,
@@ -121,7 +108,7 @@ func (control PVCControl) Reconcile(ctx context.Context, reporter kube.Reporter,
 		}
 	}
 
-	return requeue, nil
+	return false, nil
 }
 
 func (control PVCControl) shouldRetain(crd *cosmosv1.CosmosFullNode) bool {
@@ -131,7 +118,10 @@ func (control PVCControl) shouldRetain(crd *cosmosv1.CosmosFullNode) bool {
 	return false
 }
 
-func (control PVCControl) autoDataSource(ctx context.Context, reporter kube.Reporter, crd *cosmosv1.CosmosFullNode) *corev1.TypedLocalObjectReference {
+func (control PVCControl) findDataSource(ctx context.Context, reporter kube.Reporter, crd *cosmosv1.CosmosFullNode) *corev1.TypedLocalObjectReference {
+	if ds := crd.Spec.VolumeClaimTemplate.DataSource; ds != nil {
+		return ds
+	}
 	spec := crd.Spec.VolumeClaimTemplate.AutoDataSource
 	if spec == nil {
 		return nil
@@ -153,10 +143,4 @@ func (control PVCControl) autoDataSource(ctx context.Context, reporter kube.Repo
 		Kind:     "VolumeSnapshot",
 		Name:     found.Name,
 	}
-}
-
-func findMatchingResource[T client.Object](r T, list []T) (T, bool) {
-	return lo.Find(list, func(other T) bool {
-		return client.ObjectKeyFromObject(r) == client.ObjectKeyFromObject(other)
-	})
 }
