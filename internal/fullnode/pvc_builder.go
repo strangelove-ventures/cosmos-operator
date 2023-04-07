@@ -1,15 +1,11 @@
 package fullnode
 
 import (
-	"encoding/hex"
 	"fmt"
-	"hash/fnv"
-	"sort"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/internal/diff"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
-	"golang.org/x/exp/maps"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -89,20 +85,4 @@ func pvcResources(crd *cosmosv1.CosmosFullNode) corev1.ResourceRequirements {
 		}
 	}
 	return reqs
-}
-
-// Attempts to produce a deterministic hash based on the pvc template, so we can detect updates.
-// See podRevisionHash for more details.
-func pvcRevisionHash(crd *cosmosv1.CosmosFullNode) string {
-	h := fnv.New32()
-	mustWrite(h, mustMarshalJSON(crd.Spec.VolumeClaimTemplate))
-	mustWrite(h, mustMarshalJSON(crd.Status.SelfHealing.PVCAutoScale))
-
-	keys := maps.Keys(crd.Spec.InstanceOverrides)
-	sort.Strings(keys)
-	for _, k := range keys {
-		mustWrite(h, mustMarshalJSON(crd.Spec.InstanceOverrides[k].VolumeClaimTemplate))
-	}
-
-	return hex.EncodeToString(h.Sum(nil))
 }
