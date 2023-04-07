@@ -32,7 +32,7 @@ func TestPodControl_Reconcile(t *testing.T) {
 	type mockPodClient = mockClient[*corev1.Pod]
 
 	ctx := context.Background()
-	const namespace = "testns"
+	const namespace = "test"
 
 	t.Run("no changes", func(t *testing.T) {
 		crd := defaultCRD()
@@ -65,12 +65,20 @@ func TestPodControl_Reconcile(t *testing.T) {
 	})
 
 	t.Run("scale phase", func(t *testing.T) {
-		var (
-			mClient mockPodClient
-			crd     = defaultCRD()
-			control = NewPodControl(&mClient, panicPodFilter)
-		)
+		crd := defaultCRD()
+		crd.Name = "hub"
 		crd.Namespace = namespace
+		crd.Spec.Replicas = 3
+
+		var mClient mockPodClient
+		mClient.ObjectList = corev1.PodList{
+			Items: []corev1.Pod{
+				{ObjectMeta: metav1.ObjectMeta{Name: "hub-98"}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "hub-99"}},
+			},
+		}
+
+		control := NewPodControl(&mClient, panicPodFilter)
 		requeue, err := control.Reconcile(ctx, nopReporter, &crd)
 		require.NoError(t, err)
 		require.True(t, requeue)
@@ -85,38 +93,45 @@ func TestPodControl_Reconcile(t *testing.T) {
 	})
 
 	t.Run("rollout phase", func(t *testing.T) {
+		crd := defaultCRD()
+		crd.Name = "hub"
+		crd.Namespace = namespace
+		crd.Spec.Replicas = 5
+
+		pods, err := BuildPods(&crd)
+		require.NoError(t, err)
+		existing := diff.New(nil, pods).Creates()
+
 		var mClient mockPodClient
 		mClient.ObjectList = corev1.PodList{
-			Items: []corev1.Pod{
-				{ObjectMeta: metav1.ObjectMeta{Name: "pod-1"}},
-				{ObjectMeta: metav1.ObjectMeta{Name: "pod-2"}},
-			},
+			Items: valueSlice(existing),
 		}
 
-		var (
-			crd       = defaultCRD()
-			podFilter = mockPodFilter(func(_ context.Context, _ kube.Logger, candidates []*corev1.Pod) []*corev1.Pod {
-				require.Equal(t, 2, len(candidates))
-				require.Equal(t, "pod-1", candidates[0].Name)
-				require.Equal(t, "pod-2", candidates[1].Name)
-				return candidates[:1]
-			})
-			control = NewPodControl(&mClient, podFilter)
-		)
+		var didFilter bool
+		podFilter := mockPodFilter(func(_ context.Context, _ kube.Logger, candidates []*corev1.Pod) []*corev1.Pod {
+			require.Equal(t, 5, len(candidates))
+			require.Equal(t, "hub-0", candidates[0].Name)
+			require.Equal(t, "hub-1", candidates[1].Name)
+			didFilter = true
+			return candidates[:1]
+		})
 
-		crd.Namespace = namespace
-		crd.Spec.Replicas = 10
-
+		control := NewPodControl(&mClient, podFilter)
 		const stubRollout = 5
+
 		control.computeRollout = func(maxUnavail *intstr.IntOrString, desired, ready int) int {
 			require.EqualValues(t, crd.Spec.Replicas, desired)
 			require.Equal(t, 1, ready) // mockPodFilter only returns 1 candidate as ready
 			return stubRollout
 		}
 
+		// Trigger updates
+		crd.Spec.PodTemplate.Image = "new-image"
 		requeue, err := control.Reconcile(ctx, nopReporter, &crd)
 		require.NoError(t, err)
 		require.True(t, requeue)
+
+		require.True(t, didFilter)
 
 		require.Zero(t, mClient.CreateCount)
 		require.Equal(t, stubRollout, mClient.DeleteCount)

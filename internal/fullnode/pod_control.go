@@ -64,7 +64,7 @@ func (pc PodControl) Reconcile(ctx context.Context, reporter kube.Reporter, crd 
 	diffed := diff.New(currentPods, wantPods)
 
 	for _, pod := range diffed.Creates() {
-		reporter.Info("Creating pod", "podName", pod.Name)
+		reporter.Info("Creating pod", "pod", pod.Name)
 		if err := ctrl.SetControllerReference(crd, pod, pc.client.Scheme()); err != nil {
 			return true, kube.TransientError(fmt.Errorf("set controller reference on pod %q: %w", pod.Name, err))
 		}
@@ -74,7 +74,7 @@ func (pc PodControl) Reconcile(ctx context.Context, reporter kube.Reporter, crd 
 	}
 
 	for _, pod := range diffed.Deletes() {
-		reporter.Info("Deleting pod", "podName", pod.Name)
+		reporter.Info("Deleting pod", "pod", pod.Name)
 		if err := pc.client.Delete(ctx, pod, client.PropagationPolicy(metav1.DeletePropagationForeground)); kube.IgnoreNotFound(err) != nil {
 			return true, kube.TransientError(fmt.Errorf("delete pod %q: %w", pod.Name, err))
 		}
