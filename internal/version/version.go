@@ -6,8 +6,8 @@ package version
 // See Dockerfile, Makefile, and .github/workflows/release.yaml.
 var version = ""
 
-// Get returns the version of the build or "latest" if the version is empty.
-func Get() string {
+// DockerTag returns the version of the build or "latest" if the version is empty.
+func DockerTag() string {
 	if version == "" {
 		return "latest"
 	}
