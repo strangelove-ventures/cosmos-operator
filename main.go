@@ -85,7 +85,7 @@ func rootCmd() *cobra.Command {
 	root := &cobra.Command{
 		Short:        "Run the operator",
 		Use:          "manager",
-		Version:      version.DockerTag(),
+		Version:      version.AppVersion(),
 		RunE:         startManager,
 		SilenceUsage: true,
 	}
@@ -192,7 +192,7 @@ func startManager(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("unable to set up ready check: %w", err)
 	}
 
-	setupLog.Info("Starting Cosmos Operator manager", "version", version.DockerTag())
+	setupLog.Info("Starting Cosmos Operator manager", "version", version.AppVersion())
 	if err := mgr.Start(ctx); err != nil {
 		return fmt.Errorf("problem running manager: %w", err)
 	}
