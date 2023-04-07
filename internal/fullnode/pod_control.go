@@ -7,6 +7,7 @@ import (
 
 	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	"github.com/strangelove-ventures/cosmos-operator/internal/diff"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,12 +16,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
-
-type podDiffer interface {
-	Creates() []*corev1.Pod
-	Updates() []*corev1.Pod
-	Deletes() []*corev1.Pod
-}
 
 type PodFilter interface {
 	SyncedPods(ctx context.Context, log kube.Logger, candidates []*corev1.Pod) []*corev1.Pod
@@ -38,18 +33,14 @@ type Client interface {
 type PodControl struct {
 	client         Client
 	podFilter      PodFilter
-	diffFactory    func(ordinalAnnotationKey, revisionLabelKey string, current, want []*corev1.Pod) podDiffer
 	computeRollout func(maxUnavail *intstr.IntOrString, desired, ready int) int
 }
 
 // NewPodControl returns a valid PodControl.
 func NewPodControl(client Client, filter PodFilter) PodControl {
 	return PodControl{
-		client:    client,
-		podFilter: filter,
-		diffFactory: func(ordinalAnnotationKey, revisionLabelKey string, current, want []*corev1.Pod) podDiffer {
-			return kube.NewOrdinalRevisionDiff(ordinalAnnotationKey, revisionLabelKey, current, want)
-		},
+		client:         client,
+		podFilter:      filter,
 		computeRollout: kube.ComputeRollout,
 	}
 }
@@ -61,7 +52,6 @@ func (pc PodControl) Reconcile(ctx context.Context, reporter kube.Reporter, crd 
 	if err := pc.client.List(ctx, &pods,
 		client.InNamespace(crd.Namespace),
 		client.MatchingFields{kube.ControllerOwnerField: crd.Name},
-		SelectorLabels(crd),
 	); err != nil {
 		return false, kube.TransientError(fmt.Errorf("list existing pods: %w", err))
 	}
@@ -71,9 +61,9 @@ func (pc PodControl) Reconcile(ctx context.Context, reporter kube.Reporter, crd 
 		return false, kube.UnrecoverableError(fmt.Errorf("build pods: %w", err))
 	}
 	currentPods := ptrSlice(pods.Items)
-	diff := pc.diffFactory(kube.OrdinalAnnotation, kube.RevisionLabel, currentPods, wantPods)
+	diffed := diff.New(currentPods, wantPods)
 
-	for _, pod := range diff.Creates() {
+	for _, pod := range diffed.Creates() {
 		reporter.Info("Creating pod", "podName", pod.Name)
 		if err := ctrl.SetControllerReference(crd, pod, pc.client.Scheme()); err != nil {
 			return true, kube.TransientError(fmt.Errorf("set controller reference on pod %q: %w", pod.Name, err))
@@ -83,19 +73,19 @@ func (pc PodControl) Reconcile(ctx context.Context, reporter kube.Reporter, crd 
 		}
 	}
 
-	for _, pod := range diff.Deletes() {
+	for _, pod := range diffed.Deletes() {
 		reporter.Info("Deleting pod", "podName", pod.Name)
 		if err := pc.client.Delete(ctx, pod, client.PropagationPolicy(metav1.DeletePropagationForeground)); kube.IgnoreNotFound(err) != nil {
 			return true, kube.TransientError(fmt.Errorf("delete pod %q: %w", pod.Name, err))
 		}
 	}
 
-	if len(diff.Creates())+len(diff.Deletes()) > 0 {
+	if len(diffed.Creates())+len(diffed.Deletes()) > 0 {
 		// Scaling happens first; then updates. So requeue to handle updates after scaling finished.
 		return true, nil
 	}
 
-	if len(diff.Updates()) > 0 {
+	if len(diffed.Updates()) > 0 {
 		cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 		defer cancel()
 		var (
@@ -106,7 +96,7 @@ func (pc PodControl) Reconcile(ctx context.Context, reporter kube.Reporter, crd 
 			numUpdates = pc.computeRollout(crd.Spec.RolloutStrategy.MaxUnavailable, int(crd.Spec.Replicas), len(avail))
 		)
 
-		for _, pod := range lo.Slice(diff.Updates(), 0, numUpdates) {
+		for _, pod := range lo.Slice(diffed.Updates(), 0, numUpdates) {
 			reporter.Info("Deleting pod for update", "podName", pod.Name)
 			// Because we should watch for deletes, we get a re-queued request, detect pod is missing, and re-create it.
 			if err := pc.client.Delete(ctx, pod, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
