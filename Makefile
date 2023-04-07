@@ -87,8 +87,7 @@ build: generate ## Build manager binary.
 run: manifests generate ## Run a controller from your host.
 	go run . --log-level=debug
 
-GIT_TAG ?= $(shell git describe --always --dirty)
-PRE_IMG ?= ghcr.io/strangelove-ventures/cosmos-operator:dev$(GIT_TAG)
+PRE_IMG ?= ghcr.io/strangelove-ventures/cosmos-operator:dev$(shell git describe --always --dirty)
 .PHONY: docker-prerelease
 docker-prerelease: ## Build and push a prerelease docker image.
 	IMG=$(PRE_IMG) $(MAKE) docker-build docker-push
@@ -96,7 +95,7 @@ docker-prerelease: ## Build and push a prerelease docker image.
 
 .PHONY: docker-build
 docker-build: test ## Build docker image with the manager.
-	docker build -t ${IMG} --build-arg GIT_TAG=$(GIT_TAG) .
+	docker build -t ${IMG} --build-arg VERSION=$(shell echo ${IMG} | awk -F: '{print $$2}') .
 
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
