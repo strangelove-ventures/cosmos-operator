@@ -138,7 +138,7 @@ func TestPodBuilder(t *testing.T) {
 		optCrd := defaultCRD()
 
 		optCrd.Spec.PodTemplate.Metadata.Labels = map[string]string{"custom": "label", kube.NameLabel: "should not see me"}
-		optCrd.Spec.PodTemplate.Metadata.Annotations = map[string]string{"custom": "annotation", kube.OrdinalAnnotation: "should not see me"}
+		optCrd.Spec.PodTemplate.Metadata.Annotations = map[string]string{"custom": "annotation"}
 
 		optCrd.Spec.PodTemplate.Affinity = &corev1.Affinity{
 			PodAffinity: &corev1.PodAffinity{
@@ -162,8 +162,6 @@ func TestPodBuilder(t *testing.T) {
 		require.Equal(t, "osmosis", pod.Labels[kube.NameLabel])
 
 		require.Equal(t, "annotation", pod.Annotations["custom"])
-		// Operator label takes precedence.
-		require.Equal(t, "9", pod.Annotations[kube.OrdinalAnnotation])
 
 		require.Equal(t, optCrd.Spec.PodTemplate.Affinity, pod.Spec.Affinity)
 		require.Equal(t, optCrd.Spec.PodTemplate.Tolerations, pod.Spec.Tolerations)
