@@ -37,7 +37,9 @@ func TestBuildPVCs(t *testing.T) {
 			require.NotEmpty(t, r.Revision())
 		}
 
-		pvcs := lo.Map(BuildPVCs(&crd), func(r diff.Resource[*corev1.PersistentVolumeClaim], _ int) *corev1.PersistentVolumeClaim { return r.Object() })
+		pvcs := lo.Map(BuildPVCs(&crd), func(r diff.Resource[*corev1.PersistentVolumeClaim], _ int) *corev1.PersistentVolumeClaim {
+			return r.Object()
+		})
 
 		require.Len(t, pvcs, 3)
 
