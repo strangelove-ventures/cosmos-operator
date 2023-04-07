@@ -301,6 +301,8 @@ func TestPodBuilder(t *testing.T) {
 		require.Equal(t, "osmosis-node-key-5", vols[4].Secret.SecretName)
 		require.Equal(t, []corev1.KeyToPath{{Key: "node_key.json", Path: "node_key.json"}}, vols[4].Secret.Items)
 
+		require.Equal(t, len(pod.Spec.Containers), 2)
+
 		c := pod.Spec.Containers[0]
 		require.Equal(t, "node", c.Name) // Sanity check
 
@@ -318,10 +320,13 @@ func TestPodBuilder(t *testing.T) {
 		require.Equal(t, "/home/operator/cosmos/config/node_key.json", mount.MountPath)
 		require.Equal(t, "node_key.json", mount.SubPath)
 
-		// Sidecars do not need volume mounts.
-		for _, c := range pod.Spec.Containers[1:] {
-			require.Empty(t, c.VolumeMounts)
-		}
+		// healtcheck sidecar
+		c = pod.Spec.Containers[1]
+		require.Equal(t, 1, len(c.VolumeMounts))
+		require.Equal(t, "healthcheck", c.Name) // Sanity check
+		mount = c.VolumeMounts[0]
+		require.Equal(t, "vol-chain-home", mount.Name)
+		require.Equal(t, "/home/operator/cosmos", mount.MountPath)
 
 		for _, c := range pod.Spec.InitContainers {
 			require.Len(t, c.VolumeMounts, 4)

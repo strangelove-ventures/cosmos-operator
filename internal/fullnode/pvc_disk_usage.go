@@ -69,7 +69,7 @@ func (c DiskUsageCollector) CollectDiskUsage(ctx context.Context, crd *cosmosv1.
 			defer cancel()
 			resp, err := c.diskClient.DiskUsage(cctx, "http://"+pod.Status.PodIP)
 			if err != nil {
-				errs[i] = fmt.Errorf("pod %s: %w", pod.Name, err)
+				errs[i] = fmt.Errorf("pod %s %s: %w", pod.Name, resp.Dir, err)
 				return nil
 			}
 

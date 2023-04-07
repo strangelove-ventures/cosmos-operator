@@ -250,10 +250,14 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 		}...)
 	}
 
-	// At this point, guaranteed to have at least one container.
+	// At this point, guaranteed to have at least 2 containers.
 	pod.Spec.Containers[0].VolumeMounts = append(mounts, corev1.VolumeMount{
 		Name: volNodeKey, MountPath: path.Join(ChainHomeDir, "config", nodeKeyFile), SubPath: nodeKeyFile,
 	})
+	pod.Spec.Containers[1].VolumeMounts = []corev1.VolumeMount{
+		// The healthcheck sidecar needs access to the home directory so it can read disk usage.
+		{Name: volChainHome, MountPath: ChainHomeDir},
+	}
 
 	b.pod = pod
 	return b
