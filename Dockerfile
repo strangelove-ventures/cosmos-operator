@@ -15,8 +15,10 @@ COPY api/ api/
 COPY controllers/ controllers/
 COPY internal/ internal/
 
+ARG GIT_TAG
+
 # Build
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o manager .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-X internal/version.gitTag=$GIT_TAG" -a -o manager .
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
