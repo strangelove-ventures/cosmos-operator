@@ -34,6 +34,8 @@ type RevisionDiff[T Resource] struct {
 	creates, deletes, updates []T
 }
 
+// TODO: Delete when PVC PR merged
+
 // NewOrdinalRevisionDiff creates a valid RevisionDiff where ordinal positioning is required.
 func NewOrdinalRevisionDiff[T Resource](ordinalAnnotationKey string, revisionLabelKey string, current, want []T) *RevisionDiff[T] {
 	return newRevisionDiff(ordinalAnnotationKey, revisionLabelKey, current, want, false)
