@@ -1,14 +1,15 @@
 package version
 
-// version is the version of the build.
+// gitTag is the gitTag of the build.
 // Set via ldflags at build time.
+// Used for docker image.
 // See Dockerfile, Makefile, and .github/workflows/release.yaml.
-var version = ""
+var gitTag = ""
 
-// Get returns the version of the build or "latest" if the version is empty.
+// Get returns the gitTag of the build or "latest" if the gitTag is empty.
 func Get() string {
-	if version == "" {
+	if gitTag == "" {
 		return "latest"
 	}
-	return version
+	return gitTag
 }

@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"runtime/debug"
 
 	"github.com/go-logr/zapr"
 	"github.com/pkg/profile"
@@ -28,6 +27,7 @@ import (
 	"github.com/spf13/viper"
 	"github.com/strangelove-ventures/cosmos-operator/controllers"
 	"github.com/strangelove-ventures/cosmos-operator/internal/fullnode"
+	"github.com/strangelove-ventures/cosmos-operator/internal/version"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -61,17 +61,6 @@ func init() {
 	//+kubebuilder:scaffold:scheme
 }
 
-var vcsRevision = func() string {
-	if info, ok := debug.ReadBuildInfo(); ok {
-		for _, setting := range info.Settings {
-			if setting.Key == "vcs.revision" {
-				return setting.Value
-			}
-		}
-	}
-	return ""
-}()
-
 func main() {
 	root := rootCmd()
 
@@ -96,7 +85,7 @@ func rootCmd() *cobra.Command {
 	root := &cobra.Command{
 		Short:        "Run the operator",
 		Use:          "manager",
-		Version:      vcsRevision,
+		Version:      version.Get(),
 		RunE:         startManager,
 		SilenceUsage: true,
 	}
@@ -203,7 +192,7 @@ func startManager(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("unable to set up ready check: %w", err)
 	}
 
-	setupLog.Info("starting manager")
+	setupLog.Info("Starting Cosmos Operator manager", "version", version.Get())
 	if err := mgr.Start(ctx); err != nil {
 		return fmt.Errorf("problem running manager: %w", err)
 	}
