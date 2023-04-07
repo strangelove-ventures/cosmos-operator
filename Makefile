@@ -95,7 +95,7 @@ docker-prerelease: ## Build and push a prerelease docker image.
 
 .PHONY: docker-build
 docker-build: test ## Build docker image with the manager.
-	docker build -t ${IMG} .
+	docker build -t ${IMG} --build-arg VERSION=$(shell echo ${IMG} | awk -F: '{print $$2}') .
 
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.

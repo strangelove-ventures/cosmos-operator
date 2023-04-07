@@ -15,8 +15,10 @@ COPY api/ api/
 COPY controllers/ controllers/
 COPY internal/ internal/
 
+ARG VERSION
+
 # Build
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o manager .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-X github.com/strangelove-ventures/cosmos-operator/internal/version.version=$VERSION" -a -o manager .
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
