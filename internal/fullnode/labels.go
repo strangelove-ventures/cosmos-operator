@@ -13,6 +13,7 @@ const (
 	networkLabel = "cosmos.strange.love/network"
 )
 
+// TODO: Delete me once PVC merged in
 // SelectorLabels returns the labels used in selector operations.
 func SelectorLabels(crd *cosmosv1.CosmosFullNode) client.MatchingLabels {
 	return map[string]string{kube.NameLabel: appName(crd)}
