@@ -47,7 +47,7 @@ func TestBuildPods(t *testing.T) {
 
 		pod, err := NewPodBuilder(crd).WithOrdinal(0).Build()
 		require.NoError(t, err)
-		require.Equal(t, pod, pods[0])
+		require.Equal(t, pod, pods[0].Object())
 	})
 
 	t.Run("instance overrides", func(t *testing.T) {
