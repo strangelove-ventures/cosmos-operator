@@ -12,16 +12,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// Purposefully omitting deletes.
-type svcDiffer interface {
-	Creates() []*corev1.Service
-	Updates() []*corev1.Service
-}
-
 // ServiceControl creates or updates Services.
 type ServiceControl struct {
-	client      Client
-	diffFactory func(current, want []*corev1.Service) svcDiffer
+	client Client
 }
 
 func NewServiceControl(client Client) ServiceControl {

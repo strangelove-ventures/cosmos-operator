@@ -12,17 +12,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type configmapDiffer interface {
-	Creates() []*corev1.ConfigMap
-	Updates() []*corev1.ConfigMap
-	Deletes() []*corev1.ConfigMap
-}
-
 // ConfigMapControl creates or updates configmaps.
 type ConfigMapControl struct {
-	build       func(*cosmosv1.CosmosFullNode, ExternalAddresses) ([]diff.Resource[*corev1.ConfigMap], error)
-	client      Client
-	diffFactory func(current, want []*corev1.ConfigMap) configmapDiffer
+	build  func(*cosmosv1.CosmosFullNode, ExternalAddresses) ([]diff.Resource[*corev1.ConfigMap], error)
+	client Client
 }
 
 // NewConfigMapControl returns a valid ConfigMapControl.
