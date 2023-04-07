@@ -15,10 +15,6 @@ const (
 	NameLabel       = "app.kubernetes.io/name"
 	VersionLabel    = "app.kubernetes.io/version"
 	ComponentLabel  = "app.kubernetes.io/component"
-
-	// TODO: delete me once pvc refactor merged.
-	// RevisionLabel denotes the resource's revision, typically a hex-encoded hash. Used to detect resource changes for updates.
-	RevisionLabel = "app.kubernetes.io/revision"
 )
 
 // Fields.
