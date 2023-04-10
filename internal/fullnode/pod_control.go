@@ -47,7 +47,7 @@ func NewPodControl(client Client, filter PodFilter) PodControl {
 
 // Reconcile is the control loop for pods. The bool return value, if true, indicates the controller should requeue
 // the request.
-func (pc PodControl) Reconcile(ctx context.Context, reporter kube.Reporter, crd *cosmosv1.CosmosFullNode) (bool, kube.ReconcileError) {
+func (pc PodControl) Reconcile(ctx context.Context, reporter kube.Reporter, crd *cosmosv1.CosmosFullNode, cksums ConfigChecksums) (bool, kube.ReconcileError) {
 	var pods corev1.PodList
 	if err := pc.client.List(ctx, &pods,
 		client.InNamespace(crd.Namespace),
@@ -56,7 +56,7 @@ func (pc PodControl) Reconcile(ctx context.Context, reporter kube.Reporter, crd 
 		return false, kube.TransientError(fmt.Errorf("list existing pods: %w", err))
 	}
 
-	wantPods, err := BuildPods(crd)
+	wantPods, err := BuildPods(crd, cksums)
 	if err != nil {
 		return false, kube.UnrecoverableError(fmt.Errorf("build pods: %w", err))
 	}

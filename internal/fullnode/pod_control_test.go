@@ -40,7 +40,7 @@ func TestPodControl_Reconcile(t *testing.T) {
 		crd.Namespace = namespace
 		crd.Spec.Replicas = 1
 
-		pods, err := BuildPods(&crd)
+		pods, err := BuildPods(&crd, nil)
 		require.NoError(t, err)
 		existing := diff.New(nil, pods).Creates()[0]
 
@@ -50,7 +50,7 @@ func TestPodControl_Reconcile(t *testing.T) {
 		}
 
 		control := NewPodControl(&mClient, panicPodFilter)
-		requeue, err := control.Reconcile(ctx, nopReporter, &crd)
+		requeue, err := control.Reconcile(ctx, nopReporter, &crd, nil)
 		require.NoError(t, err)
 		require.False(t, requeue)
 
@@ -79,7 +79,7 @@ func TestPodControl_Reconcile(t *testing.T) {
 		}
 
 		control := NewPodControl(&mClient, panicPodFilter)
-		requeue, err := control.Reconcile(ctx, nopReporter, &crd)
+		requeue, err := control.Reconcile(ctx, nopReporter, &crd, nil)
 		require.NoError(t, err)
 		require.True(t, requeue)
 
@@ -98,7 +98,7 @@ func TestPodControl_Reconcile(t *testing.T) {
 		crd.Namespace = namespace
 		crd.Spec.Replicas = 5
 
-		pods, err := BuildPods(&crd)
+		pods, err := BuildPods(&crd, nil)
 		require.NoError(t, err)
 		existing := diff.New(nil, pods).Creates()
 
@@ -127,7 +127,7 @@ func TestPodControl_Reconcile(t *testing.T) {
 
 		// Trigger updates
 		crd.Spec.PodTemplate.Image = "new-image"
-		requeue, err := control.Reconcile(ctx, nopReporter, &crd)
+		requeue, err := control.Reconcile(ctx, nopReporter, &crd, nil)
 		require.NoError(t, err)
 		require.True(t, requeue)
 
