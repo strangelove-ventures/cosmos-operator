@@ -132,7 +132,7 @@ type FullNodeStatus struct {
 	// +optional
 	SelfHealing SelfHealingStatus `json:"selfHealing,omitempty"`
 
-	// Persistent peer node identifiers.
+	// Persistent peer addresses.
 	// +optional
 	Peers []string `json:"peers"`
 }

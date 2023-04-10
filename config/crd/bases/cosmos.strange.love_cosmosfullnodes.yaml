@@ -5803,7 +5803,7 @@ spec:
                 format: int64
                 type: integer
               peers:
-                description: Persistent peer node identifiers.
+                description: Persistent peer addresses.
                 items:
                   type: string
                 type: array
