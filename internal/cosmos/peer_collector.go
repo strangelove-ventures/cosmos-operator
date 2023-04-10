@@ -30,9 +30,9 @@ func NewPeerCollector(client Lister, tmClient TendermintStatuser) *PeerCollector
 	}
 }
 
-// CollectPeers queries pods for their tendermint/cometbft peer addresses.
+// CollectAddresses queries pods for their tendermint/cometbft peer addresses.
 // Any error can be treated as transient and retried.
-func (collector PeerCollector) CollectPeers(ctx context.Context, crd *cosmosv1.CosmosFullNode) ([]string, error) {
+func (collector PeerCollector) CollectAddresses(ctx context.Context, crd *cosmosv1.CosmosFullNode) ([]string, error) {
 	var pods corev1.PodList
 	if err := collector.client.List(ctx, &pods,
 		client.InNamespace(crd.Namespace),

@@ -21,7 +21,7 @@ func (fn mockLister) List(ctx context.Context, list client.ObjectList, opts ...c
 	return fn(ctx, list, opts...)
 }
 
-func TestPeerCollector(t *testing.T) {
+func TestPeerCollector_CollectAddresses(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
@@ -70,7 +70,7 @@ func TestPeerCollector(t *testing.T) {
 
 		collector := NewPeerCollector(lister, statuser)
 
-		got, err := collector.CollectPeers(ctx, &crd)
+		got, err := collector.CollectAddresses(ctx, &crd)
 		require.NoError(t, err)
 
 		require.Equal(t, []string{"foo@0.0.0.0:26656", "bar@12.34.56.78:26656"}, got)
@@ -88,7 +88,7 @@ func TestPeerCollector(t *testing.T) {
 
 		collector := NewPeerCollector(lister, statuser)
 
-		_, err := collector.CollectPeers(ctx, &crd)
+		_, err := collector.CollectAddresses(ctx, &crd)
 
 		require.Error(t, err)
 		require.EqualError(t, err, "tendermint error")
@@ -104,7 +104,7 @@ func TestPeerCollector(t *testing.T) {
 		})
 
 		collector := NewPeerCollector(lister, statuser)
-		_, err := collector.CollectPeers(ctx, &crd)
+		_, err := collector.CollectAddresses(ctx, &crd)
 
 		require.Error(t, err)
 		require.EqualError(t, err, "list error")
