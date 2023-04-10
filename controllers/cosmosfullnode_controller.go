@@ -168,7 +168,7 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	peers, perr := r.peerCollector.CollectAddresses(ctx, crd)
 	if perr != nil {
-		reporter.RecordError("PeerAddressCollection", perr)
+		logger.Info("Requeueing due to error collecting peer addresses", "error", perr)
 		return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
 	}
 	crd.Status.Peers = peers
