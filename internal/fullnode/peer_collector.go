@@ -1,4 +1,4 @@
-package cosmos
+package fullnode
 
 import (
 	"context"
@@ -6,31 +6,27 @@ import (
 	"net/url"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	"github.com/strangelove-ventures/cosmos-operator/internal/cosmos"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	"golang.org/x/sync/errgroup"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// Lister can list resources, subset of client.Client.
-type Lister interface {
-	List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error
-}
-
 // PeerCollector finds and collects
 type PeerCollector struct {
 	client   Lister
-	tmClient TendermintStatuser
+	tmClient cosmos.TendermintStatuser
 }
 
-func NewPeerCollector(client Lister, tmClient TendermintStatuser) *PeerCollector {
+func NewPeerCollector(client Lister, tmClient cosmos.TendermintStatuser) *PeerCollector {
 	return &PeerCollector{
 		client:   client,
 		tmClient: tmClient,
 	}
 }
 
-// CollectAddresses queries pods for their tendermint/cometbft peer addresses.
+// CollectAddresses queries pods for their tendermint/cometbft peer addresses and returns them in <node_id>@<ip:port> format.
 // Any error can be treated as transient and retried.
 func (collector PeerCollector) CollectAddresses(ctx context.Context, crd *cosmosv1.CosmosFullNode) ([]string, error) {
 	var pods corev1.PodList
@@ -47,7 +43,7 @@ func (collector PeerCollector) CollectAddresses(ctx context.Context, crd *cosmos
 		i := i
 		eg.Go(func() error {
 			pod := pods.Items[i]
-			host := fmt.Sprintf("http://%s:26657", pod.Status.PodIP)
+			host := fmt.Sprintf("http://%s:%d", pod.Status.PodIP, rpcPort)
 			status, err := collector.tmClient.Status(ctx, host)
 			if err != nil {
 				return err

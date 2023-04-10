@@ -1,4 +1,4 @@
-package cosmos
+package fullnode
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	"github.com/strangelove-ventures/cosmos-operator/internal/cosmos"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -19,6 +20,12 @@ func (fn mockLister) List(ctx context.Context, list client.ObjectList, opts ...c
 		panic("context is nil")
 	}
 	return fn(ctx, list, opts...)
+}
+
+type mockStatuser func(ctx context.Context, rpcHost string) (cosmos.TendermintStatus, error)
+
+func (fn mockStatuser) Status(ctx context.Context, rpcHost string) (cosmos.TendermintStatus, error) {
+	return fn(ctx, rpcHost)
 }
 
 func TestPeerCollector_CollectAddresses(t *testing.T) {
@@ -49,9 +56,9 @@ func TestPeerCollector_CollectAddresses(t *testing.T) {
 			return nil
 		})
 
-		statuser := mockStatuser(func(ctx context.Context, rpcHost string) (TendermintStatus, error) {
+		statuser := mockStatuser(func(ctx context.Context, rpcHost string) (cosmos.TendermintStatus, error) {
 			require.NotNil(t, ctx)
-			var status TendermintStatus
+			var status cosmos.TendermintStatus
 
 			switch rpcHost {
 			case "http://1.1.1.1:26657":
@@ -82,8 +89,8 @@ func TestPeerCollector_CollectAddresses(t *testing.T) {
 			return nil
 		})
 
-		statuser := mockStatuser(func(ctx context.Context, rpcHost string) (TendermintStatus, error) {
-			return TendermintStatus{}, errors.New("tendermint error")
+		statuser := mockStatuser(func(ctx context.Context, rpcHost string) (cosmos.TendermintStatus, error) {
+			return cosmos.TendermintStatus{}, errors.New("tendermint error")
 		})
 
 		collector := NewPeerCollector(lister, statuser)
@@ -99,7 +106,7 @@ func TestPeerCollector_CollectAddresses(t *testing.T) {
 			return errors.New("list error")
 		})
 
-		statuser := mockStatuser(func(ctx context.Context, rpcHost string) (TendermintStatus, error) {
+		statuser := mockStatuser(func(ctx context.Context, rpcHost string) (cosmos.TendermintStatus, error) {
 			panic("should not be called")
 		})
 
