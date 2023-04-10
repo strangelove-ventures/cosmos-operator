@@ -2,6 +2,7 @@ package fullnode
 
 import (
 	"fmt"
+	"strconv"
 	"testing"
 
 	"github.com/samber/lo"
@@ -10,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func TestBuildPods(t *testing.T) {
@@ -18,7 +20,8 @@ func TestBuildPods(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
 		crd := &cosmosv1.CosmosFullNode{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "agoric",
+				Name:      "agoric",
+				Namespace: "test",
 			},
 			Spec: cosmosv1.FullNodeSpec{
 				Replicas:  5,
@@ -30,13 +33,19 @@ func TestBuildPods(t *testing.T) {
 			},
 		}
 
-		pods, err := BuildPods(crd)
+		cksums := make(ConfigChecksums)
+		for i := 0; i < int(crd.Spec.Replicas); i++ {
+			cksums[client.ObjectKey{Namespace: crd.Namespace, Name: fmt.Sprintf("agoric-%d", i)}] = strconv.Itoa(i)
+		}
+
+		pods, err := BuildPods(crd, cksums)
 		require.NoError(t, err)
 		require.Equal(t, 5, len(pods))
 
 		for i, r := range pods {
-			require.Equal(t, int64(i), r.Ordinal())
-			require.NotEmpty(t, r.Revision())
+			require.Equal(t, int64(i), r.Ordinal(), i)
+			require.NotEmpty(t, r.Revision(), i)
+			require.Equal(t, strconv.Itoa(i), r.Object().Annotations["cosmos.strange.love/config-checksum"])
 		}
 
 		want := lo.Map([]int{0, 1, 2, 3, 4}, func(_ int, i int) string {
@@ -47,7 +56,7 @@ func TestBuildPods(t *testing.T) {
 
 		pod, err := NewPodBuilder(crd).WithOrdinal(0).Build()
 		require.NoError(t, err)
-		require.Equal(t, pod, pods[0].Object())
+		require.Equal(t, pod.Spec, pods[0].Object().Spec)
 	})
 
 	t.Run("instance overrides", func(t *testing.T) {
@@ -64,7 +73,7 @@ func TestBuildPods(t *testing.T) {
 			},
 		}
 
-		pods, err := BuildPods(crd)
+		pods, err := BuildPods(crd, nil)
 		require.NoError(t, err)
 		require.Equal(t, 4, len(pods))
 
@@ -92,7 +101,7 @@ func TestBuildPods(t *testing.T) {
 			},
 		}
 
-		pods, err := BuildPods(crd)
+		pods, err := BuildPods(crd, nil)
 		require.NoError(t, err)
 		require.Equal(t, 4, len(pods))
 

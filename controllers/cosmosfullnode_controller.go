@@ -132,13 +132,13 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		p2pAddresses = make(fullnode.ExternalAddresses)
 		errs.Append(err)
 	}
-	err = r.configMapControl.Reconcile(ctx, logger, crd, p2pAddresses)
+	configCksums, err := r.configMapControl.Reconcile(ctx, logger, crd, p2pAddresses)
 	if err != nil {
 		errs.Append(err)
 	}
 
 	// Reconcile pods.
-	podRequeue, err := r.podControl.Reconcile(ctx, reporter, crd)
+	podRequeue, err := r.podControl.Reconcile(ctx, reporter, crd, configCksums)
 	if err != nil {
 		errs.Append(err)
 	}
