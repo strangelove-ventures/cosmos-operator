@@ -168,11 +168,9 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	peers, perr := r.peerCollector.CollectAddresses(ctx, crd)
 	if perr != nil {
-		reporter.Error(perr, "Failed to collect peer addresses")
 		reporter.RecordError("PeerAddressCollection", perr)
 		return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
 	}
-	fmt.Println("PEERS", peers)
 	crd.Status.Peers = peers
 
 	crd.Status.Phase = cosmosv1.FullNodePhaseCompete
@@ -202,6 +200,7 @@ func (r *CosmosFullNodeReconciler) updateStatus(ctx context.Context, crd *cosmos
 		status.ObservedGeneration = crd.Status.ObservedGeneration
 		status.Phase = crd.Status.Phase
 		status.StatusMessage = crd.Status.StatusMessage
+		status.Peers = crd.Status.Peers
 	}); err != nil {
 		log.FromContext(ctx).Error(err, "Failed to patch status")
 	}
