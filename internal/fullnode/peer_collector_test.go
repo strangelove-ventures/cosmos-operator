@@ -22,9 +22,9 @@ func (fn mockLister) List(ctx context.Context, list client.ObjectList, opts ...c
 	return fn(ctx, list, opts...)
 }
 
-type mockStatuser func(ctx context.Context, rpcHost string) (cosmos.TendermintStatus, error)
+type mockTmClient func(ctx context.Context, rpcHost string) (cosmos.TendermintStatus, error)
 
-func (fn mockStatuser) Status(ctx context.Context, rpcHost string) (cosmos.TendermintStatus, error) {
+func (fn mockTmClient) Status(ctx context.Context, rpcHost string) (cosmos.TendermintStatus, error) {
 	return fn(ctx, rpcHost)
 }
 
@@ -56,7 +56,7 @@ func TestPeerCollector_CollectAddresses(t *testing.T) {
 			return nil
 		})
 
-		statuser := mockStatuser(func(ctx context.Context, rpcHost string) (cosmos.TendermintStatus, error) {
+		tmClient := mockTmClient(func(ctx context.Context, rpcHost string) (cosmos.TendermintStatus, error) {
 			require.NotNil(t, ctx)
 			var status cosmos.TendermintStatus
 
@@ -75,7 +75,7 @@ func TestPeerCollector_CollectAddresses(t *testing.T) {
 			}
 		})
 
-		collector := NewPeerCollector(lister, statuser)
+		collector := NewPeerCollector(lister, tmClient)
 
 		got, err := collector.CollectAddresses(ctx, &crd)
 		require.NoError(t, err)
@@ -89,11 +89,11 @@ func TestPeerCollector_CollectAddresses(t *testing.T) {
 			return nil
 		})
 
-		statuser := mockStatuser(func(ctx context.Context, rpcHost string) (cosmos.TendermintStatus, error) {
+		tmClient := mockTmClient(func(ctx context.Context, rpcHost string) (cosmos.TendermintStatus, error) {
 			return cosmos.TendermintStatus{}, errors.New("tendermint error")
 		})
 
-		collector := NewPeerCollector(lister, statuser)
+		collector := NewPeerCollector(lister, tmClient)
 
 		_, err := collector.CollectAddresses(ctx, &crd)
 
@@ -106,11 +106,11 @@ func TestPeerCollector_CollectAddresses(t *testing.T) {
 			return errors.New("list error")
 		})
 
-		statuser := mockStatuser(func(ctx context.Context, rpcHost string) (cosmos.TendermintStatus, error) {
+		tmClient := mockTmClient(func(ctx context.Context, rpcHost string) (cosmos.TendermintStatus, error) {
 			panic("should not be called")
 		})
 
-		collector := NewPeerCollector(lister, statuser)
+		collector := NewPeerCollector(lister, tmClient)
 		_, err := collector.CollectAddresses(ctx, &crd)
 
 		require.Error(t, err)
