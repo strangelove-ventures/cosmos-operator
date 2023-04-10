@@ -170,12 +170,12 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	if perr != nil {
 		reporter.Error(perr, "Failed to collect peer addresses")
 		reporter.RecordError("PeerAddressCollection", perr)
-		return ctrl.Result{RequeueAfter: 15 * time.Second}, nil
+		return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
 	}
-
+	fmt.Println("PEERS", peers)
 	crd.Status.Peers = peers
-	crd.Status.Phase = cosmosv1.FullNodePhaseCompete
 
+	crd.Status.Phase = cosmosv1.FullNodePhaseCompete
 	return finishResult, nil
 }
 
