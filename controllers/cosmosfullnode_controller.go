@@ -129,7 +129,7 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		p2pAddresses = make(fullnode.ExternalAddresses)
 		errs.Append(err)
 	}
-	err = r.configMapControl.Reconcile(ctx, logger, crd, p2pAddresses)
+	_, err = r.configMapControl.Reconcile(ctx, logger, crd, p2pAddresses)
 	if err != nil {
 		errs.Append(err)
 	}
