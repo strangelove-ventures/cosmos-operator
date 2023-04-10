@@ -33,14 +33,14 @@ thus minimizing human intervention and human error.
 
 Status: v1, stable
 
-CosmosFullNode is the flagship CRD. Its purpose is to deploy highly-available, fault-tolerant RPC nodes. 
-It will eventually support persistent peers and seeds, but is currently only suitable for RPC and validator sentries.
+CosmosFullNode is the flagship CRD. Its purpose is to deploy highly-available, fault-tolerant blockchain nodes. 
 
-The CosmosFullNode controller acts like a hybrid between a StatefulSet and a Deployment.
-Like a StatefulSet, each pod has a corresponding persistent volume to manage blockchain data.
-But, you can also configure rolling updates similar to a Deployment.
+The CosmosFullNode controller is like a StatefulSet specific to running Cosmos SDK blockchains.
 
-As of this writing, Strangelove has been running CosmosFullNode in production for many weeks.
+A CosmosFullNode can be configured to run as an RPC node, a validator sentry, or a seed node. All configurations can
+be used as persistent peers.
+
+As of this writing, Strangelove has been running CosmosFullNode in production for several months.
 
 [Minimal example yaml](./config/samples/cosmos_v1_cosmosfullnode.yaml)
 
@@ -51,32 +51,26 @@ As of this writing, Strangelove has been running CosmosFullNode in production fo
 Disclaimer: Strangelove has not committed to these enhancements. They represent ideas that may or may not come to fruition. 
 Currently, is no timeline for any of these potential features.
 
-* Scheduled upgrades. Set a halt height and image version. The controller performs a rolling update with the new image version after the committed halt height.
-* ~~Support configuration suitable for validator sentries.~~ Done
-* Reliable, persistent peer support.
-* Support configuration suitable for seeds.
-* Quicker p2p discovery using private peers. 
-* Advanced readiness probe behavior. (The tendermint rpc status endpoint is not always reliable.)
-* Automatic rollout for PVC resizing. (Currently human intervention required to restart pods after PVC resized.)
-* Automatic PVC resizing. The controller increases PVC size once storage reaches a configured threshold; e.g. 80% full. (This may be a different CRD.)
-* Bootstrap config using the chain registry. Query the chain registry and set config based on the registry.
-* Validate p2p such as peers, seeds, etc. and filter out non-responsive peers.
-* HPA support.
-* Automatic upgrades. Controller monitors governance and performs upgrade without any human intervention.
-* Corrupt data recovery. Detect when a PVC may have corrupted data. Restore data from a recent VolumeSnapshot.
-* ~~Safe, automatic backups. Create periodic VolumeSnapshots of PVCs while minimizing chance of data corruption during snapshot creation.~~
+- [ ] Scheduled upgrades. Set a halt height and image version. The controller performs a rolling update with the new image version after the committed halt height.
+- [x] Support configuration suitable for validator sentries.
+- [x] Reliable, persistent peer support.
+- [ ] Quicker p2p discovery using private peers. 
+- [ ] Advanced readiness probe behavior. (The tendermint rpc status endpoint is not always reliable.)
+- [x] Automatic rollout for PVC resizing. (Currently human intervention required to restart pods after PVC resized.) Requires ExpandInUsePersistentVolumes feature gate.
+- [x] Automatic PVC resizing. The controller increases PVC size once storage reaches a configured threshold; e.g. 80% full.
+- [ ] Bootstrap config using the chain registry. Query the chain registry and set config based on the registry.
+- [ ] Validate p2p such as peers, seeds, etc. and filter out non-responsive peers.
+- [ ] HPA support.
+- [ ] Automatic upgrades. Controller monitors governance and performs upgrade without any human intervention.
+- [ ] Corrupt data recovery. Detect when a PVC may have corrupted data. Restore data from a recent VolumeSnapshot.
+- [x] Safe, automatic backups. Create periodic VolumeSnapshots of PVCs while minimizing chance of data corruption during snapshot creation.
 
 ### Why not a StatefulSet?
+Each pod requires different config, such as peer settings in config.toml and mounted node keys. Therefore, a blanket
+template as found in StatefulSet did not suffice.
 
-CosmosFullNode gives you more control over individual pod and pvc pairs vs. a StatefulSet. You can configure pod/pvc 
-pairs differently using the `instanceOverrides` feature. For example, data may become corrupt and the human operator needs 
-to tweak or restore data.
-
-Additionally, each pod requires slightly different config (such as peer settings in config.toml). Therefore, a blanket 
-template as found in StatefulSet will not suffice.
-
-In summary, we wanted precise control over resources so using an existing controller such as StatefulSet, Deployment, 
-ReplicaSet, etc. was not a good fit.
+Additionally, CosmosFullNode gives you more control over individual pod and pvc pairs vs. a StatefulSet to help
+the human operator debug and recover from situations such as a corrupted PVCs.
 
 # Support CRDs
 
