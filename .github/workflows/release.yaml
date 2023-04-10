@@ -52,7 +52,7 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          build-args: VERSION=${{ steps.meta.outputs.tags }}
+          build-args: VERSION=${{ steps.meta.outputs.version }}
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master

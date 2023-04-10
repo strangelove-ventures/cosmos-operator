@@ -105,6 +105,14 @@ func rootCmd() *cobra.Command {
 
 	// Add subcommands here
 	root.AddCommand(healthcheckCmd())
+	root.AddCommand(&cobra.Command{
+		Short: "Print the version",
+		Use:   "version",
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Println("App Version:", version.AppVersion())
+			fmt.Println("Docker Tag:", version.DockerTag())
+		},
+	})
 
 	return root
 }
