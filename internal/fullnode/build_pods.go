@@ -11,9 +11,6 @@ const configChecksumAnnotation = "cosmos.strange.love/config-checksum"
 
 // BuildPods creates the final state of pods given the crd.
 func BuildPods(crd *cosmosv1.CosmosFullNode, cksums ConfigChecksums) ([]diff.Resource[*corev1.Pod], error) {
-	//if cksums == nil {
-	//	cksums = make(ConfigChecksums)
-	//}
 	var (
 		builder   = NewPodBuilder(crd)
 		overrides = crd.Spec.InstanceOverrides
