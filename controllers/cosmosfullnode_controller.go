@@ -45,6 +45,7 @@ type CosmosFullNodeReconciler struct {
 
 	configMapControl fullnode.ConfigMapControl
 	nodeKeyControl   fullnode.NodeKeyControl
+	peerCollector    *fullnode.PeerCollector
 	podControl       fullnode.PodControl
 	pvcControl       fullnode.PVCControl
 	recorder         record.EventRecorder
@@ -55,12 +56,14 @@ type CosmosFullNodeReconciler struct {
 // NewFullNode returns a valid CosmosFullNode controller.
 func NewFullNode(client client.Client, recorder record.EventRecorder, statusClient *fullnode.StatusClient) *CosmosFullNodeReconciler {
 	var (
-		podFilter = cosmos.NewPodFilter(cosmos.NewTendermintClient(sharedHTTPClient))
+		tmClient  = cosmos.NewTendermintClient(sharedHTTPClient)
+		podFilter = cosmos.NewPodFilter(tmClient)
 	)
 	return &CosmosFullNodeReconciler{
 		Client:           client,
 		configMapControl: fullnode.NewConfigMapControl(client),
 		nodeKeyControl:   fullnode.NewNodeKeyControl(client),
+		peerCollector:    fullnode.NewPeerCollector(client, tmClient),
 		podControl:       fullnode.NewPodControl(client, podFilter),
 		pvcControl:       fullnode.NewPVCControl(client),
 		recorder:         recorder,
@@ -163,6 +166,13 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{RequeueAfter: 15 * time.Second}, nil
 	}
 
+	peers, perr := r.peerCollector.CollectAddresses(ctx, crd)
+	if perr != nil {
+		logger.Info("Requeueing due to error collecting peer addresses", "error", perr)
+		return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
+	}
+	crd.Status.Peers = peers
+
 	crd.Status.Phase = cosmosv1.FullNodePhaseCompete
 	return finishResult, nil
 }
@@ -190,6 +200,7 @@ func (r *CosmosFullNodeReconciler) updateStatus(ctx context.Context, crd *cosmos
 		status.ObservedGeneration = crd.Status.ObservedGeneration
 		status.Phase = crd.Status.Phase
 		status.StatusMessage = crd.Status.StatusMessage
+		status.Peers = crd.Status.Peers
 	}); err != nil {
 		log.FromContext(ctx).Error(err, "Failed to patch status")
 	}

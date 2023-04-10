@@ -131,6 +131,10 @@ type FullNodeStatus struct {
 	// Status set by the SelfHealing controller.
 	// +optional
 	SelfHealing SelfHealingStatus `json:"selfHealing,omitempty"`
+
+	// Persistent peer addresses.
+	// +optional
+	Peers []string `json:"peers"`
 }
 
 type FullNodeSnapshotStatus struct {
