@@ -6,6 +6,7 @@ import (
 
 	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	"github.com/strangelove-ventures/cosmos-operator/internal/diff"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,15 +34,20 @@ func TestBuildPods(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 5, len(pods))
 
+		for i, r := range pods {
+			require.Equal(t, int64(i), r.Ordinal())
+			require.NotEmpty(t, r.Revision())
+		}
+
 		want := lo.Map([]int{0, 1, 2, 3, 4}, func(_ int, i int) string {
 			return fmt.Sprintf("agoric-%d", i)
 		})
-		got := lo.Map(pods, func(pod *corev1.Pod, _ int) string { return pod.Name })
+		got := lo.Map(pods, func(pod diff.Resource[*corev1.Pod], _ int) string { return pod.Object().Name })
 		require.Equal(t, want, got)
 
 		pod, err := NewPodBuilder(crd).WithOrdinal(0).Build()
 		require.NoError(t, err)
-		require.Equal(t, pod, pods[0])
+		require.Equal(t, pod, pods[0].Object())
 	})
 
 	t.Run("instance overrides", func(t *testing.T) {
@@ -65,7 +71,7 @@ func TestBuildPods(t *testing.T) {
 		want := lo.Map([]int{0, 1, 3, 5}, func(i int, _ int) string {
 			return fmt.Sprintf("agoric-%d", i)
 		})
-		got := lo.Map(pods, func(pod *corev1.Pod, _ int) string { return pod.Name })
+		got := lo.Map(pods, func(pod diff.Resource[*corev1.Pod], _ int) string { return pod.Object().Name })
 		require.Equal(t, want, got)
 	})
 
@@ -93,7 +99,7 @@ func TestBuildPods(t *testing.T) {
 		want := lo.Map([]int{0, 3, 4, 5}, func(i int, _ int) string {
 			return fmt.Sprintf("agoric-%d", i)
 		})
-		got := lo.Map(pods, func(pod *corev1.Pod, _ int) string { return pod.Name })
+		got := lo.Map(pods, func(pod diff.Resource[*corev1.Pod], _ int) string { return pod.Object().Name })
 		require.Equal(t, want, got)
 	})
 }

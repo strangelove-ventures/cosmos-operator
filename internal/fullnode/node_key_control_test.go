@@ -12,9 +12,7 @@ import (
 func TestNodeKeyControl_Reconcile(t *testing.T) {
 	t.Parallel()
 
-	type (
-		mockNodeKeyClient = mockClient[*corev1.Secret]
-	)
+	type mockNodeKeyClient = mockClient[*corev1.Secret]
 	const namespace = "default"
 	ctx := context.Background()
 

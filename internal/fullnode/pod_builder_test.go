@@ -56,9 +56,6 @@ func TestPodBuilder(t *testing.T) {
 		require.Equal(t, "test", pod.Namespace)
 		require.Equal(t, "osmosis-5", pod.Name)
 
-		require.NotEmpty(t, pod.Labels["app.kubernetes.io/revision"])
-		// The fuzz test below tests this property.
-		delete(pod.Labels, kube.RevisionLabel)
 		wantLabels := map[string]string{
 			"app.kubernetes.io/instance":   "osmosis-5",
 			"app.kubernetes.io/component":  "CosmosFullNode",
@@ -68,14 +65,10 @@ func TestPodBuilder(t *testing.T) {
 			"cosmos.strange.love/network":  "mainnet",
 		}
 		require.Equal(t, wantLabels, pod.Labels)
+		require.NotNil(t, pod.Annotations)
+		require.Empty(t, pod.Annotations)
 
 		require.EqualValues(t, 30, *pod.Spec.TerminationGracePeriodSeconds)
-
-		wantAnnotations := map[string]string{
-			"app.kubernetes.io/ordinal": "5",
-			// TODO (nix - 8/2/22) Prom metrics here
-		}
-		require.Equal(t, wantAnnotations, pod.Annotations)
 
 		sc := pod.Spec.SecurityContext
 		require.EqualValues(t, 1025, *sc.RunAsUser)
@@ -145,7 +138,7 @@ func TestPodBuilder(t *testing.T) {
 		optCrd := defaultCRD()
 
 		optCrd.Spec.PodTemplate.Metadata.Labels = map[string]string{"custom": "label", kube.NameLabel: "should not see me"}
-		optCrd.Spec.PodTemplate.Metadata.Annotations = map[string]string{"custom": "annotation", kube.OrdinalAnnotation: "should not see me"}
+		optCrd.Spec.PodTemplate.Metadata.Annotations = map[string]string{"custom": "annotation"}
 
 		optCrd.Spec.PodTemplate.Affinity = &corev1.Affinity{
 			PodAffinity: &corev1.PodAffinity{
@@ -169,8 +162,6 @@ func TestPodBuilder(t *testing.T) {
 		require.Equal(t, "osmosis", pod.Labels[kube.NameLabel])
 
 		require.Equal(t, "annotation", pod.Annotations["custom"])
-		// Operator label takes precedence.
-		require.Equal(t, "9", pod.Annotations[kube.OrdinalAnnotation])
 
 		require.Equal(t, optCrd.Spec.PodTemplate.Affinity, pod.Spec.Affinity)
 		require.Equal(t, optCrd.Spec.PodTemplate.Tolerations, pod.Spec.Tolerations)
@@ -511,47 +502,6 @@ gaiad start --home /home/operator/cosmos`
 		initConts := lo.SliceToMap(pod.Spec.InitContainers, func(c corev1.Container) (string, corev1.Container) { return c.Name, c })
 		require.ElementsMatch(t, []string{"chain-init", "new-init", "genesis-init", "config-merge"}, lo.Keys(initConts))
 		require.Equal(t, "foo:latest", initConts["chain-init"].Image)
-	})
-}
-
-func FuzzPodBuilderBuild(f *testing.F) {
-	crd := defaultCRD()
-	f.Add("busybox:latest", "cpu")
-	f.Fuzz(func(t *testing.T, image, resourceName string) {
-		crd.Spec.PodTemplate.Image = image
-		crd.Spec.PodTemplate.Resources = corev1.ResourceRequirements{
-			Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceName(resourceName): resource.MustParse("1")},
-		}
-		pod1, err := NewPodBuilder(&crd).Build()
-		require.NoError(t, err)
-		pod2, err := NewPodBuilder(&crd).Build()
-		require.NoError(t, err)
-
-		require.NotEmpty(t, pod1.Labels[kube.RevisionLabel], image)
-		require.NotEmpty(t, pod2.Labels[kube.RevisionLabel], image)
-
-		require.Equal(t, pod1.Labels[kube.RevisionLabel], pod2.Labels[kube.RevisionLabel], image)
-
-		crd.Spec.PodTemplate.Resources = corev1.ResourceRequirements{
-			Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceName(resourceName): resource.MustParse("2")}, // Changed value here.
-		}
-		pod3, err := NewPodBuilder(&crd).Build()
-		require.NoError(t, err)
-
-		require.NotEqual(t, pod1.Labels[kube.RevisionLabel], pod3.Labels[kube.RevisionLabel])
-
-		crd.Spec.ChainSpec.ChainID = "mychain-1"
-		crd.Spec.ChainSpec.Network = "newnetwork"
-		pod4, err := NewPodBuilder(&crd).Build()
-		require.NoError(t, err)
-
-		require.NotEqual(t, pod3.Labels[kube.RevisionLabel], pod4.Labels[kube.RevisionLabel])
-
-		crd.Spec.Type = cosmosv1.FullNodeSentry
-		pod5, err := NewPodBuilder(&crd).Build()
-		require.NoError(t, err)
-
-		require.NotEqual(t, pod4.Labels[kube.RevisionLabel], pod5.Labels[kube.RevisionLabel])
 	})
 }
 

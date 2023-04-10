@@ -2,15 +2,16 @@ package fullnode
 
 import (
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	"github.com/strangelove-ventures/cosmos-operator/internal/diff"
 	corev1 "k8s.io/api/core/v1"
 )
 
 // BuildPods creates the final state of pods given the crd.
-func BuildPods(crd *cosmosv1.CosmosFullNode) ([]*corev1.Pod, error) {
+func BuildPods(crd *cosmosv1.CosmosFullNode) ([]diff.Resource[*corev1.Pod], error) {
 	var (
 		builder   = NewPodBuilder(crd)
 		overrides = crd.Spec.InstanceOverrides
-		pods      []*corev1.Pod
+		pods      []diff.Resource[*corev1.Pod]
 	)
 	candidates := podCandidates(crd)
 	for i := int32(0); i < crd.Spec.Replicas; i++ {
@@ -24,7 +25,7 @@ func BuildPods(crd *cosmosv1.CosmosFullNode) ([]*corev1.Pod, error) {
 		if _, shouldSnapshot := candidates[pod.Name]; shouldSnapshot {
 			continue
 		}
-		pods = append(pods, pod)
+		pods = append(pods, diff.Adapt(pod, i))
 	}
 	return pods, nil
 }

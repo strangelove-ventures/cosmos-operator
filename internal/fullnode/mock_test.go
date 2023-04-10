@@ -165,19 +165,3 @@ func (m *mockClient[T]) Status() client.StatusWriter {
 func (m *mockClient[T]) RESTMapper() meta.RESTMapper {
 	panic("implement me")
 }
-
-type mockDiffer[T any] struct {
-	StubCreates, StubUpdates, StubDeletes []T
-}
-
-func (m mockDiffer[T]) Creates() []T {
-	return m.StubCreates
-}
-
-func (m mockDiffer[T]) Updates() []T {
-	return m.StubUpdates
-}
-
-func (m mockDiffer[T]) Deletes() []T {
-	return m.StubDeletes
-}

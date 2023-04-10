@@ -6,17 +6,11 @@ import (
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
 	networkLabel = "cosmos.strange.love/network"
 )
-
-// SelectorLabels returns the labels used in selector operations.
-func SelectorLabels(crd *cosmosv1.CosmosFullNode) client.MatchingLabels {
-	return map[string]string{kube.NameLabel: appName(crd)}
-}
 
 // kv is a list of extra kv pairs to add to the labels. Must be even.
 func defaultLabels(crd *cosmosv1.CosmosFullNode, kvPairs ...string) map[string]string {

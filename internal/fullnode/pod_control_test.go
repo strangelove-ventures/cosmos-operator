@@ -2,10 +2,9 @@ package fullnode
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
-	"github.com/samber/lo"
+	"github.com/strangelove-ventures/cosmos-operator/internal/diff"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -30,76 +29,56 @@ var panicPodFilter = mockPodFilter(func(ctx context.Context, log kube.Logger, ca
 func TestPodControl_Reconcile(t *testing.T) {
 	t.Parallel()
 
-	type (
-		mockPodClient = mockClient[*corev1.Pod]
-		mockPodDiffer = mockDiffer[*corev1.Pod]
-	)
-	ctx := context.Background()
-	const namespace = "testns"
+	type mockPodClient = mockClient[*corev1.Pod]
 
-	buildPods := func(n int) []*corev1.Pod {
-		return lo.Map(lo.Range(n), func(i int, _ int) *corev1.Pod {
-			var pod corev1.Pod
-			pod.Name = fmt.Sprintf("pod-%d", i)
-			pod.Namespace = namespace
-			// Mark pod as Ready.
-			pod.Status.Conditions = []corev1.PodCondition{{Type: corev1.PodReady, Status: corev1.ConditionTrue}}
-			return &pod
-		})
-	}
+	ctx := context.Background()
+	const namespace = "test"
 
 	t.Run("no changes", func(t *testing.T) {
+		crd := defaultCRD()
+		crd.Name = "hub"
+		crd.Namespace = namespace
+		crd.Spec.Replicas = 1
+
+		pods, err := BuildPods(&crd)
+		require.NoError(t, err)
+		existing := diff.New(nil, pods).Creates()[0]
+
 		var mClient mockPodClient
 		mClient.ObjectList = corev1.PodList{
-			Items: []corev1.Pod{
-				{ObjectMeta: metav1.ObjectMeta{Name: "pod-1"}},
-			},
+			Items: []corev1.Pod{*existing},
 		}
-
-		crd := defaultCRD()
-		crd.Spec.Replicas = 3
-		crd.Namespace = namespace
-		crd.Name = "hub"
 
 		control := NewPodControl(&mClient, panicPodFilter)
-		control.diffFactory = func(ordinalAnnotationKey, revisionLabelKey string, current, want []*corev1.Pod) podDiffer {
-			require.Equal(t, "app.kubernetes.io/ordinal", ordinalAnnotationKey)
-			require.Equal(t, "app.kubernetes.io/revision", revisionLabelKey)
-			require.Len(t, current, 1)
-			require.Equal(t, "pod-1", current[0].Name)
-			require.Len(t, want, 3)
-			return mockPodDiffer{}
-		}
 		requeue, err := control.Reconcile(ctx, nopReporter, &crd)
 		require.NoError(t, err)
 		require.False(t, requeue)
 
-		require.Len(t, mClient.GotListOpts, 3)
+		require.Len(t, mClient.GotListOpts, 2)
 		var listOpt client.ListOptions
 		for _, opt := range mClient.GotListOpts {
 			opt.ApplyToList(&listOpt)
 		}
 		require.Equal(t, namespace, listOpt.Namespace)
 		require.Zero(t, listOpt.Limit)
-		require.Equal(t, "app.kubernetes.io/name=hub", listOpt.LabelSelector.String())
 		require.Equal(t, ".metadata.controller=hub", listOpt.FieldSelector.String())
 	})
 
 	t.Run("scale phase", func(t *testing.T) {
-		var (
-			mDiff = mockPodDiffer{
-				StubCreates: buildPods(3),
-				StubDeletes: buildPods(2),
-				StubUpdates: buildPods(10),
-			}
-			mClient mockPodClient
-			crd     = defaultCRD()
-			control = NewPodControl(&mClient, panicPodFilter)
-		)
+		crd := defaultCRD()
+		crd.Name = "hub"
 		crd.Namespace = namespace
-		control.diffFactory = func(_, _ string, current, want []*corev1.Pod) podDiffer {
-			return mDiff
+		crd.Spec.Replicas = 3
+
+		var mClient mockPodClient
+		mClient.ObjectList = corev1.PodList{
+			Items: []corev1.Pod{
+				{ObjectMeta: metav1.ObjectMeta{Name: "hub-98"}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "hub-99"}},
+			},
 		}
+
+		control := NewPodControl(&mClient, panicPodFilter)
 		requeue, err := control.Reconcile(ctx, nopReporter, &crd)
 		require.NoError(t, err)
 		require.True(t, requeue)
@@ -114,44 +93,45 @@ func TestPodControl_Reconcile(t *testing.T) {
 	})
 
 	t.Run("rollout phase", func(t *testing.T) {
+		crd := defaultCRD()
+		crd.Name = "hub"
+		crd.Namespace = namespace
+		crd.Spec.Replicas = 5
+
+		pods, err := BuildPods(&crd)
+		require.NoError(t, err)
+		existing := diff.New(nil, pods).Creates()
+
 		var mClient mockPodClient
 		mClient.ObjectList = corev1.PodList{
-			Items: []corev1.Pod{
-				{ObjectMeta: metav1.ObjectMeta{Name: "pod-1"}},
-				{ObjectMeta: metav1.ObjectMeta{Name: "pod-2"}},
-			},
+			Items: valueSlice(existing),
 		}
 
-		var (
-			mDiff = mockPodDiffer{
-				StubUpdates: buildPods(10),
-			}
-			crd       = defaultCRD()
-			podFilter = mockPodFilter(func(_ context.Context, _ kube.Logger, candidates []*corev1.Pod) []*corev1.Pod {
-				require.Equal(t, 2, len(candidates))
-				require.Equal(t, "pod-1", candidates[0].Name)
-				require.Equal(t, "pod-2", candidates[1].Name)
-				return candidates[:1]
-			})
-			control = NewPodControl(&mClient, podFilter)
-		)
+		var didFilter bool
+		podFilter := mockPodFilter(func(_ context.Context, _ kube.Logger, candidates []*corev1.Pod) []*corev1.Pod {
+			require.Equal(t, 5, len(candidates))
+			require.Equal(t, "hub-0", candidates[0].Name)
+			require.Equal(t, "hub-1", candidates[1].Name)
+			didFilter = true
+			return candidates[:1]
+		})
 
-		crd.Namespace = namespace
-		crd.Spec.Replicas = 10
-		control.diffFactory = func(_, _ string, _, _ []*corev1.Pod) podDiffer {
-			return mDiff
-		}
-
+		control := NewPodControl(&mClient, podFilter)
 		const stubRollout = 5
+
 		control.computeRollout = func(maxUnavail *intstr.IntOrString, desired, ready int) int {
 			require.EqualValues(t, crd.Spec.Replicas, desired)
 			require.Equal(t, 1, ready) // mockPodFilter only returns 1 candidate as ready
 			return stubRollout
 		}
 
+		// Trigger updates
+		crd.Spec.PodTemplate.Image = "new-image"
 		requeue, err := control.Reconcile(ctx, nopReporter, &crd)
 		require.NoError(t, err)
 		require.True(t, requeue)
+
+		require.True(t, didFilter)
 
 		require.Zero(t, mClient.CreateCount)
 		require.Equal(t, stubRollout, mClient.DeleteCount)
