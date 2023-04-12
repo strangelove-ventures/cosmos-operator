@@ -42,7 +42,7 @@ Copy "Peers" -> "Seeds" on [Minstcan](https://www.mintscan.io/cosmos/info).
 
 ### Find a recent snapshot
 
-We recommend [Polkachu](https://www.polkachu.com/tendermint_snapshots/cosmos). Copy the URL of the Download link.
+We recommend [Polkachu](https://www.polkachu.com/tendermint_snapshots/cosmos). Copy the URL of the Download link for the `.tar.lz4` file.
 
 ### Create a CosmosFullNode
 
