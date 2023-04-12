@@ -21,21 +21,20 @@ thus minimizing human intervention and human error.
 
 # Disclaimers
 
-* Only tested on GKE. Although kubernetes is portable, YMMV with AWS, Azure, or other kubernetes providers. Or it may not work at all.
+* Only tested on Google's GKE. Although kubernetes is portable, we cannot guarantee or provide support for AWS, Azure, or other kubernetes providers.
 * Requires a recent version of kubernetes: v1.23+.
 * CosmosFullNode: The chain must be built from the [Cosmos SDK](https://github.com/cosmos/cosmos-sdk).
+* CosmosFullNode: Validator sentries require a remote signer such as [horcrux](https://github.com/strangelove-ventures/horcrux).
 * CosmosFullNode: The controller requires [heighliner](https://github.com/strangelove-ventures/heighliner) images. If you build your own image, you will need a shell `sh` and set the uid:gid to 1025:1025. If running as a validator sentry, you need `sleep` as well.
-* CosmosFullNode: May not work with all chains built with the Cosmos SDK. (Some chains diverge from common conventions.)
+* CosmosFullNode: May not work with Cosmos chains. (Some chains diverge from common conventions and best practices.)
 
-# Flagship CRD
-
-## CosmosFullNode
+# CosmosFullNode CRD
 
 Status: v1, stable
 
 CosmosFullNode is the flagship CRD. Its purpose is to deploy highly-available, fault-tolerant blockchain nodes. 
 
-The CosmosFullNode controller is like a StatefulSet specific to running Cosmos SDK blockchains.
+The CosmosFullNode controller is like a StatefulSet for running Cosmos SDK blockchains.
 
 A CosmosFullNode can be configured to run as an RPC node, a validator sentry, or a seed node. All configurations can
 be used as persistent peers.
@@ -46,25 +45,6 @@ As of this writing, Strangelove has been running CosmosFullNode in production fo
 
 [Full example yaml](./config/samples/cosmos_v1_cosmosfullnode_full.yaml)
 
-### Roadmap
-
-Disclaimer: Strangelove has not committed to these enhancements. They represent ideas that may or may not come to fruition. 
-Currently, is no timeline for any of these potential features.
-
-- [ ] Scheduled upgrades. Set a halt height and image version. The controller performs a rolling update with the new image version after the committed halt height.
-- [x] Support configuration suitable for validator sentries.
-- [x] Reliable, persistent peer support.
-- [ ] Quicker p2p discovery using private peers. 
-- [ ] Advanced readiness probe behavior. (The tendermint rpc status endpoint is not always reliable.)
-- [x] Automatic rollout for PVC resizing. (Currently human intervention required to restart pods after PVC resized.) Requires ExpandInUsePersistentVolumes feature gate.
-- [x] Automatic PVC resizing. The controller increases PVC size once storage reaches a configured threshold; e.g. 80% full.
-- [ ] Bootstrap config using the chain registry. Query the chain registry and set config based on the registry.
-- [ ] Validate p2p such as peers, seeds, etc. and filter out non-responsive peers.
-- [ ] HPA support.
-- [ ] Automatic upgrades. Controller monitors governance and performs upgrade without any human intervention.
-- [ ] Corrupt data recovery. Detect when a PVC may have corrupted data. Restore data from a recent VolumeSnapshot.
-- [x] Safe, automatic backups. Create periodic VolumeSnapshots of PVCs while minimizing chance of data corruption during snapshot creation.
-
 ### Why not a StatefulSet?
 Each pod requires different config, such as peer settings in config.toml and mounted node keys. Therefore, a blanket
 template as found in StatefulSet did not suffice.
@@ -74,55 +54,14 @@ the human operator debug and recover from situations such as a corrupted PVCs.
 
 # Support CRDs
 
-## StatefulJob
+These CRDs are part of the operator and serve to support CosmosFullNodes.
 
-Status: v1alpha1
+* [ScheduledVolumeSnapshot](./docs/scheduled_volume_snapshot.md)
+* [StatefulJob](./docs/stateful_job.md)
 
-**Warning: May have backwards breaking changes!**
+# Quick Start
 
-A StatefulJob is a means to process persistent data from a recent [VolumeSnapshot](https://kubernetes.io/docs/concepts/storage/volume-snapshots/).
-It periodically creates a job and PVC using the most recent VolumeSnapshot as its data source. It mounts the PVC as volume "snapshot" into the job's pod.
-The user must configure container volume mounts.
-It's similar to a CronJob but does not offer advanced scheduling via a crontab. 
-
-Strangelove uses it to compress and upload snapshots of chain data.
-
-[Example yaml](./config/samples/cosmos_v1alpha1_statefuljob.yaml)
-
-## ScheduledVolumeSnapshot
-
-Status: v1alpha1
-
-**Warning: May have backwards breaking changes!**
-
-A ScheduledVolumeSnapshot creates [VolumeSnapshots]([VolumeSnapshot](https://kubernetes.io/docs/concepts/storage/volume-snapshots/))
-from a CosmosFullNode PVC on a recurring schedule described by a [crontab](https://en.wikipedia.org/wiki/Cron). The controller
-chooses a candidate pod/pvc combo from a source CosmosFullNode. This allows you to create reliable, scheduled backups
-of blockchain state.
-
-**Warning: Backups may include private keys and secrets.** For validators, we strongly recommend using [Horcrux](https://github.com/strangelove-ventures/horcrux),
-[TMKMS](https://github.com/iqlusioninc/tmkms), or another tendermint remote signer.
-
-To minimize data corruption, the operator temporarily deletes the CosmosFullNode pod writing to the PVC while taking the snapshot. Deleting the pod allows the process to
-exit gracefully. Once the snapshot is complete, the operator re-creates the pod. Therefore, use of this CRD may affect
-availability of the source CosmosFullNode. At least 2 CosmosFullNode replicas is necessary to prevent downtime; 3
-replicas recommended. In the future, this behavior may be configurable.
-
-Known Issues:
-- Cross namespace may not work. E.g. CosmosFullNode and ScheduledVolumeSnapshot in different namespaces.
-
-[Example yaml](./config/samples/cosmos_v1alpha1_scheduledvolumesnapshot.yaml)
-
-# Install in Your Cluster
-
-View [images here](https://github.com/strangelove-ventures/cosmos-operator/pkgs/container/cosmos-operator).
-
-```sh
-
-make deploy IMG="ghcr.io/strangelove-ventures/cosmos-operator:$(git describe --tags --abbrev=0)"
-```
-
-TODO: Helm chart
+See the [quick start guide](./docs/quick_start.md).
 
 # Contributing
 
@@ -131,6 +70,24 @@ See the [contributing guide](./docs/contributing.md).
 # Best Practices
 
 See the [best practices guide for CosmosFullNode](./docs/fullnode_best_practices.md).
+
+# Roadmap
+
+Disclaimer: Strangelove has not committed to these enhancements and cannot estimate when they will be completed.
+
+- [ ] Scheduled upgrades. Set a halt height and image version. The controller performs a rolling update with the new image version after the committed halt height.
+- [x] Support configuration suitable for validator sentries.
+- [x] Reliable, persistent peer support.
+- [ ] Quicker p2p discovery using private peers.
+- [ ] Advanced readiness probe behavior. (The tendermint rpc status endpoint is not always reliable.)
+- [x] Automatic rollout for PVC resizing. (Currently human intervention required to restart pods after PVC resized.) Requires ExpandInUsePersistentVolumes feature gate.
+- [x] Automatic PVC resizing. The controller increases PVC size once storage reaches a configured threshold; e.g. 80% full.
+- [ ] Bootstrap config using the chain registry. Query the chain registry and set config based on the registry.
+- [ ] Validate p2p such as peers, seeds, etc. and filter out non-responsive peers.
+- [ ] HPA support.
+- [ ] Automatic upgrades. Controller monitors governance and performs upgrade without any human intervention.
+- [ ] Corrupt data recovery. Detect when a PVC may have corrupted data. Restore data from a recent VolumeSnapshot.
+- [x] Safe, automatic backups. Create periodic VolumeSnapshots of PVCs while minimizing chance of data corruption during snapshot creation.
 
 # License
 
