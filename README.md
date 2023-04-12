@@ -73,8 +73,7 @@ See the [best practices guide for CosmosFullNode](./docs/fullnode_best_practices
 
 # Roadmap
 
-Disclaimer: Strangelove has not committed to these enhancements. They represent ideas that may or may not come to fruition.
-Currently, is no timeline for any of these potential features.
+Disclaimer: Strangelove has not committed to these enhancements and cannot estimate when they will be completed.
 
 - [ ] Scheduled upgrades. Set a halt height and image version. The controller performs a rolling update with the new image version after the committed halt height.
 - [x] Support configuration suitable for validator sentries.
