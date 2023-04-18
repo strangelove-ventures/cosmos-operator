@@ -1,6 +1,7 @@
 package kube
 
 import (
+	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 )
@@ -14,6 +15,7 @@ const (
 // Logger is a structured logger
 type Logger interface {
 	Info(msg string, keysAndValues ...interface{})
+	Debug(msg string, keysAndValues ...interface{})
 	Error(err error, msg string, keysAndValues ...interface{})
 }
 
@@ -24,6 +26,19 @@ type Reporter interface {
 	RecordError(reason string, err error)
 }
 
+// ToLogger converts a logr.Logger to a Logger.
+func ToLogger(log logr.Logger) Logger {
+	return logger{log}
+}
+
+type logger struct {
+	logr.Logger
+}
+
+func (l logger) Debug(msg string, keysAndValues ...interface{}) {
+	l.V(1).Info(msg, keysAndValues...)
+}
+
 // EventReporter both logs and records events.
 type EventReporter struct {
 	log      Logger
@@ -31,8 +46,8 @@ type EventReporter struct {
 	resource runtime.Object
 }
 
-func NewEventReporter(logger Logger, recorder record.EventRecorder, resource runtime.Object) EventReporter {
-	return EventReporter{log: logger, recorder: recorder, resource: resource}
+func NewEventReporter(logger logr.Logger, recorder record.EventRecorder, resource runtime.Object) EventReporter {
+	return EventReporter{log: ToLogger(logger), recorder: recorder, resource: resource}
 }
 
 // Error logs as an error log entry.
@@ -43,6 +58,11 @@ func (r EventReporter) Error(err error, msg string, keysAndValues ...interface{}
 // Info logs as an info log entry.
 func (r EventReporter) Info(msg string, keysAndValues ...interface{}) {
 	r.log.Info(msg, keysAndValues...)
+}
+
+// Debug logs as a debug log entry.
+func (r EventReporter) Debug(msg string, keysAndValues ...interface{}) {
+	r.log.Debug(msg, keysAndValues...)
 }
 
 // RecordError records a warning event.

@@ -11,7 +11,6 @@ import (
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/internal/healthcheck"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
-	"go.uber.org/multierr"
 	"golang.org/x/sync/errgroup"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -96,7 +95,7 @@ func (c DiskUsageCollector) CollectDiskUsage(ctx context.Context, crd *cosmosv1.
 		return item != nil
 	})
 	if len(errs) == len(pods.Items) {
-		return nil, multierr.Combine(errs...)
+		return nil, errors.Join(errs...)
 	}
 
 	return lo.Compact(found), nil

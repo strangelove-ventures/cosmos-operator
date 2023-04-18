@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/go-logr/logr"
 	"github.com/samber/lo"
+	"github.com/strangelove-ventures/cosmos-operator/internal/test"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -17,7 +17,7 @@ func (fn mockStatuser) Status(ctx context.Context, rpcHost string) (TendermintSt
 	return fn(ctx, rpcHost)
 }
 
-var nopLogger = logr.Discard()
+var nopLogger test.NopReporter
 
 func TestPodFilter_SyncedPods(t *testing.T) {
 	t.Parallel()

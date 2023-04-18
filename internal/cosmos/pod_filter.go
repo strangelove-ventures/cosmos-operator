@@ -41,17 +41,17 @@ func (filter PodFilter) SyncedPods(ctx context.Context, log kube.Logger, candida
 			fields := []interface{}{"pod", pod.Name}
 			ip := pod.Status.PodIP
 			if ip == "" {
-				log.Info("Pod has no IP", fields...)
+				log.Debug("Pod has no IP", fields...)
 				return nil
 			}
 			host := fmt.Sprintf("http://%s:26657", ip)
 			resp, err := filter.tendermint.Status(ctx, host)
 			if err != nil {
-				log.Info("Failed to fetch tendermint rpc status", append(fields, "error", err)...)
+				log.Debug("Failed to fetch tendermint rpc status", append(fields, "error", err)...)
 				return nil
 			}
 			if resp.Result.SyncInfo.CatchingUp {
-				log.Info("Pod is catching up", fields...)
+				log.Debug("Pod is catching up", fields...)
 				return nil
 			}
 			inSync[i] = pod

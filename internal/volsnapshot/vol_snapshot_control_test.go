@@ -465,6 +465,6 @@ func TestVolumeSnapshotControl_DeleteOldSnapshots(t *testing.T) {
 		err := control.DeleteOldSnapshots(ctx, nopLogger, &crd)
 
 		require.Error(t, err)
-		require.EqualError(t, err, "delete 1: oops; delete 0: oops")
+		require.EqualError(t, err, "delete 1: oops\ndelete 0: oops")
 	})
 }

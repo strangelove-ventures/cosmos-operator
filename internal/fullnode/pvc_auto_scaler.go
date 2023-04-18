@@ -2,13 +2,13 @@ package fullnode
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"time"
 
 	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
-	"go.uber.org/multierr"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -108,12 +108,12 @@ func (scaler PVCAutoScaler) calcNextCapacity(current resource.Quantity, increase
 		return quantity, nil
 	}
 
-	multierr.AppendInto(&merr, err)
+	merr = errors.Join(merr, err)
 
 	// Then try to calc by resource quantity
 	addtl, err := resource.ParseQuantity(increase)
 	if err != nil {
-		return quantity, multierr.Append(merr, err)
+		return quantity, errors.Join(merr, err)
 	}
 
 	return *resource.NewQuantity(current.Value()+addtl.Value(), current.Format), nil
