@@ -77,6 +77,12 @@ type ScheduledVolumeSnapshotSpec struct {
 	// +optional
 	// +kubebuilder:validation:Minimum:=1
 	Limit int32 `json:"limit"`
+
+	// If true, the controller will not create any VolumeSnapshots.
+	// This allows you to disable creation of ScheduledVolumeSnapshots without deleting the resource.
+	// If a pod is temporarily deleted, it will be restored.
+	// +optional
+	Suspend bool `json:"suspend"`
 }
 
 type LocalFullNodeRef struct {
@@ -149,6 +155,9 @@ const (
 
 	// SnapshotPhaseRestorePod signals the fullNodeRef it can recreate the temporarily deleted pod.
 	SnapshotPhaseRestorePod = "RestoringPod"
+
+	// SnapshotPhaseSuspended means the controller is not creating snapshots. Suspended by the user.
+	SnapshotPhaseSuspended = "Suspended"
 )
 
 type VolumeSnapshotStatus struct {
