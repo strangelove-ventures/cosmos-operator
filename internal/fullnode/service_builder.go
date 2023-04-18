@@ -60,7 +60,6 @@ func BuildServices(crd *cosmosv1.CosmosFullNode) []diff.Resource[*corev1.Service
 			svc.Spec.ExternalTrafficPolicy = corev1.ServiceExternalTrafficPolicyTypeLocal
 		} else {
 			svc.Spec.Type = corev1.ServiceTypeClusterIP
-			svc.Spec.ExternalTrafficPolicy = corev1.ServiceExternalTrafficPolicyTypeCluster
 		}
 
 		p2ps[i] = diff.Adapt(&svc, i)

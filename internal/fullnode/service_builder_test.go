@@ -54,9 +54,8 @@ func TestBuildServices(t *testing.T) {
 						TargetPort: intstr.FromString("p2p"),
 					},
 				},
-				Selector:              map[string]string{"app.kubernetes.io/instance": fmt.Sprintf("terra-%d", i)},
-				Type:                  corev1.ServiceTypeClusterIP,
-				ExternalTrafficPolicy: corev1.ServiceExternalTrafficPolicyTypeCluster,
+				Selector: map[string]string{"app.kubernetes.io/instance": fmt.Sprintf("terra-%d", i)},
+				Type:     corev1.ServiceTypeClusterIP,
 			}
 
 			require.Equal(t, wantSpec, p2p.Spec)
@@ -83,7 +82,7 @@ func TestBuildServices(t *testing.T) {
 
 		got := gotP2P[2].Object()
 		require.Equal(t, corev1.ServiceTypeClusterIP, got.Spec.Type)
-		require.Equal(t, corev1.ServiceExternalTrafficPolicyTypeCluster, got.Spec.ExternalTrafficPolicy)
+		require.Empty(t, got.Spec.ExternalTrafficPolicy)
 	})
 
 	t.Run("rpc service", func(t *testing.T) {
