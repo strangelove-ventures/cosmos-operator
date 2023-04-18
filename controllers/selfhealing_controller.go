@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
@@ -81,13 +82,13 @@ func (r *SelfHealingReconciler) pvcAutoScale(ctx context.Context, reporter kube.
 	usage, err := r.diskClient.CollectDiskUsage(ctx, crd)
 	if err != nil {
 		reporter.Error(err, "Failed to collect pvc disk usage")
-		reporter.RecordError("PVCAutoScaleCollectUsage", err)
+		reporter.RecordError("PVCAutoScaleCollectUsage", errors.New("failed to collect pvc disk usage"))
 		return
 	}
 	didSignal, err := r.pvcAutoScaler.SignalPVCResize(ctx, crd, usage)
 	if err != nil {
 		reporter.Error(err, "Failed to signal pvc resize")
-		reporter.RecordError("PVCAutoScaleSignalResize", err)
+		reporter.RecordError("PVCAutoScaleSignalResize", errors.New("failed to signal pvc resize"))
 		return
 	}
 	if !didSignal {
