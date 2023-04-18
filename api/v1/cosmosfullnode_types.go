@@ -146,10 +146,11 @@ type FullNodeSnapshotStatus struct {
 type FullNodePhase string
 
 const (
-	FullNodePhaseProgressing FullNodePhase = "Progressing"
-	FullNodePhaseCompete     FullNodePhase = "Complete"
-	FullNodePhaseError       FullNodePhase = "Error"
-	FullNodePhaseP2PServices FullNodePhase = "WaitingForP2PServices"
+	FullNodePhaseCompete        FullNodePhase = "Complete"
+	FullNodePhaseError          FullNodePhase = "Error"
+	FullNodePhaseP2PServices    FullNodePhase = "WaitingForP2PServices"
+	FullNodePhaseProgressing    FullNodePhase = "Progressing"
+	FullNodePhaseTransientError FullNodePhase = "TransientError"
 )
 
 // Metadata is a subset of k8s object metadata.

@@ -181,6 +181,7 @@ func (r *CosmosFullNodeReconciler) resultWithErr(crd *cosmosv1.CosmosFullNode, e
 	if err.IsTransient() {
 		r.recorder.Event(crd, kube.EventWarning, "ErrorTransient", fmt.Sprintf("%v; retrying.", err))
 		crd.Status.StatusMessage = ptr(fmt.Sprintf("Transient error: system is retrying: %v", err))
+		crd.Status.Phase = cosmosv1.FullNodePhaseTransientError
 		return requeueResult, err
 	}
 
