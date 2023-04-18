@@ -115,7 +115,7 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	// K8S can create pods first even if the PVC isn't ready. Pods won't be in a ready state until PVC is bound.
 
 	// Create or update Services.
-	err := r.serviceControl.Reconcile(ctx, logger, crd)
+	err := r.serviceControl.Reconcile(ctx, reporter, crd)
 	if err != nil {
 		errs.Append(err)
 	}
@@ -132,7 +132,7 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		p2pAddresses = make(fullnode.ExternalAddresses)
 		errs.Append(err)
 	}
-	configCksums, err := r.configMapControl.Reconcile(ctx, logger, crd, p2pAddresses)
+	configCksums, err := r.configMapControl.Reconcile(ctx, reporter, crd, p2pAddresses)
 	if err != nil {
 		errs.Append(err)
 	}

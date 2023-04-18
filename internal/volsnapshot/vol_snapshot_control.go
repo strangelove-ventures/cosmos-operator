@@ -65,7 +65,7 @@ func (control VolumeSnapshotControl) FindCandidate(ctx context.Context, crd *cos
 	cctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	var (
-		synced     = control.podFilter.SyncedPods(cctx, logger, ptrSlice(pods.Items))
+		synced     = control.podFilter.SyncedPods(cctx, kube.ToLogger(logger), ptrSlice(pods.Items))
 		availCount = int32(len(synced))
 		minAvail   = crd.Spec.MinAvailable
 	)
