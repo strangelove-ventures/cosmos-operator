@@ -26,8 +26,8 @@ func (addrs ExternalAddresses) Incomplete() bool {
 	return false
 }
 
-// CollectP2PAddresses collects external addresses from p2p services.
-func CollectP2PAddresses(ctx context.Context, crd *cosmosv1.CosmosFullNode, c Lister) (ExternalAddresses, kube.ReconcileError) {
+// CollectExternalP2P collects external addresses from p2p services.
+func CollectExternalP2P(ctx context.Context, crd *cosmosv1.CosmosFullNode, c Lister) (ExternalAddresses, kube.ReconcileError) {
 	var svcs corev1.ServiceList
 	if err := c.List(ctx, &svcs,
 		client.InNamespace(crd.Namespace),
@@ -39,9 +39,15 @@ func CollectP2PAddresses(ctx context.Context, crd *cosmosv1.CosmosFullNode, c Li
 
 	var (
 		port = strconv.Itoa(p2pPort)
-		m    = make(map[string]string)
+		m    = make(ExternalAddresses)
 	)
 	for _, svc := range svcs.Items {
+		// We could filter in the List call above, but kubebuilder cache would require some additional indexing which
+		// is not as intuitive as indexing on the controller owner field.
+		// example cache error: non-exact field matches are not supported by the cache
+		if svc.Spec.Type != corev1.ServiceTypeLoadBalancer {
+			continue
+		}
 		ingress := svc.Status.LoadBalancer.Ingress
 		if len(ingress) == 0 {
 			m[svc.Labels[kube.InstanceLabel]] = ""

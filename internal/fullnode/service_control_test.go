@@ -43,8 +43,8 @@ func TestServiceControl_Reconcile(t *testing.T) {
 		require.Zero(t, listOpt.Limit)
 		require.Equal(t, ".metadata.controller=osmosis", listOpt.FieldSelector.String())
 
-		require.Equal(t, 1, mClient.CreateCount)
-		require.Equal(t, "osmosis-p2p-1", mClient.LastCreateObject.Name)
+		require.Equal(t, 2, mClient.CreateCount) // Created 2 p2p services.
+		require.Equal(t, "osmosis-p2p-2", mClient.LastCreateObject.Name)
 		require.NotEmpty(t, mClient.LastCreateObject.OwnerReferences)
 		require.Equal(t, crd.Name, mClient.LastCreateObject.OwnerReferences[0].Name)
 		require.Equal(t, "CosmosFullNode", mClient.LastCreateObject.OwnerReferences[0].Kind)

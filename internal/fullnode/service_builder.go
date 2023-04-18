@@ -11,7 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-const maxP2PServiceDefault = 1
+const maxP2PServiceDefault = int32(1)
 
 // BuildServices returns a list of services given the crd.
 //
@@ -27,13 +27,13 @@ const maxP2PServiceDefault = 1
 func BuildServices(crd *cosmosv1.CosmosFullNode) []diff.Resource[*corev1.Service] {
 	max := maxP2PServiceDefault
 	if v := crd.Spec.Service.MaxP2PExternalAddresses; v != nil {
-		max = int(*v)
+		max = *v
 	}
-	maxp2p := lo.Clamp(max, 0, int(crd.Spec.Replicas))
-	p2ps := make([]diff.Resource[*corev1.Service], maxp2p)
+	maxExternal := lo.Clamp(max, 0, crd.Spec.Replicas)
+	p2ps := make([]diff.Resource[*corev1.Service], crd.Spec.Replicas)
 
-	for i := range lo.Range(maxp2p) {
-		ordinal := int32(i)
+	for i := int32(0); i < crd.Spec.Replicas; i++ {
+		ordinal := i
 		var svc corev1.Service
 		svc.Name = p2pServiceName(crd, ordinal)
 		svc.Namespace = crd.Namespace
@@ -54,8 +54,13 @@ func BuildServices(crd *cosmosv1.CosmosFullNode) []diff.Resource[*corev1.Service
 			},
 		}
 		svc.Spec.Selector = map[string]string{kube.InstanceLabel: instanceName(crd, ordinal)}
-		svc.Spec.Type = corev1.ServiceTypeLoadBalancer
-		svc.Spec.ExternalTrafficPolicy = corev1.ServiceExternalTrafficPolicyTypeLocal
+
+		if i < maxExternal {
+			svc.Spec.Type = corev1.ServiceTypeLoadBalancer
+			svc.Spec.ExternalTrafficPolicy = corev1.ServiceExternalTrafficPolicyTypeLocal
+		} else {
+			svc.Spec.Type = corev1.ServiceTypeClusterIP
+		}
 
 		p2ps[i] = diff.Adapt(&svc, i)
 	}
