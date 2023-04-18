@@ -31,7 +31,7 @@ func CollectExternalP2P(ctx context.Context, crd *cosmosv1.CosmosFullNode, c Lis
 	var svcs corev1.ServiceList
 	if err := c.List(ctx, &svcs,
 		client.InNamespace(crd.Namespace),
-		client.MatchingFields{kube.ControllerOwnerField: crd.Name, ".spec.type": string(corev1.ServiceTypeLoadBalancer)},
+		client.MatchingFields{kube.ControllerOwnerField: crd.Name},
 		client.MatchingLabels{kube.ComponentLabel: "p2p"},
 	); err != nil {
 		return nil, kube.TransientError(fmt.Errorf("list existing services: %w", err))
@@ -42,6 +42,12 @@ func CollectExternalP2P(ctx context.Context, crd *cosmosv1.CosmosFullNode, c Lis
 		m    = make(ExternalAddresses)
 	)
 	for _, svc := range svcs.Items {
+		// We could filter in the List call above, but kubebuilder cache would require some additional indexing which
+		// is not as intuitive as indexing on the controller owner field.
+		// example cache error: non-exact field matches are not supported by the cache
+		if svc.Spec.Type != corev1.ServiceTypeLoadBalancer {
+			continue
+		}
 		ingress := svc.Status.LoadBalancer.Ingress
 		if len(ingress) == 0 {
 			m[svc.Labels[kube.InstanceLabel]] = ""

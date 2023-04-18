@@ -24,6 +24,7 @@ func TestCollectExternalP2P(t *testing.T) {
 		stubSvcs := lo.Map(lo.Range(3), func(i, _ int) corev1.Service {
 			var stubSvc corev1.Service
 			stubSvc.Name = "stub" + strconv.Itoa(i)
+			stubSvc.Spec.Type = corev1.ServiceTypeLoadBalancer
 			stubSvc.Labels = map[string]string{kube.InstanceLabel: fmt.Sprintf("instance-%d", i)}
 			stubSvc.Status = corev1.ServiceStatus{
 				LoadBalancer: corev1.LoadBalancerStatus{
@@ -37,6 +38,7 @@ func TestCollectExternalP2P(t *testing.T) {
 
 		var hostSvc corev1.Service
 		hostSvc.Name = "stub-host"
+		hostSvc.Spec.Type = corev1.ServiceTypeLoadBalancer
 		hostSvc.Labels = map[string]string{kube.InstanceLabel: "instance-3"}
 		hostSvc.Status = corev1.ServiceStatus{
 			LoadBalancer: corev1.LoadBalancerStatus{
@@ -48,13 +50,18 @@ func TestCollectExternalP2P(t *testing.T) {
 
 		var missing corev1.Service
 		missing.Name = "stub-missing"
+		missing.Spec.Type = corev1.ServiceTypeLoadBalancer
 		missing.Labels = map[string]string{kube.InstanceLabel: "instance-4"}
 
+		var clusterIPSvc corev1.Service
+		clusterIPSvc.Name = "should-filter-me"
+		clusterIPSvc.Labels = map[string]string{kube.InstanceLabel: "should-not-see-me"}
+
 		var mClient mockSvcClient
-		mClient.ObjectList = corev1.ServiceList{Items: append(stubSvcs, hostSvc, missing)}
+		mClient.ObjectList = corev1.ServiceList{Items: append(stubSvcs, hostSvc, missing, clusterIPSvc)}
 
 		crd := defaultCRD()
-		crd.Namespace = "addresses"
+		crd.Namespace = "default"
 		crd.Name = "simapp"
 
 		got, err := CollectExternalP2P(ctx, &crd, &mClient)
@@ -74,10 +81,10 @@ func TestCollectExternalP2P(t *testing.T) {
 		for _, opt := range mClient.GotListOpts {
 			opt.ApplyToList(&listOpt)
 		}
-		require.Equal(t, "addresses", listOpt.Namespace)
+		require.Equal(t, "default", listOpt.Namespace)
 		require.Zero(t, listOpt.Limit)
 		require.Equal(t, "app.kubernetes.io/component=p2p", listOpt.LabelSelector.String())
-		require.ElementsMatch(t, []string{".spec.type=LoadBalancer", ".metadata.controller=simapp"}, strings.Split(listOpt.FieldSelector.String(), ","))
+		require.ElementsMatch(t, []string{".metadata.controller=simapp"}, strings.Split(listOpt.FieldSelector.String(), ","))
 	})
 
 	t.Run("zero state", func(t *testing.T) {
