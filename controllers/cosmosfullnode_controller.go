@@ -262,6 +262,18 @@ func (r *CosmosFullNodeReconciler) SetupWithManager(ctx context.Context, mgr ctr
 	if err != nil {
 		return fmt.Errorf("service index field %s: %w", controllerOwnerField, err)
 	}
+	err = mgr.GetFieldIndexer().IndexField(
+		ctx,
+		&corev1.Service{},
+		".spec.type",
+		func(obj client.Object) []string {
+			svc := obj.(*corev1.Service)
+			return []string{string(svc.Spec.Type)}
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("service index field .spec.type: %w", err)
+	}
 
 	cbuilder := ctrl.NewControllerManagedBy(mgr).For(&cosmosv1.CosmosFullNode{})
 
