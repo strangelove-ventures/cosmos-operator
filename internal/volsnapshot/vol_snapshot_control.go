@@ -2,6 +2,7 @@ package volsnapshot
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"time"
@@ -12,7 +13,6 @@ import (
 	cosmosalpha "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
 	"github.com/strangelove-ventures/cosmos-operator/internal/fullnode"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
-	"go.uber.org/multierr"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -159,7 +159,7 @@ func (control VolumeSnapshotControl) DeleteOldSnapshots(ctx context.Context, log
 		vs := vs
 		log.Info("Deleting volume snapshot", "volumeSnapshotName", vs.Name, "limit", limit)
 		if err := control.client.Delete(ctx, &vs); kube.IgnoreNotFound(err) != nil {
-			multierr.AppendInto(&merr, fmt.Errorf("delete %s: %w", vs.Name, err))
+			merr = errors.Join(merr, fmt.Errorf("delete %s: %w", vs.Name, err))
 		}
 	}
 	return merr
