@@ -82,13 +82,14 @@ func (r *SelfHealingReconciler) pvcAutoScale(ctx context.Context, reporter kube.
 	usage, err := r.diskClient.CollectDiskUsage(ctx, crd)
 	if err != nil {
 		reporter.Error(err, "Failed to collect pvc disk usage")
+		// This error can be noisy so we record a generic error. Check logs for error details.
 		reporter.RecordError("PVCAutoScaleCollectUsage", errors.New("failed to collect pvc disk usage"))
 		return
 	}
 	didSignal, err := r.pvcAutoScaler.SignalPVCResize(ctx, crd, usage)
 	if err != nil {
 		reporter.Error(err, "Failed to signal pvc resize")
-		reporter.RecordError("PVCAutoScaleSignalResize", errors.New("failed to signal pvc resize"))
+		reporter.RecordError("PVCAutoScaleSignalResize", err)
 		return
 	}
 	if !didSignal {
