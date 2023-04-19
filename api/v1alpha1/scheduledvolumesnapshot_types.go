@@ -79,7 +79,8 @@ type ScheduledVolumeSnapshotSpec struct {
 	Limit int32 `json:"limit"`
 
 	// If true, the controller will not create any VolumeSnapshots.
-	// This allows you to disable creation of ScheduledVolumeSnapshots without deleting the resource.
+	// This allows you to disable creation of VolumeSnapshots without deleting the ScheduledVolumeSnapshot resource.
+	// This pattern works better when using tools such as Kustomzie.
 	// If a pod is temporarily deleted, it will be restored.
 	// +optional
 	Suspend bool `json:"suspend"`
