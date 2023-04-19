@@ -13,14 +13,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// PeerCollector finds and collects
-type PeerCollector struct {
+// PeerCollectorDeprecated finds and collects
+type PeerCollectorDeprecated struct {
 	client   Lister
 	tmClient cosmos.TendermintStatuser
 }
 
-func NewPeerCollector(client Lister, tmClient cosmos.TendermintStatuser) *PeerCollector {
-	return &PeerCollector{
+func NewPeerCollectorDeprecated(client Lister, tmClient cosmos.TendermintStatuser) *PeerCollectorDeprecated {
+	return &PeerCollectorDeprecated{
 		client:   client,
 		tmClient: tmClient,
 	}
@@ -28,7 +28,7 @@ func NewPeerCollector(client Lister, tmClient cosmos.TendermintStatuser) *PeerCo
 
 // CollectAddresses queries pods for their tendermint/cometbft peer addresses and returns them in <node_id>@<ip:port> format.
 // Any error can be treated as transient and retried.
-func (collector PeerCollector) CollectAddresses(ctx context.Context, crd *cosmosv1.CosmosFullNode) ([]string, error) {
+func (collector PeerCollectorDeprecated) CollectAddresses(ctx context.Context, crd *cosmosv1.CosmosFullNode) ([]string, error) {
 	var pods corev1.PodList
 	if err := collector.client.List(ctx, &pods,
 		client.InNamespace(crd.Namespace),

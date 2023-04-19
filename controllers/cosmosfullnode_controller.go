@@ -45,7 +45,7 @@ type CosmosFullNodeReconciler struct {
 
 	configMapControl fullnode.ConfigMapControl
 	nodeKeyControl   fullnode.NodeKeyControl
-	peerCollector    *fullnode.PeerCollector
+	peerCollector    *fullnode.PeerCollectorDeprecated
 	podControl       fullnode.PodControl
 	pvcControl       fullnode.PVCControl
 	recorder         record.EventRecorder
@@ -63,7 +63,7 @@ func NewFullNode(client client.Client, recorder record.EventRecorder, statusClie
 		Client:           client,
 		configMapControl: fullnode.NewConfigMapControl(client),
 		nodeKeyControl:   fullnode.NewNodeKeyControl(client),
-		peerCollector:    fullnode.NewPeerCollector(client, tmClient),
+		peerCollector:    fullnode.NewPeerCollectorDeprecated(client, tmClient),
 		podControl:       fullnode.NewPodControl(client, podFilter),
 		pvcControl:       fullnode.NewPVCControl(client),
 		recorder:         recorder,

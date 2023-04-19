@@ -75,7 +75,7 @@ func TestPeerCollector_CollectAddresses(t *testing.T) {
 			}
 		})
 
-		collector := NewPeerCollector(lister, tmClient)
+		collector := NewPeerCollectorDeprecated(lister, tmClient)
 
 		got, err := collector.CollectAddresses(ctx, &crd)
 		require.NoError(t, err)
@@ -93,7 +93,7 @@ func TestPeerCollector_CollectAddresses(t *testing.T) {
 			return cosmos.TendermintStatus{}, errors.New("tendermint error")
 		})
 
-		collector := NewPeerCollector(lister, tmClient)
+		collector := NewPeerCollectorDeprecated(lister, tmClient)
 
 		_, err := collector.CollectAddresses(ctx, &crd)
 
@@ -110,7 +110,7 @@ func TestPeerCollector_CollectAddresses(t *testing.T) {
 			panic("should not be called")
 		})
 
-		collector := NewPeerCollector(lister, tmClient)
+		collector := NewPeerCollectorDeprecated(lister, tmClient)
 		_, err := collector.CollectAddresses(ctx, &crd)
 
 		require.Error(t, err)
