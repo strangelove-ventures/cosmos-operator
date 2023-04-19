@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -30,20 +29,8 @@ func TestNodeKeyControl_Reconcile(t *testing.T) {
 	crd.Spec.ChainSpec.Network = "testnet"
 
 	control := NewNodeKeyControl(&mClient)
-	coll, err := control.Reconcile(ctx, nopReporter, &crd)
+	err := control.Reconcile(ctx, nopReporter, &crd)
 	require.NoError(t, err)
-
-	require.Len(t, coll, 3)
-	wantKeys := []client.ObjectKey{
-		{Namespace: namespace, Name: "juno-0"},
-		{Namespace: namespace, Name: "juno-1"},
-		{Namespace: namespace, Name: "juno-2"},
-	}
-	require.ElementsMatch(t, wantKeys, lo.Keys(coll))
-	require.Len(t, lo.Uniq(lo.Values(coll)), 3)
-	for _, v := range coll {
-		require.NotEmpty(t, v.NodeID)
-	}
 
 	require.Len(t, mClient.GotListOpts, 2)
 	var listOpt client.ListOptions
