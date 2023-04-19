@@ -14,6 +14,10 @@ func ResetStatus(crd *cosmosalpha.ScheduledVolumeSnapshot) {
 	if crd.Status.CreatedAt.IsZero() {
 		crd.Status.CreatedAt = metav1.NewTime(time.Now())
 	}
+	// If user re-activates, reset phase to beginning.
+	if !crd.Spec.Suspend && crd.Status.Phase == cosmosalpha.SnapshotPhaseSuspended {
+		crd.Status.Phase = cosmosalpha.SnapshotPhaseWaitingForNext
+	}
 	if crd.Status.Phase == "" {
 		crd.Status.Phase = cosmosalpha.SnapshotPhaseWaitingForNext
 	}
