@@ -94,6 +94,13 @@ spec:
                   Therefore, setting a crontab that's too frequent may result in rate
                   limiting errors.
                 type: string
+              suspend:
+                description: If true, the controller will not create any VolumeSnapshots.
+                  This allows you to disable creation of VolumeSnapshots without deleting
+                  the ScheduledVolumeSnapshot resource. This pattern works better
+                  when using tools such as Kustomzie. If a pod is temporarily deleted,
+                  it will be restored.
+                type: boolean
               volumeSnapshotClassName:
                 description: The name of the VolumeSnapshotClass to use when creating
                   snapshots.
