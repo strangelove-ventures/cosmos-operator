@@ -29,8 +29,9 @@ func TestNodeKeyControl_Reconcile(t *testing.T) {
 	crd.Spec.ChainSpec.Network = "testnet"
 
 	control := NewNodeKeyControl(&mClient)
-	err := control.Reconcile(ctx, nopReporter, &crd)
+	got, err := control.Reconcile(ctx, nopReporter, &crd)
 	require.NoError(t, err)
+	require.Len(t, got, 3)
 
 	require.Len(t, mClient.GotListOpts, 2)
 	var listOpt client.ListOptions
