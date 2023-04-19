@@ -2,6 +2,7 @@ package fullnode
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/cometbft/cometbft/p2p"
@@ -155,24 +156,42 @@ func TestPeerCollector_Collect(t *testing.T) {
 	})
 
 	t.Run("get error", func(t *testing.T) {
-		t.Fail()
+		getter := mockGetter(func(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+			return errors.New("boom")
+		})
+
+		collector := NewPeerCollector(getter)
+		var crd cosmosv1.CosmosFullNode
+		crd.Name = "dydx"
+		crd.Spec.Replicas = 1
+		_, err := collector.Collect(ctx, &crd)
+
+		require.Error(t, err)
+		require.EqualError(t, err, "get secret dydx-node-key-0: boom")
+		require.True(t, err.IsTransient())
 	})
 
 	t.Run("invalid node key", func(t *testing.T) {
-		t.Fail()
-		//	// This would only happen if a user manually edited the secret.
-		//	var crd cosmosv1.CosmosFullNode
-		//	crd.Name = "agoric"
-		//	crd.Namespace = namespace
-		//	crd.Spec.Replicas = 1
-		//	res, err := BuildNodeKeySecrets(nil, &crd)
-		//	require.NoError(t, err)
-		//	secrets := lo.Map(res, func(r diff.Resource[*corev1.Secret], _ int) *corev1.Secret { return r.Object() })
-		//
-		//	secrets[0].Data[nodeKeyFile] = []byte("invalid")
-		//	_, kerr := BuildPeerInfo(secrets, &crd)
-		//
-		//	require.Error(t, kerr)
-		//	require.False(t, kerr.IsTransient())
+		getter := mockGetter(func(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+			switch ref := obj.(type) {
+			case *corev1.Secret:
+				var secret corev1.Secret
+				secret.Data = map[string][]byte{nodeKeyFile: []byte("invalid")}
+				*ref = secret
+			case *corev1.Service:
+				panic("should not be called")
+			}
+			return nil
+		})
+
+		var crd cosmosv1.CosmosFullNode
+		crd.Name = "dydx"
+		crd.Spec.Replicas = 1
+		collector := NewPeerCollector(getter)
+		_, err := collector.Collect(ctx, &crd)
+
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "invalid character")
+		require.False(t, err.IsTransient())
 	})
 }
