@@ -40,7 +40,7 @@ func NewStatusCollector(client Lister, tendermint TendermintStatuser) *StatusCol
 	return &StatusCollector{client: client, tendermint: tendermint}
 }
 
-// StatusCollection maps pod ObjectKeys to PodStatus.
+// StatusCollection is a list of pods and tendermint status associated with the pod.
 type StatusCollection []PodStatus
 
 // Collect returns a StatusCollection for the given controller. The controller must own the pods.
