@@ -80,7 +80,9 @@ func TestPeerCollector_Collect(t *testing.T) {
 		got := peers[client.ObjectKey{Name: "dydx-0", Namespace: namespace}]
 		require.Equal(t, p2p.ID("1e23ce0b20ae2377925537cc71d1529d723bb892"), got.NodeID)
 		require.Equal(t, "dydx-p2p-0.strangelove.svc.cluster.local:26656", got.PrivateAddress)
+		require.Equal(t, "1e23ce0b20ae2377925537cc71d1529d723bb892@dydx-p2p-0.strangelove.svc.cluster.local:26656", got.FullPrivateAddress())
 		require.Empty(t, got.ExternalAddress)
+		require.Equal(t, "1e23ce0b20ae2377925537cc71d1529d723bb892@0.0.0.0:26656", got.FullExternalAddress())
 
 		got = peers[client.ObjectKey{Name: "dydx-1", Namespace: namespace}]
 		require.NotEmpty(t, got.NodeID)
@@ -129,12 +131,15 @@ func TestPeerCollector_Collect(t *testing.T) {
 		got := peers[client.ObjectKey{Name: "dydx-0", Namespace: namespace}]
 		require.Equal(t, p2p.ID("1e23ce0b20ae2377925537cc71d1529d723bb892"), got.NodeID)
 		require.Empty(t, got.ExternalAddress)
+		require.Equal(t, "1e23ce0b20ae2377925537cc71d1529d723bb892@0.0.0.0:26656", got.FullExternalAddress())
 
 		got = peers[client.ObjectKey{Name: "dydx-1", Namespace: namespace}]
 		require.Equal(t, "1.2.3.4:26656", got.ExternalAddress)
+		require.Equal(t, "1e23ce0b20ae2377925537cc71d1529d723bb892@1.2.3.4:26656", got.FullExternalAddress())
 
 		got = peers[client.ObjectKey{Name: "dydx-2", Namespace: namespace}]
 		require.Equal(t, "host.example.com:26656", got.ExternalAddress)
+		require.Equal(t, "1e23ce0b20ae2377925537cc71d1529d723bb892@host.example.com:26656", got.FullExternalAddress())
 
 		require.True(t, peers.HasIncompleteExternalAddresses())
 	})
@@ -154,6 +159,7 @@ func TestPeerCollector_Collect(t *testing.T) {
 	})
 
 	t.Run("invalid node key", func(t *testing.T) {
+		t.Fail()
 		//	// This would only happen if a user manually edited the secret.
 		//	var crd cosmosv1.CosmosFullNode
 		//	crd.Name = "agoric"

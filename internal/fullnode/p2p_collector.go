@@ -24,6 +24,19 @@ type PeerInfo struct {
 	hasExternalAddress bool
 }
 
+// FullPrivateAddress returns the full private address of the peer in the format <node_id>@<private_address>:<port>.
+func (info PeerInfo) FullPrivateAddress() string {
+	return string(info.NodeID) + "@" + info.PrivateAddress
+}
+
+// FullExternalAddress returns the full external address of the peer in the format <node_id>@<external_address>:<port>.
+func (info PeerInfo) FullExternalAddress() string {
+	if info.ExternalAddress == "" {
+		return string(info.NodeID) + "@" + net.JoinHostPort("0.0.0.0", strconv.Itoa(p2pPort))
+	}
+	return string(info.NodeID) + "@" + info.ExternalAddress
+}
+
 // Peers maps an ObjectKey using the instance name to PeerInfo.
 type Peers map[client.ObjectKey]PeerInfo
 
@@ -82,6 +95,8 @@ func (c PeerCollector) objectKey(crd *cosmosv1.CosmosFullNode, ordinal int32) cl
 func (c PeerCollector) addExternalAddress(ctx context.Context, peers Peers, crd *cosmosv1.CosmosFullNode, ordinal int32) error {
 	svcName := p2pServiceName(crd, ordinal)
 	var svc corev1.Service
+	// Hoping the caching layer kubebuilder prevents API errors or rate limits. Simplifies logic to use a Get here
+	// vs. manually filtering through a List.
 	if err := c.client.Get(ctx, client.ObjectKey{Name: svcName, Namespace: crd.Namespace}, &svc); err != nil {
 		return kube.TransientError(fmt.Errorf("get server %s: %w", svcName, err))
 	}
