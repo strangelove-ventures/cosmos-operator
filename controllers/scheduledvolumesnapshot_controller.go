@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/go-logr/logr"
 	cosmosv1alpha1 "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
 	"github.com/strangelove-ventures/cosmos-operator/internal/cosmos"
 	"github.com/strangelove-ventures/cosmos-operator/internal/fullnode"
@@ -86,6 +87,16 @@ func (r *ScheduledVolumeSnapshotReconciler) Reconcile(ctx context.Context, req c
 	defer r.updateStatus(ctx, crd)
 
 	retryResult := ctrl.Result{RequeueAfter: 10 * time.Second}
+
+	// If suspended, restore pod and finish.
+	if crd.Spec.Suspend {
+		crd.Status.Phase = cosmosv1alpha1.SnapshotPhaseRestorePod
+		if err := r.restorePod(ctx, logger, crd); err != nil {
+			return retryResult, err
+		}
+		crd.Status.Phase = cosmosv1alpha1.SnapshotPhaseSuspended
+		return finishResult, nil
+	}
 
 	phase := crd.Status.Phase
 	switch phase {
@@ -167,13 +178,7 @@ func (r *ScheduledVolumeSnapshotReconciler) Reconcile(ctx context.Context, req c
 
 	case cosmosv1alpha1.SnapshotPhaseRestorePod:
 		logger.Info(string(phase))
-		// Order of operations important here. SignalPodRestoration fails if the fullnode's status is already updated.
-		if err := r.fullNodeControl.ConfirmPodRestoration(ctx, crd); err != nil {
-			logger.Info("Pod not restored; signaling fullnode to restore pod", "error", err)
-			if err = r.fullNodeControl.SignalPodRestoration(ctx, crd); err != nil {
-				logger.Error(err, "Failed to update fullnode status for restoring pod")
-				r.reportError(crd, "RestorePodError", err)
-			}
+		if err := r.restorePod(ctx, logger, crd); err != nil {
 			return retryResult, nil
 		}
 		// Reset to beginning.
@@ -182,6 +187,19 @@ func (r *ScheduledVolumeSnapshotReconciler) Reconcile(ctx context.Context, req c
 
 	// Updating status in the defer above triggers a new reconcile loop.
 	return finishResult, nil
+}
+
+func (r *ScheduledVolumeSnapshotReconciler) restorePod(ctx context.Context, logger logr.Logger, crd *cosmosv1alpha1.ScheduledVolumeSnapshot, ) error {
+	// Order of operations important here. SignalPodRestoration fails if the fullnode's status is already updated.
+	if err := r.fullNodeControl.ConfirmPodRestoration(ctx, crd); err != nil {
+		logger.Info("Pod not restored; signaling fullnode to restore pod", "error", err)
+		if err = r.fullNodeControl.SignalPodRestoration(ctx, crd); err != nil {
+			logger.Error(err, "Failed to update fullnode status for restoring pod")
+			r.reportError(crd, "RestorePodError", err)
+			return err
+		}
+	}
+	return nil
 }
 
 func (r *ScheduledVolumeSnapshotReconciler) reportError(crd *cosmosv1alpha1.ScheduledVolumeSnapshot, reason string, err error) {
