@@ -141,10 +141,10 @@ const (
 
 	// SnapshotPhaseDeletingPod signals the fullNodeRef to delete the candidate pod. This allows taking a VolumeSnapshot
 	// on a "quiet" PVC, with no processes writing to it.
-	SnapshotPhaseDeletingPod = "DeletingPod"
+	SnapshotPhaseDeletingPod SnapshotPhase = "DeletingPod"
 
 	// SnapshotPhaseWaitingForPodDeletion indicates controller is waiting for the fullNodeRef to delete the candidate pod.
-	SnapshotPhaseWaitingForPodDeletion = "WaitingForPodDeletion"
+	SnapshotPhaseWaitingForPodDeletion SnapshotPhase = "WaitingForPodDeletion"
 
 	// SnapshotPhaseCreating indicates controller found a candidate and will now create a VolumeSnapshot from the PVC.
 	SnapshotPhaseCreating SnapshotPhase = "CreatingSnapshot"
@@ -154,10 +154,10 @@ const (
 	SnapshotPhaseWaitingForCreation SnapshotPhase = "WaitingForSnapshotCreation"
 
 	// SnapshotPhaseRestorePod signals the fullNodeRef it can recreate the temporarily deleted pod.
-	SnapshotPhaseRestorePod = "RestoringPod"
+	SnapshotPhaseRestorePod SnapshotPhase = "RestoringPod"
 
 	// SnapshotPhaseSuspended means the controller is not creating snapshots. Suspended by the user.
-	SnapshotPhaseSuspended = "Suspended"
+	SnapshotPhaseSuspended SnapshotPhase = "Suspended"
 )
 
 type VolumeSnapshotStatus struct {
