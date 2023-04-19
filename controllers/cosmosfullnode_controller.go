@@ -121,7 +121,8 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	// Reconcile Secrets.
-	err = r.nodeKeyControl.Reconcile(ctx, reporter, crd)
+	// TODO: use return value
+	_, err = r.nodeKeyControl.Reconcile(ctx, reporter, crd)
 	if err != nil {
 		errs.Append(err)
 	}
