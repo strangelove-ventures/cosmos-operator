@@ -14,14 +14,15 @@ func ResetStatus(crd *cosmosalpha.ScheduledVolumeSnapshot) {
 	if crd.Status.CreatedAt.IsZero() {
 		crd.Status.CreatedAt = metav1.NewTime(time.Now())
 	}
-	if crd.Spec.Suspend {
+	switch {
+	case crd.Spec.Suspend:
+		// Restore any temporarily deleted pod and suspend
 		crd.Status.Phase = cosmosalpha.SnapshotPhaseRestorePod
-	}
-	// If user re-activates, reset phase to beginning.
-	if !crd.Spec.Suspend && crd.Status.Phase == cosmosalpha.SnapshotPhaseSuspended {
+	case !crd.Spec.Suspend && crd.Status.Phase == cosmosalpha.SnapshotPhaseSuspended:
+		// If user reactivates, reset to beginning.
 		crd.Status.Phase = cosmosalpha.SnapshotPhaseWaitingForNext
-	}
-	if crd.Status.Phase == "" {
+	case crd.Status.Phase == "":
+		// CRD was just created.
 		crd.Status.Phase = cosmosalpha.SnapshotPhaseWaitingForNext
 	}
 }
