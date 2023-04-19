@@ -9,6 +9,7 @@ import (
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/internal/test"
 	"github.com/stretchr/testify/require"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
@@ -29,6 +30,8 @@ var (
 
 func TestBuildConfigMaps(t *testing.T) {
 	t.Parallel()
+
+	const namespace = "default"
 
 	t.Run("happy path", func(t *testing.T) {
 		crd := defaultCRD()
@@ -162,6 +165,7 @@ func TestBuildConfigMaps(t *testing.T) {
 
 		t.Run("overrides", func(t *testing.T) {
 			overrides := crd.DeepCopy()
+			overrides.Namespace = namespace
 			overrides.Spec.ChainSpec.Tendermint.CorsAllowedOrigins = []string{"should not see me"}
 			overrides.Spec.ChainSpec.Tendermint.TomlOverrides = ptr(`
 	log_format = "json"
@@ -182,7 +186,7 @@ func TestBuildConfigMaps(t *testing.T) {
 	indexer = "null"
 	`)
 
-			p2p := ExternalAddresses{"osmosis-0": "should not see me"}
+			p2p := ExternalAddresses{client.ObjectKey{Name: "osmosis-0", Namespace: namespace}: "should not see me"}
 			cms, err := BuildConfigMaps(overrides, p2p)
 			require.NoError(t, err)
 
@@ -203,10 +207,11 @@ func TestBuildConfigMaps(t *testing.T) {
 
 		t.Run("p2p external addresses", func(t *testing.T) {
 			p2p := ExternalAddresses{
-				"osmosis-0": "1.1.1.1",
-				"osmosis-1": "2.2.2.2",
+				client.ObjectKey{Name: "osmosis-0", Namespace: namespace}: "1.1.1.1",
+				client.ObjectKey{Name: "osmosis-1", Namespace: namespace}: "2.2.2.2",
 			}
 			p2pCrd := crd.DeepCopy()
+			p2pCrd.Namespace = namespace
 			p2pCrd.Spec.Replicas = 3
 			cms, err := BuildConfigMaps(p2pCrd, p2p)
 			require.NoError(t, err)

@@ -12,6 +12,7 @@ import (
 	"github.com/strangelove-ventures/cosmos-operator/internal/diff"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -32,7 +33,7 @@ func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, p2p ExternalAddresses) ([]dif
 	for i := int32(0); i < crd.Spec.Replicas; i++ {
 		data := make(map[string]string)
 		instance := instanceName(crd, i)
-		if err := addConfigToml(buf, data, crd, p2p[instance]); err != nil {
+		if err := addConfigToml(buf, data, crd, p2p[client.ObjectKey{Name: instance, Namespace: crd.Namespace}]); err != nil {
 			return nil, err
 		}
 		buf.Reset()

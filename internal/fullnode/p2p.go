@@ -13,8 +13,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// ExternalAddresses keys are instance names and values are public IPs or hostnames.
-type ExternalAddresses map[string]string
+// ExternalAddresses keys are client.ObjectKey where name is the instance name and values are public IPs or hostnames.
+type ExternalAddresses map[client.ObjectKey]string
 
 // Incomplete returns true if any instances do not have a public IP or hostname.
 func (addrs ExternalAddresses) Incomplete() bool {
@@ -49,14 +49,15 @@ func CollectExternalP2P(ctx context.Context, crd *cosmosv1.CosmosFullNode, c Lis
 			continue
 		}
 		ingress := svc.Status.LoadBalancer.Ingress
+		objKey := client.ObjectKey{Namespace: svc.Namespace, Name: svc.Labels[kube.InstanceLabel]}
 		if len(ingress) == 0 {
-			m[svc.Labels[kube.InstanceLabel]] = ""
+			m[objKey] = ""
 			continue
 		}
 		lb := ingress[0]
 		host := lo.Ternary(lb.IP != "", lb.IP, lb.Hostname)
 		if host != "" {
-			m[svc.Labels[kube.InstanceLabel]] = net.JoinHostPort(host, port)
+			m[objKey] = net.JoinHostPort(host, port)
 		}
 	}
 	return m, nil
