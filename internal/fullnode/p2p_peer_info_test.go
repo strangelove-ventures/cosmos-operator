@@ -48,4 +48,21 @@ func TestBuildPeerInfo(t *testing.T) {
 		require.NotEmpty(t, got.NodeID)
 		require.NotEmpty(t, got.PrivateAddress)
 	})
+
+	t.Run("invalid node key", func(t *testing.T) {
+		// This would only happen if a user manually edited the secret.
+		var crd cosmosv1.CosmosFullNode
+		crd.Name = "agoric"
+		crd.Namespace = namespace
+		crd.Spec.Replicas = 1
+		res, err := BuildNodeKeySecrets(nil, &crd)
+		require.NoError(t, err)
+		secrets := lo.Map(res, func(r diff.Resource[*corev1.Secret], _ int) *corev1.Secret { return r.Object() })
+
+		secrets[0].Data[nodeKeyFile] = []byte("invalid")
+		_, kerr := BuildPeerInfo(secrets, &crd)
+
+		require.Error(t, kerr)
+		require.False(t, kerr.IsTransient())
+	})
 }

@@ -6,6 +6,7 @@ import (
 	cmtjson "github.com/cometbft/cometbft/libs/json"
 	"github.com/cometbft/cometbft/p2p"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -19,12 +20,12 @@ type PeerInfoCollection map[client.ObjectKey]PeerInfo
 
 // BuildPeerInfo builds a PeerInfoCollection from a list of secrets.
 // Secrets must be ordered by ordinal.
-func BuildPeerInfo(secrets []*corev1.Secret, crd *cosmosv1.CosmosFullNode) (PeerInfoCollection, error) {
+func BuildPeerInfo(secrets []*corev1.Secret, crd *cosmosv1.CosmosFullNode) (PeerInfoCollection, kube.ReconcileError) {
 	peers := make(PeerInfoCollection)
 	for i, secret := range secrets {
 		var nodeKey p2p.NodeKey
 		if err := cmtjson.Unmarshal(secret.Data[nodeKeyFile], &nodeKey); err != nil {
-			return nil, err
+			return nil, kube.UnrecoverableError(err)
 		}
 		instance := instanceName(crd, int32(i))
 		svcName := p2pServiceName(crd, int32(i))
