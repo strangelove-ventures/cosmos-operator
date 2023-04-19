@@ -88,16 +88,6 @@ func (r *ScheduledVolumeSnapshotReconciler) Reconcile(ctx context.Context, req c
 
 	retryResult := ctrl.Result{RequeueAfter: 10 * time.Second}
 
-	// If suspended, restore pod and finish.
-	if crd.Spec.Suspend {
-		crd.Status.Phase = cosmosv1alpha1.SnapshotPhaseRestorePod
-		if err := r.restorePod(ctx, logger, crd); err != nil {
-			return retryResult, err
-		}
-		crd.Status.Phase = cosmosv1alpha1.SnapshotPhaseSuspended
-		return finishResult, nil
-	}
-
 	phase := crd.Status.Phase
 	switch phase {
 	case cosmosv1alpha1.SnapshotPhaseWaitingForNext:
@@ -181,16 +171,19 @@ func (r *ScheduledVolumeSnapshotReconciler) Reconcile(ctx context.Context, req c
 		if err := r.restorePod(ctx, logger, crd); err != nil {
 			return retryResult, nil
 		}
-		// Reset to beginning.
-		crd.Status.Phase = cosmosv1alpha1.SnapshotPhaseWaitingForNext
+		if crd.Spec.Suspend {
+			crd.Status.Phase = cosmosv1alpha1.SnapshotPhaseSuspended
+		} else {
+			// Reset to beginning.
+			crd.Status.Phase = cosmosv1alpha1.SnapshotPhaseWaitingForNext
+		}
 	}
 
 	// Updating status in the defer above triggers a new reconcile loop.
 	return finishResult, nil
 }
 
-func (r *ScheduledVolumeSnapshotReconciler) restorePod(ctx context.Context, logger logr.Logger, crd *cosmosv1alpha1.ScheduledVolumeSnapshot, ) error {
-	// Order of operations important here. SignalPodRestoration fails if the fullnode's status is already updated.
+func (r *ScheduledVolumeSnapshotReconciler) restorePod(ctx context.Context, logger logr.Logger, crd *cosmosv1alpha1.ScheduledVolumeSnapshot) error {
 	if err := r.fullNodeControl.ConfirmPodRestoration(ctx, crd); err != nil {
 		logger.Info("Pod not restored; signaling fullnode to restore pod", "error", err)
 		if err = r.fullNodeControl.SignalPodRestoration(ctx, crd); err != nil {

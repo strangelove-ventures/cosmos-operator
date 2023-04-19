@@ -36,12 +36,13 @@ func TestResetStatus(t *testing.T) {
 
 	t.Run("suspended", func(t *testing.T) {
 		var crd cosmosalpha.ScheduledVolumeSnapshot
+
+		crd.Status.Phase = cosmosalpha.SnapshotPhaseWaitingForPodDeletion
 		crd.Spec.Suspend = true
+		ResetStatus(&crd)
+		require.Equal(t, cosmosalpha.SnapshotPhaseRestorePod, crd.Status.Phase)
 
 		crd.Status.Phase = cosmosalpha.SnapshotPhaseSuspended
-		ResetStatus(&crd)
-		require.Equal(t, cosmosalpha.SnapshotPhaseSuspended, crd.Status.Phase)
-
 		crd.Spec.Suspend = false
 		ResetStatus(&crd)
 		require.Equal(t, cosmosalpha.SnapshotPhaseWaitingForNext, crd.Status.Phase)
