@@ -1,0 +1,172 @@
+package fullnode
+
+import (
+	"context"
+	"testing"
+
+	"github.com/cometbft/cometbft/p2p"
+	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+type mockGetter func(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error
+
+func (fn mockGetter) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+	if ctx == nil {
+		panic("nil context")
+	}
+	if len(opts) > 0 {
+		panic("unexpected opts")
+	}
+	return fn(ctx, key, obj, opts...)
+}
+
+var panicGetter = mockGetter(func(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+	panic("should not be called")
+})
+
+func TestPeerCollector_Collect(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	const (
+		namespace = "strangelove"
+		nodeKey   = `{"priv_key":{"type":"tendermint/PrivKeyEd25519","value":"HBX8VFQ4OdWfOwIOR7jj0af8mVHik5iGW9o1xnn4vRltk1HmwQS2LLGrMPVS2LIUO9BUqmZ1Pjt+qM8x0ibHxQ=="}}`
+	)
+
+	t.Run("happy path - private addresses", func(t *testing.T) {
+		var crd cosmosv1.CosmosFullNode
+		crd.Name = "dydx"
+		crd.Namespace = namespace
+		crd.Spec.Replicas = 2
+		res, err := BuildNodeKeySecrets(nil, &crd)
+		require.NoError(t, err)
+		secret := res[0].Object()
+		secret.Data[nodeKeyFile] = []byte(nodeKey)
+
+		var (
+			getCount int
+			objKeys  []client.ObjectKey
+		)
+		getter := mockGetter(func(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+			objKeys = append(objKeys, key)
+			getCount++
+			switch ref := obj.(type) {
+			case *corev1.Secret:
+				*ref = *secret
+			case *corev1.Service:
+				*ref = corev1.Service{}
+			}
+			return nil
+		})
+
+		collector := NewPeerCollector(getter)
+		peers, err := collector.Collect(ctx, &crd)
+		require.NoError(t, err)
+		require.Len(t, peers, 2)
+
+		require.Equal(t, 4, getCount) // 2 secrets + 2 services
+
+		wantKeys := []client.ObjectKey{
+			{Name: "dydx-node-key-0", Namespace: namespace},
+			{Name: "dydx-p2p-0", Namespace: namespace},
+			{Name: "dydx-node-key-1", Namespace: namespace},
+			{Name: "dydx-p2p-1", Namespace: namespace},
+		}
+		require.Equal(t, wantKeys, objKeys)
+
+		got := peers[client.ObjectKey{Name: "dydx-0", Namespace: namespace}]
+		require.Equal(t, p2p.ID("1e23ce0b20ae2377925537cc71d1529d723bb892"), got.NodeID)
+		require.Equal(t, "dydx-p2p-0.strangelove.svc.cluster.local:26656", got.PrivateAddress)
+		require.Empty(t, got.ExternalAddress)
+
+		got = peers[client.ObjectKey{Name: "dydx-1", Namespace: namespace}]
+		require.NotEmpty(t, got.NodeID)
+		require.Equal(t, "dydx-p2p-1.strangelove.svc.cluster.local:26656", got.PrivateAddress)
+		require.Empty(t, got.ExternalAddress)
+
+		require.False(t, peers.HasIncompleteExternalAddresses())
+	})
+
+	t.Run("happy path - external addresses", func(t *testing.T) {
+		var crd cosmosv1.CosmosFullNode
+		crd.Name = "dydx"
+		crd.Namespace = namespace
+		crd.Spec.Replicas = 3
+		res, err := BuildNodeKeySecrets(nil, &crd)
+		require.NoError(t, err)
+		secret := res[0].Object()
+		secret.Data[nodeKeyFile] = []byte(nodeKey)
+
+		getter := mockGetter(func(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+			switch ref := obj.(type) {
+			case *corev1.Secret:
+				*ref = *secret
+			case *corev1.Service:
+				var svc corev1.Service
+				switch key.Name {
+				case "dydx-p2p-0":
+					svc.Spec.Type = corev1.ServiceTypeLoadBalancer
+				case "dydx-p2p-1":
+					svc.Spec.Type = corev1.ServiceTypeLoadBalancer
+					svc.Status.LoadBalancer.Ingress = []corev1.LoadBalancerIngress{{IP: "1.2.3.4"}}
+				case "dydx-p2p-2":
+					svc.Spec.Type = corev1.ServiceTypeLoadBalancer
+					svc.Status.LoadBalancer.Ingress = []corev1.LoadBalancerIngress{{Hostname: "host.example.com"}}
+				}
+				*ref = svc
+			}
+			return nil
+		})
+
+		collector := NewPeerCollector(getter)
+		peers, err := collector.Collect(ctx, &crd)
+		require.NoError(t, err)
+		require.Len(t, peers, 3)
+
+		got := peers[client.ObjectKey{Name: "dydx-0", Namespace: namespace}]
+		require.Equal(t, p2p.ID("1e23ce0b20ae2377925537cc71d1529d723bb892"), got.NodeID)
+		require.Empty(t, got.ExternalAddress)
+
+		got = peers[client.ObjectKey{Name: "dydx-1", Namespace: namespace}]
+		require.Equal(t, "1.2.3.4:26656", got.ExternalAddress)
+
+		got = peers[client.ObjectKey{Name: "dydx-2", Namespace: namespace}]
+		require.Equal(t, "host.example.com:26656", got.ExternalAddress)
+
+		require.True(t, peers.HasIncompleteExternalAddresses())
+	})
+
+	t.Run("zero replicas", func(t *testing.T) {
+		var crd cosmosv1.CosmosFullNode
+		crd.Spec.Replicas = 0
+
+		collector := NewPeerCollector(panicGetter)
+		peers, err := collector.Collect(ctx, &crd)
+		require.NoError(t, err)
+		require.Len(t, peers, 0)
+	})
+
+	t.Run("get error", func(t *testing.T) {
+		t.Fail()
+	})
+
+	t.Run("invalid node key", func(t *testing.T) {
+		//	// This would only happen if a user manually edited the secret.
+		//	var crd cosmosv1.CosmosFullNode
+		//	crd.Name = "agoric"
+		//	crd.Namespace = namespace
+		//	crd.Spec.Replicas = 1
+		//	res, err := BuildNodeKeySecrets(nil, &crd)
+		//	require.NoError(t, err)
+		//	secrets := lo.Map(res, func(r diff.Resource[*corev1.Secret], _ int) *corev1.Secret { return r.Object() })
+		//
+		//	secrets[0].Data[nodeKeyFile] = []byte("invalid")
+		//	_, kerr := BuildPeerInfo(secrets, &crd)
+		//
+		//	require.Error(t, kerr)
+		//	require.False(t, kerr.IsTransient())
+	})
+}

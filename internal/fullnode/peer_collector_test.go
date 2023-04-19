@@ -101,7 +101,7 @@ func TestPeerCollector_CollectAddresses(t *testing.T) {
 		require.EqualError(t, err, "tendermint error")
 	})
 
-	t.Run("list error", func(t *testing.T) {
+	t.Run("get error", func(t *testing.T) {
 		lister := mockLister(func(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
 			return errors.New("list error")
 		})
