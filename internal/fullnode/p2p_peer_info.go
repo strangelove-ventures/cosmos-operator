@@ -11,11 +11,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// PeerInfo contains information about a peer.
 type PeerInfo struct {
-	NodeID         string
+	NodeID         p2p.ID
 	PrivateAddress string // The full address in the format <node_id>@my-service.namespace.svc.cluster.local:<port>
 }
 
+// PeerInfoCollection maps an ObjectKey using the instance name to PeerInfo.
 type PeerInfoCollection map[client.ObjectKey]PeerInfo
 
 // BuildPeerInfo builds a PeerInfoCollection from a list of secrets.
@@ -31,7 +33,7 @@ func BuildPeerInfo(secrets []*corev1.Secret, crd *cosmosv1.CosmosFullNode) (Peer
 		svcName := p2pServiceName(crd, int32(i))
 		key := client.ObjectKey{Name: instance, Namespace: secret.Namespace}
 		peers[key] = PeerInfo{
-			NodeID:         string(nodeKey.ID()),
+			NodeID:         nodeKey.ID(),
 			PrivateAddress: fmt.Sprintf("%s@%s.%s.svc.cluster.local:%d", nodeKey.ID(), svcName, secret.Namespace, p2pPort),
 		}
 	}

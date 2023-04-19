@@ -3,6 +3,7 @@ package fullnode
 import (
 	"testing"
 
+	"github.com/cometbft/cometbft/p2p"
 	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/internal/diff"
@@ -33,11 +34,11 @@ func TestBuildPeerInfo(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, gotInfo, 3)
 
-		require.Len(t, lo.Uniq(lo.Map(lo.Values(gotInfo), func(v PeerInfo, _ int) string { return v.NodeID })), 3)
+		require.Len(t, lo.Uniq(lo.Map(lo.Values(gotInfo), func(v PeerInfo, _ int) string { return string(v.NodeID) })), 3)
 		require.Len(t, lo.Uniq(lo.Map(lo.Values(gotInfo), func(v PeerInfo, _ int) string { return v.PrivateAddress })), 3)
 
 		got := gotInfo[client.ObjectKey{Name: "agoric-0", Namespace: namespace}]
-		require.Equal(t, "1e23ce0b20ae2377925537cc71d1529d723bb892", got.NodeID)
+		require.Equal(t, p2p.ID("1e23ce0b20ae2377925537cc71d1529d723bb892"), got.NodeID)
 		require.Equal(t, "1e23ce0b20ae2377925537cc71d1529d723bb892@agoric-p2p-0.strangelove.svc.cluster.local:26656", got.PrivateAddress)
 
 		got = gotInfo[client.ObjectKey{Name: "agoric-1", Namespace: namespace}]
