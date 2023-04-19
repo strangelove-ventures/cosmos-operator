@@ -27,6 +27,8 @@ var panicStatuser = mockStatuser(func(ctx context.Context, rpcHost string) (Tend
 })
 
 func TestStatusCollector_Collect(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 
 	const namespace = "default"
