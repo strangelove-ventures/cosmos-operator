@@ -14,7 +14,7 @@ import (
 
 // ConfigMapControl creates or updates configmaps.
 type ConfigMapControl struct {
-	build  func(*cosmosv1.CosmosFullNode, ExternalAddresses) ([]diff.Resource[*corev1.ConfigMap], error)
+	build  func(*cosmosv1.CosmosFullNode, Peers) ([]diff.Resource[*corev1.ConfigMap], error)
 	client Client
 }
 
@@ -30,7 +30,7 @@ type ConfigChecksums map[client.ObjectKey]string
 
 // Reconcile creates or updates configmaps containing items that are mounted into pods as files.
 // The ConfigMap is never deleted unless the CRD itself is deleted.
-func (cmc ConfigMapControl) Reconcile(ctx context.Context, log kube.Logger, crd *cosmosv1.CosmosFullNode, p2p ExternalAddresses) (ConfigChecksums, kube.ReconcileError) {
+func (cmc ConfigMapControl) Reconcile(ctx context.Context, log kube.Logger, crd *cosmosv1.CosmosFullNode, peers Peers) (ConfigChecksums, kube.ReconcileError) {
 	var cms corev1.ConfigMapList
 	if err := cmc.client.List(ctx, &cms,
 		client.InNamespace(crd.Namespace),
@@ -41,7 +41,7 @@ func (cmc ConfigMapControl) Reconcile(ctx context.Context, log kube.Logger, crd 
 
 	current := ptrSlice(cms.Items)
 
-	want, err := cmc.build(crd, p2p)
+	want, err := cmc.build(crd, peers)
 	if err != nil {
 		return nil, kube.UnrecoverableError(err)
 	}

@@ -16,8 +16,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// PeerInfo contains information about a peer.
-type PeerInfo struct {
+// Peer contains information about a peer.
+type Peer struct {
 	NodeID          p2p.ID
 	PrivateAddress  string // Only the private address my-service.namespace.svc.cluster.local:<port>
 	ExternalAddress string // Only the address <external-ip-or-hostname>:<port>. Not all peers will be external.
@@ -26,22 +26,30 @@ type PeerInfo struct {
 }
 
 // PrivatePeer returns the full private identifier of the peer in the format <node_id>@<private_address>:<port>.
-func (info PeerInfo) PrivatePeer() string {
+func (info Peer) PrivatePeer() string {
 	return string(info.NodeID) + "@" + info.PrivateAddress
 }
 
 // ExternalPeer returns the full external address of the peer in the format <node_id>@<external_address>:<port>.
-func (info PeerInfo) ExternalPeer() string {
+func (info Peer) ExternalPeer() string {
 	if info.ExternalAddress == "" {
 		return string(info.NodeID) + "@" + net.JoinHostPort("0.0.0.0", strconv.Itoa(p2pPort))
 	}
 	return string(info.NodeID) + "@" + info.ExternalAddress
 }
 
-// Peers maps an ObjectKey using the instance name to PeerInfo.
-type Peers map[client.ObjectKey]PeerInfo
+// Peers maps an ObjectKey using the instance name to Peer.
+type Peers map[client.ObjectKey]Peer
 
 func (p Peers) Default() Peers { return make(Peers) }
+
+// Get is a convenience getter.
+func (p Peers) Get(name, namespace string) Peer {
+	if p == nil {
+		return Peer{}
+	}
+	return p[client.ObjectKey{Name: name, Namespace: namespace}]
+}
 
 // HasIncompleteExternalAddress returns true if any peer has an external address but it is not assigned yet.
 func (p Peers) HasIncompleteExternalAddress() bool {
@@ -55,7 +63,7 @@ func (p Peers) HasIncompleteExternalAddress() bool {
 
 // AllExternal returns a sorted list of all external peers in the format <node_id>@<external_address>:<port>.
 func (p Peers) AllExternal() []string {
-	addrs := lo.Map(lo.Values(p), func(info PeerInfo, _ int) string { return info.ExternalPeer() })
+	addrs := lo.Map(lo.Values(p), func(info Peer, _ int) string { return info.ExternalPeer() })
 	sort.Strings(addrs)
 	return addrs
 }
@@ -86,7 +94,7 @@ func (c PeerCollector) Collect(ctx context.Context, crd *cosmosv1.CosmosFullNode
 			return nil, kube.UnrecoverableError(err)
 		}
 		svcName := p2pServiceName(crd, i)
-		peers[c.objectKey(crd, i)] = PeerInfo{
+		peers[c.objectKey(crd, i)] = Peer{
 			NodeID:         nodeKey.ID(),
 			PrivateAddress: fmt.Sprintf("%s.%s.svc.cluster.local:%d", svcName, secret.Namespace, p2pPort),
 		}

@@ -134,12 +134,7 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	// Reconcile ConfigMaps.
-	p2pAddresses, err := fullnode.CollectExternalP2P(ctx, crd, r)
-	if err != nil {
-		p2pAddresses = make(fullnode.ExternalAddresses)
-		errs.Append(err)
-	}
-	configCksums, err := r.configMapControl.Reconcile(ctx, reporter, crd, p2pAddresses)
+	configCksums, err := r.configMapControl.Reconcile(ctx, reporter, crd, peers)
 	if err != nil {
 		errs.Append(err)
 	}
