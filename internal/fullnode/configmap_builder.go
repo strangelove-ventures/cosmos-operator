@@ -103,18 +103,24 @@ func addConfigToml(buf *bytes.Buffer, cmData map[string]string, crd *cosmosv1.Co
 	}
 
 	privatePeers := peers.Except(instance, crd.Namespace)
-	privatePeerStr := strings.Join(lo.Compact(privatePeers.AllPrivate()), ",")
+	privatePeerStr := commaDelimited(privatePeers.AllPrivate()...)
 	tendermint := spec.Tendermint
 	p2p := decodedToml{
-		"persistent_peers": strings.Join(lo.Compact([]string{privatePeerStr, tendermint.PersistentPeers}), ","),
+		"persistent_peers": commaDelimited(privatePeerStr, tendermint.PersistentPeers),
 		"seeds":            tendermint.Seeds,
 	}
 
 	privateNodeIDs := lo.Map(lo.Values(privatePeers), func(p Peer, _ int) string { return string(p.NodeID) })
 	sort.Strings(privateNodeIDs)
-	nodeIDStr := strings.Join(lo.Compact(privateNodeIDs), ",")
-	if v := nodeIDStr; v != "" {
+	privateIDStr := commaDelimited(privateNodeIDs...)
+
+	privateIDs := commaDelimited(privateIDStr, tendermint.PrivatePeerIDs)
+	if v := privateIDs; v != "" {
 		p2p["private_peer_ids"] = v
+	}
+
+	unconditionalIDs := commaDelimited(privateIDStr, tendermint.UnconditionalPeerIDs)
+	if v := unconditionalIDs; v != "" {
 		p2p["unconditional_peer_ids"] = v
 	}
 
@@ -152,6 +158,10 @@ func addConfigToml(buf *bytes.Buffer, cmData map[string]string, crd *cosmosv1.Co
 	}
 	cmData[configOverlayFile] = buf.String()
 	return nil
+}
+
+func commaDelimited(s ...string) string {
+	return strings.Join(lo.Compact(s), ",")
 }
 
 func addAppToml(buf *bytes.Buffer, cmData map[string]string, app cosmosv1.SDKAppConfig) error {
