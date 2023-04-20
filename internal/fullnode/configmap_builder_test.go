@@ -9,6 +9,7 @@ import (
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/internal/test"
 	"github.com/stretchr/testify/require"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
@@ -29,6 +30,8 @@ var (
 
 func TestBuildConfigMaps(t *testing.T) {
 	t.Parallel()
+
+	const namespace = "default"
 
 	t.Run("happy path", func(t *testing.T) {
 		crd := defaultCRD()
@@ -162,6 +165,7 @@ func TestBuildConfigMaps(t *testing.T) {
 
 		t.Run("overrides", func(t *testing.T) {
 			overrides := crd.DeepCopy()
+			overrides.Namespace = namespace
 			overrides.Spec.ChainSpec.Tendermint.CorsAllowedOrigins = []string{"should not see me"}
 			overrides.Spec.ChainSpec.Tendermint.TomlOverrides = ptr(`
 	log_format = "json"
@@ -182,8 +186,10 @@ func TestBuildConfigMaps(t *testing.T) {
 	indexer = "null"
 	`)
 
-			p2p := ExternalAddresses{"osmosis-0": "should not see me"}
-			cms, err := BuildConfigMaps(overrides, p2p)
+			peers := Peers{
+				client.ObjectKey{Name: "osmosis-0", Namespace: namespace}: {ExternalAddress: "should not see me"},
+			}
+			cms, err := BuildConfigMaps(overrides, peers)
 			require.NoError(t, err)
 
 			cm := cms[0].Object()
@@ -202,13 +208,14 @@ func TestBuildConfigMaps(t *testing.T) {
 		})
 
 		t.Run("p2p external addresses", func(t *testing.T) {
-			p2p := ExternalAddresses{
-				"osmosis-0": "1.1.1.1",
-				"osmosis-1": "2.2.2.2",
+			peers := Peers{
+				client.ObjectKey{Name: "osmosis-0", Namespace: namespace}: {ExternalAddress: "1.1.1.1:26657"},
+				client.ObjectKey{Name: "osmosis-1", Namespace: namespace}: {ExternalAddress: "2.2.2.2:26657"},
 			}
 			p2pCrd := crd.DeepCopy()
+			p2pCrd.Namespace = namespace
 			p2pCrd.Spec.Replicas = 3
-			cms, err := BuildConfigMaps(p2pCrd, p2p)
+			cms, err := BuildConfigMaps(p2pCrd, peers)
 			require.NoError(t, err)
 
 			require.Equal(t, 3, len(cms))
@@ -216,11 +223,11 @@ func TestBuildConfigMaps(t *testing.T) {
 			var decoded decodedToml
 			_, err = toml.Decode(cms[0].Object().Data["config-overlay.toml"], &decoded)
 			require.NoError(t, err)
-			require.Equal(t, "1.1.1.1", decoded["p2p"].(decodedToml)["external_address"])
+			require.Equal(t, "1.1.1.1:26657", decoded["p2p"].(decodedToml)["external_address"])
 
 			_, err = toml.Decode(cms[1].Object().Data["config-overlay.toml"], &decoded)
 			require.NoError(t, err)
-			require.Equal(t, "2.2.2.2", decoded["p2p"].(decodedToml)["external_address"])
+			require.Equal(t, "2.2.2.2:26657", decoded["p2p"].(decodedToml)["external_address"])
 
 			_, err = toml.Decode(cms[2].Object().Data["config-overlay.toml"], &decoded)
 			require.NoError(t, err)

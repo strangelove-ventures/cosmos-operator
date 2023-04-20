@@ -21,7 +21,7 @@ const (
 
 // BuildConfigMaps creates a ConfigMap with configuration to be mounted as files into containers.
 // Currently, the config.toml (for Tendermint) and app.toml (for the Cosmos SDK).
-func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, p2p ExternalAddresses) ([]diff.Resource[*corev1.ConfigMap], error) {
+func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, peers Peers) ([]diff.Resource[*corev1.ConfigMap], error) {
 	var (
 		buf = bufPool.Get().(*bytes.Buffer)
 		cms = make([]diff.Resource[*corev1.ConfigMap], crd.Spec.Replicas)
@@ -32,7 +32,8 @@ func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, p2p ExternalAddresses) ([]dif
 	for i := int32(0); i < crd.Spec.Replicas; i++ {
 		data := make(map[string]string)
 		instance := instanceName(crd, i)
-		if err := addConfigToml(buf, data, crd, p2p[instance]); err != nil {
+		extAddr := peers.Get(instance, crd.Namespace).ExternalAddress
+		if err := addConfigToml(buf, data, crd, extAddr); err != nil {
 			return nil, err
 		}
 		buf.Reset()

@@ -63,7 +63,7 @@ func NewFullNode(client client.Client, recorder record.EventRecorder, statusClie
 		Client:           client,
 		configMapControl: fullnode.NewConfigMapControl(client),
 		nodeKeyControl:   fullnode.NewNodeKeyControl(client),
-		peerCollector:    fullnode.NewPeerCollector(client, tmClient),
+		peerCollector:    fullnode.NewPeerCollector(client),
 		podControl:       fullnode.NewPodControl(client, podFilter),
 		pvcControl:       fullnode.NewPVCControl(client),
 		recorder:         recorder,
@@ -126,13 +126,15 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		errs.Append(err)
 	}
 
-	// Reconcile ConfigMaps.
-	p2pAddresses, err := fullnode.CollectExternalP2P(ctx, crd, r)
-	if err != nil {
-		p2pAddresses = make(fullnode.ExternalAddresses)
-		errs.Append(err)
+	// Find peer information that's used downstream.
+	peers, perr := r.peerCollector.Collect(ctx, crd)
+	if perr != nil {
+		peers = peers.Default()
+		errs.Append(perr)
 	}
-	configCksums, err := r.configMapControl.Reconcile(ctx, reporter, crd, p2pAddresses)
+
+	// Reconcile ConfigMaps.
+	configCksums, err := r.configMapControl.Reconcile(ctx, reporter, crd, peers)
 	if err != nil {
 		errs.Append(err)
 	}
@@ -158,20 +160,15 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	// Check final state and requeue if necessary.
-	if p2pAddresses.Incomplete() {
+	if peers.HasIncompleteExternalAddress() {
 		reporter.Info("Requeueing due to incomplete p2p external addresses")
 		reporter.RecordInfo("P2PIncomplete", "Waiting for p2p service IPs or Hostnames to be ready.")
 		crd.Status.Phase = cosmosv1.FullNodePhaseP2PServices
 		// Allow more time to requeue while p2p services create their load balancers.
-		return ctrl.Result{RequeueAfter: 15 * time.Second}, nil
-	}
-
-	peers, perr := r.peerCollector.CollectAddresses(ctx, crd)
-	if perr != nil {
-		logger.Info("Requeueing due to error collecting peer addresses", "error", perr)
 		return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
 	}
-	crd.Status.Peers = peers
+
+	crd.Status.Peers = peers.AllExternal()
 
 	crd.Status.Phase = cosmosv1.FullNodePhaseCompete
 	return finishResult, nil
