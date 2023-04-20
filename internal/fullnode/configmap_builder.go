@@ -34,7 +34,6 @@ func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, peers Peers) ([]diff.Resource
 	for i := int32(0); i < crd.Spec.Replicas; i++ {
 		data := make(map[string]string)
 		instance := instanceName(crd, i)
-		extAddr := peers.Get(instance, crd.Namespace).ExternalAddress
 		if err := addConfigToml(buf, data, crd, instance, peers); err != nil {
 			return nil, err
 		}
