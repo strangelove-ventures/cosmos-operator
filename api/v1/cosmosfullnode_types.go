@@ -486,7 +486,7 @@ type TendermintConfig struct {
 	// +optional
 	Seeds string `json:"seeds"`
 
-	// Comma separated list of node/peer IDs to keep private (will not be gossiped to other peers)
+	// Comma delimited list of node/peer IDs to keep private (will not be gossiped to other peers)
 	// +optional
 	PrivatePeerIDs string `json:"privatePeerIDs"`
 
