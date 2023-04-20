@@ -4,7 +4,6 @@ import (
 	"bytes"
 	_ "embed"
 	"fmt"
-	"sort"
 	"strconv"
 	"strings"
 
@@ -110,10 +109,7 @@ func addConfigToml(buf *bytes.Buffer, cmData map[string]string, crd *cosmosv1.Co
 		"seeds":            tendermint.Seeds,
 	}
 
-	privateNodeIDs := lo.Map(lo.Values(privatePeers), func(p Peer, _ int) string { return string(p.NodeID) })
-	sort.Strings(privateNodeIDs)
-	privateIDStr := commaDelimited(privateNodeIDs...)
-
+	privateIDStr := commaDelimited(privatePeers.NodeIDs()...)
 	privateIDs := commaDelimited(privateIDStr, tendermint.PrivatePeerIDs)
 	if v := privateIDs; v != "" {
 		p2p["private_peer_ids"] = v
