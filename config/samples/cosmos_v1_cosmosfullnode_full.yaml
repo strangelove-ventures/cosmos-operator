@@ -108,7 +108,7 @@ spec:
       externalTrafficPolicy: Local
 
   # Retain or Delete. If Retain, PVCs are not deleted as replicas change.
-  retentionPolicy: "Retain"
+  volumeRetentionPolicy: "Retain"
 
   # Configure PVCs for each pod
   volumeClaimTemplate:
