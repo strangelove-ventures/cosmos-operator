@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"sort"
 	"strconv"
 
 	cmtjson "github.com/cometbft/cometbft/libs/json"
@@ -19,18 +20,18 @@ import (
 type PeerInfo struct {
 	NodeID          p2p.ID
 	PrivateAddress  string // Only the private address my-service.namespace.svc.cluster.local:<port>
-	ExternalAddress string // Only the address <external ip | hostname>:<port>. Not all peers will have this.
+	ExternalAddress string // Only the address <external-ip-or-hostname>:<port>. Not all peers will be external.
 
 	hasExternalAddress bool
 }
 
-// FullPrivateAddress returns the full private address of the peer in the format <node_id>@<private_address>:<port>.
-func (info PeerInfo) FullPrivateAddress() string {
+// PrivatePeer returns the full private identifier of the peer in the format <node_id>@<private_address>:<port>.
+func (info PeerInfo) PrivatePeer() string {
 	return string(info.NodeID) + "@" + info.PrivateAddress
 }
 
-// FullExternalAddress returns the full external address of the peer in the format <node_id>@<external_address>:<port>.
-func (info PeerInfo) FullExternalAddress() string {
+// ExternalPeer returns the full external address of the peer in the format <node_id>@<external_address>:<port>.
+func (info PeerInfo) ExternalPeer() string {
 	if info.ExternalAddress == "" {
 		return string(info.NodeID) + "@" + net.JoinHostPort("0.0.0.0", strconv.Itoa(p2pPort))
 	}
@@ -40,14 +41,21 @@ func (info PeerInfo) FullExternalAddress() string {
 // Peers maps an ObjectKey using the instance name to PeerInfo.
 type Peers map[client.ObjectKey]PeerInfo
 
-// HasIncompleteExternalAddresses returns true if any peer has an external address but it is not assigned yet.
-func (p Peers) HasIncompleteExternalAddresses() bool {
+// HasIncompleteExternalAddress returns true if any peer has an external address but it is not assigned yet.
+func (p Peers) HasIncompleteExternalAddress() bool {
 	for _, peer := range p {
 		if peer.hasExternalAddress && peer.ExternalAddress == "" {
 			return true
 		}
 	}
 	return false
+}
+
+// AllExternal returns a sorted list of all external peers in the format <node_id>@<external_address>:<port>.
+func (p Peers) AllExternal() []string {
+	addrs := lo.Map(lo.Values(p), func(info PeerInfo, _ int) string { return info.ExternalPeer() })
+	sort.Strings(addrs)
+	return addrs
 }
 
 // PeerCollector finds and collects peer information.
