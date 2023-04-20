@@ -51,6 +51,18 @@ func (p Peers) Get(name, namespace string) Peer {
 	return p[client.ObjectKey{Name: name, Namespace: namespace}]
 }
 
+// Except returns a copy of the peers without the Peer for the given name and namespace.
+func (p Peers) Except(name, namespace string) Peers {
+	peers := make(Peers)
+	objKey := client.ObjectKey{Name: name, Namespace: namespace}
+	for key, peer := range p {
+		if key != objKey {
+			peers[key] = peer
+		}
+	}
+	return peers
+}
+
 // HasIncompleteExternalAddress returns true if any peer has an external address but it is not assigned yet.
 func (p Peers) HasIncompleteExternalAddress() bool {
 	for _, peer := range p {
@@ -64,6 +76,13 @@ func (p Peers) HasIncompleteExternalAddress() bool {
 // AllExternal returns a sorted list of all external peers in the format <node_id>@<external_address>:<port>.
 func (p Peers) AllExternal() []string {
 	addrs := lo.Map(lo.Values(p), func(info Peer, _ int) string { return info.ExternalPeer() })
+	sort.Strings(addrs)
+	return addrs
+}
+
+// AllPrivate returns a sorted list of all private peers in the format <node_id>@<private_address>:<port>.
+func (p Peers) AllPrivate() []string {
+	addrs := lo.Map(lo.Values(p), func(info Peer, _ int) string { return info.PrivatePeer() })
 	sort.Strings(addrs)
 	return addrs
 }
