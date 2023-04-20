@@ -41,6 +41,8 @@ func (info PeerInfo) ExternalPeer() string {
 // Peers maps an ObjectKey using the instance name to PeerInfo.
 type Peers map[client.ObjectKey]PeerInfo
 
+func (p Peers) Default() Peers { return make(Peers) }
+
 // HasIncompleteExternalAddress returns true if any peer has an external address but it is not assigned yet.
 func (p Peers) HasIncompleteExternalAddress() bool {
 	for _, peer := range p {
