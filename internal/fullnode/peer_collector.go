@@ -26,34 +26,46 @@ type Peer struct {
 }
 
 // PrivatePeer returns the full private identifier of the peer in the format <node_id>@<private_address>:<port>.
-func (info Peer) PrivatePeer() string {
-	return string(info.NodeID) + "@" + info.PrivateAddress
+func (peer Peer) PrivatePeer() string {
+	return string(peer.NodeID) + "@" + peer.PrivateAddress
 }
 
 // ExternalPeer returns the full external address of the peer in the format <node_id>@<external_address>:<port>.
-func (info Peer) ExternalPeer() string {
-	if info.ExternalAddress == "" {
-		return string(info.NodeID) + "@" + net.JoinHostPort("0.0.0.0", strconv.Itoa(p2pPort))
+func (peer Peer) ExternalPeer() string {
+	if peer.ExternalAddress == "" {
+		return string(peer.NodeID) + "@" + net.JoinHostPort("0.0.0.0", strconv.Itoa(p2pPort))
 	}
-	return string(info.NodeID) + "@" + info.ExternalAddress
+	return string(peer.NodeID) + "@" + peer.ExternalAddress
 }
 
 // Peers maps an ObjectKey using the instance name to Peer.
 type Peers map[client.ObjectKey]Peer
 
-func (p Peers) Default() Peers { return make(Peers) }
+func (peers Peers) Default() Peers { return make(Peers) }
 
 // Get is a convenience getter.
-func (p Peers) Get(name, namespace string) Peer {
-	if p == nil {
+func (peers Peers) Get(name, namespace string) Peer {
+	if peers == nil {
 		return Peer{}
 	}
-	return p[client.ObjectKey{Name: name, Namespace: namespace}]
+	return peers[client.ObjectKey{Name: name, Namespace: namespace}]
+}
+
+// Except returns a copy of the peers without the Peer for the given name and namespace.
+func (peers Peers) Except(name, namespace string) Peers {
+	peerCopy := make(Peers)
+	objKey := client.ObjectKey{Name: name, Namespace: namespace}
+	for key, peer := range peers {
+		if key != objKey {
+			peerCopy[key] = peer
+		}
+	}
+	return peerCopy
 }
 
 // HasIncompleteExternalAddress returns true if any peer has an external address but it is not assigned yet.
-func (p Peers) HasIncompleteExternalAddress() bool {
-	for _, peer := range p {
+func (peers Peers) HasIncompleteExternalAddress() bool {
+	for _, peer := range peers {
 		if peer.hasExternalAddress && peer.ExternalAddress == "" {
 			return true
 		}
@@ -61,9 +73,23 @@ func (p Peers) HasIncompleteExternalAddress() bool {
 	return false
 }
 
+// NodeIDs returns a sorted list of all node IDs.
+func (peers Peers) NodeIDs() []string {
+	ids := lo.Map(lo.Values(peers), func(p Peer, _ int) string { return string(p.NodeID) })
+	sort.Strings(ids)
+	return ids
+}
+
 // AllExternal returns a sorted list of all external peers in the format <node_id>@<external_address>:<port>.
-func (p Peers) AllExternal() []string {
-	addrs := lo.Map(lo.Values(p), func(info Peer, _ int) string { return info.ExternalPeer() })
+func (peers Peers) AllExternal() []string {
+	addrs := lo.Map(lo.Values(peers), func(info Peer, _ int) string { return info.ExternalPeer() })
+	sort.Strings(addrs)
+	return addrs
+}
+
+// AllPrivate returns a sorted list of all private peers in the format <node_id>@<private_address>:<port>.
+func (peers Peers) AllPrivate() []string {
+	addrs := lo.Map(lo.Values(peers), func(info Peer, _ int) string { return info.PrivatePeer() })
 	sort.Strings(addrs)
 	return addrs
 }

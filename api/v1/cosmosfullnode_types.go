@@ -486,6 +486,14 @@ type TendermintConfig struct {
 	// +optional
 	Seeds string `json:"seeds"`
 
+	// Comma delimited list of node/peer IDs to keep private (will not be gossiped to other peers)
+	// +optional
+	PrivatePeerIDs string `json:"privatePeerIDs"`
+
+	// Comma delimited list of node/peer IDs, to which a connection will be (re)established ignoring any existing limits.
+	// +optional
+	UnconditionalPeerIDs string `json:"unconditionalPeerIDs"`
+
 	// p2p maximum number of inbound peers.
 	// If unset, defaults to 20.
 	// +kubebuilder:validation:Minimum:=1
@@ -508,6 +516,8 @@ type TendermintConfig struct {
 	// Values entered here take precedence over all other configuration.
 	// Must be valid toml.
 	// Important: all keys must be "snake_case" which differs from app.toml.
+	// WARNING: Overriding may clobber some values that the operator sets such as persistent_peers, private_peer_ids,
+	// and unconditional_peer_ids. Use the dedicated fields for these values which will merge values.
 	// +optional
 	TomlOverrides *string `json:"overrides"`
 }

@@ -5,9 +5,11 @@ import (
 	_ "embed"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/BurntSushi/toml"
 	"github.com/peterbourgon/mergemap"
+	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/internal/diff"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
@@ -32,8 +34,7 @@ func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, peers Peers) ([]diff.Resource
 	for i := int32(0); i < crd.Spec.Replicas; i++ {
 		data := make(map[string]string)
 		instance := instanceName(crd, i)
-		extAddr := peers.Get(instance, crd.Namespace).ExternalAddress
-		if err := addConfigToml(buf, data, crd, extAddr); err != nil {
+		if err := addConfigToml(buf, data, crd, instance, peers); err != nil {
 			return nil, err
 		}
 		buf.Reset()
@@ -82,7 +83,7 @@ func defaultApp() decodedToml {
 	return data
 }
 
-func addConfigToml(buf *bytes.Buffer, cmData map[string]string, crd *cosmosv1.CosmosFullNode, externalAddress string) error {
+func addConfigToml(buf *bytes.Buffer, cmData map[string]string, crd *cosmosv1.CosmosFullNode, instance string, peers Peers) error {
 	var (
 		spec = crd.Spec.ChainSpec
 		base = make(decodedToml)
@@ -100,18 +101,32 @@ func addConfigToml(buf *bytes.Buffer, cmData map[string]string, crd *cosmosv1.Co
 		base["log_format"] = v
 	}
 
+	privatePeers := peers.Except(instance, crd.Namespace)
+	privatePeerStr := commaDelimited(privatePeers.AllPrivate()...)
 	tendermint := spec.Tendermint
 	p2p := decodedToml{
-		"persistent_peers": tendermint.PersistentPeers,
+		"persistent_peers": commaDelimited(privatePeerStr, tendermint.PersistentPeers),
 		"seeds":            tendermint.Seeds,
 	}
+
+	privateIDStr := commaDelimited(privatePeers.NodeIDs()...)
+	privateIDs := commaDelimited(privateIDStr, tendermint.PrivatePeerIDs)
+	if v := privateIDs; v != "" {
+		p2p["private_peer_ids"] = v
+	}
+
+	unconditionalIDs := commaDelimited(privateIDStr, tendermint.UnconditionalPeerIDs)
+	if v := unconditionalIDs; v != "" {
+		p2p["unconditional_peer_ids"] = v
+	}
+
 	if v := tendermint.MaxInboundPeers; v != nil {
 		p2p["max_num_inbound_peers"] = tendermint.MaxInboundPeers
 	}
 	if v := tendermint.MaxOutboundPeers; v != nil {
 		p2p["max_num_outbound_peers"] = tendermint.MaxOutboundPeers
 	}
-	if v := externalAddress; v != "" {
+	if v := peers.Get(instance, crd.Namespace).ExternalAddress; v != "" {
 		p2p["external_address"] = v
 	}
 
@@ -139,6 +154,10 @@ func addConfigToml(buf *bytes.Buffer, cmData map[string]string, crd *cosmosv1.Co
 	}
 	cmData[configOverlayFile] = buf.String()
 	return nil
+}
+
+func commaDelimited(s ...string) string {
+	return strings.Join(lo.Compact(s), ",")
 }
 
 func addAppToml(buf *bytes.Buffer, cmData map[string]string, app cosmosv1.SDKAppConfig) error {

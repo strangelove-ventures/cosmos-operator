@@ -175,7 +175,10 @@ spec:
                         description: 'Custom tendermint config toml. Values entered
                           here take precedence over all other configuration. Must
                           be valid toml. Important: all keys must be "snake_case"
-                          which differs from app.toml.'
+                          which differs from app.toml. WARNING: Overriding may clobber
+                          some values that the operator sets such as persistent_peers,
+                          private_peer_ids, and unconditional_peer_ids. Use the dedicated
+                          fields for these values which will merge values.'
                         type: string
                       peers:
                         description: Comma delimited list of p2p nodes in <ID>@<IP>:<PORT>
@@ -183,11 +186,20 @@ spec:
                           and https://docs.tendermint.com/master/spec/p3p/config.html#persistent-peers.
                         minLength: 1
                         type: string
+                      privatePeerIDs:
+                        description: Comma delimited list of node/peer IDs to keep
+                          private (will not be gossiped to other peers)
+                        type: string
                       seeds:
                         description: Comma delimited list of p2p seed nodes in <ID>@<IP>:<PORT>
                           format. See https://docs.tendermint.com/master/spec/p2p/config.html#seeds
                           and https://docs.tendermint.com/master/spec/p2p/node.html#seeds.
                         minLength: 1
+                        type: string
+                      unconditionalPeerIDs:
+                        description: Comma delimited list of node/peer IDs, to which
+                          a connection will be (re)established ignoring any existing
+                          limits.
                         type: string
                     type: object
                   genesisScript:

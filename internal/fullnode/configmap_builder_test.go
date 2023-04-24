@@ -89,6 +89,7 @@ func TestBuildConfigMaps(t *testing.T) {
 
 	t.Run("config-overlay.toml", func(t *testing.T) {
 		crd := defaultCRD()
+		crd.Namespace = namespace
 		crd.Name = "osmosis"
 		crd.Spec.ChainSpec.Network = "mainnet"
 		crd.Spec.Replicas = 1
@@ -99,14 +100,17 @@ func TestBuildConfigMaps(t *testing.T) {
 
 		t.Run("happy path", func(t *testing.T) {
 			custom := crd.DeepCopy()
-
+			custom.Spec.Replicas = 1
 			custom.Spec.ChainSpec.LogLevel = ptr("debug")
 			custom.Spec.ChainSpec.LogFormat = ptr("json")
 			custom.Spec.ChainSpec.Tendermint.CorsAllowedOrigins = []string{"*"}
 			custom.Spec.ChainSpec.Tendermint.MaxInboundPeers = ptr(int32(5))
 			custom.Spec.ChainSpec.Tendermint.MaxOutboundPeers = ptr(int32(15))
 
-			cms, err := BuildConfigMaps(custom, nil)
+			peers := Peers{
+				client.ObjectKey{Namespace: namespace, Name: "osmosis-0"}: {NodeID: "should not see me", PrivateAddress: "should not see me"},
+			}
+			cms, err := BuildConfigMaps(custom, peers)
 			require.NoError(t, err)
 
 			cm := cms[0].Object()
@@ -144,6 +148,41 @@ func TestBuildConfigMaps(t *testing.T) {
 			require.NoError(t, err)
 
 			require.Equal(t, want, got)
+		})
+
+		t.Run("with peers", func(t *testing.T) {
+			peerCRD := crd.DeepCopy()
+			peerCRD.Spec.Replicas = 3
+			peerCRD.Spec.ChainSpec.Tendermint.UnconditionalPeerIDs = "unconditional1,unconditional2"
+			peerCRD.Spec.ChainSpec.Tendermint.PrivatePeerIDs = "private1,private2"
+			peers := Peers{
+				client.ObjectKey{Namespace: namespace, Name: "osmosis-0"}: {NodeID: "0", PrivateAddress: "0.local:26656"},
+				client.ObjectKey{Namespace: namespace, Name: "osmosis-1"}: {NodeID: "1", PrivateAddress: "1.local:26656"},
+				client.ObjectKey{Namespace: namespace, Name: "osmosis-2"}: {NodeID: "2", PrivateAddress: "2.local:26656"},
+			}
+			cms, err := BuildConfigMaps(peerCRD, peers)
+			require.NoError(t, err)
+			require.Len(t, cms, 3)
+
+			for i, tt := range []struct {
+				WantPersistent string
+				WantIDs        string
+			}{
+				{"1@1.local:26656,2@2.local:26656", "1,2"},
+				{"0@0.local:26656,2@2.local:26656", "0,2"},
+				{"0@0.local:26656,1@1.local:26656", "0,1"},
+			} {
+				cm := cms[i].Object()
+				var got map[string]any
+				_, err = toml.Decode(cm.Data["config-overlay.toml"], &got)
+				require.NoError(t, err, i)
+
+				p2p := got["p2p"].(map[string]any)
+
+				require.Equal(t, tt.WantPersistent+",peer1@1.2.2.2:789,peer2@2.2.2.2:789,peer3@3.2.2.2:789", p2p["persistent_peers"], i)
+				require.Equal(t, tt.WantIDs+",private1,private2", p2p["private_peer_ids"], i)
+				require.Equal(t, tt.WantIDs+",unconditional1,unconditional2", p2p["unconditional_peer_ids"], i)
+			}
 		})
 
 		t.Run("validator sentry", func(t *testing.T) {
