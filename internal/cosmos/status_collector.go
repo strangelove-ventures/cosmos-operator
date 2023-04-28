@@ -16,23 +16,6 @@ type TendermintStatuser interface {
 	Status(ctx context.Context, rpcHost string) (TendermintStatus, error)
 }
 
-// PodStatus is a pod paired with its tendermint/cometbft status.
-type PodStatus struct {
-	pod    *corev1.Pod
-	status TendermintStatus
-	err    error
-}
-
-// Pod returns the pod.
-func (status PodStatus) Pod() *corev1.Pod {
-	return status.pod
-}
-
-// Status returns the tendermint/cometbft status or an error if the status could not be fetched.
-func (status PodStatus) Status() (TendermintStatus, error) {
-	return status.status, status.err
-}
-
 // Lister can list resources, subset of client.Client.
 type Lister interface {
 	List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error
@@ -47,9 +30,6 @@ type StatusCollector struct {
 func NewStatusCollector(client Lister, tendermint TendermintStatuser) *StatusCollector {
 	return &StatusCollector{client: client, tendermint: tendermint}
 }
-
-// StatusCollection is a list of pods and tendermint status associated with the pod.
-type StatusCollection []PodStatus
 
 // Collect returns a StatusCollection for the given controller. The controller must own the pods.
 // Any non-nil error can be treated as transient and retried.
