@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	"golang.org/x/sync/errgroup"
@@ -25,15 +26,19 @@ type Lister interface {
 type PodCollector struct {
 	client     Lister
 	tendermint TendermintStatuser
+	timeout    time.Duration
 }
 
-func NewPodCollector(client Lister, tendermint TendermintStatuser) *PodCollector {
-	return &PodCollector{client: client, tendermint: tendermint}
+// NewPodCollector returns a valid PodCollector. The timeout (if > 0) is used for each method call.
+// Timeout is exposed here because it is important for good performance in reconcile loops,
+// and reminds callers to set it.
+// If unset, a default timeout is applied.
+func NewPodCollector(client Lister, tendermint TendermintStatuser, timeout time.Duration) *PodCollector {
+	return &PodCollector{client: client, tendermint: tendermint, timeout: timeout}
 }
 
 // Collect returns a PodCollection for the given controller. The controller must own the pods.
 // Any non-nil error can be treated as transient and retried.
-// Caller should pass a context with a reasonable timeout.
 func (coll PodCollector) Collect(ctx context.Context, controller client.ObjectKey) (PodCollection, error) {
 	var list corev1.PodList
 	if err := coll.client.List(ctx, &list,
@@ -60,7 +65,9 @@ func (coll PodCollector) Collect(ctx context.Context, controller client.ObjectKe
 				return nil
 			}
 			host := fmt.Sprintf("http://%s:26657", ip)
-			resp, err := coll.tendermint.Status(ctx, host)
+			cctx, cancel := context.WithTimeout(ctx, coll.timeoutDur())
+			defer cancel()
+			resp, err := coll.tendermint.Status(cctx, host)
 			if err != nil {
 				statuses[i].err = err
 				return nil
@@ -73,4 +80,11 @@ func (coll PodCollector) Collect(ctx context.Context, controller client.ObjectKe
 	_ = eg.Wait()
 
 	return statuses, nil
+}
+
+func (coll PodCollector) timeoutDur() time.Duration {
+	if coll.timeout <= 0 {
+		return 30 * time.Second
+	}
+	return coll.timeout
 }

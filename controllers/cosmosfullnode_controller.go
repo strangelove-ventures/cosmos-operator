@@ -64,7 +64,7 @@ func NewFullNode(client client.Client, recorder record.EventRecorder, statusClie
 		configMapControl: fullnode.NewConfigMapControl(client),
 		nodeKeyControl:   fullnode.NewNodeKeyControl(client),
 		peerCollector:    fullnode.NewPeerCollector(client),
-		podCollector:     cosmos.NewPodCollector(client, tmClient),
+		podCollector:     cosmos.NewPodCollector(client, tmClient, 3*time.Second),
 		podControl:       fullnode.NewPodControl(client),
 		pvcControl:       fullnode.NewPVCControl(client),
 		recorder:         recorder,
@@ -141,9 +141,7 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	// Reconcile pods.
-	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-	pods, collErr := r.podCollector.Collect(cctx, client.ObjectKeyFromObject(crd))
+	pods, collErr := r.podCollector.Collect(ctx, client.ObjectKeyFromObject(crd))
 	if collErr != nil {
 		pods = pods.Default()
 		errs.Append(kube.TransientError(collErr))

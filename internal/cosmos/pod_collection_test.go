@@ -9,6 +9,8 @@ import (
 )
 
 func TestStatusCollection_SyncedPods(t *testing.T) {
+	t.Parallel()
+
 	var coll PodCollection
 	require.Empty(t, coll.SyncedPods())
 
