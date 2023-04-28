@@ -134,9 +134,9 @@ func TestStatusCollector_Collect(t *testing.T) {
 			return nil
 		})
 		coll := NewStatusCollector(lister, panicStatuser)
-		_, err := coll.Collect(ctx, client.ObjectKey{})
+		got, err := coll.Collect(ctx, client.ObjectKey{})
 
-		require.Error(t, err)
-		require.EqualError(t, err, "no pods found")
+		require.NoError(t, err)
+		require.Empty(t, got)
 	})
 }

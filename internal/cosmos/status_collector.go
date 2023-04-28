@@ -12,9 +12,9 @@ import (
 )
 
 type PodStatus struct {
-	pod       *corev1.Pod
-	status    TendermintStatus
-	statusErr error
+	pod    *corev1.Pod
+	status TendermintStatus
+	err    error
 }
 
 func (status PodStatus) Pod() *corev1.Pod {
@@ -22,7 +22,7 @@ func (status PodStatus) Pod() *corev1.Pod {
 }
 
 func (status PodStatus) Status() (TendermintStatus, error) {
-	return status.status, status.statusErr
+	return status.status, status.err
 }
 
 // Lister can list resources, subset of client.Client.
@@ -54,9 +54,6 @@ func (coll StatusCollector) Collect(ctx context.Context, controller client.Objec
 	); err != nil {
 		return nil, err
 	}
-	if len(list.Items) == 0 {
-		return nil, errors.New("no pods found")
-	}
 
 	var (
 		eg       errgroup.Group
@@ -71,13 +68,13 @@ func (coll StatusCollector) Collect(ctx context.Context, controller client.Objec
 			ip := pod.Status.PodIP
 			if ip == "" {
 				// Check for IP, so we don't pay overhead of making a request.
-				statuses[i].statusErr = errors.New("pod has no IP")
+				statuses[i].err = errors.New("pod has no IP")
 				return nil
 			}
 			host := fmt.Sprintf("http://%s:26657", ip)
 			resp, err := coll.tendermint.Status(ctx, host)
 			if err != nil {
-				statuses[i].statusErr = err
+				statuses[i].err = err
 				return nil
 			}
 			statuses[i].status = resp
