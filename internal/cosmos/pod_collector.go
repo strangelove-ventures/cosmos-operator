@@ -21,20 +21,20 @@ type Lister interface {
 	List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error
 }
 
-// StatusCollector collects the tendermint/cometbft status of all pods owned by a controller.
-type StatusCollector struct {
+// PodCollector collects the tendermint/cometbft status of all pods owned by a controller.
+type PodCollector struct {
 	client     Lister
 	tendermint TendermintStatuser
 }
 
-func NewStatusCollector(client Lister, tendermint TendermintStatuser) *StatusCollector {
-	return &StatusCollector{client: client, tendermint: tendermint}
+func NewPodCollector(client Lister, tendermint TendermintStatuser) *PodCollector {
+	return &PodCollector{client: client, tendermint: tendermint}
 }
 
-// Collect returns a StatusCollection for the given controller. The controller must own the pods.
+// Collect returns a PodCollection for the given controller. The controller must own the pods.
 // Any non-nil error can be treated as transient and retried.
 // Caller should pass a context with a reasonable timeout.
-func (coll StatusCollector) Collect(ctx context.Context, controller client.ObjectKey) (StatusCollection, error) {
+func (coll PodCollector) Collect(ctx context.Context, controller client.ObjectKey) (PodCollection, error) {
 	var list corev1.PodList
 	if err := coll.client.List(ctx, &list,
 		client.InNamespace(controller.Namespace),
@@ -45,7 +45,7 @@ func (coll StatusCollector) Collect(ctx context.Context, controller client.Objec
 
 	var (
 		eg       errgroup.Group
-		statuses = make([]PodStatus, len(list.Items))
+		statuses = make([]Pod, len(list.Items))
 	)
 
 	for i := range list.Items {

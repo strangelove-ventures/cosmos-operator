@@ -64,7 +64,7 @@ func TestStatusCollector_Collect(t *testing.T) {
 			return nil
 		})
 
-		coll := NewStatusCollector(lister, tmClient)
+		coll := NewPodCollector(lister, tmClient)
 		got, err := coll.Collect(ctx, client.ObjectKey{Name: "test", Namespace: namespace})
 		require.NoError(t, err)
 
@@ -86,7 +86,7 @@ func TestStatusCollector_Collect(t *testing.T) {
 			list.(*corev1.PodList).Items = make([]corev1.Pod, 1)
 			return nil
 		})
-		coll := NewStatusCollector(lister, panicStatuser)
+		coll := NewPodCollector(lister, panicStatuser)
 		got, err := coll.Collect(ctx, client.ObjectKey{})
 
 		require.NoError(t, err)
@@ -107,7 +107,7 @@ func TestStatusCollector_Collect(t *testing.T) {
 		tmClient := mockStatuser(func(ctx context.Context, rpcHost string) (TendermintStatus, error) {
 			return TendermintStatus{}, errors.New("status error")
 		})
-		coll := NewStatusCollector(lister, tmClient)
+		coll := NewPodCollector(lister, tmClient)
 		got, err := coll.Collect(ctx, client.ObjectKey{})
 
 		require.NoError(t, err)
@@ -122,7 +122,7 @@ func TestStatusCollector_Collect(t *testing.T) {
 		lister := mockLister(func(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
 			return errors.New("list error")
 		})
-		coll := NewStatusCollector(lister, panicStatuser)
+		coll := NewPodCollector(lister, panicStatuser)
 		_, err := coll.Collect(ctx, client.ObjectKey{})
 
 		require.Error(t, err)
@@ -133,7 +133,7 @@ func TestStatusCollector_Collect(t *testing.T) {
 		lister := mockLister(func(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
 			return nil
 		})
-		coll := NewStatusCollector(lister, panicStatuser)
+		coll := NewPodCollector(lister, panicStatuser)
 		got, err := coll.Collect(ctx, client.ObjectKey{})
 
 		require.NoError(t, err)
