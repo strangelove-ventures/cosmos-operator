@@ -141,7 +141,9 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	// Reconcile pods.
-	pods, collErr := r.podCollector.Collect(ctx, client.ObjectKeyFromObject(crd))
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	pods, collErr := r.podCollector.Collect(cctx, client.ObjectKeyFromObject(crd))
 	if collErr != nil {
 		pods = pods.Default()
 		errs.Append(kube.TransientError(collErr))
