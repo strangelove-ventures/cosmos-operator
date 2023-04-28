@@ -69,6 +69,7 @@ type ScheduledVolumeSnapshotSpec struct {
 	DeletePod bool `json:"deletePod"`
 
 	// Minimum number of CosmosFullNode pods that must be ready before creating a VolumeSnapshot.
+	// This field has no effect unless spec.deletePod=true.
 	// This controller gracefully deletes a pod while taking a snapshot. Then recreates the pod once the
 	// snapshot is complete.
 	// This way, the snapshot has the highest possible data integrity.
