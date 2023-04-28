@@ -39,6 +39,7 @@ func NewPodCollector(client Lister, tendermint TendermintStatuser, timeout time.
 
 // Collect returns a PodCollection for the given controller. The controller must own the pods.
 // Any non-nil error can be treated as transient and retried.
+// TODO: pass in pods, seems like the most generic interface?
 func (coll PodCollector) Collect(ctx context.Context, controller client.ObjectKey) (PodCollection, error) {
 	var list corev1.PodList
 	if err := coll.client.List(ctx, &list,
@@ -80,6 +81,15 @@ func (coll PodCollector) Collect(ctx context.Context, controller client.ObjectKe
 	_ = eg.Wait()
 
 	return statuses, nil
+}
+
+// SyncedPods returns all pods that are in sync (i.e. no longer catching up).
+func (coll PodCollector) SyncedPods(ctx context.Context, controller client.ObjectKey) ([]*corev1.Pod, error) {
+	all, err := coll.Collect(ctx, controller)
+	if err != nil {
+		return nil, err
+	}
+	return all.SyncedPods(), nil
 }
 
 func (coll PodCollector) timeoutDur() time.Duration {
