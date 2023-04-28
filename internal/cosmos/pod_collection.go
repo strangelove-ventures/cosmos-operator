@@ -1,9 +1,6 @@
 package cosmos
 
-import (
-	"github.com/samber/lo"
-	corev1 "k8s.io/api/core/v1"
-)
+import corev1 "k8s.io/api/core/v1"
 
 // Pod is a pod paired with its tendermint/cometbft status.
 type Pod struct {

@@ -3,6 +3,7 @@ package fullnode
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
@@ -31,30 +32,36 @@ type Client interface {
 // PodControl reconciles pods for a CosmosFullNode.
 type PodControl struct {
 	client         Client
+	podFilter      PodFilter
 	computeRollout func(maxUnavail *intstr.IntOrString, desired, ready int) int
 }
 
 // NewPodControl returns a valid PodControl.
-func NewPodControl(client Client) PodControl {
+func NewPodControl(client Client, filter PodFilter) PodControl {
 	return PodControl{
 		client:         client,
+		podFilter:      filter,
 		computeRollout: kube.ComputeRollout,
 	}
 }
 
-type PodCollection interface {
-	Pods() []*corev1.Pod
-	SyncedPods() []*corev1.Pod
-}
-
 // Reconcile is the control loop for pods. The bool return value, if true, indicates the controller should requeue
 // the request.
-func (pc PodControl) Reconcile(ctx context.Context, reporter kube.Reporter, crd *cosmosv1.CosmosFullNode, current PodCollection, cksums ConfigChecksums) (bool, kube.ReconcileError) {
+func (pc PodControl) Reconcile(ctx context.Context, reporter kube.Reporter, crd *cosmosv1.CosmosFullNode, cksums ConfigChecksums) (bool, kube.ReconcileError) {
+	var pods corev1.PodList
+	if err := pc.client.List(ctx, &pods,
+		client.InNamespace(crd.Namespace),
+		client.MatchingFields{kube.ControllerOwnerField: crd.Name},
+	); err != nil {
+		return false, kube.TransientError(fmt.Errorf("list existing pods: %w", err))
+	}
+
 	wantPods, err := BuildPods(crd, cksums)
 	if err != nil {
 		return false, kube.UnrecoverableError(fmt.Errorf("build pods: %w", err))
 	}
-	diffed := diff.New(current.Pods(), wantPods)
+	currentPods := ptrSlice(pods.Items)
+	diffed := diff.New(currentPods, wantPods)
 
 	for _, pod := range diffed.Creates() {
 		reporter.Info("Creating pod", "pod", pod.Name)
@@ -79,8 +86,13 @@ func (pc PodControl) Reconcile(ctx context.Context, reporter kube.Reporter, crd 
 	}
 
 	if len(diffed.Updates()) > 0 {
+		cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
 		var (
-			avail      = current.SyncedPods()
+			// This may be a source of confusion by passing currentPods vs. pods from diff.Updates().
+			// This is a leaky abstraction (which may be fixed in the future) because diff.Updates() pods are built
+			// from the operator and do not match what's returned by listing pods.
+			avail      = pc.podFilter.SyncedPods(cctx, reporter, currentPods)
 			numUpdates = pc.computeRollout(crd.Spec.RolloutStrategy.MaxUnavailable, int(crd.Spec.Replicas), len(avail))
 		)
 
