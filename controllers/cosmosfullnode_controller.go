@@ -46,6 +46,7 @@ type CosmosFullNodeReconciler struct {
 	configMapControl fullnode.ConfigMapControl
 	nodeKeyControl   fullnode.NodeKeyControl
 	peerCollector    *fullnode.PeerCollector
+	podCollector     *cosmos.PodCollector
 	podControl       fullnode.PodControl
 	pvcControl       fullnode.PVCControl
 	recorder         record.EventRecorder
@@ -55,16 +56,16 @@ type CosmosFullNodeReconciler struct {
 
 // NewFullNode returns a valid CosmosFullNode controller.
 func NewFullNode(client client.Client, recorder record.EventRecorder, statusClient *fullnode.StatusClient) *CosmosFullNodeReconciler {
-	var (
-		tmClient  = cosmos.NewTendermintClient(sharedHTTPClient)
-		podFilter = cosmos.NewPodFilter(tmClient)
-	)
+	tmClient := cosmos.NewTendermintClient(sharedHTTPClient)
+
 	return &CosmosFullNodeReconciler{
-		Client:           client,
+		Client: client,
+
 		configMapControl: fullnode.NewConfigMapControl(client),
 		nodeKeyControl:   fullnode.NewNodeKeyControl(client),
 		peerCollector:    fullnode.NewPeerCollector(client),
-		podControl:       fullnode.NewPodControl(client, podFilter),
+		podCollector:     cosmos.NewPodCollector(client, tmClient),
+		podControl:       fullnode.NewPodControl(client),
 		pvcControl:       fullnode.NewPVCControl(client),
 		recorder:         recorder,
 		serviceControl:   fullnode.NewServiceControl(client),
@@ -140,7 +141,12 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	// Reconcile pods.
-	podRequeue, err := r.podControl.Reconcile(ctx, reporter, crd, configCksums)
+	pods, collErr := r.podCollector.Collect(ctx, client.ObjectKeyFromObject(crd))
+	if collErr != nil {
+		pods = pods.Default()
+		errs.Append(kube.TransientError(collErr))
+	}
+	podRequeue, err := r.podControl.Reconcile(ctx, reporter, crd, pods, configCksums)
 	if err != nil {
 		errs.Append(err)
 	}
