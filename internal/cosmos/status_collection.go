@@ -1,6 +1,9 @@
 package cosmos
 
-import corev1 "k8s.io/api/core/v1"
+import (
+	"github.com/samber/lo"
+	corev1 "k8s.io/api/core/v1"
+)
 
 // PodStatus is a pod paired with its tendermint/cometbft status.
 type PodStatus struct {
@@ -21,6 +24,11 @@ func (status PodStatus) Status() (TendermintStatus, error) {
 
 // StatusCollection is a list of pods and tendermint status associated with the pod.
 type StatusCollection []PodStatus
+
+// Pods returns all pods.
+func (coll StatusCollection) Pods() []*corev1.Pod {
+	return lo.Map(coll, func(status PodStatus, _ int) *corev1.Pod { return status.Pod() })
+}
 
 // SyncedPods returns the pods that are not catching up.
 func (coll StatusCollection) SyncedPods() []*corev1.Pod {

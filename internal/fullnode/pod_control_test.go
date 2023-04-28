@@ -5,26 +5,24 @@ import (
 	"testing"
 
 	"github.com/strangelove-ventures/cosmos-operator/internal/diff"
-	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type mockPodFilter func(ctx context.Context, log kube.Logger, candidates []*corev1.Pod) []*corev1.Pod
-
-func (fn mockPodFilter) SyncedPods(ctx context.Context, log kube.Logger, candidates []*corev1.Pod) []*corev1.Pod {
-	if ctx == nil {
-		panic("nil context")
-	}
-	return fn(ctx, log, candidates)
+type mockPodCollection struct {
+	pods   []*corev1.Pod
+	synced []*corev1.Pod
 }
 
-var panicPodFilter = mockPodFilter(func(ctx context.Context, log kube.Logger, candidates []*corev1.Pod) []*corev1.Pod {
-	panic("SyncedPods should not be called")
-})
+func (m mockPodCollection) Pods() []*corev1.Pod {
+	return m.pods
+}
+
+func (m mockPodCollection) SyncedPods() []*corev1.Pod {
+	return m.synced
+}
 
 func TestPodControl_Reconcile(t *testing.T) {
 	t.Parallel()
@@ -49,19 +47,11 @@ func TestPodControl_Reconcile(t *testing.T) {
 			Items: []corev1.Pod{*existing},
 		}
 
-		control := NewPodControl(&mClient, panicPodFilter)
-		requeue, err := control.Reconcile(ctx, nopReporter, &crd, nil)
+		collection := mockPodCollection{pods: []*corev1.Pod{existing}}
+		control := NewPodControl(&mClient)
+		requeue, err := control.Reconcile(ctx, nopReporter, &crd, collection, nil)
 		require.NoError(t, err)
 		require.False(t, requeue)
-
-		require.Len(t, mClient.GotListOpts, 2)
-		var listOpt client.ListOptions
-		for _, opt := range mClient.GotListOpts {
-			opt.ApplyToList(&listOpt)
-		}
-		require.Equal(t, namespace, listOpt.Namespace)
-		require.Zero(t, listOpt.Limit)
-		require.Equal(t, ".metadata.controller=hub", listOpt.FieldSelector.String())
 	})
 
 	t.Run("scale phase", func(t *testing.T) {
@@ -71,15 +61,13 @@ func TestPodControl_Reconcile(t *testing.T) {
 		crd.Spec.Replicas = 3
 
 		var mClient mockPodClient
-		mClient.ObjectList = corev1.PodList{
-			Items: []corev1.Pod{
-				{ObjectMeta: metav1.ObjectMeta{Name: "hub-98"}},
-				{ObjectMeta: metav1.ObjectMeta{Name: "hub-99"}},
-			},
-		}
+		collection := mockPodCollection{pods: []*corev1.Pod{
+			{ObjectMeta: metav1.ObjectMeta{Name: "hub-98"}},
+			{ObjectMeta: metav1.ObjectMeta{Name: "hub-99"}},
+		}}
 
-		control := NewPodControl(&mClient, panicPodFilter)
-		requeue, err := control.Reconcile(ctx, nopReporter, &crd, nil)
+		control := NewPodControl(&mClient)
+		requeue, err := control.Reconcile(ctx, nopReporter, &crd, collection, nil)
 		require.NoError(t, err)
 		require.True(t, requeue)
 
@@ -107,31 +95,24 @@ func TestPodControl_Reconcile(t *testing.T) {
 			Items: valueSlice(existing),
 		}
 
-		var didFilter bool
-		podFilter := mockPodFilter(func(_ context.Context, _ kube.Logger, candidates []*corev1.Pod) []*corev1.Pod {
-			require.Equal(t, 5, len(candidates))
-			require.Equal(t, "hub-0", candidates[0].Name)
-			require.Equal(t, "hub-1", candidates[1].Name)
-			didFilter = true
-			return candidates[:1]
-		})
+		collection := mockPodCollection{
+			pods:   existing,
+			synced: existing[2:], // Make only 3 ready
+		}
 
-		control := NewPodControl(&mClient, podFilter)
+		control := NewPodControl(&mClient)
 		const stubRollout = 5
-
 		control.computeRollout = func(maxUnavail *intstr.IntOrString, desired, ready int) int {
 			require.EqualValues(t, crd.Spec.Replicas, desired)
-			require.Equal(t, 1, ready) // mockPodFilter only returns 1 candidate as ready
+			require.Equal(t, 3, ready) // mock only returns 4 pod as in sync
 			return stubRollout
 		}
 
 		// Trigger updates
 		crd.Spec.PodTemplate.Image = "new-image"
-		requeue, err := control.Reconcile(ctx, nopReporter, &crd, nil)
+		requeue, err := control.Reconcile(ctx, nopReporter, &crd, collection, nil)
 		require.NoError(t, err)
 		require.True(t, requeue)
-
-		require.True(t, didFilter)
 
 		require.Zero(t, mClient.CreateCount)
 		require.Equal(t, stubRollout, mClient.DeleteCount)
