@@ -11,16 +11,24 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// TendermintStatuser calls the Tendermint RPC status endpoint.
+type TendermintStatuser interface {
+	Status(ctx context.Context, rpcHost string) (TendermintStatus, error)
+}
+
+// PodStatus is a pod paired with its tendermint/cometbft status.
 type PodStatus struct {
 	pod    *corev1.Pod
 	status TendermintStatus
 	err    error
 }
 
+// Pod returns the pod.
 func (status PodStatus) Pod() *corev1.Pod {
 	return status.pod
 }
 
+// Status returns the tendermint/cometbft status or an error if the status could not be fetched.
 func (status PodStatus) Status() (TendermintStatus, error) {
 	return status.status, status.err
 }

@@ -10,11 +10,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// TendermintStatuser calls the Tendermint RPC status endpoint.
-type TendermintStatuser interface {
-	Status(ctx context.Context, rpcHost string) (TendermintStatus, error)
-}
-
 // PodFilter queries tendermint for block heights.
 type PodFilter struct {
 	tendermint TendermintStatuser
