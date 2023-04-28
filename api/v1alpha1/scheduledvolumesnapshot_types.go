@@ -62,6 +62,12 @@ type ScheduledVolumeSnapshotSpec struct {
 	// The name of the VolumeSnapshotClass to use when creating snapshots.
 	VolumeSnapshotClassName string `json:"volumeSnapshotClassName"`
 
+	// If true, the controller will temporarily delete the candidate pod before taking a snapshot of the pod's associated PVC.
+	// This option prevents writes to the PVC, ensuring the highest possible data integrity.
+	// Once the snapshot is created, the pod will be restored.
+	// +optional
+	DeletePod bool `json:"deletePod"`
+
 	// Minimum number of CosmosFullNode pods that must be ready before creating a VolumeSnapshot.
 	// This controller gracefully deletes a pod while taking a snapshot. Then recreates the pod once the
 	// snapshot is complete.
