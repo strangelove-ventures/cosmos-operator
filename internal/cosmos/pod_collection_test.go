@@ -11,13 +11,13 @@ import (
 func TestStatusCollection_SyncedPods(t *testing.T) {
 	t.Parallel()
 
-	var coll PodCollection
+	var coll StatusCollection
 	require.Empty(t, coll.SyncedPods())
 
 	var catchingUp TendermintStatus
 	catchingUp.Result.SyncInfo.CatchingUp = true
 
-	coll = PodCollection{
+	coll = StatusCollection{
 		{pod: &corev1.Pod{}, status: catchingUp},
 		{pod: &corev1.Pod{}, err: errors.New("some error")},
 	}
@@ -26,7 +26,7 @@ func TestStatusCollection_SyncedPods(t *testing.T) {
 
 	var pod corev1.Pod
 	pod.Name = "in-sync"
-	coll = append(coll, Pod{pod: &pod})
+	coll = append(coll, StatusItem{pod: &pod})
 
 	require.Len(t, coll.SyncedPods(), 1)
 	require.Equal(t, "in-sync", coll.SyncedPods()[0].Name)

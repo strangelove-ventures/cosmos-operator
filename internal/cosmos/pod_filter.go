@@ -36,7 +36,7 @@ func (filter PodFilter) SyncedPods(ctx context.Context, log kube.Logger, candida
 			fields := []interface{}{"pod", pod.Name}
 			ip := pod.Status.PodIP
 			if ip == "" {
-				log.Debug("Pod has no IP", fields...)
+				log.Debug("StatusItem has no IP", fields...)
 				return nil
 			}
 			host := fmt.Sprintf("http://%s:26657", ip)
@@ -46,7 +46,7 @@ func (filter PodFilter) SyncedPods(ctx context.Context, log kube.Logger, candida
 				return nil
 			}
 			if resp.Result.SyncInfo.CatchingUp {
-				log.Debug("Pod is catching up", fields...)
+				log.Debug("StatusItem is catching up", fields...)
 				return nil
 			}
 			inSync[i] = pod
