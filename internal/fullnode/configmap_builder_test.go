@@ -279,7 +279,7 @@ func TestBuildConfigMaps(t *testing.T) {
 			_, err := BuildConfigMaps(malformed, nil)
 
 			require.Error(t, err)
-			require.Contains(t, err.Error(), "invalid toml in toml overrides")
+			require.Contains(t, err.Error(), "invalid toml in comet overrides")
 		})
 	})
 
