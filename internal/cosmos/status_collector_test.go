@@ -13,6 +13,12 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+type mockStatuser func(ctx context.Context, rpcHost string) (TendermintStatus, error)
+
+func (fn mockStatuser) Status(ctx context.Context, rpcHost string) (TendermintStatus, error) {
+	return fn(ctx, rpcHost)
+}
+
 var panicStatuser = mockStatuser(func(ctx context.Context, rpcHost string) (TendermintStatus, error) {
 	panic("should not be called")
 })
