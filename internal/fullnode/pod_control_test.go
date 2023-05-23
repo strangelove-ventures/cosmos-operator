@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/strangelove-ventures/cosmos-operator/internal/diff"
-	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -13,16 +12,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type mockPodFilter func(ctx context.Context, log kube.Logger, candidates []*corev1.Pod) []*corev1.Pod
+type mockPodFilter func(ctx context.Context, candidates []corev1.Pod) []*corev1.Pod
 
-func (fn mockPodFilter) SyncedPods(ctx context.Context, log kube.Logger, candidates []*corev1.Pod) []*corev1.Pod {
+func (fn mockPodFilter) SyncedPods(ctx context.Context, pods []corev1.Pod) []*corev1.Pod {
 	if ctx == nil {
 		panic("nil context")
 	}
-	return fn(ctx, log, candidates)
+	return fn(ctx, pods)
 }
 
-var panicPodFilter = mockPodFilter(func(ctx context.Context, log kube.Logger, candidates []*corev1.Pod) []*corev1.Pod {
+var panicPodFilter = mockPodFilter(func(ctx context.Context, _ []corev1.Pod) []*corev1.Pod {
 	panic("SyncedPods should not be called")
 })
 
@@ -108,12 +107,12 @@ func TestPodControl_Reconcile(t *testing.T) {
 		}
 
 		var didFilter bool
-		podFilter := mockPodFilter(func(_ context.Context, _ kube.Logger, candidates []*corev1.Pod) []*corev1.Pod {
-			require.Equal(t, 5, len(candidates))
-			require.Equal(t, "hub-0", candidates[0].Name)
-			require.Equal(t, "hub-1", candidates[1].Name)
+		podFilter := mockPodFilter(func(_ context.Context, pods []corev1.Pod) []*corev1.Pod {
+			require.Equal(t, 5, len(pods))
+			require.Equal(t, "hub-0", pods[0].Name)
+			require.Equal(t, "hub-1", pods[1].Name)
 			didFilter = true
-			return candidates[:1]
+			return ptrSlice(pods[:1])
 		})
 
 		control := NewPodControl(&mClient, podFilter)
