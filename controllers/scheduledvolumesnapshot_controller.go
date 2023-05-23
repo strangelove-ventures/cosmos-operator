@@ -121,8 +121,11 @@ func (r *ScheduledVolumeSnapshotReconciler) Reconcile(ctx context.Context, req c
 			r.reportError(crd, "FindCandidateError", err)
 			return retryResult, nil
 		}
-		crd.Status.Phase = cosmosv1alpha1.SnapshotPhaseDeletingPod
 		crd.Status.Candidate = &candidate
+		crd.Status.Phase = cosmosv1alpha1.SnapshotPhaseCreating
+		if crd.Spec.DeletePod {
+			crd.Status.Phase = cosmosv1alpha1.SnapshotPhaseDeletingPod
+		}
 
 	case cosmosv1alpha1.SnapshotPhaseDeletingPod:
 		logger.Info(string(phase))

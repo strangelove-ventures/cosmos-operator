@@ -54,6 +54,12 @@ spec:
               is created at a time, so at most only 1 pod is temporarily deleted.
               Multiple, parallel VolumeSnapshots are not supported.'
             properties:
+              deletePod:
+                description: If true, the controller will temporarily delete the candidate
+                  pod before taking a snapshot of the pod's associated PVC. This option
+                  prevents writes to the PVC, ensuring the highest possible data integrity.
+                  Once the snapshot is created, the pod will be restored.
+                type: boolean
               fullNodeRef:
                 description: Reference to the source CosmosFullNode. This field is
                   immutable. If you change the fullnode, you may encounter undefined
@@ -79,11 +85,12 @@ spec:
                 type: integer
               minAvailable:
                 description: 'Minimum number of CosmosFullNode pods that must be ready
-                  before creating a VolumeSnapshot. This controller gracefully deletes
-                  a pod while taking a snapshot. Then recreates the pod once the snapshot
-                  is complete. This way, the snapshot has the highest possible data
-                  integrity. Defaults to 2. Warning: If set to 1, you will experience
-                  downtime.'
+                  before creating a VolumeSnapshot. In the future, this field will
+                  have no effect unless spec.deletePod=true. This controller gracefully
+                  deletes a pod while taking a snapshot. Then recreates the pod once
+                  the snapshot is complete. This way, the snapshot has the highest
+                  possible data integrity. Defaults to 2. Warning: If set to 1, you
+                  will experience downtime.'
                 format: int32
                 minimum: 1
                 type: integer
