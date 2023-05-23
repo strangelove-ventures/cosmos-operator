@@ -93,7 +93,7 @@ func TestBuildConfigMaps(t *testing.T) {
 		crd.Name = "osmosis"
 		crd.Spec.ChainSpec.Network = "mainnet"
 		crd.Spec.Replicas = 1
-		crd.Spec.ChainSpec.Tendermint = cosmosv1.TendermintConfig{
+		crd.Spec.ChainSpec.Comet = cosmosv1.CometConfig{
 			PersistentPeers: "peer1@1.2.2.2:789,peer2@2.2.2.2:789,peer3@3.2.2.2:789",
 			Seeds:           "seed1@1.1.1.1:456,seed2@1.1.1.1:456",
 		}
@@ -103,9 +103,9 @@ func TestBuildConfigMaps(t *testing.T) {
 			custom.Spec.Replicas = 1
 			custom.Spec.ChainSpec.LogLevel = ptr("debug")
 			custom.Spec.ChainSpec.LogFormat = ptr("json")
-			custom.Spec.ChainSpec.Tendermint.CorsAllowedOrigins = []string{"*"}
-			custom.Spec.ChainSpec.Tendermint.MaxInboundPeers = ptr(int32(5))
-			custom.Spec.ChainSpec.Tendermint.MaxOutboundPeers = ptr(int32(15))
+			custom.Spec.ChainSpec.Comet.CorsAllowedOrigins = []string{"*"}
+			custom.Spec.ChainSpec.Comet.MaxInboundPeers = ptr(int32(5))
+			custom.Spec.ChainSpec.Comet.MaxOutboundPeers = ptr(int32(15))
 
 			peers := Peers{
 				client.ObjectKey{Namespace: namespace, Name: "osmosis-0"}: {NodeID: "should not see me", PrivateAddress: "should not see me"},
@@ -153,8 +153,8 @@ func TestBuildConfigMaps(t *testing.T) {
 		t.Run("with peers", func(t *testing.T) {
 			peerCRD := crd.DeepCopy()
 			peerCRD.Spec.Replicas = 3
-			peerCRD.Spec.ChainSpec.Tendermint.UnconditionalPeerIDs = "unconditional1,unconditional2"
-			peerCRD.Spec.ChainSpec.Tendermint.PrivatePeerIDs = "private1,private2"
+			peerCRD.Spec.ChainSpec.Comet.UnconditionalPeerIDs = "unconditional1,unconditional2"
+			peerCRD.Spec.ChainSpec.Comet.PrivatePeerIDs = "private1,private2"
 			peers := Peers{
 				client.ObjectKey{Namespace: namespace, Name: "osmosis-0"}: {NodeID: "0", PrivateAddress: "0.local:26656"},
 				client.ObjectKey{Namespace: namespace, Name: "osmosis-1"}: {NodeID: "1", PrivateAddress: "1.local:26656"},
@@ -205,8 +205,8 @@ func TestBuildConfigMaps(t *testing.T) {
 		t.Run("overrides", func(t *testing.T) {
 			overrides := crd.DeepCopy()
 			overrides.Namespace = namespace
-			overrides.Spec.ChainSpec.Tendermint.CorsAllowedOrigins = []string{"should not see me"}
-			overrides.Spec.ChainSpec.Tendermint.TomlOverrides = ptr(`
+			overrides.Spec.ChainSpec.Comet.CorsAllowedOrigins = []string{"should not see me"}
+			overrides.Spec.ChainSpec.Comet.TomlOverrides = ptr(`
 	log_format = "json"
 	new_base = "new base value"
 	
@@ -275,7 +275,7 @@ func TestBuildConfigMaps(t *testing.T) {
 
 		t.Run("invalid toml", func(t *testing.T) {
 			malformed := crd.DeepCopy()
-			malformed.Spec.ChainSpec.Tendermint.TomlOverrides = ptr(`invalid_toml = should be invalid`)
+			malformed.Spec.ChainSpec.Comet.TomlOverrides = ptr(`invalid_toml = should be invalid`)
 			_, err := BuildConfigMaps(malformed, nil)
 
 			require.Error(t, err)

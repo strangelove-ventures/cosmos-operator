@@ -77,7 +77,7 @@ type FullNodeSpec struct {
 
 	// Configure Operator created services. A singe rpc service is created for load balancing api, grpc, rpc, etc. requests.
 	// This allows a k8s admin to use the service in an Ingress, for example.
-	// Additionally, multiple p2p services are created for tendermint peer exchange.
+	// Additionally, multiple p2p services are created for CometBFT peer exchange.
 	// +optional
 	Service ServiceSpec `json:"service"`
 
@@ -390,10 +390,10 @@ type ChainSpec struct {
 	// +kubebuilder:validation:MinLength:=1
 	Binary string `json:"binary"`
 
-	// Tendermint configuration applied to config.toml.
+	// CometBFT (formerly Tendermint) configuration applied to config.toml.
 	// Although optional, it's highly recommended you configure this field.
 	// +optional
-	Tendermint TendermintConfig `json:"config"`
+	Comet CometConfig `json:"config"`
 
 	// App configuration applied to app.toml.
 	App SDKAppConfig `json:"app"`
@@ -460,7 +460,7 @@ type ChainSpec struct {
 	SnapshotScript *string `json:"snapshotScript"`
 
 	// If configured as a Sentry, invokes sleep command with this value before running chain start command.
-	// Currently, tendermint requires the privval laddr to be available immediately without any retry.
+	// Currently, requires the privval laddr to be available immediately without any retry.
 	// This workaround gives time for the connection to be made to a remote signer.
 	// If a Sentry and not set, defaults to 10.
 	// If set to 0, omits injecting sleep command.
@@ -470,18 +470,14 @@ type ChainSpec struct {
 	PrivvalSleepSeconds *int32 `json:"privvalSleepSeconds"`
 }
 
-// TendermintConfig configures the tendermint config.toml.
-type TendermintConfig struct {
+// CometConfig configures the config.toml.
+type CometConfig struct {
 	// Comma delimited list of p2p nodes in <ID>@<IP>:<PORT> format to keep persistent p2p connections.
-	// See https://docs.tendermint.com/master/spec/p2p/peer.html and
-	// https://docs.tendermint.com/master/spec/p3p/config.html#persistent-peers.
 	// +kubebuilder:validation:MinLength:=1
 	// +optional
 	PersistentPeers string `json:"peers"`
 
 	// Comma delimited list of p2p seed nodes in <ID>@<IP>:<PORT> format.
-	// See https://docs.tendermint.com/master/spec/p2p/config.html#seeds and
-	// https://docs.tendermint.com/master/spec/p2p/node.html#seeds.
 	// +kubebuilder:validation:MinLength:=1
 	// +optional
 	Seeds string `json:"seeds"`
@@ -512,7 +508,7 @@ type TendermintConfig struct {
 	// +optional
 	CorsAllowedOrigins []string `json:"corsAllowedOrigins"`
 
-	// Custom tendermint config toml.
+	// Customize config.toml.
 	// Values entered here take precedence over all other configuration.
 	// Must be valid toml.
 	// Important: all keys must be "snake_case" which differs from app.toml.
@@ -585,15 +581,15 @@ type Pruning struct {
 
 	// Defines the minimum block height offset from the current
 	// block being committed, such that all blocks past this offset are pruned
-	// from Tendermint. It is used as part of the process of determining the
+	// from CometBFT. It is used as part of the process of determining the
 	// ResponseCommit.RetainHeight value during ABCI Commit. A value of 0 indicates
 	// that no blocks should be pruned.
 	//
-	// This configuration value is only responsible for pruning Tendermint blocks.
+	// This configuration value is only responsible for pruning Comet blocks.
 	// It has no bearing on application state pruning which is determined by the
 	// "pruning-*" configurations.
 	//
-	// Note: Tendermint block pruning is dependent on this parameter in conjunction
+	// Note: CometBFT block pruning is dependent on this parameter in conjunction
 	// with the unbonding (safety threshold) period, state pruning and state sync
 	// snapshot parameters to determine the correct minimum value of
 	// ResponseCommit.RetainHeight.
@@ -614,8 +610,8 @@ const (
 )
 
 type ServiceSpec struct {
-	// MaxSize number of p2p services to create for tendermint peer exchange.
-	// The public endpoint is set as the "p2p.external_address" in the tendermint config.toml.
+	// MaxSize number of p2p services to create for CometBFT peer exchange.
+	// The public endpoint is set as the "p2p.external_address" in the config.toml.
 	// If not set, defaults to 1.
 	// +kubebuilder:validation:Minimum:=0
 	// +optional

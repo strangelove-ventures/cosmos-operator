@@ -22,7 +22,7 @@ const (
 )
 
 // BuildConfigMaps creates a ConfigMap with configuration to be mounted as files into containers.
-// Currently, the config.toml (for Tendermint) and app.toml (for the Cosmos SDK).
+// Currently, the config.toml (for Comet) and app.toml (for the Cosmos SDK).
 func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, peers Peers) ([]diff.Resource[*corev1.ConfigMap], error) {
 	var (
 		buf = bufPool.Get().(*bytes.Buffer)
@@ -103,7 +103,7 @@ func addConfigToml(buf *bytes.Buffer, cmData map[string]string, crd *cosmosv1.Co
 
 	privatePeers := peers.Except(instance, crd.Namespace)
 	privatePeerStr := commaDelimited(privatePeers.AllPrivate()...)
-	comet := spec.Tendermint
+	comet := spec.Comet
 	p2p := decodedToml{
 		"persistent_peers": commaDelimited(privatePeerStr, comet.PersistentPeers),
 		"seeds":            comet.Seeds,

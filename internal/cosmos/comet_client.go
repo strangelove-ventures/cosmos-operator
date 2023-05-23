@@ -61,7 +61,7 @@ func (status CometStatus) LatestBlockHeight() uint64 {
 	return h
 }
 
-// CometClient knows how to make requests to the CometBFT (formerly Tendermint) RPC endpoints.
+// CometClient knows how to make requests to the CometBFT (formerly Comet) RPC endpoints.
 // This package uses a custom client because 1) parsing JSON is simple and 2) we prevent any dependency on
 // CometBFT packages.
 type CometClient struct {

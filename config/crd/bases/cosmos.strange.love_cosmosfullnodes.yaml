@@ -101,19 +101,18 @@ spec:
                           minRetainBlocks:
                             description: "Defines the minimum block height offset
                               from the current block being committed, such that all
-                              blocks past this offset are pruned from Tendermint.
-                              It is used as part of the process of determining the
-                              ResponseCommit.RetainHeight value during ABCI Commit.
-                              A value of 0 indicates that no blocks should be pruned.
-                              \n This configuration value is only responsible for
-                              pruning Tendermint blocks. It has no bearing on application
-                              state pruning which is determined by the \"pruning-*\"
-                              configurations. \n Note: Tendermint block pruning is
-                              dependent on this parameter in conjunction with the
-                              unbonding (safety threshold) period, state pruning and
-                              state sync snapshot parameters to determine the correct
-                              minimum value of ResponseCommit.RetainHeight. \n If
-                              not set, defaults to 0."
+                              blocks past this offset are pruned from CometBFT. It
+                              is used as part of the process of determining the ResponseCommit.RetainHeight
+                              value during ABCI Commit. A value of 0 indicates that
+                              no blocks should be pruned. \n This configuration value
+                              is only responsible for pruning Comet blocks. It has
+                              no bearing on application state pruning which is determined
+                              by the \"pruning-*\" configurations. \n Note: CometBFT
+                              block pruning is dependent on this parameter in conjunction
+                              with the unbonding (safety threshold) period, state
+                              pruning and state sync snapshot parameters to determine
+                              the correct minimum value of ResponseCommit.RetainHeight.
+                              \n If not set, defaults to 0."
                             format: int32
                             type: integer
                           strategy:
@@ -148,9 +147,9 @@ spec:
                     minLength: 1
                     type: string
                   config:
-                    description: Tendermint configuration applied to config.toml.
-                      Although optional, it's highly recommended you configure this
-                      field.
+                    description: CometBFT (formerly Tendermint) configuration applied
+                      to config.toml. Although optional, it's highly recommended you
+                      configure this field.
                     properties:
                       corsAllowedOrigins:
                         description: rpc list of origins a cross-domain request can
@@ -172,18 +171,17 @@ spec:
                         minimum: 1
                         type: integer
                       overrides:
-                        description: 'Custom tendermint config toml. Values entered
-                          here take precedence over all other configuration. Must
-                          be valid toml. Important: all keys must be "snake_case"
-                          which differs from app.toml. WARNING: Overriding may clobber
-                          some values that the operator sets such as persistent_peers,
-                          private_peer_ids, and unconditional_peer_ids. Use the dedicated
-                          fields for these values which will merge values.'
+                        description: 'Customize config.toml. Values entered here take
+                          precedence over all other configuration. Must be valid toml.
+                          Important: all keys must be "snake_case" which differs from
+                          app.toml. WARNING: Overriding may clobber some values that
+                          the operator sets such as persistent_peers, private_peer_ids,
+                          and unconditional_peer_ids. Use the dedicated fields for
+                          these values which will merge values.'
                         type: string
                       peers:
                         description: Comma delimited list of p2p nodes in <ID>@<IP>:<PORT>
-                          format to keep persistent p2p connections. See https://docs.tendermint.com/master/spec/p2p/peer.html
-                          and https://docs.tendermint.com/master/spec/p3p/config.html#persistent-peers.
+                          format to keep persistent p2p connections.
                         minLength: 1
                         type: string
                       privatePeerIDs:
@@ -192,8 +190,7 @@ spec:
                         type: string
                       seeds:
                         description: Comma delimited list of p2p seed nodes in <ID>@<IP>:<PORT>
-                          format. See https://docs.tendermint.com/master/spec/p2p/config.html#seeds
-                          and https://docs.tendermint.com/master/spec/p2p/node.html#seeds.
+                          format.
                         minLength: 1
                         type: string
                       unconditionalPeerIDs:
@@ -251,9 +248,9 @@ spec:
                   privvalSleepSeconds:
                     description: If configured as a Sentry, invokes sleep command
                       with this value before running chain start command. Currently,
-                      tendermint requires the privval laddr to be available immediately
-                      without any retry. This workaround gives time for the connection
-                      to be made to a remote signer. If a Sentry and not set, defaults
+                      requires the privval laddr to be available immediately without
+                      any retry. This workaround gives time for the connection to
+                      be made to a remote signer. If a Sentry and not set, defaults
                       to 10. If set to 0, omits injecting sleep command. Assumes chain
                       image has `sleep` in $PATH.
                     format: int32
@@ -5586,13 +5583,13 @@ spec:
                 description: Configure Operator created services. A singe rpc service
                   is created for load balancing api, grpc, rpc, etc. requests. This
                   allows a k8s admin to use the service in an Ingress, for example.
-                  Additionally, multiple p2p services are created for tendermint peer
+                  Additionally, multiple p2p services are created for CometBFT peer
                   exchange.
                 properties:
                   maxP2PExternalAddresses:
-                    description: MaxSize number of p2p services to create for tendermint
+                    description: MaxSize number of p2p services to create for CometBFT
                       peer exchange. The public endpoint is set as the "p2p.external_address"
-                      in the tendermint config.toml. If not set, defaults to 1.
+                      in the config.toml. If not set, defaults to 1.
                     format: int32
                     minimum: 0
                     type: integer
