@@ -16,7 +16,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const cosmosSourceLabel = "cosmos.strange.love/source"
@@ -29,7 +28,7 @@ type Client interface {
 }
 
 type PodFilter interface {
-	SyncedPods(ctx context.Context, log kube.Logger, candidates []*corev1.Pod) []*corev1.Pod
+	SyncedPods(ctx context.Context, pods []corev1.Pod) []*corev1.Pod
 }
 
 // VolumeSnapshotControl manages VolumeSnapshots
@@ -61,11 +60,10 @@ func (control VolumeSnapshotControl) FindCandidate(ctx context.Context, crd *cos
 		return Candidate{}, err
 	}
 
-	logger := log.FromContext(ctx).WithName("FindCandidate")
 	cctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	var (
-		synced     = control.podFilter.SyncedPods(cctx, kube.ToLogger(logger), ptrSlice(pods.Items))
+		synced     = control.podFilter.SyncedPods(cctx, pods.Items)
 		availCount = int32(len(synced))
 		minAvail   = crd.Spec.MinAvailable
 	)

@@ -55,17 +55,17 @@ func (m *mockPodClient) Delete(ctx context.Context, obj client.Object, opts ...c
 }
 
 type mockPodFilter struct {
-	SyncedPodsFn func(ctx context.Context, log kube.Logger, candidates []*corev1.Pod) []*corev1.Pod
+	SyncedPodsFn func(ctx context.Context, pods []corev1.Pod) []*corev1.Pod
 }
 
-func (fn mockPodFilter) SyncedPods(ctx context.Context, log kube.Logger, candidates []*corev1.Pod) []*corev1.Pod {
+func (fn mockPodFilter) SyncedPods(ctx context.Context, pods []corev1.Pod) []*corev1.Pod {
 	if ctx == nil {
 		panic("nil context")
 	}
 	if fn.SyncedPodsFn == nil {
 		panic("SyncedPods not implemented")
 	}
-	return fn.SyncedPodsFn(ctx, log, candidates)
+	return fn.SyncedPodsFn(ctx, pods)
 }
 
 var (
@@ -101,8 +101,8 @@ func TestVolumeSnapshotControl_FindCandidate(t *testing.T) {
 		require.NoError(t, err)
 
 		control := NewVolumeSnapshotControl(&mClient, mockPodFilter{
-			SyncedPodsFn: func(ctx context.Context, _ kube.Logger, candidates []*corev1.Pod) []*corev1.Pod {
-				require.Equal(t, ptrSlice(pods), candidates)
+			SyncedPodsFn: func(ctx context.Context, candidates []corev1.Pod) []*corev1.Pod {
+				require.Equal(t, pods, candidates)
 				return []*corev1.Pod{candidate, new(corev1.Pod), new(corev1.Pod)}
 			},
 		})
@@ -133,7 +133,7 @@ func TestVolumeSnapshotControl_FindCandidate(t *testing.T) {
 		mClient.Items = []corev1.Pod{pod}
 
 		control := NewVolumeSnapshotControl(&mClient, mockPodFilter{
-			SyncedPodsFn: func(ctx context.Context, log kube.Logger, candidates []*corev1.Pod) []*corev1.Pod {
+			SyncedPodsFn: func(ctx context.Context, _ []corev1.Pod) []*corev1.Pod {
 				return []*corev1.Pod{&pod}
 			},
 		})
@@ -172,7 +172,7 @@ func TestVolumeSnapshotControl_FindCandidate(t *testing.T) {
 		} {
 			var mClient mockPodClient
 			control := NewVolumeSnapshotControl(&mClient, mockPodFilter{
-				SyncedPodsFn: func(ctx context.Context, log kube.Logger, candidates []*corev1.Pod) []*corev1.Pod {
+				SyncedPodsFn: func(ctx context.Context, _ []corev1.Pod) []*corev1.Pod {
 					return ptrSlice(tt.Pods)
 				},
 			})
