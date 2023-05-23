@@ -50,7 +50,7 @@ func startHealthCheckServer(cmd *cobra.Command, args []string) error {
 	defer func() { _ = zlog.Sync() }()
 
 	var (
-		tm   = healthcheck.NewTendermint(logger, cometClient, rpcHost, timeout)
+		tm   = healthcheck.NewComet(logger, cometClient, rpcHost, timeout)
 		disk = healthcheck.DiskUsage(fullnode.ChainHomeDir)
 	)
 

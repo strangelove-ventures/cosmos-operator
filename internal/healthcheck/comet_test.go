@@ -22,7 +22,7 @@ func (fn mockClient) Status(ctx context.Context, rpcHost string) (cosmos.CometSt
 
 var nopLogger = logr.Discard()
 
-func TestTendermint_ServeHTTP(t *testing.T) {
+func TestComet_ServeHTTP(t *testing.T) {
 	t.Parallel()
 
 	var (
@@ -37,7 +37,7 @@ func TestTendermint_ServeHTTP(t *testing.T) {
 			return cosmos.CometStatus{}, nil
 		})
 
-		h := NewTendermint(nopLogger, client, testRPC, 10*time.Second)
+		h := NewComet(nopLogger, client, testRPC, 10*time.Second)
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, stubReq)
 
@@ -60,7 +60,7 @@ func TestTendermint_ServeHTTP(t *testing.T) {
 			return stub, nil
 		})
 
-		h := NewTendermint(nopLogger, client, testRPC, 10*time.Second)
+		h := NewComet(nopLogger, client, testRPC, 10*time.Second)
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, stubReq)
 
@@ -81,7 +81,7 @@ func TestTendermint_ServeHTTP(t *testing.T) {
 			return cosmos.CometStatus{}, errors.New("boom")
 		})
 
-		h := NewTendermint(nopLogger, client, testRPC, 10*time.Second)
+		h := NewComet(nopLogger, client, testRPC, 10*time.Second)
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, stubReq)
 
@@ -104,7 +104,7 @@ func TestTendermint_ServeHTTP(t *testing.T) {
 			return cosmos.CometStatus{}, nil
 		})
 
-		h := NewTendermint(nopLogger, client, testRPC, time.Nanosecond)
+		h := NewComet(nopLogger, client, testRPC, time.Nanosecond)
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, stubReq)
 

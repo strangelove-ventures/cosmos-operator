@@ -15,7 +15,7 @@ import (
 	"github.com/strangelove-ventures/cosmos-operator/internal/cosmos"
 )
 
-// Statuser can query the Tendermint status endpoint.
+// Statuser can query the Comet status endpoint.
 type Statuser interface {
 	Status(ctx context.Context, rpcHost string) (cosmos.CometStatus, error)
 }
@@ -26,8 +26,8 @@ type healthResponse struct {
 	Error   string `json:"error,omitempty"`
 }
 
-// Tendermint checks the Tendermint status endpoint to determine if the node is in-sync or not.
-type Tendermint struct {
+// Comet checks the CometBFT status endpoint to determine if the node is in-sync or not.
+type Comet struct {
 	client     Statuser
 	lastStatus int32
 	logger     logr.Logger
@@ -35,8 +35,8 @@ type Tendermint struct {
 	timeout    time.Duration
 }
 
-func NewTendermint(logger logr.Logger, client Statuser, rpcHost string, timeout time.Duration) *Tendermint {
-	return &Tendermint{
+func NewComet(logger logr.Logger, client Statuser, rpcHost string, timeout time.Duration) *Comet {
+	return &Comet{
 		client:  client,
 		logger:  logger,
 		rpcHost: rpcHost,
@@ -45,7 +45,7 @@ func NewTendermint(logger logr.Logger, client Statuser, rpcHost string, timeout 
 }
 
 // ServeHTTP implements http.Handler.
-func (h *Tendermint) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *Comet) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var resp healthResponse
 	resp.Address = h.rpcHost
 
@@ -68,7 +68,7 @@ func (h *Tendermint) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.writeResponse(http.StatusOK, w, resp)
 }
 
-func (h *Tendermint) writeResponse(code int, w http.ResponseWriter, resp healthResponse) {
+func (h *Comet) writeResponse(code int, w http.ResponseWriter, resp healthResponse) {
 	w.WriteHeader(code)
 	w.Header().Set("Content-Type", "application/json")
 	mustJSONEncode(resp, w)
