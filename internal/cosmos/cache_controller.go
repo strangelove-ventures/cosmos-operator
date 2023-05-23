@@ -33,16 +33,16 @@ type Collector interface {
 	Collect(ctx context.Context, pods []corev1.Pod) StatusCollection
 }
 
-// StatusCache periodically polls pods for their CometBFT status and caches the result.
-// The cache acts as a controller so it can watch CosmosFullNode objects to invalidate and warm the cache.
-type StatusCache struct {
+// CacheController periodically polls pods for their CometBFT status and caches the result.
+// The cache is a controller so it can watch CosmosFullNode objects to invalidate and warm the cache.
+type CacheController struct {
 	cache     *cache
 	client    client.Reader
 	collector Collector
 }
 
-func NewStatusCache(collector Collector, reader client.Reader) *StatusCache {
-	return &StatusCache{
+func NewCacheController(collector Collector, reader client.Reader) *CacheController {
+	return &CacheController{
 		cache:     new(cache),
 		client:    reader,
 		collector: collector,
@@ -50,7 +50,7 @@ func NewStatusCache(collector Collector, reader client.Reader) *StatusCache {
 }
 
 // SetupWithManager watches CosmosFullNode objects.
-func (c *StatusCache) SetupWithManager(_ context.Context, mgr ctrl.Manager) error {
+func (c *CacheController) SetupWithManager(_ context.Context, mgr ctrl.Manager) error {
 	// We do not index pods because we presume another controller is already doing so.
 	// If we repeat it here, the manager returns an error.
 	return ctrl.NewControllerManagedBy(mgr).
@@ -60,7 +60,7 @@ func (c *StatusCache) SetupWithManager(_ context.Context, mgr ctrl.Manager) erro
 
 var finishResult reconcile.Result
 
-func (c *StatusCache) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
+func (c *CacheController) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
 	crd := new(cosmosv1.CosmosFullNode)
 	if err := c.client.Get(ctx, req.NamespacedName, crd); err != nil {
 		// TODO: remove from cache
@@ -74,6 +74,6 @@ func (c *StatusCache) Reconcile(ctx context.Context, req reconcile.Request) (rec
 
 // Collect returns a StatusCollection for the given controller. For optimal performance, only returns cached results.
 // If the cache is stale, returns an empty StatusCollection.
-func (c *StatusCache) Collect(ctx context.Context, controller client.ObjectKey) StatusCollection {
+func (c *CacheController) Collect(ctx context.Context, controller client.ObjectKey) StatusCollection {
 	return nil
 }
