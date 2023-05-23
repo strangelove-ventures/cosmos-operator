@@ -57,7 +57,7 @@ type CosmosFullNodeReconciler struct {
 
 // NewFullNode returns a valid CosmosFullNode controller.
 func NewFullNode(client client.Client, recorder record.EventRecorder, statusClient *fullnode.StatusClient) *CosmosFullNodeReconciler {
-	tmClient := cosmos.NewTendermintClient(sharedHTTPClient)
+	tmClient := cosmos.NewCometClient(sharedHTTPClient)
 
 	return &CosmosFullNodeReconciler{
 		Client: client,

@@ -14,9 +14,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type mockClient func(ctx context.Context, rpcHost string) (cosmos.TendermintStatus, error)
+type mockClient func(ctx context.Context, rpcHost string) (cosmos.CometStatus, error)
 
-func (fn mockClient) Status(ctx context.Context, rpcHost string) (cosmos.TendermintStatus, error) {
+func (fn mockClient) Status(ctx context.Context, rpcHost string) (cosmos.CometStatus, error) {
 	return fn(ctx, rpcHost)
 }
 
@@ -31,10 +31,10 @@ func TestTendermint_ServeHTTP(t *testing.T) {
 	const testRPC = "http://my-rpc:25567"
 
 	t.Run("happy path", func(t *testing.T) {
-		client := mockClient(func(ctx context.Context, rpcHost string) (cosmos.TendermintStatus, error) {
+		client := mockClient(func(ctx context.Context, rpcHost string) (cosmos.CometStatus, error) {
 			require.NotNil(t, ctx)
 			require.Equal(t, testRPC, rpcHost)
-			return cosmos.TendermintStatus{}, nil
+			return cosmos.CometStatus{}, nil
 		})
 
 		h := NewTendermint(nopLogger, client, testRPC, 10*time.Second)
@@ -54,8 +54,8 @@ func TestTendermint_ServeHTTP(t *testing.T) {
 	})
 
 	t.Run("still catching up", func(t *testing.T) {
-		client := mockClient(func(ctx context.Context, rpcHost string) (cosmos.TendermintStatus, error) {
-			var stub cosmos.TendermintStatus
+		client := mockClient(func(ctx context.Context, rpcHost string) (cosmos.CometStatus, error) {
+			var stub cosmos.CometStatus
 			stub.Result.SyncInfo.CatchingUp = true
 			return stub, nil
 		})
@@ -77,8 +77,8 @@ func TestTendermint_ServeHTTP(t *testing.T) {
 	})
 
 	t.Run("status error", func(t *testing.T) {
-		client := mockClient(func(ctx context.Context, rpcHost string) (cosmos.TendermintStatus, error) {
-			return cosmos.TendermintStatus{}, errors.New("boom")
+		client := mockClient(func(ctx context.Context, rpcHost string) (cosmos.CometStatus, error) {
+			return cosmos.CometStatus{}, errors.New("boom")
 		})
 
 		h := NewTendermint(nopLogger, client, testRPC, 10*time.Second)
@@ -99,9 +99,9 @@ func TestTendermint_ServeHTTP(t *testing.T) {
 
 	t.Run("times out", func(t *testing.T) {
 		var gotCtx context.Context
-		client := mockClient(func(ctx context.Context, rpcHost string) (cosmos.TendermintStatus, error) {
+		client := mockClient(func(ctx context.Context, rpcHost string) (cosmos.CometStatus, error) {
 			gotCtx = ctx
-			return cosmos.TendermintStatus{}, nil
+			return cosmos.CometStatus{}, nil
 		})
 
 		h := NewTendermint(nopLogger, client, testRPC, time.Nanosecond)

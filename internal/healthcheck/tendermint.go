@@ -17,7 +17,7 @@ import (
 
 // Statuser can query the Tendermint status endpoint.
 type Statuser interface {
-	Status(ctx context.Context, rpcHost string) (cosmos.TendermintStatus, error)
+	Status(ctx context.Context, rpcHost string) (cosmos.CometStatus, error)
 }
 
 type healthResponse struct {

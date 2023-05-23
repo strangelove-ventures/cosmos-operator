@@ -5,10 +5,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// StatusItem is a pod paired with its tendermint/cometbft status.
+// StatusItem is a pod paired with its CometBFT status.
 type StatusItem struct {
 	pod    *corev1.Pod
-	status TendermintStatus
+	status CometStatus
 	err    error
 }
 
@@ -17,12 +17,12 @@ func (status StatusItem) Pod() *corev1.Pod {
 	return status.pod
 }
 
-// Status returns the tendermint/cometbft status or an error if the status could not be fetched.
-func (status StatusItem) Status() (TendermintStatus, error) {
+// Status returns the CometBFT status or an error if the status could not be fetched.
+func (status StatusItem) Status() (CometStatus, error) {
 	return status.status, status.err
 }
 
-// StatusCollection is a list of pods and tendermint status associated with the pod.
+// StatusCollection is a list of pods and CometBFT status associated with the pod.
 type StatusCollection []StatusItem
 
 func (coll StatusCollection) Default() StatusCollection { return make(StatusCollection, 0) }

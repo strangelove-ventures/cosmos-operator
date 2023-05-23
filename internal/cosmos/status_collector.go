@@ -10,22 +10,22 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// TendermintStatuser calls the Tendermint RPC status endpoint.
-type TendermintStatuser interface {
-	Status(ctx context.Context, rpcHost string) (TendermintStatus, error)
+// Statuser calls the RPC status endpoint.
+type Statuser interface {
+	Status(ctx context.Context, rpcHost string) (CometStatus, error)
 }
 
-// StatusCollector collects the tendermint/cometbft status of all pods owned by a controller.
+// StatusCollector collects the CometBFT status of all pods owned by a controller.
 type StatusCollector struct {
-	tendermint TendermintStatuser
-	timeout    time.Duration
+	comet   Statuser
+	timeout time.Duration
 }
 
 // NewStatusCollector returns a valid StatusCollector.
 // Timeout is exposed here because it is important for good performance in reconcile loops,
 // and reminds callers to set it.
-func NewStatusCollector(tendermint TendermintStatuser, timeout time.Duration) *StatusCollector {
-	return &StatusCollector{tendermint: tendermint, timeout: timeout}
+func NewStatusCollector(comet Statuser, timeout time.Duration) *StatusCollector {
+	return &StatusCollector{comet: comet, timeout: timeout}
 }
 
 // Collect returns a StatusCollection for the given pods.
@@ -48,7 +48,7 @@ func (coll StatusCollector) Collect(ctx context.Context, pods []corev1.Pod) Stat
 			host := fmt.Sprintf("http://%s:26657", ip)
 			cctx, cancel := context.WithTimeout(ctx, coll.timeout)
 			defer cancel()
-			resp, err := coll.tendermint.Status(cctx, host)
+			resp, err := coll.comet.Status(cctx, host)
 			if err != nil {
 				statuses[i].err = err
 				return nil

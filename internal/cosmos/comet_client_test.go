@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestTendermintStatus_LatestBlockHeight(t *testing.T) {
+func TestCometStatus_LatestBlockHeight(t *testing.T) {
 	t.Parallel()
 
 	for _, tt := range []struct {
@@ -24,14 +24,14 @@ func TestTendermintStatus_LatestBlockHeight(t *testing.T) {
 		{"1", 1},
 		{"1234567", 1234567},
 	} {
-		var status TendermintStatus
+		var status CometStatus
 		status.Result.SyncInfo.LatestBlockHeight = tt.Height
 
 		require.Equal(t, tt.Want, status.LatestBlockHeight(), tt)
 	}
 }
 
-func TestTendermintClient_Status(t *testing.T) {
+func TestCometClient_Status(t *testing.T) {
 	t.Parallel()
 
 	t.Run("happy path", func(t *testing.T) {
@@ -39,7 +39,7 @@ func TestTendermintClient_Status(t *testing.T) {
 		cctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		client := NewTendermintClient(http.DefaultClient)
+		client := NewCometClient(http.DefaultClient)
 		require.NotNil(t, client.httpDo)
 
 		client.httpDo = func(req *http.Request) (*http.Response, error) {
@@ -62,7 +62,7 @@ func TestTendermintClient_Status(t *testing.T) {
 	})
 
 	t.Run("non 200 response", func(t *testing.T) {
-		client := NewTendermintClient(http.DefaultClient)
+		client := NewCometClient(http.DefaultClient)
 		client.httpDo = func(req *http.Request) (*http.Response, error) {
 			return &http.Response{
 				StatusCode: 500,
@@ -77,7 +77,7 @@ func TestTendermintClient_Status(t *testing.T) {
 	})
 
 	t.Run("http error", func(t *testing.T) {
-		client := NewTendermintClient(http.DefaultClient)
+		client := NewCometClient(http.DefaultClient)
 		client.httpDo = func(req *http.Request) (*http.Response, error) {
 			return nil, errors.New("boom")
 		}

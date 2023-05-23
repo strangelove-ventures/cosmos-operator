@@ -42,7 +42,7 @@ func startHealthCheckServer(cmd *cobra.Command, args []string) error {
 		timeout    = viper.GetDuration("timeout")
 
 		httpClient = &http.Client{Timeout: 30 * time.Second}
-		tmClient   = cosmos.NewTendermintClient(httpClient)
+		tmClient   = cosmos.NewCometClient(httpClient)
 
 		zlog   = zapLogger("info", viper.GetString("log-format"))
 		logger = zapr.NewLogger(zlog)

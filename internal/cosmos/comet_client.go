@@ -11,8 +11,8 @@ import (
 	"time"
 )
 
-// TendermintStatus is the response from the /status RPC endpoint.
-type TendermintStatus struct {
+// CometStatus is the response from the /status RPC endpoint.
+type CometStatus struct {
 	JSONRPC string `json:"jsonrpc"`
 	ID      int    `json:"id"`
 	Result  struct {
@@ -56,25 +56,25 @@ type TendermintStatus struct {
 }
 
 // LatestBlockHeight parses the latest block height string. If the string is malformed, returns 0.
-func (status TendermintStatus) LatestBlockHeight() uint64 {
+func (status CometStatus) LatestBlockHeight() uint64 {
 	h, _ := strconv.ParseUint(status.Result.SyncInfo.LatestBlockHeight, 10, 64)
 	return h
 }
 
-// TendermintClient knows how to make requests to the Tendermint RPC endpoints.
+// CometClient knows how to make requests to the CometBFT (formerly Tendermint) RPC endpoints.
 // This package uses a custom client because 1) parsing JSON is simple and 2) we prevent any dependency on
-// tendermint packages.
-type TendermintClient struct {
+// CometBFT packages.
+type CometClient struct {
 	httpDo func(req *http.Request) (*http.Response, error)
 }
 
-func NewTendermintClient(client *http.Client) *TendermintClient {
-	return &TendermintClient{httpDo: client.Do}
+func NewCometClient(client *http.Client) *CometClient {
+	return &CometClient{httpDo: client.Do}
 }
 
-// Status finds the current Tendermint status.
-func (client *TendermintClient) Status(ctx context.Context, rpcHost string) (TendermintStatus, error) {
-	var status TendermintStatus
+// Status finds the latest status.
+func (client *CometClient) Status(ctx context.Context, rpcHost string) (CometStatus, error) {
+	var status CometStatus
 	u, err := url.ParseRequestURI(rpcHost)
 	if err != nil {
 		return status, fmt.Errorf("malformed host: %w", err)
