@@ -39,6 +39,8 @@ import (
 
 const controllerOwnerField = ".metadata.controller"
 
+const statusCollectionTimeout = 10 * time.Second
+
 // CosmosFullNodeReconciler reconciles a CosmosFullNode object
 type CosmosFullNodeReconciler struct {
 	client.Client
@@ -63,7 +65,7 @@ func NewFullNode(client client.Client, recorder record.EventRecorder, statusClie
 		configMapControl: fullnode.NewConfigMapControl(client),
 		nodeKeyControl:   fullnode.NewNodeKeyControl(client),
 		peerCollector:    fullnode.NewPeerCollector(client),
-		podControl:       fullnode.NewPodControl(client),
+		podControl:       fullnode.NewPodControl(client, cosmos.NewStatusCollector(tmClient, statusCollectionTimeout)),
 		pvcControl:       fullnode.NewPVCControl(client),
 		recorder:         recorder,
 		serviceControl:   fullnode.NewServiceControl(client),

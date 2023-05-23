@@ -56,7 +56,7 @@ func NewScheduledVolumeSnapshotReconciler(
 		fullNodeControl:    volsnapshot.NewFullNodeControl(statusClient, client),
 		recorder:           recorder,
 		scheduler:          volsnapshot.NewScheduler(client),
-		volSnapshotControl: volsnapshot.NewVolumeSnapshotControl(client, cosmos.NewPodFilter(tmClient)),
+		volSnapshotControl: volsnapshot.NewVolumeSnapshotControl(client, cosmos.NewStatusCollector(tmClient, statusCollectionTimeout)),
 	}
 }
 
