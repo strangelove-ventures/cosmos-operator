@@ -61,12 +61,12 @@ func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, peers Peers) ([]diff.Resource
 
 type decodedToml = map[string]any
 
-//go:embed toml/tendermint_default_config.toml
-var defaultTendermintToml []byte
+//go:embed toml/comet_default_config.toml
+var defaultCometToml []byte
 
-func defaultTendermint() decodedToml {
+func defaultComet() decodedToml {
 	var data decodedToml
-	if err := toml.Unmarshal(defaultTendermintToml, &data); err != nil {
+	if err := toml.Unmarshal(defaultCometToml, &data); err != nil {
 		panic(err)
 	}
 	return data
@@ -136,7 +136,7 @@ func addConfigToml(buf *bytes.Buffer, cmData map[string]string, crd *cosmosv1.Co
 		base["rpc"] = decodedToml{"cors_allowed_origins": v}
 	}
 
-	dst := defaultTendermint()
+	dst := defaultComet()
 
 	mergemap.Merge(dst, base)
 
@@ -144,7 +144,7 @@ func addConfigToml(buf *bytes.Buffer, cmData map[string]string, crd *cosmosv1.Co
 		var decoded decodedToml
 		_, err := toml.Decode(*overrides, &decoded)
 		if err != nil {
-			return fmt.Errorf("invalid toml in tendermint overrides: %w", err)
+			return fmt.Errorf("invalid toml in comet overrides: %w", err)
 		}
 		mergemap.Merge(dst, decoded)
 	}

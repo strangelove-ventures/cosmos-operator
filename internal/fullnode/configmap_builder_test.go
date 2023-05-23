@@ -13,12 +13,12 @@ import (
 )
 
 var (
-	//go:embed testdata/tendermint.toml
-	wantTendermint string
-	//go:embed testdata/tendermint_defaults.toml
-	wantTendermintDefaults string
-	//go:embed testdata/tendermint_overrides.toml
-	wantTendermintOverrides string
+	//go:embed testdata/comet.toml
+	wantComet string
+	//go:embed testdata/comet_defaults.toml
+	wantCometDefaults string
+	//go:embed testdata/comet_overrides.toml
+	wantCometOverrides string
 
 	//go:embed testdata/app.toml
 	wantApp string
@@ -122,7 +122,7 @@ func TestBuildConfigMaps(t *testing.T) {
 				got  map[string]any
 				want map[string]any
 			)
-			_, err = toml.Decode(wantTendermint, &want)
+			_, err = toml.Decode(wantComet, &want)
 			require.NoError(t, err)
 
 			_, err = toml.Decode(cm.Data["config-overlay.toml"], &got)
@@ -141,7 +141,7 @@ func TestBuildConfigMaps(t *testing.T) {
 				got  map[string]any
 				want map[string]any
 			)
-			_, err = toml.Decode(wantTendermintDefaults, &want)
+			_, err = toml.Decode(wantCometDefaults, &want)
 			require.NoError(t, err)
 
 			_, err = toml.Decode(cm.Data["config-overlay.toml"], &got)
@@ -237,7 +237,7 @@ func TestBuildConfigMaps(t *testing.T) {
 				got  map[string]any
 				want map[string]any
 			)
-			_, err = toml.Decode(wantTendermintOverrides, &want)
+			_, err = toml.Decode(wantCometOverrides, &want)
 			require.NoError(t, err)
 
 			_, err = toml.Decode(cm.Data["config-overlay.toml"], &got)
@@ -279,7 +279,7 @@ func TestBuildConfigMaps(t *testing.T) {
 			_, err := BuildConfigMaps(malformed, nil)
 
 			require.Error(t, err)
-			require.Contains(t, err.Error(), "invalid toml in tendermint overrides")
+			require.Contains(t, err.Error(), "invalid toml in toml overrides")
 		})
 	})
 
