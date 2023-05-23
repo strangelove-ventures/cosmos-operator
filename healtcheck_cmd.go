@@ -23,7 +23,7 @@ func healthcheckCmd() *cobra.Command {
 		SilenceUsage: true,
 	}
 
-	hc.Flags().String("rpc-host", "http://localhost:26657", "tendermint rpc endpoint")
+	hc.Flags().String("rpc-host", "http://localhost:26657", "CometBFT rpc endpoint")
 	hc.Flags().String("log-format", "console", "'console' or 'json'")
 	hc.Flags().Duration("timeout", 5*time.Second, "how long to wait before timing out requests to rpc-host")
 	hc.Flags().String("addr", fmt.Sprintf(":%d", healthcheck.Port), "listen address for server to bind")
