@@ -39,7 +39,7 @@ import (
 
 const controllerOwnerField = ".metadata.controller"
 
-const statusCollectionTimeout = 10 * time.Second
+const statusCollectionTimeout = 5 * time.Second
 
 // CosmosFullNodeReconciler reconciles a CosmosFullNode object
 type CosmosFullNodeReconciler struct {
