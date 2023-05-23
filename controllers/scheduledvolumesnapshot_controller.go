@@ -50,13 +50,13 @@ func NewScheduledVolumeSnapshotReconciler(
 	recorder record.EventRecorder,
 	statusClient *fullnode.StatusClient,
 ) *ScheduledVolumeSnapshotReconciler {
-	tmClient := cosmos.NewTendermintClient(sharedHTTPClient)
+	cometClient := cosmos.NewCometClient(sharedHTTPClient)
 	return &ScheduledVolumeSnapshotReconciler{
 		Client:             client,
 		fullNodeControl:    volsnapshot.NewFullNodeControl(statusClient, client),
 		recorder:           recorder,
 		scheduler:          volsnapshot.NewScheduler(client),
-		volSnapshotControl: volsnapshot.NewVolumeSnapshotControl(client, cosmos.NewStatusCollector(tmClient, statusCollectionTimeout)),
+		volSnapshotControl: volsnapshot.NewVolumeSnapshotControl(client, cosmos.NewStatusCollector(cometClient, statusCollectionTimeout)),
 	}
 }
 

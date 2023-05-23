@@ -78,8 +78,8 @@ Disclaimer: Strangelove has not committed to these enhancements and cannot estim
 - [ ] Scheduled upgrades. Set a halt height and image version. The controller performs a rolling update with the new image version after the committed halt height.
 - [x] Support configuration suitable for validator sentries.
 - [x] Reliable, persistent peer support.
-- [ ] Quicker p2p discovery using private peers.
-- [ ] Advanced readiness probe behavior. (The tendermint rpc status endpoint is not always reliable.)
+- [x] Quicker p2p discovery using private peers.
+- [ ] Advanced readiness probe behavior. (The CometBFT rpc status endpoint is not always reliable.)
 - [x] Automatic rollout for PVC resizing. (Currently human intervention required to restart pods after PVC resized.) Requires ExpandInUsePersistentVolumes feature gate.
 - [x] Automatic PVC resizing. The controller increases PVC size once storage reaches a configured threshold; e.g. 80% full.
 - [ ] Bootstrap config using the chain registry. Query the chain registry and set config based on the registry.

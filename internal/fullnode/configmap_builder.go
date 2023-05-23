@@ -22,7 +22,7 @@ const (
 )
 
 // BuildConfigMaps creates a ConfigMap with configuration to be mounted as files into containers.
-// Currently, the config.toml (for Tendermint) and app.toml (for the Cosmos SDK).
+// Currently, the config.toml (for Comet) and app.toml (for the Cosmos SDK).
 func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, peers Peers) ([]diff.Resource[*corev1.ConfigMap], error) {
 	var (
 		buf = bufPool.Get().(*bytes.Buffer)
@@ -61,12 +61,12 @@ func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, peers Peers) ([]diff.Resource
 
 type decodedToml = map[string]any
 
-//go:embed toml/tendermint_default_config.toml
-var defaultTendermintToml []byte
+//go:embed toml/comet_default_config.toml
+var defaultCometToml []byte
 
-func defaultTendermint() decodedToml {
+func defaultComet() decodedToml {
 	var data decodedToml
-	if err := toml.Unmarshal(defaultTendermintToml, &data); err != nil {
+	if err := toml.Unmarshal(defaultCometToml, &data); err != nil {
 		panic(err)
 	}
 	return data
@@ -103,28 +103,28 @@ func addConfigToml(buf *bytes.Buffer, cmData map[string]string, crd *cosmosv1.Co
 
 	privatePeers := peers.Except(instance, crd.Namespace)
 	privatePeerStr := commaDelimited(privatePeers.AllPrivate()...)
-	tendermint := spec.Tendermint
+	comet := spec.Comet
 	p2p := decodedToml{
-		"persistent_peers": commaDelimited(privatePeerStr, tendermint.PersistentPeers),
-		"seeds":            tendermint.Seeds,
+		"persistent_peers": commaDelimited(privatePeerStr, comet.PersistentPeers),
+		"seeds":            comet.Seeds,
 	}
 
 	privateIDStr := commaDelimited(privatePeers.NodeIDs()...)
-	privateIDs := commaDelimited(privateIDStr, tendermint.PrivatePeerIDs)
+	privateIDs := commaDelimited(privateIDStr, comet.PrivatePeerIDs)
 	if v := privateIDs; v != "" {
 		p2p["private_peer_ids"] = v
 	}
 
-	unconditionalIDs := commaDelimited(privateIDStr, tendermint.UnconditionalPeerIDs)
+	unconditionalIDs := commaDelimited(privateIDStr, comet.UnconditionalPeerIDs)
 	if v := unconditionalIDs; v != "" {
 		p2p["unconditional_peer_ids"] = v
 	}
 
-	if v := tendermint.MaxInboundPeers; v != nil {
-		p2p["max_num_inbound_peers"] = tendermint.MaxInboundPeers
+	if v := comet.MaxInboundPeers; v != nil {
+		p2p["max_num_inbound_peers"] = comet.MaxInboundPeers
 	}
-	if v := tendermint.MaxOutboundPeers; v != nil {
-		p2p["max_num_outbound_peers"] = tendermint.MaxOutboundPeers
+	if v := comet.MaxOutboundPeers; v != nil {
+		p2p["max_num_outbound_peers"] = comet.MaxOutboundPeers
 	}
 	if v := peers.Get(instance, crd.Namespace).ExternalAddress; v != "" {
 		p2p["external_address"] = v
@@ -132,19 +132,19 @@ func addConfigToml(buf *bytes.Buffer, cmData map[string]string, crd *cosmosv1.Co
 
 	base["p2p"] = p2p
 
-	if v := tendermint.CorsAllowedOrigins; v != nil {
+	if v := comet.CorsAllowedOrigins; v != nil {
 		base["rpc"] = decodedToml{"cors_allowed_origins": v}
 	}
 
-	dst := defaultTendermint()
+	dst := defaultComet()
 
 	mergemap.Merge(dst, base)
 
-	if overrides := tendermint.TomlOverrides; overrides != nil {
+	if overrides := comet.TomlOverrides; overrides != nil {
 		var decoded decodedToml
 		_, err := toml.Decode(*overrides, &decoded)
 		if err != nil {
-			return fmt.Errorf("invalid toml in tendermint overrides: %w", err)
+			return fmt.Errorf("invalid toml in comet overrides: %w", err)
 		}
 		mergemap.Merge(dst, decoded)
 	}

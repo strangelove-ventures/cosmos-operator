@@ -14,7 +14,7 @@ func TestStatusCollection_SyncedPods(t *testing.T) {
 	var coll StatusCollection
 	require.Empty(t, coll.SyncedPods())
 
-	var catchingUp TendermintStatus
+	var catchingUp CometStatus
 	catchingUp.Result.SyncInfo.CatchingUp = true
 
 	coll = StatusCollection{

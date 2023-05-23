@@ -13,13 +13,13 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-type mockStatuser func(ctx context.Context, rpcHost string) (TendermintStatus, error)
+type mockStatuser func(ctx context.Context, rpcHost string) (CometStatus, error)
 
-func (fn mockStatuser) Status(ctx context.Context, rpcHost string) (TendermintStatus, error) {
+func (fn mockStatuser) Status(ctx context.Context, rpcHost string) (CometStatus, error) {
 	return fn(ctx, rpcHost)
 }
 
-var panicStatuser = mockStatuser(func(ctx context.Context, rpcHost string) (TendermintStatus, error) {
+var panicStatuser = mockStatuser(func(ctx context.Context, rpcHost string) (CometStatus, error) {
 	panic("should not be called")
 })
 
@@ -45,17 +45,17 @@ func TestStatusCollector_Collect(t *testing.T) {
 			return pod
 		})
 
-		tmClient := mockStatuser(func(ctx context.Context, rpcHost string) (TendermintStatus, error) {
+		cometClient := mockStatuser(func(ctx context.Context, rpcHost string) (CometStatus, error) {
 			_, ok := ctx.Deadline()
 			if !ok {
 				require.Fail(t, "expected deadline in context")
 			}
-			var status TendermintStatus
+			var status CometStatus
 			status.Result.NodeInfo.ListenAddr = rpcHost
 			return status, nil
 		})
 
-		coll := NewStatusCollector(tmClient, timeout)
+		coll := NewStatusCollector(cometClient, timeout)
 		got := coll.Collect(ctx, pods)
 
 		require.Len(t, got, 3)
@@ -83,10 +83,10 @@ func TestStatusCollector_Collect(t *testing.T) {
 	})
 
 	t.Run("status error", func(t *testing.T) {
-		tmClient := mockStatuser(func(ctx context.Context, rpcHost string) (TendermintStatus, error) {
-			return TendermintStatus{}, errors.New("status error")
+		cometClient := mockStatuser(func(ctx context.Context, rpcHost string) (CometStatus, error) {
+			return CometStatus{}, errors.New("status error")
 		})
-		coll := NewStatusCollector(tmClient, timeout)
+		coll := NewStatusCollector(cometClient, timeout)
 		var pod corev1.Pod
 		pod.Status.PodIP = "1.1.1.1"
 		got := coll.Collect(ctx, []corev1.Pod{pod})

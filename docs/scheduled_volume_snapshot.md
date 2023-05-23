@@ -12,7 +12,7 @@ chooses a candidate pod/pvc combo from a source CosmosFullNode. This allows you 
 of blockchain state.
 
 **Warning: Backups may include private keys and secrets.** For validators, we strongly recommend using [Horcrux](https://github.com/strangelove-ventures/horcrux),
-[TMKMS](https://github.com/iqlusioninc/tmkms), or another tendermint remote signer.
+[TMKMS](https://github.com/iqlusioninc/tmkms), or another CometBFT remote signer.
 
 To minimize data corruption, the operator temporarily deletes the CosmosFullNode pod writing to the PVC while taking the snapshot. Deleting the pod allows the process to
 exit gracefully and prevents writes to the disk. Once the snapshot is complete, the operator re-creates the pod. Therefore, use of this CRD may affect
