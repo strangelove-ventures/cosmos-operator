@@ -41,8 +41,8 @@ func startHealthCheckServer(cmd *cobra.Command, args []string) error {
 		rpcHost    = viper.GetString("rpc-host")
 		timeout    = viper.GetDuration("timeout")
 
-		httpClient = &http.Client{Timeout: 30 * time.Second}
-		tmClient   = cosmos.NewCometClient(httpClient)
+		httpClient  = &http.Client{Timeout: 30 * time.Second}
+		cometClient = cosmos.NewCometClient(httpClient)
 
 		zlog   = zapLogger("info", viper.GetString("log-format"))
 		logger = zapr.NewLogger(zlog)
@@ -50,7 +50,7 @@ func startHealthCheckServer(cmd *cobra.Command, args []string) error {
 	defer func() { _ = zlog.Sync() }()
 
 	var (
-		tm   = healthcheck.NewTendermint(logger, tmClient, rpcHost, timeout)
+		tm   = healthcheck.NewTendermint(logger, cometClient, rpcHost, timeout)
 		disk = healthcheck.DiskUsage(fullnode.ChainHomeDir)
 	)
 

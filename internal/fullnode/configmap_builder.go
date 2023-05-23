@@ -103,28 +103,28 @@ func addConfigToml(buf *bytes.Buffer, cmData map[string]string, crd *cosmosv1.Co
 
 	privatePeers := peers.Except(instance, crd.Namespace)
 	privatePeerStr := commaDelimited(privatePeers.AllPrivate()...)
-	tendermint := spec.Tendermint
+	comet := spec.Tendermint
 	p2p := decodedToml{
-		"persistent_peers": commaDelimited(privatePeerStr, tendermint.PersistentPeers),
-		"seeds":            tendermint.Seeds,
+		"persistent_peers": commaDelimited(privatePeerStr, comet.PersistentPeers),
+		"seeds":            comet.Seeds,
 	}
 
 	privateIDStr := commaDelimited(privatePeers.NodeIDs()...)
-	privateIDs := commaDelimited(privateIDStr, tendermint.PrivatePeerIDs)
+	privateIDs := commaDelimited(privateIDStr, comet.PrivatePeerIDs)
 	if v := privateIDs; v != "" {
 		p2p["private_peer_ids"] = v
 	}
 
-	unconditionalIDs := commaDelimited(privateIDStr, tendermint.UnconditionalPeerIDs)
+	unconditionalIDs := commaDelimited(privateIDStr, comet.UnconditionalPeerIDs)
 	if v := unconditionalIDs; v != "" {
 		p2p["unconditional_peer_ids"] = v
 	}
 
-	if v := tendermint.MaxInboundPeers; v != nil {
-		p2p["max_num_inbound_peers"] = tendermint.MaxInboundPeers
+	if v := comet.MaxInboundPeers; v != nil {
+		p2p["max_num_inbound_peers"] = comet.MaxInboundPeers
 	}
-	if v := tendermint.MaxOutboundPeers; v != nil {
-		p2p["max_num_outbound_peers"] = tendermint.MaxOutboundPeers
+	if v := comet.MaxOutboundPeers; v != nil {
+		p2p["max_num_outbound_peers"] = comet.MaxOutboundPeers
 	}
 	if v := peers.Get(instance, crd.Namespace).ExternalAddress; v != "" {
 		p2p["external_address"] = v
@@ -132,7 +132,7 @@ func addConfigToml(buf *bytes.Buffer, cmData map[string]string, crd *cosmosv1.Co
 
 	base["p2p"] = p2p
 
-	if v := tendermint.CorsAllowedOrigins; v != nil {
+	if v := comet.CorsAllowedOrigins; v != nil {
 		base["rpc"] = decodedToml{"cors_allowed_origins": v}
 	}
 
@@ -140,7 +140,7 @@ func addConfigToml(buf *bytes.Buffer, cmData map[string]string, crd *cosmosv1.Co
 
 	mergemap.Merge(dst, base)
 
-	if overrides := tendermint.TomlOverrides; overrides != nil {
+	if overrides := comet.TomlOverrides; overrides != nil {
 		var decoded decodedToml
 		_, err := toml.Decode(*overrides, &decoded)
 		if err != nil {

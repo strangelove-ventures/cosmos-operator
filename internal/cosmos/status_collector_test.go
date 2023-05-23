@@ -45,7 +45,7 @@ func TestStatusCollector_Collect(t *testing.T) {
 			return pod
 		})
 
-		tmClient := mockStatuser(func(ctx context.Context, rpcHost string) (CometStatus, error) {
+		cometClient := mockStatuser(func(ctx context.Context, rpcHost string) (CometStatus, error) {
 			_, ok := ctx.Deadline()
 			if !ok {
 				require.Fail(t, "expected deadline in context")
@@ -55,7 +55,7 @@ func TestStatusCollector_Collect(t *testing.T) {
 			return status, nil
 		})
 
-		coll := NewStatusCollector(tmClient, timeout)
+		coll := NewStatusCollector(cometClient, timeout)
 		got := coll.Collect(ctx, pods)
 
 		require.Len(t, got, 3)
@@ -83,10 +83,10 @@ func TestStatusCollector_Collect(t *testing.T) {
 	})
 
 	t.Run("status error", func(t *testing.T) {
-		tmClient := mockStatuser(func(ctx context.Context, rpcHost string) (CometStatus, error) {
+		cometClient := mockStatuser(func(ctx context.Context, rpcHost string) (CometStatus, error) {
 			return CometStatus{}, errors.New("status error")
 		})
-		coll := NewStatusCollector(tmClient, timeout)
+		coll := NewStatusCollector(cometClient, timeout)
 		var pod corev1.Pod
 		pod.Status.PodIP = "1.1.1.1"
 		got := coll.Collect(ctx, []corev1.Pod{pod})
