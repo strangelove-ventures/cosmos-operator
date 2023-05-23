@@ -30,7 +30,7 @@ func NewStatusCollector(tendermint TendermintStatuser, timeout time.Duration) *S
 
 // Collect returns a StatusCollection for the given pods.
 // Any non-nil error can be treated as transient and retried.
-func (coll StatusCollector) Collect(ctx context.Context, pods []corev1.Pod) (StatusCollection, error) {
+func (coll StatusCollector) Collect(ctx context.Context, pods []corev1.Pod) StatusCollection {
 	var eg errgroup.Group
 	statuses := make(StatusCollection, len(pods))
 
@@ -60,14 +60,10 @@ func (coll StatusCollector) Collect(ctx context.Context, pods []corev1.Pod) (Sta
 
 	_ = eg.Wait()
 
-	return statuses, nil
+	return statuses
 }
 
 // SyncedPods returns all pods that are in sync (i.e. no longer catching up).
-func (coll StatusCollector) SyncedPods(ctx context.Context, pods []corev1.Pod) ([]*corev1.Pod, error) {
-	all, err := coll.Collect(ctx, pods)
-	if err != nil {
-		return nil, err
-	}
-	return all.SyncedPods(), nil
+func (coll StatusCollector) SyncedPods(ctx context.Context, pods []corev1.Pod) []*corev1.Pod {
+	return coll.Collect(ctx, pods).SyncedPods()
 }

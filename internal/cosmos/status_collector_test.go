@@ -56,8 +56,7 @@ func TestStatusCollector_Collect(t *testing.T) {
 		})
 
 		coll := NewStatusCollector(tmClient, timeout)
-		got, err := coll.Collect(ctx, pods)
-		require.NoError(t, err)
+		got := coll.Collect(ctx, pods)
 
 		require.Len(t, got, 3)
 
@@ -74,12 +73,11 @@ func TestStatusCollector_Collect(t *testing.T) {
 
 	t.Run("no pod IP", func(t *testing.T) {
 		coll := NewStatusCollector(panicStatuser, timeout)
-		got, err := coll.Collect(ctx, make([]corev1.Pod, 1))
+		got := coll.Collect(ctx, make([]corev1.Pod, 1))
 
-		require.NoError(t, err)
 		require.Len(t, got, 1)
 
-		_, err = got[0].Status()
+		_, err := got[0].Status()
 		require.Error(t, err)
 		require.EqualError(t, err, "pod has no IP")
 	})
@@ -91,21 +89,19 @@ func TestStatusCollector_Collect(t *testing.T) {
 		coll := NewStatusCollector(tmClient, timeout)
 		var pod corev1.Pod
 		pod.Status.PodIP = "1.1.1.1"
-		got, err := coll.Collect(ctx, []corev1.Pod{pod})
+		got := coll.Collect(ctx, []corev1.Pod{pod})
 
-		require.NoError(t, err)
 		require.Len(t, got, 1)
 
-		_, err = got[0].Status()
+		_, err := got[0].Status()
 		require.Error(t, err)
 		require.EqualError(t, err, "status error")
 	})
 
 	t.Run("no pods", func(t *testing.T) {
 		coll := NewStatusCollector(panicStatuser, timeout)
-		got, err := coll.Collect(ctx, nil)
+		got := coll.Collect(ctx, nil)
 
-		require.NoError(t, err)
 		require.Empty(t, got)
 	})
 }
