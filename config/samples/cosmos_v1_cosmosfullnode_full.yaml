@@ -23,7 +23,7 @@ spec:
     logLevel: debug
     logFormat: json
 
-    # Tendermint config (translates to config.toml)
+    # CometBFT config (translates to config.toml)
     config:
       peers: "ee27245d88c632a556cf72cc7f3587380c09b469@45.79.249.253:26656,538ebe0086f0f5e9ca922dae0462cc87e22f0a50@34.122.34.67:26656,d3209b9f88eec64f10555a11ecbf797bb0fa29f4@34.125.169.233:26656,bdc2c3d410ca7731411b7e46a252012323fbbf37@34.83.209.166:26656"
       seeds: "cfd785a4224c7940e9a10f6c1ab24c343e923bec@164.68.107.188:26656,bf8328b66dceb4987e5cd94430af66045e59899f@public-seed.cosmos.vitwit.com:26656,d72b3011ed46d783e369fdf8ae2055b99a1e5074@173.249.50.25:26656"
