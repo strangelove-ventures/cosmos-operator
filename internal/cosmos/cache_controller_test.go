@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/stretchr/testify/require"
@@ -104,9 +105,14 @@ func TestCacheController_Reconcile(t *testing.T) {
 		require.Zero(t, listOpt.Limit)
 		require.Equal(t, ".metadata.controller=nolus", listOpt.FieldSelector.String())
 
-		gotCollection := controller.Collect(client.ObjectKey{Name: name, Namespace: namespace})
-		require.Equal(t, collector.StubCollection, gotCollection)
-		require.Equal(t, int64(1), collector.Called) // Uses the cache
+		require.Eventually(t, func() bool {
+			gotColl := controller.Collect(client.ObjectKey{Name: name, Namespace: namespace})
+			return len(gotColl) == 3
+		}, time.Second, time.Millisecond)
+
+		require.NoError(t, controller.Close())
+
+		require.Equal(t, int64(1), collector.Called)
 	})
 
 	t.Run("crd deleted", func(t *testing.T) {

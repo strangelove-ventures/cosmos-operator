@@ -67,6 +67,15 @@ func (c *cache) Del(key client.ObjectKey) {
 	delete(c.m, key)
 }
 
+func (c *cache) DelAll() {
+	c.Lock()
+	defer c.Unlock()
+	for _, v := range c.m {
+		v.cancel()
+	}
+	c.m = make(map[client.ObjectKey]*cacheItem)
+}
+
 type Collector interface {
 	Collect(ctx context.Context, pods []corev1.Pod) StatusCollection
 }
@@ -99,6 +108,12 @@ func (c *CacheController) SetupWithManager(_ context.Context, mgr ctrl.Manager) 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&cosmosv1.CosmosFullNode{}).
 		Complete(c)
+}
+
+// Close stops all cache collecting and waits for all goroutines to exit.
+func (c *CacheController) Close() error {
+	c.cache.DelAll()
+	return c.eg.Wait()
 }
 
 var finishResult reconcile.Result
