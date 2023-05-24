@@ -7,6 +7,7 @@ import (
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/goleak"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -70,6 +71,8 @@ func TestCacheController_Reconcile(t *testing.T) {
 	)
 
 	t.Run("crd created or updated", func(t *testing.T) {
+		defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
 		pods := make([]corev1.Pod, 2)
 		var reader mockReader
 		reader.ListPods = pods
