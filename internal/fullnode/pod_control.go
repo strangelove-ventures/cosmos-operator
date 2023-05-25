@@ -85,15 +85,16 @@ func (pc PodControl) Reconcile(ctx context.Context, reporter kube.Reporter, crd 
 	}
 
 	if len(diffed.Updates()) > 0 {
-		cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-		defer cancel()
-		var (
-			// This may be a source of confusion by passing currentPods vs. pods from diff.Updates().
-			// This is a leaky abstraction (which may be fixed in the future) because diff.Updates() pods are built
-			// from the operator and do not match what's returned by listing pods.
-			avail      = pc.podFilter.SyncedPods(cctx, pods.Items)
-			numUpdates = pc.computeRollout(crd.Spec.RolloutStrategy.MaxUnavailable, int(crd.Spec.Replicas), len(avail))
-		)
+		// This may be a source of confusion by passing currentPods vs. pods from diff.Updates().
+		// This is a leaky abstraction (which may be fixed in the future) because diff.Updates() pods are built
+		// from the operator and do not match what's returned by listing pods.
+		var avail []*corev1.Pod
+		if crd.Spec.PodTemplate.Probes.Strategy == cosmosv1.FullNodeProbeStrategyNone {
+			avail = pc.podFilter.SyncedPods(ctx, pods.Items)
+		} else {
+			avail = kube.AvailablePods(ptrSlice(pods.Items), 5*time.Second, time.Now())
+		}
+		numUpdates := pc.computeRollout(crd.Spec.RolloutStrategy.MaxUnavailable, int(crd.Spec.Replicas), len(avail))
 
 		for _, pod := range lo.Slice(diffed.Updates(), 0, numUpdates) {
 			reporter.Info("Deleting pod for update", "podName", pod.Name)

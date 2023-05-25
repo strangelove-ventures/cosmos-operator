@@ -3,7 +3,9 @@ package fullnode
 import (
 	"context"
 	"testing"
+	"time"
 
+	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/internal/diff"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -96,6 +98,45 @@ func TestPodControl_Reconcile(t *testing.T) {
 		crd.Name = "hub"
 		crd.Namespace = namespace
 		crd.Spec.Replicas = 5
+
+		pods, err := BuildPods(&crd, nil)
+		require.NoError(t, err)
+		existing := diff.New(nil, pods).Creates()
+
+		existing[0].Status.Conditions = []corev1.PodCondition{
+			{Type: corev1.PodReady, Status: corev1.ConditionTrue, LastTransitionTime: metav1.NewTime(time.Now().Add(-10 * time.Second))},
+		}
+
+		var mClient mockPodClient
+		mClient.ObjectList = corev1.PodList{
+			Items: valueSlice(existing),
+		}
+
+		control := NewPodControl(&mClient, panicPodFilter)
+		const stubRollout = 5
+
+		control.computeRollout = func(maxUnavail *intstr.IntOrString, desired, ready int) int {
+			require.EqualValues(t, crd.Spec.Replicas, desired)
+			require.Equal(t, 1, ready) // existing pods only has 1 that's ready
+			return stubRollout
+		}
+
+		// Trigger updates
+		crd.Spec.PodTemplate.Image = "new-image"
+		requeue, err := control.Reconcile(ctx, nopReporter, &crd, nil)
+		require.NoError(t, err)
+		require.True(t, requeue)
+
+		require.Zero(t, mClient.CreateCount)
+		require.Equal(t, stubRollout, mClient.DeleteCount)
+	})
+
+	t.Run("rollout phase - probes disabled", func(t *testing.T) {
+		crd := defaultCRD()
+		crd.Name = "hub"
+		crd.Namespace = namespace
+		crd.Spec.Replicas = 5
+		crd.Spec.PodTemplate.Probes.Strategy = cosmosv1.FullNodeProbeStrategyNone
 
 		pods, err := BuildPods(&crd, nil)
 		require.NoError(t, err)
