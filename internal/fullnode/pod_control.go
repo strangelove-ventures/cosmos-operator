@@ -18,7 +18,7 @@ import (
 )
 
 type PodFilter interface {
-	SyncedPods(ctx context.Context, pods []corev1.Pod) []*corev1.Pod
+	SyncedPods(ctx context.Context, controller client.ObjectKey) []*corev1.Pod
 }
 
 // Client is a controller client. It is a subset of client.Client.
@@ -91,7 +91,7 @@ func (pc PodControl) Reconcile(ctx context.Context, reporter kube.Reporter, crd 
 			// This may be a source of confusion by passing currentPods vs. pods from diff.Updates().
 			// This is a leaky abstraction (which may be fixed in the future) because diff.Updates() pods are built
 			// from the operator and do not match what's returned by listing pods.
-			avail      = pc.podFilter.SyncedPods(cctx, pods.Items)
+			avail      = pc.podFilter.SyncedPods(cctx, client.ObjectKeyFromObject(crd))
 			numUpdates = pc.computeRollout(crd.Spec.RolloutStrategy.MaxUnavailable, int(crd.Spec.Replicas), len(avail))
 		)
 

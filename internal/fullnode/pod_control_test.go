@@ -12,16 +12,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type mockPodFilter func(ctx context.Context, candidates []corev1.Pod) []*corev1.Pod
+type mockPodFilter func(ctx context.Context, controller client.ObjectKey) []*corev1.Pod
 
-func (fn mockPodFilter) SyncedPods(ctx context.Context, pods []corev1.Pod) []*corev1.Pod {
+func (fn mockPodFilter) SyncedPods(ctx context.Context, controller client.ObjectKey) []*corev1.Pod {
 	if ctx == nil {
 		panic("nil context")
 	}
-	return fn(ctx, pods)
+	return fn(ctx, controller)
 }
 
-var panicPodFilter = mockPodFilter(func(ctx context.Context, _ []corev1.Pod) []*corev1.Pod {
+var panicPodFilter = mockPodFilter(func(context.Context, client.ObjectKey) []*corev1.Pod {
 	panic("SyncedPods should not be called")
 })
 
@@ -107,12 +107,11 @@ func TestPodControl_Reconcile(t *testing.T) {
 		}
 
 		var didFilter bool
-		podFilter := mockPodFilter(func(_ context.Context, pods []corev1.Pod) []*corev1.Pod {
-			require.Equal(t, 5, len(pods))
-			require.Equal(t, "hub-0", pods[0].Name)
-			require.Equal(t, "hub-1", pods[1].Name)
+		podFilter := mockPodFilter(func(_ context.Context, controller client.ObjectKey) []*corev1.Pod {
+			require.Equal(t, namespace, controller.Namespace)
+			require.Equal(t, "hub", controller.Name)
 			didFilter = true
-			return ptrSlice(pods[:1])
+			return existing[:1]
 		})
 
 		control := NewPodControl(&mClient, podFilter)
