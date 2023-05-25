@@ -12,7 +12,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -60,10 +59,6 @@ func (m *mockReader) List(ctx context.Context, list client.ObjectList, opts ...c
 }
 
 func TestCacheController_Reconcile(t *testing.T) {
-	mockRecorder := struct {
-		record.EventRecorder
-	}{}
-
 	ctx := context.Background()
 	const (
 		namespace = "strangelove"
@@ -80,7 +75,7 @@ func TestCacheController_Reconcile(t *testing.T) {
 		var collector mockCollector
 		collector.StubCollection = make(StatusCollection, 3)
 
-		controller := NewCacheController(&collector, &reader, mockRecorder)
+		controller := NewCacheController(&collector, &reader, nil)
 
 		var req reconcile.Request
 		req.Name = name
@@ -127,7 +122,7 @@ func TestCacheController_Reconcile(t *testing.T) {
 		var collector mockCollector
 		collector.StubCollection = make(StatusCollection, 1)
 
-		controller := NewCacheController(&collector, reader, mockRecorder)
+		controller := NewCacheController(&collector, reader, nil)
 
 		var req reconcile.Request
 		req.Name = name
@@ -157,7 +152,7 @@ func TestCacheController_Reconcile(t *testing.T) {
 		var collector mockCollector
 		collector.StubCollection = make(StatusCollection, 1)
 
-		controller := NewCacheController(&collector, &reader, mockRecorder)
+		controller := NewCacheController(&collector, &reader, nil)
 		require.Empty(t, controller.Collect(client.ObjectKey{Name: name, Namespace: namespace}))
 	})
 }
