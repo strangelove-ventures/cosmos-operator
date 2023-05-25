@@ -149,33 +149,47 @@ func (c *CacheController) Reconcile(ctx context.Context, req reconcile.Request) 
 	return finishResult, nil
 }
 
-// Collect returns a StatusCollection for the given controller. Only returns cached results or an empty
-// collection if nothing is cached.
-func (c *CacheController) Collect(_ context.Context, controller client.ObjectKey) StatusCollection {
+// Collect returns a StatusCollection for the given controller. Only returns cached CometStatus.
+func (c *CacheController) Collect(ctx context.Context, controller client.ObjectKey) StatusCollection {
+	pods, err := c.listPods(ctx, controller)
+	if err != nil {
+		return nil
+	}
 	v, _ := c.cache.Get(controller)
+	for i := range pods {
+		UpsertPod(&v, &pods[i])
+	}
 	return v
 }
 
-// SyncedPods returns only the pods that are in sync (i.e. caught up with chain tip).
+// SyncedPods returns only the pods that are ready and in sync (i.e. caught up with chain tip).
 func (c *CacheController) SyncedPods(ctx context.Context, controller client.ObjectKey) []*corev1.Pod {
-	return c.Collect(ctx, controller).SyncedPods()
+	return kube.AvailablePods(c.Collect(ctx, controller).Pods(), 5*time.Second, time.Now())
+}
+
+func (c *CacheController) listPods(ctx context.Context, controller client.ObjectKey) ([]corev1.Pod, error) {
+	var pods corev1.PodList
+	if err := c.client.List(ctx, &pods,
+		client.InNamespace(controller.Namespace),
+		client.MatchingFields{kube.ControllerOwnerField: controller.Name},
+	); err != nil {
+		return nil, err
+	}
+	return pods.Items, nil
 }
 
 func (c *CacheController) collectFromPods(ctx context.Context, reporter kube.Reporter, controller client.ObjectKey) {
 	defer c.cache.Del(controller)
 
 	collect := func() {
-		var pods corev1.PodList
-		if err := c.client.List(ctx, &pods,
-			client.InNamespace(controller.Namespace),
-			client.MatchingFields{kube.ControllerOwnerField: controller.Name},
-		); err != nil {
+		pods, err := c.listPods(ctx, controller)
+		if err != nil {
 			err = fmt.Errorf("%s: %w", controller, err)
 			reporter.Error(err, "Failed to list pods")
 			reporter.RecordError("ListPods", err)
 			return
 		}
-		c.cache.Update(controller, c.collector.Collect(ctx, pods.Items))
+		c.cache.Update(controller, c.collector.Collect(ctx, pods))
 	}
 
 	collect() // Collect once immediately.
