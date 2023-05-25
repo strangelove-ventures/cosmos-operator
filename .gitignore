@@ -24,3 +24,6 @@ testbin/*
 *.swp
 *.swo
 *~
+
+# Local temporary files
+/tmp
