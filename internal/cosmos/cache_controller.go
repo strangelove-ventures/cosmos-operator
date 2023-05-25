@@ -146,7 +146,6 @@ func (c *CacheController) Reconcile(ctx context.Context, req reconcile.Request) 
 		})
 	}
 
-	// Fetch and add from cache.
 	return finishResult, nil
 }
 
