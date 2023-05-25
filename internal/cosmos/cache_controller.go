@@ -84,6 +84,8 @@ type Collector interface {
 	Collect(ctx context.Context, pods []corev1.Pod) StatusCollection
 }
 
+const CacheControllerName = "CosmosCache"
+
 // CacheController periodically polls pods for their CometBFT status and caches the result.
 // The cache is a controller so it can watch CosmosFullNode objects to warm or invalidate the cache.
 type CacheController struct {
@@ -150,14 +152,14 @@ func (c *CacheController) Reconcile(ctx context.Context, req reconcile.Request) 
 
 // Collect returns a StatusCollection for the given controller. Only returns cached results or an empty
 // collection if nothing is cached.
-func (c *CacheController) Collect(controller client.ObjectKey) StatusCollection {
+func (c *CacheController) Collect(_ context.Context, controller client.ObjectKey) StatusCollection {
 	v, _ := c.cache.Get(controller)
 	return v
 }
 
 // SyncedPods returns only the pods that are in sync (i.e. caught up with chain tip).
-func (c *CacheController) SyncedPods(controller client.ObjectKey) []*corev1.Pod {
-	return c.Collect(controller).SyncedPods()
+func (c *CacheController) SyncedPods(ctx context.Context, controller client.ObjectKey) []*corev1.Pod {
+	return c.Collect(ctx, controller).SyncedPods()
 }
 
 func (c *CacheController) collectFromPods(ctx context.Context, reporter kube.Reporter, controller client.ObjectKey) {

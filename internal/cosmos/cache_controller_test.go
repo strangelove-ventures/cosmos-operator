@@ -90,11 +90,11 @@ func TestCacheController_Reconcile(t *testing.T) {
 
 		key := client.ObjectKey{Name: name, Namespace: namespace}
 		require.Eventually(t, func() bool {
-			got := controller.Collect(key)
+			got := controller.Collect(ctx, key)
 			return len(got) == 3
 		}, time.Second, time.Millisecond)
 
-		require.Equal(t, collector.StubCollection, controller.Collect(key))
+		require.Equal(t, collector.StubCollection, controller.Collect(ctx, key))
 		require.Equal(t, pods, collector.GotPods)
 
 		opts := reader.ListOpts
@@ -132,7 +132,7 @@ func TestCacheController_Reconcile(t *testing.T) {
 
 		key := client.ObjectKey{Name: name, Namespace: namespace}
 		require.Eventually(t, func() bool {
-			return len(controller.Collect(key)) > 0
+			return len(controller.Collect(ctx, key)) > 0
 		}, time.Second, time.Millisecond)
 
 		reader.GetErr = apierrors.NewNotFound(schema.GroupResource{}, name)
@@ -140,7 +140,7 @@ func TestCacheController_Reconcile(t *testing.T) {
 		_, err = controller.Reconcile(ctx, req)
 		require.NoError(t, err)
 
-		require.Empty(t, controller.Collect(key))
+		require.Empty(t, controller.Collect(ctx, key))
 
 		require.NoError(t, controller.Close())
 	})
@@ -154,7 +154,7 @@ func TestCacheController_Reconcile(t *testing.T) {
 
 		controller := NewCacheController(&collector, &reader, nil)
 		key := client.ObjectKey{Name: name, Namespace: namespace}
-		require.Empty(t, controller.Collect(key))
-		require.Empty(t, controller.SyncedPods(key))
+		require.Empty(t, controller.Collect(ctx, key))
+		require.Empty(t, controller.SyncedPods(ctx, key))
 	})
 }
