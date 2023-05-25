@@ -153,6 +153,8 @@ func TestCacheController_Reconcile(t *testing.T) {
 		collector.StubCollection = make(StatusCollection, 1)
 
 		controller := NewCacheController(&collector, &reader, nil)
-		require.Empty(t, controller.Collect(client.ObjectKey{Name: name, Namespace: namespace}))
+		key := client.ObjectKey{Name: name, Namespace: namespace}
+		require.Empty(t, controller.Collect(key))
+		require.Empty(t, controller.SyncedPods(key))
 	})
 }

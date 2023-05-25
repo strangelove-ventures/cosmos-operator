@@ -155,6 +155,11 @@ func (c *CacheController) Collect(controller client.ObjectKey) StatusCollection 
 	return v
 }
 
+// SyncedPods returns only the pods that are in sync (i.e. caught up with chain tip).
+func (c *CacheController) SyncedPods(controller client.ObjectKey) []*corev1.Pod {
+	return c.Collect(controller).SyncedPods()
+}
+
 func (c *CacheController) collectFromPods(ctx context.Context, reporter kube.Reporter, controller client.ObjectKey) {
 	defer c.cache.Del(controller)
 
