@@ -31,3 +31,23 @@ func TestStatusCollection_SyncedPods(t *testing.T) {
 	require.Len(t, coll.SyncedPods(), 1)
 	require.Equal(t, "in-sync", coll.SyncedPods()[0].Name)
 }
+
+func TestUpsertPod(t *testing.T) {
+	t.Parallel()
+
+	var coll StatusCollection
+	var pod corev1.Pod
+	pod.UID = "1"
+	UpsertPod(&coll, &pod)
+
+	require.Len(t, coll, 1)
+
+	pod.Name = "new"
+	UpsertPod(&coll, &pod)
+
+	require.Len(t, coll, 1)
+	require.Equal(t, "new", coll[0].Pod().Name)
+
+	UpsertPod(&coll, &corev1.Pod{})
+	require.Len(t, coll, 2)
+}
