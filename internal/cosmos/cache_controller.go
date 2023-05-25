@@ -55,7 +55,11 @@ func (c *cache) Init(key client.ObjectKey, cancel context.CancelFunc) {
 func (c *cache) Update(key client.ObjectKey, value StatusCollection) {
 	c.Lock()
 	defer c.Unlock()
-	c.m[key].coll = value
+	v, ok := c.m[key]
+	if !ok {
+		return
+	}
+	v.coll = value
 }
 
 func (c *cache) Del(key client.ObjectKey) {

@@ -10,6 +10,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -17,16 +19,11 @@ import (
 
 type mockCollector struct {
 	Called         int64
-	WaitCh         chan struct{}
 	GotPods        []corev1.Pod
 	StubCollection StatusCollection
 }
 
 func (m *mockCollector) Collect(ctx context.Context, pods []corev1.Pod) StatusCollection {
-	if m.WaitCh == nil {
-		panic("nil wait channel")
-	}
-	defer func() { m.WaitCh <- struct{}{} }()
 	atomic.AddInt64(&m.Called, 1)
 	if ctx == nil {
 		panic("nil context")
@@ -36,6 +33,8 @@ func (m *mockCollector) Collect(ctx context.Context, pods []corev1.Pod) StatusCo
 }
 
 type mockReader struct {
+	GetErr error
+
 	ListPods []corev1.Pod
 	ListOpts []client.ListOption
 }
@@ -48,7 +47,7 @@ func (m *mockReader) Get(ctx context.Context, key client.ObjectKey, obj client.O
 	crd.Name = key.Name
 	crd.Namespace = key.Namespace
 	*obj.(*cosmosv1.CosmosFullNode) = crd
-	return nil
+	return m.GetErr
 }
 
 func (m *mockReader) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
@@ -79,7 +78,6 @@ func TestCacheController_Reconcile(t *testing.T) {
 		reader.ListPods = pods
 
 		var collector mockCollector
-		collector.WaitCh = make(chan struct{}, 1)
 		collector.StubCollection = make(StatusCollection, 3)
 
 		controller := NewCacheController(&collector, &reader, mockRecorder)
@@ -87,12 +85,21 @@ func TestCacheController_Reconcile(t *testing.T) {
 		var req reconcile.Request
 		req.Name = name
 		req.Namespace = namespace
-		res, err := controller.Reconcile(ctx, req)
 
-		require.Equal(t, reconcile.Result{}, res)
-		require.NoError(t, err)
+		// Ensures we don't cache more than once per request
+		for i := 0; i < 3; i++ {
+			res, err := controller.Reconcile(ctx, req)
+			require.Equal(t, reconcile.Result{}, res)
+			require.NoError(t, err)
+		}
 
-		<-collector.WaitCh
+		key := client.ObjectKey{Name: name, Namespace: namespace}
+		require.Eventually(t, func() bool {
+			got := controller.Collect(key)
+			return len(got) == 3
+		}, time.Second, time.Millisecond)
+
+		require.Equal(t, collector.StubCollection, controller.Collect(key))
 		require.Equal(t, pods, collector.GotPods)
 
 		opts := reader.ListOpts
@@ -105,17 +112,52 @@ func TestCacheController_Reconcile(t *testing.T) {
 		require.Zero(t, listOpt.Limit)
 		require.Equal(t, ".metadata.controller=nolus", listOpt.FieldSelector.String())
 
-		require.Eventually(t, func() bool {
-			gotColl := controller.Collect(client.ObjectKey{Name: name, Namespace: namespace})
-			return len(gotColl) == 3
-		}, time.Second, time.Millisecond)
-
 		require.NoError(t, controller.Close())
 
 		require.Equal(t, int64(1), collector.Called)
 	})
 
 	t.Run("crd deleted", func(t *testing.T) {
-		t.Fail()
+		defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+		pods := make([]corev1.Pod, 1)
+		reader := &mockReader{}
+		reader.ListPods = pods
+
+		var collector mockCollector
+		collector.StubCollection = make(StatusCollection, 1)
+
+		controller := NewCacheController(&collector, reader, mockRecorder)
+
+		var req reconcile.Request
+		req.Name = name
+		req.Namespace = namespace
+		_, err := controller.Reconcile(ctx, req)
+		require.NoError(t, err)
+
+		key := client.ObjectKey{Name: name, Namespace: namespace}
+		require.Eventually(t, func() bool {
+			return len(controller.Collect(key)) > 0
+		}, time.Second, time.Millisecond)
+
+		reader.GetErr = apierrors.NewNotFound(schema.GroupResource{}, name)
+
+		_, err = controller.Reconcile(ctx, req)
+		require.NoError(t, err)
+
+		require.Empty(t, controller.Collect(key))
+
+		require.NoError(t, controller.Close())
+	})
+
+	t.Run("not cached yet", func(t *testing.T) {
+		defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+		var reader mockReader
+		var collector mockCollector
+		collector.StubCollection = make(StatusCollection, 1)
+
+		controller := NewCacheController(&collector, &reader, mockRecorder)
+		require.Empty(t, controller.Collect(client.ObjectKey{Name: name, Namespace: namespace}))
 	})
 }
