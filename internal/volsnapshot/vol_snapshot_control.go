@@ -28,7 +28,7 @@ type Client interface {
 }
 
 type PodFilter interface {
-	SyncedPods(ctx context.Context, pods []corev1.Pod) []*corev1.Pod
+	SyncedPods(ctx context.Context, controller client.ObjectKey) []*corev1.Pod
 }
 
 // VolumeSnapshotControl manages VolumeSnapshots
@@ -52,18 +52,10 @@ type Candidate = cosmosalpha.SnapshotCandidate
 // Only selects a pod that is in-sync.
 // Any errors returned can be treated as transient; worth a retry.
 func (control VolumeSnapshotControl) FindCandidate(ctx context.Context, crd *cosmosalpha.ScheduledVolumeSnapshot) (Candidate, error) {
-	var pods corev1.PodList
-	if err := control.client.List(ctx, &pods,
-		client.InNamespace(crd.Namespace),
-		client.MatchingFields{kube.ControllerOwnerField: crd.Spec.FullNodeRef.Name},
-	); err != nil {
-		return Candidate{}, err
-	}
-
 	cctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	var (
-		synced     = control.podFilter.SyncedPods(cctx, pods.Items)
+		synced     = control.podFilter.SyncedPods(cctx, client.ObjectKey{Namespace: crd.Namespace, Name: crd.Spec.FullNodeRef.Name})
 		availCount = int32(len(synced))
 		minAvail   = crd.Spec.MinAvailable
 	)
