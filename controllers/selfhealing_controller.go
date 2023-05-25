@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"errors"
+	"net/http"
 	"time"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
@@ -39,11 +40,16 @@ type SelfHealingReconciler struct {
 	pvcAutoScaler *fullnode.PVCAutoScaler
 }
 
-func NewSelfHealing(client client.Client, recorder record.EventRecorder, statusClient *fullnode.StatusClient) *SelfHealingReconciler {
+func NewSelfHealing(
+	client client.Client,
+	recorder record.EventRecorder,
+	statusClient *fullnode.StatusClient,
+	httpClient *http.Client,
+) *SelfHealingReconciler {
 	return &SelfHealingReconciler{
 		Client:        client,
 		recorder:      recorder,
-		diskClient:    fullnode.NewDiskUsageCollector(healthcheck.NewClient(sharedHTTPClient), client),
+		diskClient:    fullnode.NewDiskUsageCollector(healthcheck.NewClient(httpClient), client),
 		pvcAutoScaler: fullnode.NewPVCAutoScaler(statusClient),
 	}
 }

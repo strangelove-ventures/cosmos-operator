@@ -62,8 +62,3 @@ func (coll StatusCollector) Collect(ctx context.Context, pods []corev1.Pod) Stat
 
 	return statuses
 }
-
-// SyncedPods returns all pods that are in sync (i.e. no longer catching up).
-func (coll StatusCollector) SyncedPods(ctx context.Context, pods []corev1.Pod) []*corev1.Pod {
-	return coll.Collect(ctx, pods).SyncedPods()
-}

@@ -55,17 +55,17 @@ func (m *mockPodClient) Delete(ctx context.Context, obj client.Object, opts ...c
 }
 
 type mockPodFilter struct {
-	SyncedPodsFn func(ctx context.Context, pods []corev1.Pod) []*corev1.Pod
+	SyncedPodsFn func(ctx context.Context, controller client.ObjectKey) []*corev1.Pod
 }
 
-func (fn mockPodFilter) SyncedPods(ctx context.Context, pods []corev1.Pod) []*corev1.Pod {
+func (fn mockPodFilter) SyncedPods(ctx context.Context, controller client.ObjectKey) []*corev1.Pod {
 	if ctx == nil {
 		panic("nil context")
 	}
 	if fn.SyncedPodsFn == nil {
 		panic("SyncedPods not implemented")
 	}
-	return fn.SyncedPodsFn(ctx, pods)
+	return fn.SyncedPodsFn(ctx, controller)
 }
 
 var (
@@ -81,9 +81,15 @@ func TestVolumeSnapshotControl_FindCandidate(t *testing.T) {
 		readyCondition = corev1.PodCondition{Type: corev1.PodReady, Status: corev1.ConditionTrue}
 	)
 
+	const (
+		fullNodeName = "cosmoshub"
+		namespace    = "strangelove"
+	)
+
 	var crd cosmosalpha.ScheduledVolumeSnapshot
-	crd.Namespace = "strangelove"
-	crd.Spec.FullNodeRef.Name = "cosmoshub"
+	crd.Name = "test"
+	crd.Namespace = namespace
+	crd.Spec.FullNodeRef.Name = fullNodeName
 
 	t.Run("happy path", func(t *testing.T) {
 		pods := make([]corev1.Pod, 3)
@@ -94,15 +100,16 @@ func TestVolumeSnapshotControl_FindCandidate(t *testing.T) {
 		mClient.Items = pods
 
 		var fullnodeCRD cosmosv1.CosmosFullNode
-		fullnodeCRD.Name = "osmosis"
+		fullnodeCRD.Name = fullNodeName
 		// Purposefully using PodBuilder to cross-test any breaking changes in PodBuilder which affects
 		// finding the PVC name.
 		candidate, err := fullnode.NewPodBuilder(&fullnodeCRD).WithOrdinal(1).Build()
 		require.NoError(t, err)
 
 		control := NewVolumeSnapshotControl(&mClient, mockPodFilter{
-			SyncedPodsFn: func(ctx context.Context, candidates []corev1.Pod) []*corev1.Pod {
-				require.Equal(t, pods, candidates)
+			SyncedPodsFn: func(ctx context.Context, controller client.ObjectKey) []*corev1.Pod {
+				require.Equal(t, namespace, controller.Namespace)
+				require.Equal(t, fullNodeName, controller.Name)
 				return []*corev1.Pod{candidate, new(corev1.Pod), new(corev1.Pod)}
 			},
 		})
@@ -110,19 +117,10 @@ func TestVolumeSnapshotControl_FindCandidate(t *testing.T) {
 		got, err := control.FindCandidate(ctx, &crd)
 		require.NoError(t, err)
 
-		require.Equal(t, "osmosis-1", got.PodName)
-		require.Equal(t, "pvc-osmosis-1", got.PVCName)
+		require.Equal(t, "cosmoshub-1", got.PodName)
+		require.Equal(t, "pvc-cosmoshub-1", got.PVCName)
 		require.NotEmpty(t, got.PodLabels)
 		require.Equal(t, candidate.Labels, got.PodLabels)
-
-		require.Len(t, mClient.GotListOpts, 2)
-		var listOpt client.ListOptions
-		for _, opt := range mClient.GotListOpts {
-			opt.ApplyToList(&listOpt)
-		}
-		require.Equal(t, "strangelove", listOpt.Namespace)
-		require.Zero(t, listOpt.Limit)
-		require.Equal(t, ".metadata.controller=cosmoshub", listOpt.FieldSelector.String())
 	})
 
 	t.Run("custom min available", func(t *testing.T) {
@@ -133,7 +131,7 @@ func TestVolumeSnapshotControl_FindCandidate(t *testing.T) {
 		mClient.Items = []corev1.Pod{pod}
 
 		control := NewVolumeSnapshotControl(&mClient, mockPodFilter{
-			SyncedPodsFn: func(ctx context.Context, _ []corev1.Pod) []*corev1.Pod {
+			SyncedPodsFn: func(context.Context, client.ObjectKey) []*corev1.Pod {
 				return []*corev1.Pod{&pod}
 			},
 		})
@@ -145,17 +143,6 @@ func TestVolumeSnapshotControl_FindCandidate(t *testing.T) {
 
 		require.NoError(t, err)
 		require.Equal(t, "found-me", got.PodName)
-	})
-
-	t.Run("list error", func(t *testing.T) {
-		var mClient mockPodClient
-		mClient.ListErr = errors.New("no list for you")
-		control := NewVolumeSnapshotControl(&mClient, panicFilter)
-
-		_, err := control.FindCandidate(ctx, &crd)
-
-		require.Error(t, err)
-		require.EqualError(t, err, "no list for you")
 	})
 
 	t.Run("not enough ready pods", func(t *testing.T) {
@@ -172,7 +159,7 @@ func TestVolumeSnapshotControl_FindCandidate(t *testing.T) {
 		} {
 			var mClient mockPodClient
 			control := NewVolumeSnapshotControl(&mClient, mockPodFilter{
-				SyncedPodsFn: func(ctx context.Context, _ []corev1.Pod) []*corev1.Pod {
+				SyncedPodsFn: func(context.Context, client.ObjectKey) []*corev1.Pod {
 					return ptrSlice(tt.Pods)
 				},
 			})

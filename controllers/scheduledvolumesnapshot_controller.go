@@ -19,7 +19,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -43,20 +42,18 @@ type ScheduledVolumeSnapshotReconciler struct {
 	volSnapshotControl *volsnapshot.VolumeSnapshotControl
 }
 
-var sharedHTTPClient = &http.Client{Timeout: 60 * time.Second}
-
 func NewScheduledVolumeSnapshotReconciler(
 	client client.Client,
 	recorder record.EventRecorder,
 	statusClient *fullnode.StatusClient,
+	cache *cosmos.CacheController,
 ) *ScheduledVolumeSnapshotReconciler {
-	cometClient := cosmos.NewCometClient(sharedHTTPClient)
 	return &ScheduledVolumeSnapshotReconciler{
 		Client:             client,
 		fullNodeControl:    volsnapshot.NewFullNodeControl(statusClient, client),
 		recorder:           recorder,
 		scheduler:          volsnapshot.NewScheduler(client),
-		volSnapshotControl: volsnapshot.NewVolumeSnapshotControl(client, cosmos.NewStatusCollector(cometClient, statusCollectionTimeout)),
+		volSnapshotControl: volsnapshot.NewVolumeSnapshotControl(client, cache),
 	}
 }
 

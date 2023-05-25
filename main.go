@@ -20,12 +20,14 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/go-logr/zapr"
 	"github.com/pkg/profile"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/strangelove-ventures/cosmos-operator/controllers"
+	"github.com/strangelove-ventures/cosmos-operator/internal/cosmos"
 	"github.com/strangelove-ventures/cosmos-operator/internal/fullnode"
 	"github.com/strangelove-ventures/cosmos-operator/internal/version"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
@@ -158,12 +160,26 @@ func startManager(cmd *cobra.Command, args []string) error {
 
 	ctx := cmd.Context()
 
+	// Setup cache controller
+	httpClient := &http.Client{Timeout: 30 * time.Second}
 	statusClient := fullnode.NewStatusClient(mgr.GetClient())
+	cometClient := cosmos.NewCometClient(httpClient)
+	cacheController := cosmos.NewCacheController(
+		cosmos.NewStatusCollector(cometClient, 5*time.Second),
+		mgr.GetClient(),
+		mgr.GetEventRecorderFor(cosmos.CacheControllerName),
+	)
+	defer func() { _ = cacheController.Close() }()
+	if err = cacheController.SetupWithManager(ctx, mgr); err != nil {
+		return fmt.Errorf("unable to create CosmosCache controller: %w", err)
+	}
 
+	// Setup main controllers
 	if err = controllers.NewFullNode(
 		mgr.GetClient(),
 		mgr.GetEventRecorderFor(cosmosv1.CosmosFullNodeController),
 		statusClient,
+		cacheController,
 	).SetupWithManager(ctx, mgr); err != nil {
 		return fmt.Errorf("unable to create CosmosFullNode controller: %w", err)
 	}
@@ -172,6 +188,7 @@ func startManager(cmd *cobra.Command, args []string) error {
 		mgr.GetClient(),
 		mgr.GetEventRecorderFor(cosmosv1.SelfHealingController),
 		statusClient,
+		httpClient,
 	).SetupWithManager(ctx, mgr); err != nil {
 		return fmt.Errorf("unable to create SelfHealing controller: %w", err)
 	}
@@ -180,6 +197,7 @@ func startManager(cmd *cobra.Command, args []string) error {
 		mgr.GetClient(),
 		mgr.GetEventRecorderFor(cosmosv1alpha1.ScheduledVolumeSnapshotController),
 		statusClient,
+		cacheController,
 	).SetupWithManager(ctx, mgr); err != nil {
 		return fmt.Errorf("unable to create ScheduledVolumeSnapshot controller: %w", err)
 	}
