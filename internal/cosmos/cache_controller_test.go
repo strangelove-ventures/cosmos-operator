@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
@@ -178,74 +179,79 @@ func TestCacheController_Reconcile(t *testing.T) {
 func TestCacheController_SyncedPods(t *testing.T) {
 	t.Parallel()
 
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
 	ctx := context.Background()
 	const (
 		namespace = "default"
 		name      = "axelar"
 	)
 
-	t.Run("more pods than cache", func(t *testing.T) {
-		reader := new(mockReader)
-		reader.ListPods = make([]corev1.Pod, 2)
+	reader := new(mockReader)
+	reader.ListPods = make([]corev1.Pod, 2)
 
-		var catchingUp CometStatus
-		catchingUp.Result.SyncInfo.CatchingUp = true
+	var catchingUp CometStatus
+	catchingUp.Result.SyncInfo.CatchingUp = true
 
-		var collector mockCollector
-		collector.StubCollection = StatusCollection{
-			{pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{UID: "1"}}},
-			{pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{UID: "2"}}, status: catchingUp},
-		}
+	var collector mockCollector
+	collector.StubCollection = StatusCollection{
+		{pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{UID: "1"}}},
+		{pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{UID: "2"}}, status: catchingUp},
+		{pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{UID: "should not see me"}}, status: catchingUp},
+	}
 
-		controller := NewCacheController(&collector, reader, nil)
+	pods := []corev1.Pod{
+		{ObjectMeta: metav1.ObjectMeta{UID: "1"}},
+	}
+	reader.ListPods = pods
 
-		var req reconcile.Request
-		req.Name = name
-		req.Namespace = namespace
-		_, err := controller.Reconcile(ctx, req)
-		require.NoError(t, err)
+	controller := NewCacheController(&collector, reader, nil)
 
-		key := client.ObjectKey{Name: name, Namespace: namespace}
-		require.Eventually(t, func() bool {
-			return len(controller.Collect(ctx, key)) > 1
-		}, time.Second, time.Millisecond)
+	var req reconcile.Request
+	req.Name = name
+	req.Namespace = namespace
+	_, err := controller.Reconcile(ctx, req)
+	require.NoError(t, err)
 
-		readyStatus := corev1.PodStatus{Conditions: []corev1.PodCondition{
-			{Type: corev1.PodReady, Status: corev1.ConditionTrue, LastTransitionTime: metav1.NewTime(time.Now().Add(-5 * time.Second))}},
-		}
-		pods := []corev1.Pod{
-			{ObjectMeta: metav1.ObjectMeta{UID: "1"}, Status: readyStatus},
-			{ObjectMeta: metav1.ObjectMeta{UID: "2"}},
-			{ObjectMeta: metav1.ObjectMeta{UID: "3"}},
-		}
-		reader.ListPods = pods
+	key := client.ObjectKey{Name: name, Namespace: namespace}
+	require.Eventually(t, func() bool {
+		return len(controller.Collect(ctx, key)) > 0
+	}, time.Second, time.Millisecond)
 
-		gotColl := controller.Collect(ctx, key)
-		require.Len(t, gotColl, 3)
+	readyStatus := corev1.PodStatus{Conditions: []corev1.PodCondition{
+		{Type: corev1.PodReady, Status: corev1.ConditionTrue, LastTransitionTime: metav1.NewTime(time.Now().Add(-5 * time.Second))}},
+	}
+	pods = []corev1.Pod{
+		{ObjectMeta: metav1.ObjectMeta{UID: "1"}, Status: readyStatus},
+		{ObjectMeta: metav1.ObjectMeta{UID: "2"}},
+		{ObjectMeta: metav1.ObjectMeta{UID: "new"}},
+	}
 
-		_, err = gotColl[2].Status()
-		require.Error(t, err)
-		require.EqualError(t, err, "missing status")
+	reader.Lock()
+	reader.ListPods = pods
+	reader.Unlock()
 
-		gotPods := controller.SyncedPods(ctx, key)
-		require.Len(t, gotPods, 1)
-		require.Equal(t, pods[0], *gotPods[0])
+	gotColl := controller.Collect(ctx, key)
+	uids := lo.Map(gotColl, func(item StatusItem, _ int) string { return string(item.pod.UID) })
+	require.Equal(t, []string{"1", "2", "new"}, uids)
 
-		opts := reader.ListOpts
-		require.Len(t, opts, 2)
-		var listOpt client.ListOptions
-		for _, opt := range opts {
-			opt.ApplyToList(&listOpt)
-		}
-		require.Equal(t, namespace, listOpt.Namespace)
-		require.Zero(t, listOpt.Limit)
-		require.Equal(t, ".metadata.controller=axelar", listOpt.FieldSelector.String())
+	_, err = gotColl[2].Status()
+	require.Error(t, err)
+	require.EqualError(t, err, "missing status")
 
-		require.NoError(t, controller.Close())
-	})
+	gotPods := controller.SyncedPods(ctx, key)
+	require.Len(t, gotPods, 1)
+	require.Equal(t, pods[0], *gotPods[0])
 
-	t.Run("less pods than cache", func(t *testing.T) {
-		// TODO: should remove pods in cache that do not match the live list
-		t.Fail()
-	})
+	require.NoError(t, controller.Close())
+
+	opts := reader.ListOpts
+	require.Len(t, opts, 2)
+	var listOpt client.ListOptions
+	for _, opt := range opts {
+		opt.ApplyToList(&listOpt)
+	}
+	require.Equal(t, namespace, listOpt.Namespace)
+	require.Zero(t, listOpt.Limit)
+	require.Equal(t, ".metadata.controller=axelar", listOpt.FieldSelector.String())
 }

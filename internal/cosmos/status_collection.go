@@ -45,7 +45,7 @@ func UpsertPod(coll *StatusCollection, pod *corev1.Pod) {
 }
 
 // IntersectPods removes all pods from the collection that are not in the given list.
-func IntersectPods(coll *StatusCollection, pods []*corev1.Pod) {
+func IntersectPods(coll *StatusCollection, pods []corev1.Pod) {
 	if *coll == nil {
 		*coll = make(StatusCollection, 0)
 		return

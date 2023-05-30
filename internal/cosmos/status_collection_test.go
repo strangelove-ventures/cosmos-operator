@@ -59,7 +59,7 @@ func TestIntersectPods(t *testing.T) {
 	var pod corev1.Pod
 	pod.UID = "1"
 
-	IntersectPods(&coll, []*corev1.Pod{&pod})
+	IntersectPods(&coll, []corev1.Pod{pod})
 	require.NotNil(t, coll)
 	require.Len(t, coll, 0)
 
@@ -69,7 +69,7 @@ func TestIntersectPods(t *testing.T) {
 	coll = append(coll, StatusItem{pod: &pod})
 	coll = append(coll, StatusItem{pod: &pod2})
 
-	IntersectPods(&coll, []*corev1.Pod{&pod})
+	IntersectPods(&coll, []corev1.Pod{pod})
 	require.Len(t, coll, 1)
 	require.Equal(t, "1", string(coll[0].Pod().UID))
 }

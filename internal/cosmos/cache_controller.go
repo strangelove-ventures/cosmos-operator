@@ -156,6 +156,7 @@ func (c *CacheController) Collect(ctx context.Context, controller client.ObjectK
 		return nil
 	}
 	v, _ := c.cache.Get(controller)
+	IntersectPods(&v, pods)
 	for i := range pods {
 		UpsertPod(&v, &pods[i])
 	}
