@@ -5,6 +5,7 @@ import (
 
 	"github.com/samber/lo"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 // StatusItem is a pod paired with its CometBFT status.
@@ -41,6 +42,28 @@ func UpsertPod(coll *StatusCollection, pod *corev1.Pod) {
 		}
 	}
 	*coll = append(*coll, StatusItem{pod: pod, err: errors.New("missing status")})
+}
+
+// IntersectPods removes all pods from the collection that are not in the given list.
+func IntersectPods(coll *StatusCollection, pods []*corev1.Pod) {
+	if *coll == nil {
+		*coll = make(StatusCollection, 0)
+		return
+	}
+
+	set := make(map[types.UID]bool)
+	for _, pod := range pods {
+		set[pod.UID] = true
+	}
+
+	var j int
+	for _, item := range *coll {
+		if set[item.Pod().UID] {
+			(*coll)[j] = item
+			j++
+		}
+	}
+	*coll = (*coll)[:j]
 }
 
 // Pods returns all pods.
