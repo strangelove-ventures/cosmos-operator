@@ -23,6 +23,7 @@ import (
 	"time"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	"github.com/strangelove-ventures/cosmos-operator/internal/cosmos"
 	"github.com/strangelove-ventures/cosmos-operator/internal/fullnode"
 	"github.com/strangelove-ventures/cosmos-operator/internal/healthcheck"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
@@ -35,9 +36,11 @@ import (
 // SelfHealingReconciler reconciles the self healing portion of a CosmosFullNode object
 type SelfHealingReconciler struct {
 	client.Client
-	recorder      record.EventRecorder
-	diskClient    *fullnode.DiskUsageCollector
-	pvcAutoScaler *fullnode.PVCAutoScaler
+	cacheController *cosmos.CacheController
+	diskClient      *fullnode.DiskUsageCollector
+	pvcAutoScaler   *fullnode.PVCAutoScaler
+	recorder        record.EventRecorder
+	statusClient    *fullnode.StatusClient
 }
 
 func NewSelfHealing(
@@ -45,12 +48,15 @@ func NewSelfHealing(
 	recorder record.EventRecorder,
 	statusClient *fullnode.StatusClient,
 	httpClient *http.Client,
+	cacheController *cosmos.CacheController,
 ) *SelfHealingReconciler {
 	return &SelfHealingReconciler{
-		Client:        client,
-		recorder:      recorder,
-		diskClient:    fullnode.NewDiskUsageCollector(healthcheck.NewClient(httpClient), client),
-		pvcAutoScaler: fullnode.NewPVCAutoScaler(statusClient),
+		Client:          client,
+		cacheController: cacheController,
+		diskClient:      fullnode.NewDiskUsageCollector(healthcheck.NewClient(httpClient), client),
+		pvcAutoScaler:   fullnode.NewPVCAutoScaler(statusClient),
+		recorder:        recorder,
+		statusClient:    statusClient,
 	}
 }
 
@@ -77,6 +83,13 @@ func (r *SelfHealingReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	reporter := kube.NewEventReporter(logger, r.recorder, crd)
 
 	r.pvcAutoScale(ctx, reporter, crd)
+
+	consensus := fullnode.ConsensusStatus(ctx, crd, r.cacheController)
+	if err := r.statusClient.SyncUpdate(ctx, client.ObjectKeyFromObject(crd), func(status *cosmosv1.FullNodeStatus) {
+		status.SelfHealing.Consensus = &consensus
+	}); err != nil {
+		logger.Error(err, "Failed to patch status")
+	}
 
 	return ctrl.Result{RequeueAfter: 60 * time.Second}, nil
 }
