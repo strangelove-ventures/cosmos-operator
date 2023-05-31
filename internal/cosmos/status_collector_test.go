@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/samber/lo"
+	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -42,8 +43,10 @@ func TestStatusCollector_Collect(t *testing.T) {
 			}
 			pod.Name = fmt.Sprintf("pod-%d", i)
 			pod.Namespace = namespace
+			pod.Annotations = map[string]string{kube.OrdinalAnnotation: strconv.Itoa(i)}
 			return pod
 		})
+		lo.Reverse(pods) // Tests ordering
 
 		cometClient := mockStatuser(func(ctx context.Context, rpcHost string) (CometStatus, error) {
 			_, ok := ctx.Deadline()
@@ -60,15 +63,15 @@ func TestStatusCollector_Collect(t *testing.T) {
 
 		require.Len(t, got, 3)
 
-		for i, podStatus := range got {
-			require.Equal(t, namespace, podStatus.GetPod().Namespace)
-			require.Equal(t, fmt.Sprintf("pod-%d", i), podStatus.GetPod().Name)
+		for i, item := range got {
+			require.Equal(t, namespace, item.GetPod().Namespace)
+			require.Equal(t, fmt.Sprintf("pod-%d", i), item.GetPod().Name)
 
-			tmStatus, err := podStatus.GetStatus()
+			tmStatus, err := item.GetStatus()
 			require.NoError(t, err)
 
 			require.Equal(t, fmt.Sprintf("http://%d:26657", i), tmStatus.Result.NodeInfo.ListenAddr)
-			require.WithinDuration(t, time.Now(), podStatus.Timestamp(), 10*time.Second)
+			require.WithinDuration(t, time.Now(), item.Timestamp(), 10*time.Second)
 		}
 
 		timestamps := lo.Map(got, func(item StatusItem, _ int) time.Time { return item.Timestamp() })

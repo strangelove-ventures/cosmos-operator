@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -61,6 +62,6 @@ func (coll StatusCollector) Collect(ctx context.Context, pods []corev1.Pod) Stat
 	}
 
 	_ = eg.Wait()
-
+	sort.Sort(statuses)
 	return statuses
 }

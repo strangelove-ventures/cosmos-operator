@@ -2,9 +2,11 @@ package cosmos
 
 import (
 	"errors"
+	"strconv"
 	"time"
 
 	"github.com/samber/lo"
+	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -32,6 +34,21 @@ func (status StatusItem) Timestamp() time.Time { return status.Ts }
 
 // StatusCollection is a list of pods and CometBFT status associated with the pod.
 type StatusCollection []StatusItem
+
+// Len returns the number of items in the collection. Part of the sort.Interface implementation.
+func (coll StatusCollection) Len() int { return len(coll) }
+
+// Less implements sort.Interface.
+func (coll StatusCollection) Less(i, j int) bool {
+	lhs, _ := strconv.Atoi(coll[i].GetPod().Annotations[kube.OrdinalAnnotation])
+	rhs, _ := strconv.Atoi(coll[j].GetPod().Annotations[kube.OrdinalAnnotation])
+	return lhs < rhs
+}
+
+// Swap implements sort.Interface.
+func (coll StatusCollection) Swap(i, j int) {
+	coll[i], coll[j] = coll[j], coll[i]
+}
 
 // UpsertPod updates the pod in the collection or adds an item to the collection if it does not exist.
 // All operations are performed in-place.
