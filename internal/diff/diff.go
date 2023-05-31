@@ -5,13 +5,11 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const (
-	ordinalAnnotation = "app.kubernetes.io/ordinal"
-	revisionLabel     = "app.kubernetes.io/revision"
-)
+const revisionLabel = "app.kubernetes.io/revision"
 
 // Resource is a diffable kubernetes object.
 type Resource[T client.Object] interface {
@@ -125,7 +123,7 @@ func (a currentAdapter[T]) Object() T        { return a.obj }
 func (a currentAdapter[T]) Revision() string { return a.obj.GetLabels()[revisionLabel] }
 
 func (a currentAdapter[T]) Ordinal() int64 {
-	val, _ := strconv.ParseInt(a.obj.GetAnnotations()[ordinalAnnotation], 10, 64)
+	val, _ := strconv.ParseInt(a.obj.GetAnnotations()[kube.OrdinalAnnotation], 10, 64)
 	return val
 }
 
@@ -170,7 +168,7 @@ func (diff *Diff[T]) toObjects(list []Resource[T]) []T {
 		if annotations == nil {
 			annotations = make(map[string]string)
 		}
-		annotations[ordinalAnnotation] = strconv.FormatInt(list[i].Ordinal(), 10)
+		annotations[kube.OrdinalAnnotation] = strconv.FormatInt(list[i].Ordinal(), 10)
 		obj.SetAnnotations(annotations)
 
 		objs[i] = obj
