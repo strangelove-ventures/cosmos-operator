@@ -136,17 +136,17 @@ type FullNodeStatus struct {
 	// +optional
 	Peers []string `json:"peers"`
 
-	// Current Consensus state. Collected every 60s.
+	// Current sync information. Collected every 60s.
 	// +optional
-	Consensus *ConsensusStatus `json:"consensus"`
+	SyncInfo *SyncInfoStatus `json:"syncInfo,omitempty"`
 }
 
-type ConsensusStatus struct {
+type SyncInfoStatus struct {
 	// The latest consensus state of pods.
-	Pods []ConsensusPodStatus `json:"pods"`
+	Pods []SyncInfoPodStatus `json:"pods"`
 }
 
-type ConsensusPodStatus struct {
+type SyncInfoPodStatus struct {
 	// Pod's name.
 	Pod string `json:"pod"`
 	// When consensus information was fetched.

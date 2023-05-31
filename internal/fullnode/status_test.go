@@ -36,7 +36,7 @@ func (m mockStatusCollector) Collect(ctx context.Context, controller client.Obje
 	return m.CollectFn(ctx, controller)
 }
 
-func TestConsensusStatus(t *testing.T) {
+func TestSyncInfoStatus(t *testing.T) {
 	t.Parallel()
 
 	const (
@@ -72,8 +72,8 @@ func TestConsensusStatus(t *testing.T) {
 	}
 
 	wantTS := metav1.NewTime(ts)
-	want := cosmosv1.ConsensusStatus{
-		Pods: []cosmosv1.ConsensusPodStatus{
+	want := cosmosv1.SyncInfoStatus{
+		Pods: []cosmosv1.SyncInfoPodStatus{
 			{
 				Pod:       "pod-0",
 				Timestamp: wantTS,
@@ -93,6 +93,6 @@ func TestConsensusStatus(t *testing.T) {
 		},
 	}
 
-	status := ConsensusStatus(context.Background(), &crd, collector)
+	status := SyncInfoStatus(context.Background(), &crd, collector)
 	require.Equal(t, want, status)
 }

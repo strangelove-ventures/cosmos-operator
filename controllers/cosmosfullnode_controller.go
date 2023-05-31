@@ -194,14 +194,14 @@ func (r *CosmosFullNodeReconciler) resultWithErr(crd *cosmosv1.CosmosFullNode, e
 }
 
 func (r *CosmosFullNodeReconciler) updateStatus(ctx context.Context, crd *cosmosv1.CosmosFullNode) {
-	consensus := fullnode.ConsensusStatus(ctx, crd, r.cacheController)
+	consensus := fullnode.SyncInfoStatus(ctx, crd, r.cacheController)
 
 	if err := r.statusClient.SyncUpdate(ctx, client.ObjectKeyFromObject(crd), func(status *cosmosv1.FullNodeStatus) {
 		status.ObservedGeneration = crd.Status.ObservedGeneration
 		status.Phase = crd.Status.Phase
 		status.StatusMessage = crd.Status.StatusMessage
 		status.Peers = crd.Status.Peers
-		status.Consensus = &consensus
+		status.SyncInfo = &consensus
 	}); err != nil {
 		log.FromContext(ctx).Error(err, "Failed to patch status")
 	}

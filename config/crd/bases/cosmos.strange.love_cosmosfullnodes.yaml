@@ -5807,40 +5807,6 @@ spec:
           status:
             description: FullNodeStatus defines the observed state of CosmosFullNode
             properties:
-              consensus:
-                description: Current Consensus state. Collected every 60s.
-                properties:
-                  pods:
-                    description: The latest consensus state of pods.
-                    items:
-                      properties:
-                        error:
-                          description: Error message if unable to fetch consensus
-                            state.
-                          type: string
-                        height:
-                          description: Latest height if no error encountered.
-                          format: int64
-                          type: integer
-                        inSync:
-                          description: If the pod reports itself as in sync with chain
-                            tip.
-                          type: boolean
-                        pod:
-                          description: Pod's name.
-                          type: string
-                        timestamp:
-                          description: When consensus information was fetched.
-                          format: date-time
-                          type: string
-                      required:
-                      - pod
-                      - timestamp
-                      type: object
-                    type: array
-                required:
-                - pods
-                type: object
               observedGeneration:
                 description: The most recent generation observed by the controller.
                 format: int64
@@ -5902,6 +5868,40 @@ spec:
               status:
                 description: A generic message for the user. May contain errors.
                 type: string
+              syncInfo:
+                description: Current sync information. Collected every 60s.
+                properties:
+                  pods:
+                    description: The latest consensus state of pods.
+                    items:
+                      properties:
+                        error:
+                          description: Error message if unable to fetch consensus
+                            state.
+                          type: string
+                        height:
+                          description: Latest height if no error encountered.
+                          format: int64
+                          type: integer
+                        inSync:
+                          description: If the pod reports itself as in sync with chain
+                            tip.
+                          type: boolean
+                        pod:
+                          description: Pod's name.
+                          type: string
+                        timestamp:
+                          description: When consensus information was fetched.
+                          format: date-time
+                          type: string
+                      required:
+                      - pod
+                      - timestamp
+                      type: object
+                    type: array
+                required:
+                - pods
+                type: object
             required:
             - observedGeneration
             - phase

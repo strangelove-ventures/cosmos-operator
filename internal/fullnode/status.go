@@ -22,17 +22,18 @@ type StatusCollector interface {
 	Collect(ctx context.Context, controller client.ObjectKey) cosmos.StatusCollection
 }
 
-func ConsensusStatus(
+// SyncInfoStatus returns the status of the full node's sync info.
+func SyncInfoStatus(
 	ctx context.Context,
 	crd *cosmosv1.CosmosFullNode,
 	collector StatusCollector,
-) cosmosv1.ConsensusStatus {
-	var status cosmosv1.ConsensusStatus
+) cosmosv1.SyncInfoStatus {
+	var status cosmosv1.SyncInfoStatus
 
 	coll := collector.Collect(ctx, client.ObjectKeyFromObject(crd))
 
-	status.Pods = lo.Map(coll, func(item cosmos.StatusItem, _ int) cosmosv1.ConsensusPodStatus {
-		var stat cosmosv1.ConsensusPodStatus
+	status.Pods = lo.Map(coll, func(item cosmos.StatusItem, _ int) cosmosv1.SyncInfoPodStatus {
+		var stat cosmosv1.SyncInfoPodStatus
 		stat.Pod = item.GetPod().Name
 		stat.Timestamp = metav1.NewTime(item.Timestamp())
 		comet, err := item.GetStatus()
