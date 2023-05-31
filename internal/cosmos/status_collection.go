@@ -2,6 +2,7 @@ package cosmos
 
 import (
 	"errors"
+	"time"
 
 	"github.com/samber/lo"
 	corev1 "k8s.io/api/core/v1"
@@ -12,6 +13,7 @@ import (
 type StatusItem struct {
 	pod    *corev1.Pod
 	status CometStatus
+	ts     time.Time
 	err    error
 }
 
@@ -24,6 +26,9 @@ func (status StatusItem) Pod() *corev1.Pod {
 func (status StatusItem) Status() (CometStatus, error) {
 	return status.status, status.err
 }
+
+// Timestamp returns the time when the CometBFT status was fetched.
+func (status StatusItem) Timestamp() time.Time { return status.ts }
 
 // StatusCollection is a list of pods and CometBFT status associated with the pod.
 type StatusCollection []StatusItem

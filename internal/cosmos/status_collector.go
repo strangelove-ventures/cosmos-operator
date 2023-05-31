@@ -32,12 +32,14 @@ func NewStatusCollector(comet Statuser, timeout time.Duration) *StatusCollector 
 // Any non-nil error can be treated as transient and retried.
 func (coll StatusCollector) Collect(ctx context.Context, pods []corev1.Pod) StatusCollection {
 	var eg errgroup.Group
+	now := time.Now()
 	statuses := make(StatusCollection, len(pods))
 
 	for i := range pods {
 		i := i
 		eg.Go(func() error {
 			pod := pods[i]
+			statuses[i].ts = now
 			statuses[i].pod = &pod
 			ip := pod.Status.PodIP
 			if ip == "" {

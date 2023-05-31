@@ -68,7 +68,11 @@ func TestStatusCollector_Collect(t *testing.T) {
 			require.NoError(t, err)
 
 			require.Equal(t, fmt.Sprintf("http://%d:26657", i), tmStatus.Result.NodeInfo.ListenAddr)
+			require.WithinDuration(t, time.Now(), podStatus.Timestamp(), 10*time.Second)
 		}
+
+		timestamps := lo.Map(got, func(item StatusItem, _ int) time.Time { return item.Timestamp() })
+		require.Len(t, lo.Uniq(timestamps), 1)
 	})
 
 	t.Run("no pod IP", func(t *testing.T) {
@@ -80,6 +84,7 @@ func TestStatusCollector_Collect(t *testing.T) {
 		_, err := got[0].Status()
 		require.Error(t, err)
 		require.EqualError(t, err, "pod has no IP")
+		require.NotZero(t, got[0].Timestamp())
 	})
 
 	t.Run("status error", func(t *testing.T) {
@@ -96,6 +101,7 @@ func TestStatusCollector_Collect(t *testing.T) {
 		_, err := got[0].Status()
 		require.Error(t, err)
 		require.EqualError(t, err, "status error")
+		require.NotZero(t, got[0].Timestamp())
 	})
 
 	t.Run("no pods", func(t *testing.T) {
