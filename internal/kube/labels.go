@@ -15,6 +15,9 @@ const (
 	NameLabel       = "app.kubernetes.io/name"
 	VersionLabel    = "app.kubernetes.io/version"
 	ComponentLabel  = "app.kubernetes.io/component"
+
+	// OrdinalAnnotation is used to order resources. The value must be a base 10 integer string.
+	OrdinalAnnotation = "app.kubernetes.io/ordinal"
 )
 
 // Fields.

@@ -135,6 +135,31 @@ type FullNodeStatus struct {
 	// Persistent peer addresses.
 	// +optional
 	Peers []string `json:"peers"`
+
+	// Current sync information. Collected every 60s.
+	// +optional
+	SyncInfo *SyncInfoStatus `json:"syncInfo,omitempty"`
+}
+
+type SyncInfoStatus struct {
+	// The latest consensus state of pods.
+	Pods []SyncInfoPodStatus `json:"pods"`
+}
+
+type SyncInfoPodStatus struct {
+	// Pod's name.
+	Pod string `json:"pod"`
+	// When consensus information was fetched.
+	Timestamp metav1.Time `json:"timestamp"`
+	// Latest height if no error encountered.
+	// +optional
+	Height *uint64 `json:"height,omitempty"`
+	// If the pod reports itself as in sync with chain tip.
+	// +optional
+	InSync *bool `json:"inSync,omitempty"`
+	// Error message if unable to fetch consensus state.
+	// +optional
+	Error *string `json:"error,omitempty"`
 }
 
 type FullNodeSnapshotStatus struct {

@@ -43,6 +43,7 @@ const controllerOwnerField = ".metadata.controller"
 type CosmosFullNodeReconciler struct {
 	client.Client
 
+	cacheController  *cosmos.CacheController
 	configMapControl fullnode.ConfigMapControl
 	nodeKeyControl   fullnode.NodeKeyControl
 	peerCollector    *fullnode.PeerCollector
@@ -58,15 +59,16 @@ func NewFullNode(
 	client client.Client,
 	recorder record.EventRecorder,
 	statusClient *fullnode.StatusClient,
-	cache *cosmos.CacheController,
+	cacheController *cosmos.CacheController,
 ) *CosmosFullNodeReconciler {
 	return &CosmosFullNodeReconciler{
 		Client: client,
 
+		cacheController:  cacheController,
 		configMapControl: fullnode.NewConfigMapControl(client),
 		nodeKeyControl:   fullnode.NewNodeKeyControl(client),
 		peerCollector:    fullnode.NewPeerCollector(client),
-		podControl:       fullnode.NewPodControl(client, cache),
+		podControl:       fullnode.NewPodControl(client, cacheController),
 		pvcControl:       fullnode.NewPVCControl(client),
 		recorder:         recorder,
 		serviceControl:   fullnode.NewServiceControl(client),
@@ -75,7 +77,7 @@ func NewFullNode(
 }
 
 var (
-	finishResult  ctrl.Result
+	stopResult    ctrl.Result
 	requeueResult = ctrl.Result{RequeueAfter: 3 * time.Second}
 )
 
@@ -103,7 +105,7 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		// Also, will get "not found" error if crd is deleted.
 		// No need to explicitly delete resources. Kube GC does so automatically because we set the controller reference
 		// for each resource.
-		return finishResult, client.IgnoreNotFound(err)
+		return stopResult, client.IgnoreNotFound(err)
 	}
 
 	reporter := kube.NewEventReporter(logger, r.recorder, crd)
@@ -173,7 +175,8 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	crd.Status.Peers = peers.AllExternal()
 
 	crd.Status.Phase = cosmosv1.FullNodePhaseCompete
-	return finishResult, nil
+	// Requeue to constantly poll consensus state.
+	return ctrl.Result{RequeueAfter: 60 * time.Second}, nil
 }
 
 func (r *CosmosFullNodeReconciler) resultWithErr(crd *cosmosv1.CosmosFullNode, err kube.ReconcileError) (ctrl.Result, kube.ReconcileError) {
@@ -187,20 +190,18 @@ func (r *CosmosFullNodeReconciler) resultWithErr(crd *cosmosv1.CosmosFullNode, e
 	crd.Status.Phase = cosmosv1.FullNodePhaseError
 	crd.Status.StatusMessage = ptr(fmt.Sprintf("Unrecoverable error: human intervention required: %v", err))
 	r.recorder.Event(crd, kube.EventWarning, "Error", err.Error())
-	return finishResult, err
+	return stopResult, err
 }
 
 func (r *CosmosFullNodeReconciler) updateStatus(ctx context.Context, crd *cosmosv1.CosmosFullNode) {
-	// Use patch with new CRD to prevent error: the object has been modified; please apply your changes to the latest version and try again
-	// The ScheduledVolumeSnapshot controller may also update the fullnode's status in tandem with this controller.
-	var patchCRD cosmosv1.CosmosFullNode
-	patchCRD.Name = crd.Name
-	patchCRD.Namespace = crd.Namespace
-	if err := r.statusClient.SyncUpdate(ctx, client.ObjectKeyFromObject(&patchCRD), func(status *cosmosv1.FullNodeStatus) {
+	consensus := fullnode.SyncInfoStatus(ctx, crd, r.cacheController)
+
+	if err := r.statusClient.SyncUpdate(ctx, client.ObjectKeyFromObject(crd), func(status *cosmosv1.FullNodeStatus) {
 		status.ObservedGeneration = crd.Status.ObservedGeneration
 		status.Phase = crd.Status.Phase
 		status.StatusMessage = crd.Status.StatusMessage
 		status.Peers = crd.Status.Peers
+		status.SyncInfo = &consensus
 	}); err != nil {
 		log.FromContext(ctx).Error(err, "Failed to patch status")
 	}

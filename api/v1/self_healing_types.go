@@ -47,7 +47,7 @@ type PVCAutoScaleSpec struct {
 }
 
 type SelfHealingStatus struct {
-	// Status resulting from the PVC auto-scaling.
+	// PVC auto-scaling status.
 	// +optional
 	PVCAutoScale *PVCAutoScaleStatus `json:"pvcAutoScale"`
 }

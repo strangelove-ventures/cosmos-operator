@@ -23,6 +23,7 @@ import (
 	"time"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	"github.com/strangelove-ventures/cosmos-operator/internal/cosmos"
 	"github.com/strangelove-ventures/cosmos-operator/internal/fullnode"
 	"github.com/strangelove-ventures/cosmos-operator/internal/healthcheck"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
@@ -35,9 +36,10 @@ import (
 // SelfHealingReconciler reconciles the self healing portion of a CosmosFullNode object
 type SelfHealingReconciler struct {
 	client.Client
-	recorder      record.EventRecorder
-	diskClient    *fullnode.DiskUsageCollector
-	pvcAutoScaler *fullnode.PVCAutoScaler
+	cacheController *cosmos.CacheController
+	diskClient      *fullnode.DiskUsageCollector
+	pvcAutoScaler   *fullnode.PVCAutoScaler
+	recorder        record.EventRecorder
 }
 
 func NewSelfHealing(
@@ -45,12 +47,14 @@ func NewSelfHealing(
 	recorder record.EventRecorder,
 	statusClient *fullnode.StatusClient,
 	httpClient *http.Client,
+	cacheController *cosmos.CacheController,
 ) *SelfHealingReconciler {
 	return &SelfHealingReconciler{
-		Client:        client,
-		recorder:      recorder,
-		diskClient:    fullnode.NewDiskUsageCollector(healthcheck.NewClient(httpClient), client),
-		pvcAutoScaler: fullnode.NewPVCAutoScaler(statusClient),
+		Client:          client,
+		cacheController: cacheController,
+		diskClient:      fullnode.NewDiskUsageCollector(healthcheck.NewClient(httpClient), client),
+		pvcAutoScaler:   fullnode.NewPVCAutoScaler(statusClient),
+		recorder:        recorder,
 	}
 }
 
@@ -67,11 +71,11 @@ func (r *SelfHealingReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		// Also, will get "not found" error if crd is deleted.
 		// No need to explicitly delete resources. Kube GC does so automatically because we set the controller reference
 		// for each resource.
-		return finishResult, client.IgnoreNotFound(err)
+		return stopResult, client.IgnoreNotFound(err)
 	}
 
 	if crd.Spec.SelfHeal == nil {
-		return finishResult, nil
+		return stopResult, nil
 	}
 
 	reporter := kube.NewEventReporter(logger, r.recorder, crd)

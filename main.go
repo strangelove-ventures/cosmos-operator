@@ -160,7 +160,7 @@ func startManager(cmd *cobra.Command, args []string) error {
 
 	ctx := cmd.Context()
 
-	// Setup cache controller
+	// CacheController which fetches CometBFT status in the background.
 	httpClient := &http.Client{Timeout: 30 * time.Second}
 	statusClient := fullnode.NewStatusClient(mgr.GetClient())
 	cometClient := cosmos.NewCometClient(httpClient)
@@ -174,7 +174,7 @@ func startManager(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("unable to create CosmosCache controller: %w", err)
 	}
 
-	// Setup main controllers
+	// The primary controller for CosmosFullNode.
 	if err = controllers.NewFullNode(
 		mgr.GetClient(),
 		mgr.GetEventRecorderFor(cosmosv1.CosmosFullNodeController),
@@ -184,15 +184,18 @@ func startManager(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("unable to create CosmosFullNode controller: %w", err)
 	}
 
+	// An ancillary controller that supports CosmosFullNode.
 	if err = controllers.NewSelfHealing(
 		mgr.GetClient(),
 		mgr.GetEventRecorderFor(cosmosv1.SelfHealingController),
 		statusClient,
 		httpClient,
+		cacheController,
 	).SetupWithManager(ctx, mgr); err != nil {
 		return fmt.Errorf("unable to create SelfHealing controller: %w", err)
 	}
 
+	// ScheduledVolumeSnapshots
 	if err = controllers.NewScheduledVolumeSnapshotReconciler(
 		mgr.GetClient(),
 		mgr.GetEventRecorderFor(cosmosv1alpha1.ScheduledVolumeSnapshotController),
@@ -202,6 +205,7 @@ func startManager(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("unable to create ScheduledVolumeSnapshot controller: %w", err)
 	}
 
+	// StatefulJobs
 	if err = controllers.NewStatefulJob(
 		mgr.GetClient(),
 		mgr.GetEventRecorderFor(cosmosv1alpha1.StatefulJobController),
