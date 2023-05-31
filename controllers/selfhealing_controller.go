@@ -73,23 +73,16 @@ func (r *SelfHealingReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		// Also, will get "not found" error if crd is deleted.
 		// No need to explicitly delete resources. Kube GC does so automatically because we set the controller reference
 		// for each resource.
-		return finishResult, client.IgnoreNotFound(err)
+		return stopResult, client.IgnoreNotFound(err)
 	}
 
 	if crd.Spec.SelfHeal == nil {
-		return finishResult, nil
+		return stopResult, nil
 	}
 
 	reporter := kube.NewEventReporter(logger, r.recorder, crd)
 
 	r.pvcAutoScale(ctx, reporter, crd)
-
-	consensus := fullnode.ConsensusStatus(ctx, crd, r.cacheController)
-	if err := r.statusClient.SyncUpdate(ctx, client.ObjectKeyFromObject(crd), func(status *cosmosv1.FullNodeStatus) {
-		status.SelfHealing.Consensus = &consensus
-	}); err != nil {
-		logger.Error(err, "Failed to patch status")
-	}
 
 	return ctrl.Result{RequeueAfter: 60 * time.Second}, nil
 }

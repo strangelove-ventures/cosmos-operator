@@ -50,10 +50,6 @@ type SelfHealingStatus struct {
 	// PVC auto-scaling status.
 	// +optional
 	PVCAutoScale *PVCAutoScaleStatus `json:"pvcAutoScale"`
-
-	// Consensus status.
-	// +optional
-	Consensus *ConsensusStatus `json:"consensus"`
 }
 
 type PVCAutoScaleStatus struct {
@@ -61,25 +57,4 @@ type PVCAutoScaleStatus struct {
 	RequestedSize resource.Quantity `json:"requestedSize"`
 	// The timestamp the SelfHealing controller requested a PVC increase.
 	RequestedAt metav1.Time `json:"requestedAt"`
-}
-
-type ConsensusStatus struct {
-	// The latest consensus state of pods.
-	Pods []ConsensusPodStatus `json:"pods"`
-}
-
-type ConsensusPodStatus struct {
-	// Pod's name.
-	Pod string `json:"pod"`
-	// When consensus information was fetched.
-	Timestamp metav1.Time `json:"timestamp"`
-	// Latest height if no error encountered.
-	// +optional
-	Height *uint64 `json:"height,omitempty"`
-	// If the pod reports itself as in sync with chain tip.
-	// +optional
-	InSync *bool `json:"inSync,omitempty"`
-	// Error message if unable to fetch consensus state.
-	// +optional
-	Error *string `json:"error,omitempty"`
 }

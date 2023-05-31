@@ -77,7 +77,7 @@ func (r *ScheduledVolumeSnapshotReconciler) Reconcile(ctx context.Context, req c
 		// Also, will get "not found" error if crd is deleted.
 		// No need to explicitly delete resources. Kube GC does so automatically because we set the controller reference
 		// for each resource.
-		return finishResult, client.IgnoreNotFound(err)
+		return stopResult, client.IgnoreNotFound(err)
 	}
 
 	volsnapshot.ResetStatus(crd)
@@ -100,7 +100,7 @@ func (r *ScheduledVolumeSnapshotReconciler) Reconcile(ctx context.Context, req c
 		if err != nil {
 			logger.Error(err, "Failed to find duration until next snapshot")
 			r.reportError(crd, "FindNextSnapshotTimeError", err)
-			return finishResult, nil // Fatal error. Do not requeue.
+			return stopResult, nil // Fatal error. Do not requeue.
 		}
 
 		if dur > 0 {
@@ -180,7 +180,7 @@ func (r *ScheduledVolumeSnapshotReconciler) Reconcile(ctx context.Context, req c
 	}
 
 	// Updating status in the defer above triggers a new reconcile loop.
-	return finishResult, nil
+	return stopResult, nil
 }
 
 func (r *ScheduledVolumeSnapshotReconciler) restorePod(ctx context.Context, logger logr.Logger, crd *cosmosv1alpha1.ScheduledVolumeSnapshot) error {
