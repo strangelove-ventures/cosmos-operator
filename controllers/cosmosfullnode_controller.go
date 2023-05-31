@@ -96,7 +96,6 @@ var (
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.12.1/pkg/reconcile
 func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
-	fmt.Println("!!!!!!!Reconciling CosmosFullNode!!!!!!!")
 	logger.V(1).Info("Entering reconcile loop", "request", req.NamespacedName)
 
 	// Get the CRD

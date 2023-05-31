@@ -19,7 +19,6 @@ package controllers
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -66,7 +65,6 @@ func NewSelfHealing(
 // uses the status object to reconcile its state.
 func (r *SelfHealingReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx).WithName(cosmosv1.SelfHealingController)
-	fmt.Println("!!!!!!!Reconciling SelfHealing!!!!!!!")
 	logger.V(1).Info("Entering reconcile loop", "request", req.NamespacedName)
 
 	crd := new(cosmosv1.CosmosFullNode)
