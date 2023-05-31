@@ -189,6 +189,7 @@ func startManager(cmd *cobra.Command, args []string) error {
 		mgr.GetEventRecorderFor(cosmosv1.SelfHealingController),
 		statusClient,
 		httpClient,
+		cacheController,
 	).SetupWithManager(ctx, mgr); err != nil {
 		return fmt.Errorf("unable to create SelfHealing controller: %w", err)
 	}
