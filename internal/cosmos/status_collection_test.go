@@ -48,6 +48,7 @@ func TestUpsertPod(t *testing.T) {
 
 	require.Len(t, coll, 1)
 	require.Equal(t, "new", coll[0].GetPod().Name)
+	require.WithinDuration(t, time.Now(), coll[0].Timestamp(), 10*time.Second)
 
 	UpsertPod(&coll, &corev1.Pod{})
 	require.Len(t, coll, 2)

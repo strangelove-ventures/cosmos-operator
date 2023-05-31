@@ -47,7 +47,7 @@ func UpsertPod(coll *StatusCollection, pod *corev1.Pod) {
 			return
 		}
 	}
-	*coll = append(*coll, StatusItem{Pod: pod, Err: errors.New("missing status")})
+	*coll = append(*coll, StatusItem{Pod: pod, Ts: time.Now(), Err: errors.New("missing status")})
 }
 
 // IntersectPods removes all pods from the collection that are not in the given list.
