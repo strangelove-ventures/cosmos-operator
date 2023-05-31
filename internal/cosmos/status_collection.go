@@ -11,24 +11,24 @@ import (
 
 // StatusItem is a pod paired with its CometBFT status.
 type StatusItem struct {
-	pod    *corev1.Pod
-	status CometStatus
-	ts     time.Time
-	err    error
+	Pod    *corev1.Pod
+	Status CometStatus
+	Ts     time.Time
+	Err    error
 }
 
-// Pod returns the pod.
-func (status StatusItem) Pod() *corev1.Pod {
-	return status.pod
+// GetPod returns the pod.
+func (status StatusItem) GetPod() *corev1.Pod {
+	return status.Pod
 }
 
-// Status returns the CometBFT status or an error if the status could not be fetched.
-func (status StatusItem) Status() (CometStatus, error) {
-	return status.status, status.err
+// GetStatus returns the CometBFT status or an error if the status could not be fetched.
+func (status StatusItem) GetStatus() (CometStatus, error) {
+	return status.Status, status.Err
 }
 
 // Timestamp returns the time when the CometBFT status was fetched.
-func (status StatusItem) Timestamp() time.Time { return status.ts }
+func (status StatusItem) Timestamp() time.Time { return status.Ts }
 
 // StatusCollection is a list of pods and CometBFT status associated with the pod.
 type StatusCollection []StatusItem
@@ -40,13 +40,13 @@ func UpsertPod(coll *StatusCollection, pod *corev1.Pod) {
 		*coll = make(StatusCollection, 0)
 	}
 	for i, p := range *coll {
-		if p.Pod().UID == pod.UID {
+		if p.GetPod().UID == pod.UID {
 			item := (*coll)[i]
-			(*coll)[i] = StatusItem{pod: pod, err: item.err, status: item.status}
+			(*coll)[i] = StatusItem{Pod: pod, Err: item.Err, Status: item.Status}
 			return
 		}
 	}
-	*coll = append(*coll, StatusItem{pod: pod, err: errors.New("missing status")})
+	*coll = append(*coll, StatusItem{Pod: pod, Err: errors.New("missing status")})
 }
 
 // IntersectPods removes all pods from the collection that are not in the given list.
@@ -63,7 +63,7 @@ func IntersectPods(coll *StatusCollection, pods []corev1.Pod) {
 
 	var j int
 	for _, item := range *coll {
-		if set[item.Pod().UID] {
+		if set[item.GetPod().UID] {
 			(*coll)[j] = item
 			j++
 		}
@@ -73,20 +73,20 @@ func IntersectPods(coll *StatusCollection, pods []corev1.Pod) {
 
 // Pods returns all pods.
 func (coll StatusCollection) Pods() []*corev1.Pod {
-	return lo.Map(coll, func(status StatusItem, _ int) *corev1.Pod { return status.Pod() })
+	return lo.Map(coll, func(status StatusItem, _ int) *corev1.Pod { return status.GetPod() })
 }
 
 // SyncedPods returns the pods that are caught up with the chain tip.
 func (coll StatusCollection) SyncedPods() []*corev1.Pod {
 	var pods []*corev1.Pod
 	for _, status := range coll {
-		if status.err != nil {
+		if status.Err != nil {
 			continue
 		}
-		if status.status.Result.SyncInfo.CatchingUp {
+		if status.Status.Result.SyncInfo.CatchingUp {
 			continue
 		}
-		pods = append(pods, status.pod)
+		pods = append(pods, status.Pod)
 	}
 	return pods
 }

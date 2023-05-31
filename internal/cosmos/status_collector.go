@@ -39,12 +39,12 @@ func (coll StatusCollector) Collect(ctx context.Context, pods []corev1.Pod) Stat
 		i := i
 		eg.Go(func() error {
 			pod := pods[i]
-			statuses[i].ts = now
-			statuses[i].pod = &pod
+			statuses[i].Ts = now
+			statuses[i].Pod = &pod
 			ip := pod.Status.PodIP
 			if ip == "" {
 				// Check for IP, so we don't pay overhead of making a request.
-				statuses[i].err = errors.New("pod has no IP")
+				statuses[i].Err = errors.New("pod has no IP")
 				return nil
 			}
 			host := fmt.Sprintf("http://%s:26657", ip)
@@ -52,10 +52,10 @@ func (coll StatusCollector) Collect(ctx context.Context, pods []corev1.Pod) Stat
 			defer cancel()
 			resp, err := coll.comet.Status(cctx, host)
 			if err != nil {
-				statuses[i].err = err
+				statuses[i].Err = err
 				return nil
 			}
-			statuses[i].status = resp
+			statuses[i].Status = resp
 			return nil
 		})
 	}

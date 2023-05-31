@@ -61,10 +61,10 @@ func TestStatusCollector_Collect(t *testing.T) {
 		require.Len(t, got, 3)
 
 		for i, podStatus := range got {
-			require.Equal(t, namespace, podStatus.Pod().Namespace)
-			require.Equal(t, fmt.Sprintf("pod-%d", i), podStatus.Pod().Name)
+			require.Equal(t, namespace, podStatus.GetPod().Namespace)
+			require.Equal(t, fmt.Sprintf("pod-%d", i), podStatus.GetPod().Name)
 
-			tmStatus, err := podStatus.Status()
+			tmStatus, err := podStatus.GetStatus()
 			require.NoError(t, err)
 
 			require.Equal(t, fmt.Sprintf("http://%d:26657", i), tmStatus.Result.NodeInfo.ListenAddr)
@@ -81,7 +81,7 @@ func TestStatusCollector_Collect(t *testing.T) {
 
 		require.Len(t, got, 1)
 
-		_, err := got[0].Status()
+		_, err := got[0].GetStatus()
 		require.Error(t, err)
 		require.EqualError(t, err, "pod has no IP")
 		require.NotZero(t, got[0].Timestamp())
@@ -98,7 +98,7 @@ func TestStatusCollector_Collect(t *testing.T) {
 
 		require.Len(t, got, 1)
 
-		_, err := got[0].Status()
+		_, err := got[0].GetStatus()
 		require.Error(t, err)
 		require.EqualError(t, err, "status error")
 		require.NotZero(t, got[0].Timestamp())

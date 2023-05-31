@@ -76,9 +76,9 @@ func TestCacheController_Reconcile(t *testing.T) {
 	)
 
 	validStatusColl := StatusCollection{
-		{pod: new(corev1.Pod)},
-		{pod: new(corev1.Pod)},
-		{pod: new(corev1.Pod)},
+		{Pod: new(corev1.Pod)},
+		{Pod: new(corev1.Pod)},
+		{Pod: new(corev1.Pod)},
 	}
 
 	t.Run("crd created or updated", func(t *testing.T) {
@@ -195,9 +195,9 @@ func TestCacheController_SyncedPods(t *testing.T) {
 
 	var collector mockCollector
 	collector.StubCollection = StatusCollection{
-		{pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{UID: "1"}}},
-		{pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{UID: "2"}}, status: catchingUp},
-		{pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{UID: "should not see me"}}, status: catchingUp},
+		{Pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{UID: "1"}}},
+		{Pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{UID: "2"}}, Status: catchingUp},
+		{Pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{UID: "should not see me"}}, Status: catchingUp},
 	}
 
 	pods := []corev1.Pod{
@@ -232,10 +232,10 @@ func TestCacheController_SyncedPods(t *testing.T) {
 	reader.Unlock()
 
 	gotColl := controller.Collect(ctx, key)
-	uids := lo.Map(gotColl, func(item StatusItem, _ int) string { return string(item.pod.UID) })
+	uids := lo.Map(gotColl, func(item StatusItem, _ int) string { return string(item.Pod.UID) })
 	require.Equal(t, []string{"1", "2", "new"}, uids)
 
-	_, err = gotColl[2].Status()
+	_, err = gotColl[2].GetStatus()
 	require.Error(t, err)
 	require.EqualError(t, err, "missing status")
 
