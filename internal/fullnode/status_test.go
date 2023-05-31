@@ -65,29 +65,29 @@ func TestConsensusStatus(t *testing.T) {
 
 		return cosmos.StatusCollection{
 			// Purposefully out of order to test sorting.
-			{Pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "pod-0"}}, Status: notInSync, Ts: ts},
-			{Pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "pod-1"}}, Status: inSync, Ts: ts},
-			{Pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "pod-2"}}, Err: errors.New("some error"), Ts: ts},
+			{Pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "pod-0"}}, Status: notInSync, TS: ts},
+			{Pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "pod-1"}}, Status: inSync, TS: ts},
+			{Pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "pod-2"}}, Err: errors.New("some error"), TS: ts},
 		}
 	}
 
-	wantTs := metav1.NewTime(ts)
+	wantTS := metav1.NewTime(ts)
 	want := cosmosv1.ConsensusStatus{
 		Pods: []cosmosv1.ConsensusPodStatus{
 			{
 				Pod:       "pod-0",
-				Timestamp: wantTs,
+				Timestamp: wantTS,
 				Height:    ptr(uint64(9999)),
 				InSync:    ptr(false),
 			},
 			{Pod: "pod-1",
-				Timestamp: wantTs,
+				Timestamp: wantTS,
 				Height:    ptr(uint64(10000)),
 				InSync:    ptr(true),
 			},
 			{
 				Pod:       "pod-2",
-				Timestamp: wantTs,
+				Timestamp: wantTS,
 				Error:     ptr("some error"),
 			},
 		},

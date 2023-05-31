@@ -57,7 +57,7 @@ func TestUpsertPod(t *testing.T) {
 	status := CometStatus{ID: 1}
 	err := errors.New("some error")
 	coll = StatusCollection{
-		{Pod: &pod, Ts: ts, Status: status, Err: err},
+		{Pod: &pod, TS: ts, Status: status, Err: err},
 	}
 	var pod2 corev1.Pod
 	pod2.UID = "1"
@@ -65,7 +65,7 @@ func TestUpsertPod(t *testing.T) {
 	UpsertPod(&coll, &pod2)
 
 	require.Len(t, coll, 1)
-	want := StatusItem{Pod: &pod2, Ts: ts, Status: status, Err: err}
+	want := StatusItem{Pod: &pod2, TS: ts, Status: status, Err: err}
 	require.Equal(t, want, coll[0])
 }
 

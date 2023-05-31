@@ -15,7 +15,7 @@ import (
 type StatusItem struct {
 	Pod    *corev1.Pod
 	Status CometStatus
-	Ts     time.Time
+	TS     time.Time
 	Err    error
 }
 
@@ -30,7 +30,7 @@ func (status StatusItem) GetStatus() (CometStatus, error) {
 }
 
 // Timestamp returns the time when the CometBFT status was fetched.
-func (status StatusItem) Timestamp() time.Time { return status.Ts }
+func (status StatusItem) Timestamp() time.Time { return status.TS }
 
 // StatusCollection is a list of pods and CometBFT status associated with the pod.
 type StatusCollection []StatusItem
@@ -64,7 +64,7 @@ func UpsertPod(coll *StatusCollection, pod *corev1.Pod) {
 			return
 		}
 	}
-	*coll = append(*coll, StatusItem{Pod: pod, Ts: time.Now(), Err: errors.New("missing status")})
+	*coll = append(*coll, StatusItem{Pod: pod, TS: time.Now(), Err: errors.New("missing status")})
 }
 
 // IntersectPods removes all pods from the collection that are not in the given list.
