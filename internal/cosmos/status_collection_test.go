@@ -3,6 +3,7 @@ package cosmos
 import (
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -50,6 +51,21 @@ func TestUpsertPod(t *testing.T) {
 
 	UpsertPod(&coll, &corev1.Pod{})
 	require.Len(t, coll, 2)
+
+	ts := time.Now()
+	status := CometStatus{ID: 1}
+	err := errors.New("some error")
+	coll = StatusCollection{
+		{Pod: &pod, Ts: ts, Status: status, Err: err},
+	}
+	var pod2 corev1.Pod
+	pod2.UID = "1"
+	pod2.Name = "new2"
+	UpsertPod(&coll, &pod2)
+
+	require.Len(t, coll, 1)
+	want := StatusItem{Pod: &pod2, Ts: ts, Status: status, Err: err}
+	require.Equal(t, want, coll[0])
 }
 
 func TestIntersectPods(t *testing.T) {

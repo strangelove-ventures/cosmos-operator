@@ -42,7 +42,8 @@ func UpsertPod(coll *StatusCollection, pod *corev1.Pod) {
 	for i, p := range *coll {
 		if p.GetPod().UID == pod.UID {
 			item := (*coll)[i]
-			(*coll)[i] = StatusItem{Pod: pod, Err: item.Err, Status: item.Status}
+			item.Pod = pod
+			(*coll)[i] = item
 			return
 		}
 	}
