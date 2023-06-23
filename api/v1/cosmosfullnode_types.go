@@ -566,7 +566,7 @@ type SDKAppConfig struct {
 
 	// If set, block height at which to gracefully halt the chain and shutdown the node.
 	// Useful for testing or upgrades.
-	// +kubebuilder:validation:Minimum:=1
+	// +kubebuilder:validation:Minimum:=0
 	// +optional
 	HaltHeight *uint64 `json:"haltHeight"`
 
