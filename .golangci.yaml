@@ -15,16 +15,17 @@ run:
 
 linters-settings:
   depguard:
-    list-type: denylist
-    packages:
-      - github.com/stretchr/testify/assert
-      - github.com/onsi/gomega
-      - github.com/onsi/ginkgo/v2
-      - github.com/onsi/ginkgo
-    packages-with-error-message:
-      - github.com/stretchr/testify/assert: "Use github.com/stretchr/testify/require instead of assert"
-      - github.com/onsi/gomega: "Although Ginkgo is used in kubebuilder, use testify instead. Ginkgo is bloated providing little value."
-      - github.com/onsi/ginkgo/v2: "Although Ginkgo is used in kubebuilder, use testify instead. Ginkgo is bloated providing little value."
+    rules:
+      tests:
+        deny:
+          - pkg: github.com/stretchr/testify/assert
+            desc: "Use github.com/stretchr/testify/require instead of testify/assert"
+          - pkg: github.com/onsi/gomega
+            desc: "Although Ginkgo is used in kubebuilder, use testify instead. Ginkgo is bloated providing little value."
+          - pkg: github.com/onsi/ginkgo/v2
+            desc: "Although Ginkgo is used in kubebuilder, use testify instead. Ginkgo is bloated providing little value."
+          - pkg: github.com/onsi/ginkgo
+            desc: "Although Ginkgo is used in kubebuilder, use testify instead. Ginkgo is bloated providing little value."
   govet:
     check-shadowing: true
   misspell:
