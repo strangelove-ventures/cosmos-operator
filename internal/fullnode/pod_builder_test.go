@@ -86,6 +86,11 @@ func TestPodBuilder(t *testing.T) {
 		pod, err = builder.WithOrdinal(123).Build()
 		require.NoError(t, err)
 		require.Equal(t, "osmosis-123", pod.Name)
+
+		crd.Spec.Type = cosmosv1.FullNode
+		pod2, err := NewPodBuilder(&crd).WithOrdinal(123).Build()
+		require.NoError(t, err)
+		require.Equal(t, pod, pod2)
 	})
 
 	t.Run("happy path - ports", func(t *testing.T) {

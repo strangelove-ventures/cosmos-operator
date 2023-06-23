@@ -70,6 +70,12 @@ func TestBuildConfigMaps(t *testing.T) {
 
 		require.NotEmpty(t, cms[0].Object().Data)
 		require.Equal(t, cms[0].Object().Data, cms[1].Object().Data)
+
+		crd.Spec.Type = cosmosv1.FullNode
+		cms2, err := BuildConfigMaps(&crd, nil)
+
+		require.NoError(t, err)
+		require.Equal(t, cms, cms2)
 	})
 
 	t.Run("long name", func(t *testing.T) {
