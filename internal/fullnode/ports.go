@@ -18,7 +18,7 @@ const (
 
 func buildPorts(nodeType cosmosv1.FullNodeType) []corev1.ContainerPort {
 	switch nodeType {
-	case cosmosv1.FullNodeSentry:
+	case cosmosv1.Sentry:
 		return append(defaultPorts[:], corev1.ContainerPort{
 			Name:          "privval",
 			ContainerPort: privvalPort,

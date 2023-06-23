@@ -86,6 +86,11 @@ func TestPodBuilder(t *testing.T) {
 		pod, err = builder.WithOrdinal(123).Build()
 		require.NoError(t, err)
 		require.Equal(t, "osmosis-123", pod.Name)
+
+		crd.Spec.Type = cosmosv1.FullNode
+		pod2, err := NewPodBuilder(&crd).WithOrdinal(123).Build()
+		require.NoError(t, err)
+		require.Equal(t, pod, pod2)
 	})
 
 	t.Run("happy path - ports", func(t *testing.T) {
@@ -118,7 +123,7 @@ func TestPodBuilder(t *testing.T) {
 
 	t.Run("ports - sentry", func(t *testing.T) {
 		crd := defaultCRD()
-		crd.Spec.Type = cosmosv1.FullNodeSentry
+		crd.Spec.Type = cosmosv1.Sentry
 
 		pod, err := NewPodBuilder(&crd).Build()
 		require.NoError(t, err)
@@ -376,7 +381,7 @@ func TestPodBuilder(t *testing.T) {
 	t.Run("sentry start container command ", func(t *testing.T) {
 		cmdCrd := defaultCRD()
 		cmdCrd.Spec.ChainSpec.Binary = "gaiad"
-		cmdCrd.Spec.Type = cosmosv1.FullNodeSentry
+		cmdCrd.Spec.Type = cosmosv1.Sentry
 
 		pod, err := NewPodBuilder(&cmdCrd).WithOrdinal(1).Build()
 		require.NoError(t, err)
