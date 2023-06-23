@@ -47,7 +47,7 @@ type FullNodeSpec struct {
 	// The remote signer is out of scope for the operator and must be deployed separately. Each pod exposes a privval port
 	// for use with the remote signer.
 	// If not set, configures node for RPC.
-	// +kubebuilder:validation:Enum:=Sentry
+	// +kubebuilder:validation:Enum:=FullNode;Sentry
 	// +optional
 	Type FullNodeType `json:"type"`
 
@@ -98,8 +98,8 @@ type FullNodeSpec struct {
 type FullNodeType string
 
 const (
-	FullNodeRPC    FullNodeType = ""
-	FullNodeSentry FullNodeType = "Sentry"
+	FullNode FullNodeType = "FullNode"
+	Sentry   FullNodeType = "Sentry"
 )
 
 // FullNodeStatus defines the observed state of CosmosFullNode

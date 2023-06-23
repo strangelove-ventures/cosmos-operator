@@ -187,7 +187,7 @@ func TestBuildConfigMaps(t *testing.T) {
 
 		t.Run("validator sentry", func(t *testing.T) {
 			sentry := crd.DeepCopy()
-			sentry.Spec.Type = cosmosv1.FullNodeSentry
+			sentry.Spec.Type = cosmosv1.Sentry
 			cms, err := BuildConfigMaps(sentry, nil)
 			require.NoError(t, err)
 

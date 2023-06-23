@@ -365,7 +365,7 @@ func startCmdAndArgs(crd *cosmosv1.CosmosFullNode) (string, []string) {
 		privvalSleep = *v
 	}
 
-	if crd.Spec.Type == cosmosv1.FullNodeSentry && privvalSleep > 0 {
+	if crd.Spec.Type == cosmosv1.Sentry && privvalSleep > 0 {
 		shellBody := fmt.Sprintf(`sleep %d
 %s %s`, privvalSleep, binary, strings.Join(args, " "))
 		return "sh", []string{"-c", shellBody}

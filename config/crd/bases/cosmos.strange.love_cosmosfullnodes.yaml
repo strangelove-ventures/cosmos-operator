@@ -5659,6 +5659,7 @@ spec:
                   a privval port for use with the remote signer. If not set, configures
                   node for RPC.
                 enum:
+                - FullNode
                 - Sentry
                 type: string
               volumeClaimTemplate:
