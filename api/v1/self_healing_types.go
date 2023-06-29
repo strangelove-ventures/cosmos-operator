@@ -21,6 +21,11 @@ type SelfHealSpec struct {
 	// resizing is complete.
 	// +optional
 	PVCAutoScale *PVCAutoScaleSpec `json:"pvcAutoScale"`
+
+	// Take action when a pod's height falls behind the max height of all pods AND still reports itself as in-sync.
+	//
+	// +optional
+	HeightDriftMitigation *HeightDriftMitigationSpec `json:"heightDriftMitigation"`
 }
 
 type PVCAutoScaleSpec struct {
@@ -54,7 +59,8 @@ type HeightDriftMitigationSpec struct {
 	// This workaround is necessary to mitigate a bug in the Cosmos SDK and/or CometBFT where pods report themselves as
 	// in-sync even though they can lag thousands of blocks behind the chain tip and cannot catch up.
 	// A "rebooted" pod /status reports itself correctly and allows it to catch up to chain tip.
-	Threshold uint32
+	// +kubebuilder:validation:Minimum:=1
+	Threshold uint32 `json:"threshold"`
 }
 
 type SelfHealingStatus struct {
