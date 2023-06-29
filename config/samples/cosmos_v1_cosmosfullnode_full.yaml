@@ -138,6 +138,17 @@ spec:
     accessModes: ["ReadWriteMany"]
     volumeMode: "Block"
 
+  # Optional self-healing strategies.
+  selfHeal:
+    # Reboot pods that fall to far behind and still report as in-sync.
+    heightDriftMitigation:
+      threshold: 10
+    # Automatically expand PVCs that are running out of space.
+    pvcAutoScale:
+      increaseQuantity: 10%
+      maxSize: 5Ti
+      usedSpacePercentage: 90
+
   # Allow overriding single instances which is a pod + pvc combination.
   instanceOverrides:
     # Key is the name of the instance which is the name of the pod.
