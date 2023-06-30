@@ -9,10 +9,11 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-func TestStatusCollection_SyncedPods(t *testing.T) {
+func TestStatusCollection_Synced(t *testing.T) {
 	t.Parallel()
 
 	var coll StatusCollection
+	require.Empty(t, coll.Synced())
 	require.Empty(t, coll.SyncedPods())
 
 	var catchingUp CometStatus
@@ -23,12 +24,14 @@ func TestStatusCollection_SyncedPods(t *testing.T) {
 		{Pod: &corev1.Pod{}, Err: errors.New("some error")},
 	}
 
+	require.Empty(t, coll.Synced())
 	require.Empty(t, coll.SyncedPods())
 
 	var pod corev1.Pod
 	pod.Name = "in-sync"
 	coll = append(coll, StatusItem{Pod: &pod})
 
+	require.Len(t, coll.Synced(), 1)
 	require.Len(t, coll.SyncedPods(), 1)
 	require.Equal(t, "in-sync", coll.SyncedPods()[0].Name)
 }
