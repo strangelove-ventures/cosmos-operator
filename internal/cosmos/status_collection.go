@@ -95,7 +95,7 @@ func (coll StatusCollection) Pods() []*corev1.Pod {
 }
 
 // Synced returns all items that are caught up with the chain tip.
-func (coll StatusCollection) Synced() []StatusItem {
+func (coll StatusCollection) Synced() StatusCollection {
 	var items []StatusItem
 	for _, status := range coll {
 		if status.Err != nil {
