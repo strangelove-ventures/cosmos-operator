@@ -13,6 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// DriftDetection detects pods that are lagging behind the latest block height.
 type DriftDetection struct {
 	available      func(pods []*corev1.Pod, minReady time.Duration, now time.Time) []*corev1.Pod
 	collector      StatusCollector
@@ -27,6 +28,7 @@ func NewDriftDetection(collector StatusCollector) DriftDetection {
 	}
 }
 
+// LaggingPods returns pods that are lagging behind the latest block height.
 func (d DriftDetection) LaggingPods(ctx context.Context, crd *cosmosv1.CosmosFullNode) []*corev1.Pod {
 	synced := d.collector.Collect(ctx, client.ObjectKeyFromObject(crd)).Synced()
 
