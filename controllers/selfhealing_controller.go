@@ -27,7 +27,6 @@ import (
 	"github.com/strangelove-ventures/cosmos-operator/internal/fullnode"
 	"github.com/strangelove-ventures/cosmos-operator/internal/healthcheck"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -39,6 +38,7 @@ type SelfHealingReconciler struct {
 	client.Client
 	cacheController *cosmos.CacheController
 	diskClient      *fullnode.DiskUsageCollector
+	driftDetector   fullnode.DriftDetection
 	pvcAutoScaler   *fullnode.PVCAutoScaler
 	recorder        record.EventRecorder
 }
@@ -54,6 +54,7 @@ func NewSelfHealing(
 		Client:          client,
 		cacheController: cacheController,
 		diskClient:      fullnode.NewDiskUsageCollector(healthcheck.NewClient(httpClient), client),
+		driftDetector:   fullnode.NewDriftDetection(cacheController),
 		pvcAutoScaler:   fullnode.NewPVCAutoScaler(statusClient),
 		recorder:        recorder,
 	}
@@ -116,10 +117,12 @@ func (r *SelfHealingReconciler) mitigateHeightDrift(ctx context.Context, reporte
 	if crd.Spec.SelfHeal.HeightDriftMitigation == nil {
 		return
 	}
-	var pods []*corev1.Pod
-	panic("TODO")
 
 	const msg = "Height drift mitigation deleted pod"
+	pods := r.driftDetector.LaggingPods(ctx, crd)
+	if len(pods) > 0 {
+		reporter.RecordInfo("HeightDriftMitigation", msg)
+	}
 	for _, pod := range pods {
 		// CosmosFullNodeController will detect missing pod and re-create it.
 		if err := r.Delete(ctx, pod); kube.IgnoreNotFound(err) != nil {
@@ -128,9 +131,6 @@ func (r *SelfHealingReconciler) mitigateHeightDrift(ctx context.Context, reporte
 			continue
 		}
 		reporter.Info(msg, "pod", pod)
-	}
-	if len(pods) > 0 {
-		reporter.RecordInfo("HeightDriftMitigation", msg)
 	}
 }
 
