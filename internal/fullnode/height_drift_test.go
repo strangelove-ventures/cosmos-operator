@@ -80,10 +80,23 @@ func TestDriftDetection_LaggingPods(t *testing.T) {
 		}
 	})
 
-	t.Run("no pods", func(t *testing.T) {
-	})
+	t.Run("no pods or replicas", func(t *testing.T) {
+		collector := mockStatusCollector{CollectFn: func(ctx context.Context, controller client.ObjectKey) cosmos.StatusCollection {
+			return nil
+		}}
+		detector := NewDriftDetection(collector)
 
-	t.Run("list error", func(t *testing.T) {
+		var crd cosmosv1.CosmosFullNode
+		crd.Spec.SelfHeal = &cosmosv1.SelfHealSpec{}
+		crd.Spec.SelfHeal.HeightDriftMitigation = &cosmosv1.HeightDriftMitigationSpec{
+			Threshold: 25,
+		}
 
+		got := detector.LaggingPods(context.Background(), &crd)
+		require.Empty(t, got)
+
+		crd.Spec.Replicas = 3
+		got = detector.LaggingPods(context.Background(), &crd)
+		require.Empty(t, got)
 	})
 }
