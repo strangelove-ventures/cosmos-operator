@@ -62,14 +62,14 @@ func TestDriftDetection_LaggingPods(t *testing.T) {
 				require.GreaterOrEqual(t, len(pods), len(tt.WantPods))
 				require.WithinDuration(t, time.Now(), now, 5*time.Second)
 				require.Equal(t, 5*time.Second, minReady)
-				return pods
+				return coll.SyncedPods()
 			}
 
 			detector.computeRollout = func(unavail *intstr.IntOrString, desired, ready int) int {
 				require.Equal(t, maxUnavail, unavail, tt)
-				require.NotZero(t, desired, tt)
 				require.EqualValues(t, crd.Spec.Replicas, desired, tt)
 				require.NotZero(t, ready, tt)
+				require.Equal(t, len(coll.SyncedPods()), ready, tt)
 				return tt.Available
 			}
 

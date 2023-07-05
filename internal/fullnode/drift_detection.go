@@ -42,7 +42,7 @@ func (d DriftDetection) LaggingPods(ctx context.Context, crd *cosmosv1.CosmosFul
 		return item.GetPod(), isLagging
 	})
 
-	avail := d.available(lagging, 5*time.Second, time.Now())
+	avail := d.available(synced.Pods(), 5*time.Second, time.Now())
 	rollout := d.computeRollout(crd.Spec.RolloutStrategy.MaxUnavailable, int(crd.Spec.Replicas), len(avail))
-	return lo.Slice(avail, 0, rollout)
+	return lo.Slice(lagging, 0, rollout)
 }
