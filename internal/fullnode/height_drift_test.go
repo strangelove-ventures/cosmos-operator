@@ -48,10 +48,10 @@ func TestDriftDetection_LaggingPods(t *testing.T) {
 			Available int
 			WantPods  []string
 		}{
-			{10, 1, []string{"pod-2"}},
-			//{5, 10, []string{"pod-2", "pod-3"}},
-			//{3, 1, []string{"pod-2"}},
-			//{1, 0, []string{}},
+			{10, 1, []string{"pod-3"}},
+			{5, 10, []string{"pod-2", "pod-3"}},
+			{3, 1, []string{"pod-2"}},
+			{1, 0, []string{}},
 		} {
 			crd.Spec.SelfHeal = &cosmosv1.SelfHealSpec{}
 			crd.Spec.SelfHeal.HeightDriftMitigation = &cosmosv1.HeightDriftMitigationSpec{
@@ -59,24 +59,24 @@ func TestDriftDetection_LaggingPods(t *testing.T) {
 			}
 
 			detector.available = func(pods []*corev1.Pod, minReady time.Duration, now time.Time) []*corev1.Pod {
-				require.Len(t, pods, tt.Available)
+				require.GreaterOrEqual(t, len(pods), len(tt.WantPods))
 				require.WithinDuration(t, time.Now(), now, 5*time.Second)
 				require.Equal(t, 5*time.Second, minReady)
-				return coll.Pods()
+				return pods
 			}
 
-			detector.computeRollout = func(maxUnavail *intstr.IntOrString, desired, ready int) int {
-				require.Equal(t, tt.Threshold, uint32(maxUnavail.IntVal))
-				require.NotZero(t, desired)
-				require.Equal(t, crd.Spec.Replicas, ready)
-				require.Equal(t, len(coll), ready)
+			detector.computeRollout = func(unavail *intstr.IntOrString, desired, ready int) int {
+				require.Equal(t, maxUnavail, unavail, tt)
+				require.NotZero(t, desired, tt)
+				require.EqualValues(t, crd.Spec.Replicas, desired, tt)
+				require.NotZero(t, ready, tt)
 				return tt.Available
 			}
 
 			got := detector.LaggingPods(context.Background(), &crd)
 			gotPods := lo.Map(got, func(pod *corev1.Pod, _ int) string { return pod.Name })
 
-			require.Equal(t, tt.WantPods, gotPods)
+			require.Equal(t, tt.WantPods, gotPods, tt)
 		}
 	})
 
