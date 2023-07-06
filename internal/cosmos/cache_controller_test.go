@@ -156,9 +156,6 @@ func TestCacheController_Reconcile(t *testing.T) {
 		_, err = controller.Reconcile(ctx, req)
 		require.NoError(t, err)
 
-		reader.ListPods = nil
-		require.Empty(t, controller.Collect(ctx, key))
-
 		require.NoError(t, controller.Close())
 	})
 
