@@ -38,6 +38,7 @@ type SelfHealingReconciler struct {
 	client.Client
 	cacheController *cosmos.CacheController
 	diskClient      *fullnode.DiskUsageCollector
+	driftDetector   fullnode.DriftDetection
 	pvcAutoScaler   *fullnode.PVCAutoScaler
 	recorder        record.EventRecorder
 }
@@ -53,6 +54,7 @@ func NewSelfHealing(
 		Client:          client,
 		cacheController: cacheController,
 		diskClient:      fullnode.NewDiskUsageCollector(healthcheck.NewClient(httpClient), client),
+		driftDetector:   fullnode.NewDriftDetection(cacheController),
 		pvcAutoScaler:   fullnode.NewPVCAutoScaler(statusClient),
 		recorder:        recorder,
 	}
@@ -81,6 +83,7 @@ func (r *SelfHealingReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	reporter := kube.NewEventReporter(logger, r.recorder, crd)
 
 	r.pvcAutoScale(ctx, reporter, crd)
+	r.mitigateHeightDrift(ctx, reporter, crd)
 
 	return ctrl.Result{RequeueAfter: 60 * time.Second}, nil
 }
@@ -108,6 +111,27 @@ func (r *SelfHealingReconciler) pvcAutoScale(ctx context.Context, reporter kube.
 	const msg = "PVC auto scaling requested disk expansion"
 	reporter.Info(msg)
 	reporter.RecordInfo("PVCAutoScale", msg)
+}
+
+func (r *SelfHealingReconciler) mitigateHeightDrift(ctx context.Context, reporter kube.Reporter, crd *cosmosv1.CosmosFullNode) {
+	if crd.Spec.SelfHeal.HeightDriftMitigation == nil {
+		return
+	}
+
+	const msg = "Height drift mitigation deleted pod"
+	pods := r.driftDetector.LaggingPods(ctx, crd)
+	if len(pods) > 0 {
+		reporter.RecordInfo("HeightDriftMitigation", msg)
+	}
+	for _, pod := range pods {
+		// CosmosFullNodeController will detect missing pod and re-create it.
+		if err := r.Delete(ctx, pod); kube.IgnoreNotFound(err) != nil {
+			reporter.Error(err, "Failed to delete pod", "pod", pod)
+			reporter.RecordError("HeightDriftMitigationDeletePod", err)
+			continue
+		}
+		reporter.Info(msg, "pod", pod)
+	}
 }
 
 // SetupWithManager sets up the controller with the Manager.

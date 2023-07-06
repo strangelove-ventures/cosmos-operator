@@ -21,6 +21,11 @@ type SelfHealSpec struct {
 	// resizing is complete.
 	// +optional
 	PVCAutoScale *PVCAutoScaleSpec `json:"pvcAutoScale"`
+
+	// Take action when a pod's height falls behind the max height of all pods AND still reports itself as in-sync.
+	//
+	// +optional
+	HeightDriftMitigation *HeightDriftMitigationSpec `json:"heightDriftMitigation"`
 }
 
 type PVCAutoScaleSpec struct {
@@ -44,6 +49,18 @@ type PVCAutoScaleSpec struct {
 	// Safeguards against storage quotas and costs.
 	// +optional
 	MaxSize resource.Quantity `json:"maxSize"`
+}
+
+type HeightDriftMitigationSpec struct {
+	// If pod's height falls behind the max height of all pods by this value or more AND the pod's RPC /status endpoint
+	// reports itself as in-sync, the pod is deleted. The CosmosFullNodeController creates a new pod to replace it.
+	// Pod deletion respects the CosmosFullNode.Spec.RolloutStrategy and will not delete more pods than set
+	// by the strategy to prevent downtime.
+	// This workaround is necessary to mitigate a bug in the Cosmos SDK and/or CometBFT where pods report themselves as
+	// in-sync even though they can lag thousands of blocks behind the chain tip and cannot catch up.
+	// A "rebooted" pod /status reports itself correctly and allows it to catch up to chain tip.
+	// +kubebuilder:validation:Minimum:=1
+	Threshold uint32 `json:"threshold"`
 }
 
 type SelfHealingStatus struct {

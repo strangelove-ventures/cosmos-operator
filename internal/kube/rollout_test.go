@@ -55,6 +55,10 @@ func TestComputeRollout(t *testing.T) {
 			{intstr.FromInt(0), 100, 99, 0},
 			{intstr.FromString("0%"), 100, 100, 1},
 			{intstr.FromString("0%"), 100, 99, 0},
+
+			// Zero state
+			{intstr.FromInt(10), 0, 0, 0},
+			{intstr.FromInt(10), 0, 10, 0},
 		} {
 			got := ComputeRollout(&tt.Unavail, tt.Desired, tt.Ready)
 

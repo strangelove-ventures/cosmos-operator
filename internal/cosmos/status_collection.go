@@ -94,9 +94,9 @@ func (coll StatusCollection) Pods() []*corev1.Pod {
 	return lo.Map(coll, func(status StatusItem, _ int) *corev1.Pod { return status.GetPod() })
 }
 
-// SyncedPods returns the pods that are caught up with the chain tip.
-func (coll StatusCollection) SyncedPods() []*corev1.Pod {
-	var pods []*corev1.Pod
+// Synced returns all items that are caught up with the chain tip.
+func (coll StatusCollection) Synced() StatusCollection {
+	var items []StatusItem
 	for _, status := range coll {
 		if status.Err != nil {
 			continue
@@ -104,7 +104,12 @@ func (coll StatusCollection) SyncedPods() []*corev1.Pod {
 		if status.Status.Result.SyncInfo.CatchingUp {
 			continue
 		}
-		pods = append(pods, status.Pod)
+		items = append(items, status)
 	}
-	return pods
+	return items
+}
+
+// SyncedPods returns the pods that are caught up with the chain tip.
+func (coll StatusCollection) SyncedPods() []*corev1.Pod {
+	return lo.Map(coll.Synced(), func(status StatusItem, _ int) *corev1.Pod { return status.GetPod() })
 }
