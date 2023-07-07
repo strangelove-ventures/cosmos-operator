@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -118,11 +119,8 @@ func (r *SelfHealingReconciler) mitigateHeightDrift(ctx context.Context, reporte
 		return
 	}
 
-	const msg = "Height drift mitigation deleted pod"
 	pods := r.driftDetector.LaggingPods(ctx, crd)
-	if len(pods) > 0 {
-		reporter.RecordInfo("HeightDriftMitigation", msg)
-	}
+	var deleted int
 	for _, pod := range pods {
 		// CosmosFullNodeController will detect missing pod and re-create it.
 		if err := r.Delete(ctx, pod); kube.IgnoreNotFound(err) != nil {
@@ -130,7 +128,12 @@ func (r *SelfHealingReconciler) mitigateHeightDrift(ctx context.Context, reporte
 			reporter.RecordError("HeightDriftMitigationDeletePod", err)
 			continue
 		}
-		reporter.Info(msg, "pod", pod)
+		reporter.Info("Deleted pod for meeting height drift threshold", "pod", pod)
+		deleted++
+	}
+	if deleted > 0 {
+		msg := fmt.Sprintf("Height lagged behind by %d or more blocks; deleted pod(s)", crd.Spec.SelfHeal.HeightDriftMitigation.Threshold)
+		reporter.RecordInfo("HeightDriftMitigation", msg)
 	}
 }
 
