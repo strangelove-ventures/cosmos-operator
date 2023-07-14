@@ -124,11 +124,11 @@ func (r *SelfHealingReconciler) mitigateHeightDrift(ctx context.Context, reporte
 	for _, pod := range pods {
 		// CosmosFullNodeController will detect missing pod and re-create it.
 		if err := r.Delete(ctx, pod); kube.IgnoreNotFound(err) != nil {
-			reporter.Error(err, "Failed to delete pod", "pod", pod)
+			reporter.Error(err, "Failed to delete pod", "pod", pod.Name)
 			reporter.RecordError("HeightDriftMitigationDeletePod", err)
 			continue
 		}
-		reporter.Info("Deleted pod for meeting height drift threshold", "pod", pod)
+		reporter.Info("Deleted pod for meeting height drift threshold", "pod", pod.Name)
 		deleted++
 	}
 	if deleted > 0 {
