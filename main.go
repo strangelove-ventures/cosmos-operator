@@ -218,6 +218,7 @@ func startManager(cmd *cobra.Command, args []string) error {
 		mgr.GetEventRecorderFor(cosmosv1alpha1.ScheduledVolumeSnapshotController),
 		statusClient,
 		cacheController,
+		snapshotErr != nil,
 	).SetupWithManager(ctx, mgr); err != nil {
 		return fmt.Errorf("unable to create ScheduledVolumeSnapshot controller: %w", err)
 	}
