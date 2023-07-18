@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -37,17 +38,39 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
+var errMissingVolSnapCRD = errors.New("cluster does not have VolumeSnapshot CRDs installed")
+
+// IndexVolumeSnapshots indexes all VolumeSnapshots by name. Exposed as a separate method so caller can
+// test for presence of VolumeSnapshot CRDs in the cluster.
+func IndexVolumeSnapshots(ctx context.Context, mgr ctrl.Manager) error {
+	// Index all VolumeSnapshots. Controller does not own any because it does not create them.
+	if err := mgr.GetFieldIndexer().IndexField(
+		ctx,
+		&snapshotv1.VolumeSnapshot{},
+		".metadata.name",
+		func(object client.Object) []string {
+			return []string{object.GetName()}
+		},
+	); err != nil {
+		return fmt.Errorf("volume snapshot index: %w", err)
+	}
+	return nil
+}
+
 // StatefulJobReconciler reconciles a StatefulJob object.
 type StatefulJobReconciler struct {
 	client.Client
-	recorder record.EventRecorder
+	recorder              record.EventRecorder
+	missingVolSnapshotCRD bool
 }
 
-// NewStatefulJob returns a valid controller.
-func NewStatefulJob(client client.Client, recorder record.EventRecorder) *StatefulJobReconciler {
+// NewStatefulJob returns a valid controller. If missingVolSnapCRD is true, the controller errors on every reconcile loop
+// and will not function.
+func NewStatefulJob(client client.Client, recorder record.EventRecorder, missingVolSnapCRD bool) *StatefulJobReconciler {
 	return &StatefulJobReconciler{
-		Client:   client,
-		recorder: recorder,
+		Client:                client,
+		recorder:              recorder,
+		missingVolSnapshotCRD: missingVolSnapCRD,
 	}
 }
 
@@ -76,6 +99,11 @@ func (r *StatefulJobReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		// No need to explicitly delete resources. Kube GC does so automatically because we set the controller reference
 		// for each resource.
 		return requeueStatefulJob, kube.IgnoreNotFound(err)
+	}
+
+	if r.missingVolSnapshotCRD {
+		r.reportErr(logger, crd, errMissingVolSnapCRD)
+		return ctrl.Result{}, nil
 	}
 
 	crd.Status.ObservedGeneration = crd.Generation
@@ -170,20 +198,8 @@ func (r *StatefulJobReconciler) updateStatus(ctx context.Context, crd *cosmosalp
 	}
 }
 
-// SetupWithManager sets up the controller with the Manager.
+// SetupWithManager sets up the controller with the Manager. IndexVolumeSnapshots should be called first.
 func (r *StatefulJobReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
-	// Index all VolumeSnapshots. Controller does not own any because it does not create them.
-	if err := mgr.GetFieldIndexer().IndexField(
-		ctx,
-		&snapshotv1.VolumeSnapshot{},
-		".metadata.name",
-		func(object client.Object) []string {
-			return []string{object.GetName()}
-		},
-	); err != nil {
-		return fmt.Errorf("VolumeSnapshot index: %w", err)
-	}
-
 	cbuilder := ctrl.NewControllerManagedBy(mgr).For(&cosmosalpha.StatefulJob{})
 
 	// Watch for delete events for jobs.
