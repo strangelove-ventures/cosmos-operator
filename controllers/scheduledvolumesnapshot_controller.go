@@ -36,10 +36,11 @@ import (
 // ScheduledVolumeSnapshotReconciler reconciles a ScheduledVolumeSnapshot object
 type ScheduledVolumeSnapshotReconciler struct {
 	client.Client
-	fullNodeControl    *volsnapshot.FullNodeControl
-	recorder           record.EventRecorder
-	scheduler          *volsnapshot.Scheduler
-	volSnapshotControl *volsnapshot.VolumeSnapshotControl
+	fullNodeControl       *volsnapshot.FullNodeControl
+	missingVolSnapshotCRD bool
+	recorder              record.EventRecorder
+	scheduler             *volsnapshot.Scheduler
+	volSnapshotControl    *volsnapshot.VolumeSnapshotControl
 }
 
 func NewScheduledVolumeSnapshotReconciler(
@@ -47,13 +48,15 @@ func NewScheduledVolumeSnapshotReconciler(
 	recorder record.EventRecorder,
 	statusClient *fullnode.StatusClient,
 	cache *cosmos.CacheController,
+	missingVolSnapCRD bool,
 ) *ScheduledVolumeSnapshotReconciler {
 	return &ScheduledVolumeSnapshotReconciler{
-		Client:             client,
-		fullNodeControl:    volsnapshot.NewFullNodeControl(statusClient, client),
-		recorder:           recorder,
-		scheduler:          volsnapshot.NewScheduler(client),
-		volSnapshotControl: volsnapshot.NewVolumeSnapshotControl(client, cache),
+		Client:                client,
+		fullNodeControl:       volsnapshot.NewFullNodeControl(statusClient, client),
+		missingVolSnapshotCRD: missingVolSnapCRD,
+		recorder:              recorder,
+		scheduler:             volsnapshot.NewScheduler(client),
+		volSnapshotControl:    volsnapshot.NewVolumeSnapshotControl(client, cache),
 	}
 }
 
@@ -82,6 +85,13 @@ func (r *ScheduledVolumeSnapshotReconciler) Reconcile(ctx context.Context, req c
 
 	volsnapshot.ResetStatus(crd)
 	defer r.updateStatus(ctx, crd)
+
+	if r.missingVolSnapshotCRD {
+		logger.Error(errMissingVolSnapCRD, "Controller is disabled")
+		r.reportError(crd, "MissingCRDs", errMissingVolSnapCRD)
+		crd.Status.Phase = cosmosv1alpha1.SnapshotPhaseMissingCRDs
+		return ctrl.Result{}, nil
+	}
 
 	retryResult := ctrl.Result{RequeueAfter: 10 * time.Second}
 

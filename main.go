@@ -195,22 +195,32 @@ func startManager(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("unable to create SelfHealing controller: %w", err)
 	}
 
+	// Test for presence of VolumeSnapshot CRD.
+	snapshotErr := controllers.IndexVolumeSnapshots(ctx, mgr)
+	if snapshotErr != nil {
+		setupLog.Info("Warning: VolumeSnapshot CRD not found, StatefulJob and ScheduledVolumeSnapshot controllers will be disabled")
+	}
+
+	// StatefulJobs
+	jobCtl := controllers.NewStatefulJob(
+		mgr.GetClient(),
+		mgr.GetEventRecorderFor(cosmosv1alpha1.StatefulJobController),
+		snapshotErr != nil,
+	)
+
+	if err = jobCtl.SetupWithManager(ctx, mgr); err != nil {
+		return fmt.Errorf("unable to create StatefulJob controller: %w", err)
+	}
+
 	// ScheduledVolumeSnapshots
 	if err = controllers.NewScheduledVolumeSnapshotReconciler(
 		mgr.GetClient(),
 		mgr.GetEventRecorderFor(cosmosv1alpha1.ScheduledVolumeSnapshotController),
 		statusClient,
 		cacheController,
+		snapshotErr != nil,
 	).SetupWithManager(ctx, mgr); err != nil {
 		return fmt.Errorf("unable to create ScheduledVolumeSnapshot controller: %w", err)
-	}
-
-	// StatefulJobs
-	if err = controllers.NewStatefulJob(
-		mgr.GetClient(),
-		mgr.GetEventRecorderFor(cosmosv1alpha1.StatefulJobController),
-	).SetupWithManager(ctx, mgr); err != nil {
-		return fmt.Errorf("unable to create StatefulJob controller: %w", err)
 	}
 
 	//+kubebuilder:scaffold:builder

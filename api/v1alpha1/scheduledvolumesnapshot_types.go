@@ -166,6 +166,9 @@ const (
 
 	// SnapshotPhaseSuspended means the controller is not creating snapshots. Suspended by the user.
 	SnapshotPhaseSuspended SnapshotPhase = "Suspended"
+
+	// SnapshotPhaseMissingCRDs means the controller is not creating snapshots. The required VolumeSnapshot CRDs are missing.
+	SnapshotPhaseMissingCRDs SnapshotPhase = "MissingCRDs"
 )
 
 type VolumeSnapshotStatus struct {
