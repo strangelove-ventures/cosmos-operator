@@ -278,6 +278,15 @@ func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Conta
 	initCmd := fmt.Sprintf("%s init %s --chain-id %s", binary, moniker, crd.Spec.ChainSpec.ChainID)
 	required := []corev1.Container{
 		{
+			Name:            "fresh-init",
+			Image:           infraToolImage,
+			Command:         []string{"sh"},
+			Args:            []string{"-c",`rm -rf "$HOME/.tmp"`},
+			Env:             envVars,
+			ImagePullPolicy: tpl.ImagePullPolicy,
+			WorkingDir:      workDir,
+		},
+		{
 			Name:    "chain-init",
 			Image:   tpl.Image,
 			Command: []string{"sh"},
