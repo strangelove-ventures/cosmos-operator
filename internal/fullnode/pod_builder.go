@@ -281,7 +281,7 @@ func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Conta
 			Name:            "fresh-init",
 			Image:           infraToolImage,
 			Command:         []string{"sh"},
-			Args:            []string{"-c",`rm -rf "$HOME/.tmp"`},
+			Args:            []string{"-c", `rm -rf "$HOME/.tmp/*"`},
 			Env:             envVars,
 			ImagePullPolicy: tpl.ImagePullPolicy,
 			WorkingDir:      workDir,
