@@ -238,9 +238,10 @@ func TestPodBuilder(t *testing.T) {
 		}
 		require.Equal(t, healthPort, healthContainer.Ports[0])
 
-		require.Len(t, lo.Map(pod.Spec.InitContainers, func(c corev1.Container, _ int) string { return c.Name }), 4)
+		require.Len(t, lo.Map(pod.Spec.InitContainers, func(c corev1.Container, _ int) string { return c.Name }), 5)
 
 		wantInitImages := []string{
+			"ghcr.io/strangelove-ventures/infra-toolkit:v0.0.1",
 			"main-image:v1.2.3",
 			"ghcr.io/strangelove-ventures/infra-toolkit:v0.0.1",
 			"ghcr.io/strangelove-ventures/infra-toolkit:v0.0.1",
@@ -255,11 +256,14 @@ func TestPodBuilder(t *testing.T) {
 			require.Equal(t, wantWrkDir, c.WorkingDir)
 		}
 
-		initCont := pod.Spec.InitContainers[0]
+		freshCont := pod.Spec.InitContainers[0]
+		require.Contains(t, freshCont.Args[1], `rm -rf "$HOME/.tmp/*"`)
+
+		initCont := pod.Spec.InitContainers[1]
 		require.Contains(t, initCont.Args[1], `osmosisd init osmosis-6 --chain-id osmosis-123 --home "$CHAIN_HOME"`)
 		require.Contains(t, initCont.Args[1], `osmosisd init osmosis-6 --chain-id osmosis-123 --home "$HOME/.tmp"`)
 
-		mergeConfig := pod.Spec.InitContainers[2]
+		mergeConfig := pod.Spec.InitContainers[3]
 		// The order of config-merge arguments is important. Rightmost takes precedence.
 		require.Contains(t, mergeConfig.Args[1], `config-merge -f toml "$TMP_DIR/config.toml" "$OVERLAY_DIR/config-overlay.toml" > "$CONFIG_DIR/config.toml"`)
 		require.Contains(t, mergeConfig.Args[1], `config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CONFIG_DIR/app.toml`)
@@ -505,7 +509,7 @@ gaiad start --home /home/operator/cosmos`
 		require.Equal(t, "/foo", extraVol[0].MountPath)
 
 		initConts := lo.SliceToMap(pod.Spec.InitContainers, func(c corev1.Container) (string, corev1.Container) { return c.Name, c })
-		require.ElementsMatch(t, []string{"chain-init", "new-init", "genesis-init", "config-merge"}, lo.Keys(initConts))
+		require.ElementsMatch(t, []string{"fresh-init", "chain-init", "new-init", "genesis-init", "config-merge"}, lo.Keys(initConts))
 		require.Equal(t, "foo:latest", initConts["chain-init"].Image)
 	})
 }
