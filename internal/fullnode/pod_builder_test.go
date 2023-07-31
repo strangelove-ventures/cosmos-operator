@@ -509,7 +509,7 @@ gaiad start --home /home/operator/cosmos`
 		require.Equal(t, "/foo", extraVol[0].MountPath)
 
 		initConts := lo.SliceToMap(pod.Spec.InitContainers, func(c corev1.Container) (string, corev1.Container) { return c.Name, c })
-		require.ElementsMatch(t, []string{"fresh-init", "chain-init", "new-init", "genesis-init", "config-merge"}, lo.Keys(initConts))
+		require.ElementsMatch(t, []string{"clean-init", "chain-init", "new-init", "genesis-init", "config-merge"}, lo.Keys(initConts))
 		require.Equal(t, "foo:latest", initConts["chain-init"].Image)
 	})
 }
