@@ -213,7 +213,7 @@ func TestCacheController_SyncedPods(t *testing.T) {
 
 	key := client.ObjectKey{Name: name, Namespace: namespace}
 	require.Eventually(t, func() bool {
-		return len(controller.Collect(ctx, key)) > 0
+		return len(controller.Collect(ctx, key)) == 1
 	}, time.Second, time.Millisecond)
 
 	readyStatus := corev1.PodStatus{Conditions: []corev1.PodCondition{
