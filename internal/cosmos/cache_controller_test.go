@@ -212,8 +212,12 @@ func TestCacheController_SyncedPods(t *testing.T) {
 	require.NoError(t, err)
 
 	key := client.ObjectKey{Name: name, Namespace: namespace}
+	// Wait until we've fetched comet status in the background and cached it.
 	require.Eventually(t, func() bool {
-		return len(controller.Collect(ctx, key)) == 1
+		p := controller.Collect(ctx, key)
+		l := len(p)
+		_, e := p[0].GetStatus()
+		return l == 1 && e == nil
 	}, time.Second, time.Millisecond)
 
 	readyStatus := corev1.PodStatus{Conditions: []corev1.PodCondition{
