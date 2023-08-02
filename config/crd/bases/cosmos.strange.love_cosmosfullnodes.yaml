@@ -5610,12 +5610,55 @@ spec:
                   exchange.
                 properties:
                   maxP2PExternalAddresses:
-                    description: MaxSize number of p2p services to create for CometBFT
-                      peer exchange. The public endpoint is set as the "p2p.external_address"
-                      in the config.toml. If not set, defaults to 1.
+                    description: Max number of external p2p services to create for
+                      CometBFT peer exchange. The public endpoint is set as the "p2p.external_address"
+                      in the config.toml. Controller creates p2p services for each
+                      pod so that every pod can peer with each other internally in
+                      the cluster. This setting allows you to control the number of
+                      p2p services exposed for peers outside of the cluster to use.
+                      If not set, defaults to 1.
                     format: int32
                     minimum: 0
                     type: integer
+                  p2pTemplate:
+                    description: Overrides for all P2P services that need external
+                      addresses.
+                    properties:
+                      externalTrafficPolicy:
+                        description: 'Sets endpoint and routing behavior. See: https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/#caveats-and-limitations-when-preserving-source-ips
+                          If not set, defaults to "Cluster".'
+                        enum:
+                        - Cluster
+                        - Local
+                        type: string
+                      metadata:
+                        description: Metadata is a subset of k8s object metadata.
+                        properties:
+                          annotations:
+                            additionalProperties:
+                              type: string
+                            description: Annotations are added to a resource. If there
+                              is a collision between annotations the Operator creates,
+                              the Operator annotations take precedence.
+                            type: object
+                          labels:
+                            additionalProperties:
+                              type: string
+                            description: Labels are added to a resource. If there
+                              is a collision between labels the Operator creates,
+                              the Operator labels take precedence.
+                            type: object
+                        type: object
+                      type:
+                        description: Describes ingress methods for a service. If not
+                          set, defaults to "ClusterIP".
+                        enum:
+                        - ClusterIP
+                        - NodePort
+                        - LoadBalancer
+                        - ExternalName
+                        type: string
+                    type: object
                   rpcTemplate:
                     description: Overrides for the single RPC service.
                     properties:
