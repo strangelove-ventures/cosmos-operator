@@ -99,6 +99,14 @@ spec:
   service:
     # Creates N LoadBalancer services and exposes those public IPs in p2p.
     maxP2PExternalAddresses: 1
+    # Configures all p2p services that need external addresses.
+    p2pTemplate:
+      metadata:
+        labels:
+          extra: labels
+        annotations:
+          extra: annotations
+      type: NodePort
     # Configures the main service that load balances all RPC ports. Custom configuration likely necessary for Ingress.
     rpcTemplate:
       metadata:

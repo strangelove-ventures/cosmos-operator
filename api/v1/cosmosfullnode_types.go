@@ -635,20 +635,26 @@ const (
 )
 
 type ServiceSpec struct {
-	// MaxSize number of p2p services to create for CometBFT peer exchange.
+	// Max number of external p2p services to create for CometBFT peer exchange.
 	// The public endpoint is set as the "p2p.external_address" in the config.toml.
+	// Controller creates p2p services for each pod so that every pod can peer with each other internally in the cluster.
+	// This setting allows you to control the number of p2p services exposed for peers outside of the cluster to use.
 	// If not set, defaults to 1.
 	// +kubebuilder:validation:Minimum:=0
 	// +optional
 	MaxP2PExternalAddresses *int32 `json:"maxP2PExternalAddresses"`
 
+	// Overrides for all P2P services that need external addresses.
+	// +optional
+	P2PTemplate ServiceOverridesSpec `json:"p2pTemplate"`
+
 	// Overrides for the single RPC service.
 	// +optional
-	RPCTemplate RPCServiceSpec `json:"rpcTemplate"`
+	RPCTemplate ServiceOverridesSpec `json:"rpcTemplate"`
 }
 
-// RPCServiceSpec allows some overrides for the created, single RPC service.
-type RPCServiceSpec struct {
+// ServiceOverridesSpec allows some overrides for the created, single RPC service.
+type ServiceOverridesSpec struct {
 	// +optional
 	Metadata Metadata `json:"metadata"`
 

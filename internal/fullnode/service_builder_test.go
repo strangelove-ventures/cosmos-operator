@@ -25,7 +25,7 @@ func TestBuildServices(t *testing.T) {
 		crd.Namespace = "test"
 		crd.Spec.ChainSpec.Network = "testnet"
 		crd.Spec.PodTemplate.Image = "terra:v6.0.0"
-		crd.Spec.Service.MaxP2PExternalAddresses = ptr(int32(0))
+
 		svcs := BuildServices(&crd)
 
 		require.Equal(t, 4, len(svcs)) // 3 p2p services + 1 rpc service
@@ -57,6 +57,11 @@ func TestBuildServices(t *testing.T) {
 				Selector: map[string]string{"app.kubernetes.io/instance": fmt.Sprintf("terra-%d", i)},
 				Type:     corev1.ServiceTypeClusterIP,
 			}
+			// By default, expose the first p2p service publicly.
+			if i == 0 {
+				wantSpec.Type = corev1.ServiceTypeLoadBalancer
+				wantSpec.ExternalTrafficPolicy = corev1.ServiceExternalTrafficPolicyTypeLocal
+			}
 
 			require.Equal(t, wantSpec, p2p.Spec)
 		}
@@ -83,6 +88,79 @@ func TestBuildServices(t *testing.T) {
 		got := gotP2P[2].Object()
 		require.Equal(t, corev1.ServiceTypeClusterIP, got.Spec.Type)
 		require.Empty(t, got.Spec.ExternalTrafficPolicy)
+	})
+
+	t.Run("zero p2p max external addresses", func(t *testing.T) {
+		crd := defaultCRD()
+		crd.Spec.Replicas = 3
+		crd.Spec.Service.MaxP2PExternalAddresses = ptr(int32(0))
+		// These overrides should be ignored.
+		crd.Spec.Service.P2PTemplate = cosmosv1.ServiceOverridesSpec{
+			Metadata: cosmosv1.Metadata{
+				Labels: map[string]string{"test": "should not see me"},
+			},
+			Type:                  ptr(corev1.ServiceTypeNodePort),
+			ExternalTrafficPolicy: ptr(corev1.ServiceExternalTrafficPolicyTypeLocal),
+		}
+
+		svcs := BuildServices(&crd)
+
+		gotP2P := lo.Filter(svcs, func(s diff.Resource[*corev1.Service], _ int) bool {
+			return s.Object().Labels[kube.ComponentLabel] == "p2p"
+		})
+
+		require.Equal(t, 3, len(gotP2P))
+		for i, svc := range gotP2P {
+			p2p := svc.Object()
+			require.Empty(t, p2p.Labels["test"])
+			require.Equal(t, corev1.ServiceTypeClusterIP, p2p.Spec.Type, i)
+			require.Empty(t, p2p.Spec.ExternalTrafficPolicy, i)
+		}
+	})
+
+	t.Run("p2p services with overrides", func(t *testing.T) {
+		crd := defaultCRD()
+		crd.Spec.Replicas = 2
+		crd.Name = "terra"
+		crd.Spec.Service.MaxP2PExternalAddresses = ptr(int32(2))
+		crd.Spec.Service.P2PTemplate = cosmosv1.ServiceOverridesSpec{
+			Metadata: cosmosv1.Metadata{
+				Labels:      map[string]string{"test": "value1", "app.kubernetes.io/name": "should not see me"},
+				Annotations: map[string]string{"test": "value2", "app.kubernetes.io/ordinal": "should not see me"},
+			},
+			Type:                  ptr(corev1.ServiceTypeNodePort),
+			ExternalTrafficPolicy: ptr(corev1.ServiceExternalTrafficPolicyTypeLocal),
+		}
+		svcs := BuildServices(&crd)
+
+		require.Equal(t, 3, len(svcs)) // 2 p2p services + 1 rpc service
+
+		for i, svc := range svcs[:2] {
+			p2p := svc.Object()
+			require.Equal(t, fmt.Sprintf("terra-p2p-%d", i), p2p.Name)
+
+			require.Equal(t, "value1", p2p.Labels["test"])
+			require.NotEqual(t, "should not see me", p2p.Labels["app.kubernetes.io/name"])
+
+			require.Equal(t, "value2", p2p.Annotations["test"])
+			require.NotEqual(t, "should not see me", p2p.Labels["app.kubernetes.io/ordinal"])
+
+			wantSpec := corev1.ServiceSpec{
+				Ports: []corev1.ServicePort{
+					{
+						Name:       "p2p",
+						Protocol:   corev1.ProtocolTCP,
+						Port:       26656,
+						TargetPort: intstr.FromString("p2p"),
+					},
+				},
+				Selector:              map[string]string{"app.kubernetes.io/instance": fmt.Sprintf("terra-%d", i)},
+				Type:                  corev1.ServiceTypeNodePort,
+				ExternalTrafficPolicy: corev1.ServiceExternalTrafficPolicyTypeLocal,
+			}
+
+			require.Equal(t, wantSpec, p2p.Spec)
+		}
 	})
 
 	t.Run("rpc service", func(t *testing.T) {
@@ -156,7 +234,7 @@ func TestBuildServices(t *testing.T) {
 		crd.Namespace = "test"
 		crd.Spec.ChainSpec.Network = "testnet"
 		crd.Spec.PodTemplate.Image = "terra:v6.0.0"
-		crd.Spec.Service.RPCTemplate = cosmosv1.RPCServiceSpec{
+		crd.Spec.Service.RPCTemplate = cosmosv1.ServiceOverridesSpec{
 			Metadata: cosmosv1.Metadata{
 				Labels:      map[string]string{"label": "value", "app.kubernetes.io/name": "should not see me"},
 				Annotations: map[string]string{"test": "value"},
