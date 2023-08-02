@@ -44,6 +44,7 @@ func BuildServices(crd *cosmosv1.CosmosFullNode) []diff.Resource[*corev1.Service
 			kube.InstanceLabel, instanceName(crd, ordinal),
 			kube.ComponentLabel, "p2p",
 		)
+		svc.Annotations = map[string]string{}
 
 		svc.Spec.Ports = []corev1.ServicePort{
 			{
@@ -56,8 +57,10 @@ func BuildServices(crd *cosmosv1.CosmosFullNode) []diff.Resource[*corev1.Service
 		svc.Spec.Selector = map[string]string{kube.InstanceLabel: instanceName(crd, ordinal)}
 
 		if i < maxExternal {
-			svc.Spec.Type = corev1.ServiceTypeLoadBalancer
-			svc.Spec.ExternalTrafficPolicy = corev1.ServiceExternalTrafficPolicyTypeLocal
+			preserveMergeInto(svc.Labels, crd.Spec.Service.P2PTemplate.Metadata.Labels)
+			preserveMergeInto(svc.Annotations, crd.Spec.Service.P2PTemplate.Metadata.Annotations)
+			svc.Spec.Type = *valOrDefault(crd.Spec.Service.P2PTemplate.Type, ptr(corev1.ServiceTypeLoadBalancer))
+			svc.Spec.ExternalTrafficPolicy = *valOrDefault(crd.Spec.Service.P2PTemplate.ExternalTrafficPolicy, ptr(corev1.ServiceExternalTrafficPolicyTypeLocal))
 		} else {
 			svc.Spec.Type = corev1.ServiceTypeClusterIP
 		}
