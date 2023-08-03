@@ -165,7 +165,7 @@ func (c *CacheController) Collect(ctx context.Context, controller client.ObjectK
 
 // SyncedPods returns only the pods that are ready and in sync (i.e. caught up with chain tip).
 func (c *CacheController) SyncedPods(ctx context.Context, controller client.ObjectKey) []*corev1.Pod {
-	return kube.AvailablePods(c.Collect(ctx, controller).Pods(), 5*time.Second, time.Now())
+	return kube.AvailablePods(c.Collect(ctx, controller).SyncedPods(), 5*time.Second, time.Now())
 }
 
 func (c *CacheController) listPods(ctx context.Context, controller client.ObjectKey) ([]corev1.Pod, error) {

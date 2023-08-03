@@ -194,6 +194,7 @@ func TestCacheController_SyncedPods(t *testing.T) {
 	collector.StubCollection = StatusCollection{
 		{Pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{UID: "1"}}},
 		{Pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{UID: "2"}}, Status: catchingUp},
+		{Pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{UID: "3"}}},
 		{Pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{UID: "should not see me"}}, Status: catchingUp},
 	}
 
@@ -211,16 +212,22 @@ func TestCacheController_SyncedPods(t *testing.T) {
 	require.NoError(t, err)
 
 	key := client.ObjectKey{Name: name, Namespace: namespace}
+	// Wait until we've fetched comet status in the background and cached it.
 	require.Eventually(t, func() bool {
-		return len(controller.Collect(ctx, key)) > 0
+		p := controller.Collect(ctx, key)
+		l := len(p)
+		_, e := p[0].GetStatus()
+		return l == 1 && e == nil
 	}, time.Second, time.Millisecond)
 
 	readyStatus := corev1.PodStatus{Conditions: []corev1.PodCondition{
 		{Type: corev1.PodReady, Status: corev1.ConditionTrue, LastTransitionTime: metav1.NewTime(time.Now().Add(-5 * time.Second))}},
 	}
+
 	pods = []corev1.Pod{
 		{ObjectMeta: metav1.ObjectMeta{UID: "1"}, Status: readyStatus},
-		{ObjectMeta: metav1.ObjectMeta{UID: "2"}},
+		{ObjectMeta: metav1.ObjectMeta{UID: "2"}, Status: readyStatus},
+		{ObjectMeta: metav1.ObjectMeta{UID: "3"}}, // not ready
 		{ObjectMeta: metav1.ObjectMeta{UID: "new"}},
 	}
 
@@ -230,9 +237,9 @@ func TestCacheController_SyncedPods(t *testing.T) {
 
 	gotColl := controller.Collect(ctx, key)
 	uids := lo.Map(gotColl, func(item StatusItem, _ int) string { return string(item.Pod.UID) })
-	require.Equal(t, []string{"1", "2", "new"}, uids)
+	require.Equal(t, []string{"1", "2", "3", "new"}, uids)
 
-	_, err = gotColl[2].GetStatus()
+	_, err = gotColl[3].GetStatus()
 	require.Error(t, err)
 	require.EqualError(t, err, "missing status")
 
