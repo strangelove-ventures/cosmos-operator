@@ -21,7 +21,7 @@ thus minimizing human intervention and human error.
 
 # Disclaimers
 
-* Only tested on Google's GKE. Although kubernetes is portable, we cannot guarantee or provide support for AWS, Azure, or other kubernetes providers.
+* Tested on Google's GKE and Bare-metal with Kubeadm. Although kubernetes is portable, we cannot guarantee or provide support for AWS, Azure, or other kubernetes providers.
 * Requires a recent version of kubernetes: v1.23+.
 * CosmosFullNode: The chain must be built from the [Cosmos SDK](https://github.com/cosmos/cosmos-sdk).
 * CosmosFullNode: Validator sentries require a remote signer such as [horcrux](https://github.com/strangelove-ventures/horcrux).
