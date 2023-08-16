@@ -26,7 +26,7 @@ thus minimizing human intervention and human error.
 * CosmosFullNode: The chain must be built from the [Cosmos SDK](https://github.com/cosmos/cosmos-sdk).
 * CosmosFullNode: Validator sentries require a remote signer such as [horcrux](https://github.com/strangelove-ventures/horcrux).
 * CosmosFullNode: The controller requires [heighliner](https://github.com/strangelove-ventures/heighliner) images. If you build your own image, you will need a shell `sh` and set the uid:gid to 1025:1025. If running as a validator sentry, you need `sleep` as well.
-* CosmosFullNode: May not work with Cosmos chains. (Some chains diverge from common conventions and best practices.)
+* CosmosFullNode: May not work for all Cosmos chains. (Some chains diverge from common conventions and best practices.)
 
 # CosmosFullNode CRD
 
@@ -39,7 +39,7 @@ The CosmosFullNode controller is like a StatefulSet for running Cosmos SDK block
 A CosmosFullNode can be configured to run as an RPC node, a validator sentry, or a seed node. All configurations can
 be used as persistent peers.
 
-As of this writing, Strangelove has been running CosmosFullNode in production for several months.
+As of this writing, Strangelove has been running CosmosFullNode in production for many months.
 
 [Minimal example yaml](./config/samples/cosmos_v1_cosmosfullnode.yaml)
 
