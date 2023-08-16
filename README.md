@@ -26,7 +26,7 @@ thus minimizing human intervention and human error.
 * CosmosFullNode: The chain must be built from the [Cosmos SDK](https://github.com/cosmos/cosmos-sdk).
 * CosmosFullNode: Validator sentries require a remote signer such as [horcrux](https://github.com/strangelove-ventures/horcrux).
 * CosmosFullNode: The controller requires [heighliner](https://github.com/strangelove-ventures/heighliner) images. If you build your own image, you will need a shell `sh` and set the uid:gid to 1025:1025. If running as a validator sentry, you need `sleep` as well.
-* CosmosFullNode: May not work for all Cosmos chains. (Some chains diverge from common conventions and best practices.)
+* CosmosFullNode: May not work for all Cosmos chains. (Some chains diverge from common conventions.) Strangelove has yet to encounter a Cosmos chain that does not work with this operator.
 
 # CosmosFullNode CRD
 
