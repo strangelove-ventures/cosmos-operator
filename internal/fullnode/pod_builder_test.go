@@ -222,7 +222,7 @@ func TestPodBuilder(t *testing.T) {
 		require.Equal(t, startContainer.Env[3].Value, "/home/operator/cosmos/config")
 		require.Equal(t, startContainer.Env[4].Name, "DATA_DIR")
 		require.Equal(t, startContainer.Env[4].Value, "/home/operator/cosmos/data")
-		require.Equal(t, envVars, startContainer.Env)
+		require.Equal(t, envVars(&crd), startContainer.Env)
 
 		healthContainer := pod.Spec.Containers[1]
 		require.Equal(t, "healthcheck", healthContainer.Name)
@@ -252,7 +252,7 @@ func TestPodBuilder(t *testing.T) {
 		}))
 
 		for _, c := range pod.Spec.InitContainers {
-			require.Equal(t, envVars, startContainer.Env, c.Name)
+			require.Equal(t, envVars(&crd), startContainer.Env, c.Name)
 			require.Equal(t, wantWrkDir, c.WorkingDir)
 		}
 
@@ -512,6 +512,14 @@ gaiad start --home /home/operator/cosmos`
 		require.ElementsMatch(t, []string{"clean-init", "chain-init", "new-init", "genesis-init", "config-merge"}, lo.Keys(initConts))
 		require.Equal(t, "foo:latest", initConts["chain-init"].Image)
 	})
+}
+
+func TestChainHomeDir(t *testing.T) {
+	crd := defaultCRD()
+	require.Equal(t, "/home/operator/cosmos", ChainHomeDir(&crd))
+
+	crd.Spec.ChainSpec.HomeDir = ".gaia"
+	require.Equal(t, "/home/operator/.gaia", ChainHomeDir(&crd))
 }
 
 func TestPVCName(t *testing.T) {
