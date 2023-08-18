@@ -24,7 +24,7 @@ func NewClient(client *http.Client) *Client {
 
 // DiskUsage returns disk usage statistics or an error if unable to obtain.
 // Do not include the port in the host.
-func (c Client) DiskUsage(ctx context.Context, host string) (DiskUsageResponse, error) {
+func (c Client) DiskUsage(ctx context.Context, host, homeDir string) (DiskUsageResponse, error) {
 	var diskResp DiskUsageResponse
 	u, err := url.Parse(host)
 	if err != nil {
@@ -37,6 +37,11 @@ func (c Client) DiskUsage(ctx context.Context, host string) (DiskUsageResponse, 
 	if err != nil {
 		return diskResp, fmt.Errorf("new request: %w", err)
 	}
+
+	q := req.URL.Query()
+	q.Set("dir", homeDir)
+	req.URL.RawQuery = q.Encode()
+
 	resp, err := c.httpDo(req)
 	if err != nil {
 		return diskResp, fmt.Errorf("http do: %w", err)
