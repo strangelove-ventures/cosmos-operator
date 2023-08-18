@@ -415,12 +415,11 @@ type ChainSpec struct {
 	// +kubebuilder:validation:MinLength:=1
 	Binary string `json:"binary"`
 
-	// The chain's home directory where the chain's data and config is stored.
+	// The chain's home directory is where the chain's data and config is stored.
 	// This should be a single folder. E.g. .gaia, .dydxprotocol, .osmosisd, etc.
 	// Set via --home flag when running the binary.
 	// If empty, defaults to "cosmos" which translates to `chain start --home /home/operator/cosmos`.
-	// Historically, several chains do not respect the --home flag or introduce bugs which forces use
-	// of the default home directory.
+	// Historically, several chains do not respect the --home and save data outside --home which crashes the pods.
 	// Therefore, this option was introduced to mitigate those edge cases, so that you can specify the home directory
 	// to match the chain's default home dir.
 	// +optional
