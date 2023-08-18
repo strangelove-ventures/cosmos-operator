@@ -269,6 +269,38 @@ func TestPodBuilder(t *testing.T) {
 		require.Contains(t, mergeConfig.Args[1], `config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CONFIG_DIR/app.toml`)
 	})
 
+	t.Run("containers - configured home dir", func(t *testing.T) {
+		crd := defaultCRD()
+		crd.Spec.ChainSpec.HomeDir = ".osmosisd"
+		builder := NewPodBuilder(&crd)
+		pod, err := builder.WithOrdinal(6).Build()
+		require.NoError(t, err)
+
+		require.Len(t, pod.Spec.Containers, 2)
+
+		container := pod.Spec.Containers[0]
+		require.Equal(t, "node", container.Name)
+		require.Empty(t, container.ImagePullPolicy)
+		require.Equal(t, crd.Spec.PodTemplate.Resources, container.Resources)
+
+		require.Equal(t, container.Env[0].Name, "HOME")
+		require.Equal(t, container.Env[0].Value, "/home/operator")
+		require.Equal(t, container.Env[1].Name, "CHAIN_HOME")
+		require.Equal(t, container.Env[1].Value, "/home/operator/.osmosisd")
+		require.Equal(t, container.Env[2].Name, "GENESIS_FILE")
+		require.Equal(t, container.Env[2].Value, "/home/operator/.osmosisd/config/genesis.json")
+		require.Equal(t, container.Env[3].Name, "CONFIG_DIR")
+		require.Equal(t, container.Env[3].Value, "/home/operator/.osmosisd/config")
+		require.Equal(t, container.Env[4].Name, "DATA_DIR")
+		require.Equal(t, container.Env[4].Value, "/home/operator/.osmosisd/data")
+
+		require.NotEmpty(t, pod.Spec.InitContainers)
+
+		for _, c := range pod.Spec.InitContainers {
+			require.Equal(t, container.Env, c.Env, c.Name)
+		}
+	})
+
 	t.Run("volumes", func(t *testing.T) {
 		crd := defaultCRD()
 		builder := NewPodBuilder(&crd)
