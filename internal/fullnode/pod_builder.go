@@ -62,6 +62,7 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 				FSGroupChangePolicy: ptr(corev1.FSGroupChangeOnRootMismatch),
 				SeccompProfile:      &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
 			},
+			Subdomain: crd.Name,
 			Containers: []corev1.Container{
 				// Main start container.
 				{
@@ -176,6 +177,7 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 
 	pod.Name = name
 	pod.Spec.InitContainers = initContainers(b.crd, name)
+	pod.Spec.Hostname = pod.Name
 
 	pod.Spec.Volumes = []corev1.Volume{
 		{
