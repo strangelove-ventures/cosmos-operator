@@ -19,6 +19,8 @@ func BuildPods(crd *cosmosv1.CosmosFullNode, cksums ConfigChecksums) ([]diff.Res
 	candidates := podCandidates(crd)
 	for i := int32(0); i < crd.Spec.Replicas; i++ {
 		pod, err := builder.WithOrdinal(i).Build()
+		pod.Spec.Hostname = pod.Name
+		pod.Spec.Subdomain = crd.Name
 		if err != nil {
 			return nil, err
 		}
