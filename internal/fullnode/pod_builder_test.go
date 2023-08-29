@@ -384,6 +384,8 @@ func TestPodBuilder(t *testing.T) {
 	})
 
 	t.Run("start container command", func(t *testing.T) {
+		const defaultHome = "/home/operator/cosmos"
+
 		cmdCrd := defaultCRD()
 		cmdCrd.Spec.ChainSpec.Binary = "gaiad"
 		cmdCrd.Spec.PodTemplate.Image = "ghcr.io/cosmoshub:v1.2.3"
@@ -395,7 +397,7 @@ func TestPodBuilder(t *testing.T) {
 		require.Equal(t, "ghcr.io/cosmoshub:v1.2.3", c.Image)
 
 		require.Equal(t, []string{"gaiad"}, c.Command)
-		require.Equal(t, []string{"start", "--home", `"$CHAIN_HOME"`}, c.Args)
+		require.Equal(t, []string{"start", "--home", defaultHome}, c.Args)
 
 		cmdCrd.Spec.ChainSpec.SkipInvariants = true
 		pod, err = NewPodBuilder(&cmdCrd).WithOrdinal(1).Build()
@@ -403,7 +405,7 @@ func TestPodBuilder(t *testing.T) {
 		c = pod.Spec.Containers[0]
 
 		require.Equal(t, []string{"gaiad"}, c.Command)
-		require.Equal(t, []string{"start", "--home", `"$CHAIN_HOME"`, "--x-crisis-skip-assert-invariants"}, c.Args)
+		require.Equal(t, []string{"start", "--home", defaultHome, "--x-crisis-skip-assert-invariants"}, c.Args)
 
 		cmdCrd.Spec.ChainSpec.LogLevel = ptr("debug")
 		cmdCrd.Spec.ChainSpec.LogFormat = ptr("json")
@@ -411,7 +413,14 @@ func TestPodBuilder(t *testing.T) {
 		require.NoError(t, err)
 		c = pod.Spec.Containers[0]
 
-		require.Equal(t, []string{"start", "--home", `"$CHAIN_HOME"`, "--x-crisis-skip-assert-invariants", "--log_level", "debug", "--log_format", "json"}, c.Args)
+		require.Equal(t, []string{"start", "--home", defaultHome, "--x-crisis-skip-assert-invariants", "--log_level", "debug", "--log_format", "json"}, c.Args)
+
+		cmdCrd.Spec.ChainSpec.HomeDir = ".other"
+		pod, err = NewPodBuilder(&cmdCrd).WithOrdinal(1).Build()
+		require.NoError(t, err)
+
+		c = pod.Spec.Containers[0]
+		require.Equal(t, []string{"start", "--home", "/home/operator/.other", "--x-crisis-skip-assert-invariants", "--log_level", "debug", "--log_format", "json"}, c.Args)
 	})
 
 	t.Run("sentry start container command ", func(t *testing.T) {
@@ -425,7 +434,7 @@ func TestPodBuilder(t *testing.T) {
 
 		require.Equal(t, []string{"sh"}, c.Command)
 		const wantBody1 = `sleep 10
-gaiad start --home "$CHAIN_HOME"`
+gaiad start --home /home/operator/cosmos`
 		require.Equal(t, []string{"-c", wantBody1}, c.Args)
 
 		cmdCrd.Spec.ChainSpec.PrivvalSleepSeconds = ptr(int32(60))
@@ -434,7 +443,7 @@ gaiad start --home "$CHAIN_HOME"`
 		c = pod.Spec.Containers[0]
 
 		const wantBody2 = `sleep 60
-gaiad start --home "$CHAIN_HOME"`
+gaiad start --home /home/operator/cosmos`
 		require.Equal(t, []string{"-c", wantBody2}, c.Args)
 
 		cmdCrd.Spec.ChainSpec.PrivvalSleepSeconds = ptr(int32(0))
