@@ -11,11 +11,14 @@ import (
 func TestDiskUsage(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
 		var (
-			w       = httptest.NewRecorder()
-			r       = httptest.NewRequest("GET", "/ignored", nil)
-			handler = DiskUsage("/")
+			w = httptest.NewRecorder()
+			r = httptest.NewRequest("GET", "/ignored", nil)
 		)
-		handler(w, r)
+		q := r.URL.Query()
+		q.Set("dir", "/")
+		r.URL.RawQuery = q.Encode()
+
+		DiskUsage(w, r)
 
 		require.Equal(t, 200, w.Code)
 
@@ -32,13 +35,16 @@ func TestDiskUsage(t *testing.T) {
 	})
 
 	t.Run("statfs error", func(t *testing.T) {
-		const dir = "/this-directory-had-better-not-be-present-in-any-sort-of-test-environment\""
+		const dir = "/this-directory-had-better-not-be-present-in-any-sort-of-test-environment"
 		var (
-			w       = httptest.NewRecorder()
-			r       = httptest.NewRequest("GET", "/ignored", nil)
-			handler = DiskUsage(dir)
+			w = httptest.NewRecorder()
+			r = httptest.NewRequest("GET", "/ignored", nil)
 		)
-		handler(w, r)
+		q := r.URL.Query()
+		q.Set("dir", dir)
+		r.URL.RawQuery = q.Encode()
+
+		DiskUsage(w, r)
 
 		require.Equal(t, 500, w.Code)
 
@@ -48,6 +54,25 @@ func TestDiskUsage(t *testing.T) {
 
 		require.Equal(t, dir, got.Dir)
 		require.Equal(t, "no such file or directory", got.Error)
+		require.NotContains(t, w.Body.String(), "all_bytes")
+		require.NotContains(t, w.Body.String(), "free_bytes")
+	})
+
+	t.Run("missing dir", func(t *testing.T) {
+		var (
+			w = httptest.NewRecorder()
+			r = httptest.NewRequest("GET", "/", nil)
+		)
+
+		DiskUsage(w, r)
+
+		require.Equal(t, 400, w.Code)
+
+		var got DiskUsageResponse
+		err := json.Unmarshal(w.Body.Bytes(), &got)
+		require.NoError(t, err)
+
+		require.Equal(t, "query param dir must be specified", got.Error)
 		require.NotContains(t, w.Body.String(), "all_bytes")
 		require.NotContains(t, w.Body.String(), "free_bytes")
 	})

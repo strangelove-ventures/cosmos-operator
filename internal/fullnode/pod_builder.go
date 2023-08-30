@@ -72,7 +72,7 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 					//Args:    []string{"-c", `trap : TERM INT; sleep infinity & wait`},
 					Command:         []string{startCmd},
 					Args:            startArgs,
-					Env:             envVars,
+					Env:             envVars(crd),
 					Ports:           buildPorts(crd.Spec.Type),
 					Resources:       tpl.Resources,
 					ReadinessProbe:  probes[0],
@@ -223,7 +223,7 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 
 	// Mounts required by all containers.
 	mounts := []corev1.VolumeMount{
-		{Name: volChainHome, MountPath: ChainHomeDir},
+		{Name: volChainHome, MountPath: ChainHomeDir(b.crd)},
 		{Name: volSystemTmp, MountPath: systemTmpDir},
 	}
 	// Additional mounts only needed for init containers.
@@ -236,11 +236,11 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 
 	// At this point, guaranteed to have at least 2 containers.
 	pod.Spec.Containers[0].VolumeMounts = append(mounts, corev1.VolumeMount{
-		Name: volNodeKey, MountPath: path.Join(ChainHomeDir, "config", nodeKeyFile), SubPath: nodeKeyFile,
+		Name: volNodeKey, MountPath: path.Join(ChainHomeDir(b.crd), "config", nodeKeyFile), SubPath: nodeKeyFile,
 	})
 	pod.Spec.Containers[1].VolumeMounts = []corev1.VolumeMount{
 		// The healthcheck sidecar needs access to the home directory so it can read disk usage.
-		{Name: volChainHome, MountPath: ChainHomeDir, ReadOnly: true},
+		{Name: volChainHome, MountPath: ChainHomeDir(b.crd), ReadOnly: true},
 	}
 
 	b.pod = pod
@@ -248,10 +248,7 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 }
 
 const (
-	workDir = "/home/operator"
-	// ChainHomeDir is the abs filepath for the chain's home directory.
-	ChainHomeDir = workDir + "/cosmos"
-
+	workDir        = "/home/operator"
 	tmpDir         = workDir + "/.tmp"
 	tmpConfigDir   = workDir + "/.config"
 	infraToolImage = "ghcr.io/strangelove-ventures/infra-toolkit:v0.0.1"
@@ -260,20 +257,30 @@ const (
 	systemTmpDir = "/tmp"
 )
 
-var (
-	envVars = []corev1.EnvVar{
-		{Name: "HOME", Value: workDir},
-		{Name: "CHAIN_HOME", Value: ChainHomeDir},
-		{Name: "GENESIS_FILE", Value: path.Join(ChainHomeDir, "config", "genesis.json")},
-		{Name: "CONFIG_DIR", Value: path.Join(ChainHomeDir, "config")},
-		{Name: "DATA_DIR", Value: path.Join(ChainHomeDir, "data")},
+// ChainHomeDir is the abs filepath for the chain's home directory.
+func ChainHomeDir(crd *cosmosv1.CosmosFullNode) string {
+	if home := crd.Spec.ChainSpec.HomeDir; home != "" {
+		return path.Join(workDir, home)
 	}
-)
+	return workDir + "/cosmos"
+}
+
+func envVars(crd *cosmosv1.CosmosFullNode) []corev1.EnvVar {
+	home := ChainHomeDir(crd)
+	return []corev1.EnvVar{
+		{Name: "HOME", Value: workDir},
+		{Name: "CHAIN_HOME", Value: home},
+		{Name: "GENESIS_FILE", Value: path.Join(home, "config", "genesis.json")},
+		{Name: "CONFIG_DIR", Value: path.Join(home, "config")},
+		{Name: "DATA_DIR", Value: path.Join(home, "data")},
+	}
+}
 
 func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Container {
 	tpl := crd.Spec.PodTemplate
 	binary := crd.Spec.ChainSpec.Binary
 	genesisCmd, genesisArgs := DownloadGenesisCommand(crd.Spec.ChainSpec)
+	env := envVars(crd)
 
 	initCmd := fmt.Sprintf("%s init %s --chain-id %s", binary, moniker, crd.Spec.ChainSpec.ChainID)
 	required := []corev1.Container{
@@ -282,7 +289,7 @@ func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Conta
 			Image:           infraToolImage,
 			Command:         []string{"sh"},
 			Args:            []string{"-c", `rm -rf "$HOME/.tmp/*"`},
-			Env:             envVars,
+			Env:             env,
 			ImagePullPolicy: tpl.ImagePullPolicy,
 			WorkingDir:      workDir,
 		},
@@ -304,7 +311,7 @@ echo "Initializing into tmp dir for downstream processing..."
 %s --home "$HOME/.tmp"
 `, initCmd, initCmd),
 			},
-			Env:             envVars,
+			Env:             env,
 			ImagePullPolicy: tpl.ImagePullPolicy,
 			WorkingDir:      workDir,
 		},
@@ -314,7 +321,7 @@ echo "Initializing into tmp dir for downstream processing..."
 			Image:           infraToolImage,
 			Command:         []string{genesisCmd},
 			Args:            genesisArgs,
-			Env:             envVars,
+			Env:             env,
 			ImagePullPolicy: tpl.ImagePullPolicy,
 			WorkingDir:      workDir,
 		},
@@ -342,7 +349,7 @@ config-merge -f toml "$TMP_DIR/config.toml" "$OVERLAY_DIR/config-overlay.toml" >
 config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CONFIG_DIR/app.toml"
 `,
 			},
-			Env:             envVars,
+			Env:             env,
 			ImagePullPolicy: tpl.ImagePullPolicy,
 			WorkingDir:      workDir,
 		},
@@ -355,7 +362,7 @@ config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CON
 			Image:           infraToolImage,
 			Command:         []string{cmd},
 			Args:            args,
-			Env:             envVars,
+			Env:             env,
 			ImagePullPolicy: tpl.ImagePullPolicy,
 			WorkingDir:      workDir,
 		})
@@ -367,7 +374,7 @@ config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CON
 func startCmdAndArgs(crd *cosmosv1.CosmosFullNode) (string, []string) {
 	var (
 		binary             = crd.Spec.ChainSpec.Binary
-		args               = startCommandArgs(crd.Spec.ChainSpec)
+		args               = startCommandArgs(crd)
 		privvalSleep int32 = 10
 	)
 	if v := crd.Spec.ChainSpec.PrivvalSleepSeconds; v != nil {
@@ -383,8 +390,9 @@ func startCmdAndArgs(crd *cosmosv1.CosmosFullNode) (string, []string) {
 	return binary, args
 }
 
-func startCommandArgs(cfg cosmosv1.ChainSpec) []string {
-	args := []string{"start", "--home", ChainHomeDir}
+func startCommandArgs(crd *cosmosv1.CosmosFullNode) []string {
+	args := []string{"start", "--home", ChainHomeDir(crd)}
+	cfg := crd.Spec.ChainSpec
 	if cfg.SkipInvariants {
 		args = append(args, "--x-crisis-skip-assert-invariants")
 	}
