@@ -18,7 +18,7 @@ require (
 	go.uber.org/goleak v1.2.1
 	go.uber.org/zap v1.24.0
 	golang.org/x/exp v0.0.0-20220921164117-439092de6870
-	golang.org/x/sync v0.1.0
+	golang.org/x/sync v0.3.0
 	k8s.io/api v0.25.5
 	k8s.io/apimachinery v0.25.5
 	k8s.io/client-go v0.25.5
