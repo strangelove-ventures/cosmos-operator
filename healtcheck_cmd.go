@@ -10,7 +10,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/strangelove-ventures/cosmos-operator/internal/cosmos"
-	"github.com/strangelove-ventures/cosmos-operator/internal/fullnode"
 	"github.com/strangelove-ventures/cosmos-operator/internal/healthcheck"
 	"golang.org/x/sync/errgroup"
 )
@@ -49,14 +48,9 @@ func startHealthCheckServer(cmd *cobra.Command, args []string) error {
 	)
 	defer func() { _ = zlog.Sync() }()
 
-	var (
-		tm   = healthcheck.NewComet(logger, cometClient, rpcHost, timeout)
-		disk = healthcheck.DiskUsage(fullnode.ChainHomeDir)
-	)
-
 	mux := http.NewServeMux()
-	mux.Handle("/", tm)
-	mux.Handle("/disk", disk)
+	mux.Handle("/", healthcheck.NewComet(logger, cometClient, rpcHost, timeout))
+	mux.HandleFunc("/disk", healthcheck.DiskUsage)
 
 	srv := &http.Server{
 		Addr:         listenAddr,

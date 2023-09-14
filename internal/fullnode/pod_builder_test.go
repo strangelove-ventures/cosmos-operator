@@ -222,7 +222,7 @@ func TestPodBuilder(t *testing.T) {
 		require.Equal(t, startContainer.Env[3].Value, "/home/operator/cosmos/config")
 		require.Equal(t, startContainer.Env[4].Name, "DATA_DIR")
 		require.Equal(t, startContainer.Env[4].Value, "/home/operator/cosmos/data")
-		require.Equal(t, envVars, startContainer.Env)
+		require.Equal(t, envVars(&crd), startContainer.Env)
 
 		healthContainer := pod.Spec.Containers[1]
 		require.Equal(t, "healthcheck", healthContainer.Name)
@@ -252,7 +252,7 @@ func TestPodBuilder(t *testing.T) {
 		}))
 
 		for _, c := range pod.Spec.InitContainers {
-			require.Equal(t, envVars, startContainer.Env, c.Name)
+			require.Equal(t, envVars(&crd), startContainer.Env, c.Name)
 			require.Equal(t, wantWrkDir, c.WorkingDir)
 		}
 
@@ -267,6 +267,38 @@ func TestPodBuilder(t *testing.T) {
 		// The order of config-merge arguments is important. Rightmost takes precedence.
 		require.Contains(t, mergeConfig.Args[1], `config-merge -f toml "$TMP_DIR/config.toml" "$OVERLAY_DIR/config-overlay.toml" > "$CONFIG_DIR/config.toml"`)
 		require.Contains(t, mergeConfig.Args[1], `config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CONFIG_DIR/app.toml`)
+	})
+
+	t.Run("containers - configured home dir", func(t *testing.T) {
+		crd := defaultCRD()
+		crd.Spec.ChainSpec.HomeDir = ".osmosisd"
+		builder := NewPodBuilder(&crd)
+		pod, err := builder.WithOrdinal(6).Build()
+		require.NoError(t, err)
+
+		require.Len(t, pod.Spec.Containers, 2)
+
+		container := pod.Spec.Containers[0]
+		require.Equal(t, "node", container.Name)
+		require.Empty(t, container.ImagePullPolicy)
+		require.Equal(t, crd.Spec.PodTemplate.Resources, container.Resources)
+
+		require.Equal(t, container.Env[0].Name, "HOME")
+		require.Equal(t, container.Env[0].Value, "/home/operator")
+		require.Equal(t, container.Env[1].Name, "CHAIN_HOME")
+		require.Equal(t, container.Env[1].Value, "/home/operator/.osmosisd")
+		require.Equal(t, container.Env[2].Name, "GENESIS_FILE")
+		require.Equal(t, container.Env[2].Value, "/home/operator/.osmosisd/config/genesis.json")
+		require.Equal(t, container.Env[3].Name, "CONFIG_DIR")
+		require.Equal(t, container.Env[3].Value, "/home/operator/.osmosisd/config")
+		require.Equal(t, container.Env[4].Name, "DATA_DIR")
+		require.Equal(t, container.Env[4].Value, "/home/operator/.osmosisd/data")
+
+		require.NotEmpty(t, pod.Spec.InitContainers)
+
+		for _, c := range pod.Spec.InitContainers {
+			require.Equal(t, container.Env, c.Env, c.Name)
+		}
 	})
 
 	t.Run("volumes", func(t *testing.T) {
@@ -352,6 +384,8 @@ func TestPodBuilder(t *testing.T) {
 	})
 
 	t.Run("start container command", func(t *testing.T) {
+		const defaultHome = "/home/operator/cosmos"
+
 		cmdCrd := defaultCRD()
 		cmdCrd.Spec.ChainSpec.Binary = "gaiad"
 		cmdCrd.Spec.PodTemplate.Image = "ghcr.io/cosmoshub:v1.2.3"
@@ -363,7 +397,7 @@ func TestPodBuilder(t *testing.T) {
 		require.Equal(t, "ghcr.io/cosmoshub:v1.2.3", c.Image)
 
 		require.Equal(t, []string{"gaiad"}, c.Command)
-		require.Equal(t, []string{"start", "--home", "/home/operator/cosmos"}, c.Args)
+		require.Equal(t, []string{"start", "--home", defaultHome}, c.Args)
 
 		cmdCrd.Spec.ChainSpec.SkipInvariants = true
 		pod, err = NewPodBuilder(&cmdCrd).WithOrdinal(1).Build()
@@ -371,7 +405,7 @@ func TestPodBuilder(t *testing.T) {
 		c = pod.Spec.Containers[0]
 
 		require.Equal(t, []string{"gaiad"}, c.Command)
-		require.Equal(t, []string{"start", "--home", "/home/operator/cosmos", "--x-crisis-skip-assert-invariants"}, c.Args)
+		require.Equal(t, []string{"start", "--home", defaultHome, "--x-crisis-skip-assert-invariants"}, c.Args)
 
 		cmdCrd.Spec.ChainSpec.LogLevel = ptr("debug")
 		cmdCrd.Spec.ChainSpec.LogFormat = ptr("json")
@@ -379,7 +413,14 @@ func TestPodBuilder(t *testing.T) {
 		require.NoError(t, err)
 		c = pod.Spec.Containers[0]
 
-		require.Equal(t, []string{"start", "--home", "/home/operator/cosmos", "--x-crisis-skip-assert-invariants", "--log_level", "debug", "--log_format", "json"}, c.Args)
+		require.Equal(t, []string{"start", "--home", defaultHome, "--x-crisis-skip-assert-invariants", "--log_level", "debug", "--log_format", "json"}, c.Args)
+
+		cmdCrd.Spec.ChainSpec.HomeDir = ".other"
+		pod, err = NewPodBuilder(&cmdCrd).WithOrdinal(1).Build()
+		require.NoError(t, err)
+
+		c = pod.Spec.Containers[0]
+		require.Equal(t, []string{"start", "--home", "/home/operator/.other", "--x-crisis-skip-assert-invariants", "--log_level", "debug", "--log_format", "json"}, c.Args)
 	})
 
 	t.Run("sentry start container command ", func(t *testing.T) {
@@ -512,6 +553,14 @@ gaiad start --home /home/operator/cosmos`
 		require.ElementsMatch(t, []string{"clean-init", "chain-init", "new-init", "genesis-init", "config-merge"}, lo.Keys(initConts))
 		require.Equal(t, "foo:latest", initConts["chain-init"].Image)
 	})
+}
+
+func TestChainHomeDir(t *testing.T) {
+	crd := defaultCRD()
+	require.Equal(t, "/home/operator/cosmos", ChainHomeDir(&crd))
+
+	crd.Spec.ChainSpec.HomeDir = ".gaia"
+	require.Equal(t, "/home/operator/.gaia", ChainHomeDir(&crd))
 }
 
 func TestPVCName(t *testing.T) {
