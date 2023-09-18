@@ -60,8 +60,11 @@ func TestBuildPods(t *testing.T) {
 	})
 
 	t.Run("instance overrides", func(t *testing.T) {
-		image := "agoric:latest"
-		overrideImage := "some_image:custom"
+		const (
+			image         = "agoric:latest"
+			overrideImage = "some_image:custom"
+			overridePod   = "agoric-5"
+		)
 		crd := &cosmosv1.CosmosFullNode{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "agoric",
@@ -72,9 +75,9 @@ func TestBuildPods(t *testing.T) {
 					Image: image,
 				},
 				InstanceOverrides: map[string]cosmosv1.InstanceOverridesSpec{
-					"agoric-2": {DisableStrategy: ptr(cosmosv1.DisablePod)},
-					"agoric-4": {DisableStrategy: ptr(cosmosv1.DisableAll)},
-					"agoric-5": {Image: overrideImage},
+					"agoric-2":  {DisableStrategy: ptr(cosmosv1.DisablePod)},
+					"agoric-4":  {DisableStrategy: ptr(cosmosv1.DisableAll)},
+					overridePod: {Image: overrideImage},
 				},
 			},
 		}
@@ -90,7 +93,7 @@ func TestBuildPods(t *testing.T) {
 		require.Equal(t, want, got)
 		for _, pod := range pods {
 			image := pod.Object().Spec.Containers[0].Image
-			if pod.Object().Name == "agoric-5" {
+			if pod.Object().Name == overridePod {
 				require.Equal(t, overrideImage, image)
 			} else {
 				require.Equal(t, image, image)
