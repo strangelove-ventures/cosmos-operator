@@ -42,6 +42,7 @@ func TestBuildServices(t *testing.T) {
 				"app.kubernetes.io/version":    "v6.0.0",
 				"app.kubernetes.io/instance":   fmt.Sprintf("terra-%d", i),
 				"cosmos.strange.love/network":  "testnet",
+				"cosmos.strange.love/type":     "FullNode",
 			}
 			require.Equal(t, wantLabels, p2p.Labels)
 
@@ -186,6 +187,7 @@ func TestBuildServices(t *testing.T) {
 			"app.kubernetes.io/component":  "rpc",
 			"app.kubernetes.io/version":    "v6.0.0",
 			"cosmos.strange.love/network":  "testnet",
+			"cosmos.strange.love/type":     "FullNode",
 		}
 		require.Equal(t, wantLabels, rpc.Labels)
 
@@ -264,5 +266,40 @@ func TestBuildServices(t *testing.T) {
 		for _, svc := range svcs {
 			test.RequireValidMetadata(t, svc.Object())
 		}
+	})
+
+	t.Run("sets labels for", func(t *testing.T) {
+		t.Run("type", func(t *testing.T) {
+			crd := defaultCRD()
+			crd.Spec.Replicas = 3
+
+			t.Run("given unspecified type sets type to FullNode", func(t *testing.T) {
+				svcs := BuildServices(&crd)
+
+				require.Equal(t, "FullNode", svcs[0].Object().Labels["cosmos.strange.love/type"])
+				require.Equal(t, "FullNode", svcs[1].Object().Labels["cosmos.strange.love/type"])
+				require.Equal(t, "FullNode", svcs[2].Object().Labels["cosmos.strange.love/type"])
+			})
+
+			t.Run("given Sentry type", func(t *testing.T) {
+				crd.Spec.Type = "Sentry"
+
+				svcs := BuildServices(&crd)
+
+				require.Equal(t, "Sentry", svcs[0].Object().Labels["cosmos.strange.love/type"])
+				require.Equal(t, "Sentry", svcs[1].Object().Labels["cosmos.strange.love/type"])
+				require.Equal(t, "Sentry", svcs[2].Object().Labels["cosmos.strange.love/type"])
+			})
+
+			t.Run("given FullNode type", func(t *testing.T) {
+				crd.Spec.Type = "FullNode"
+
+				svcs := BuildServices(&crd)
+
+				require.Equal(t, "FullNode", svcs[0].Object().Labels["cosmos.strange.love/type"])
+				require.Equal(t, "FullNode", svcs[1].Object().Labels["cosmos.strange.love/type"])
+				require.Equal(t, "FullNode", svcs[2].Object().Labels["cosmos.strange.love/type"])
+			})
+		})
 	})
 }

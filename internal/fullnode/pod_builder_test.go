@@ -63,6 +63,7 @@ func TestPodBuilder(t *testing.T) {
 			"app.kubernetes.io/name":       "osmosis",
 			"app.kubernetes.io/version":    "v1.2.3",
 			"cosmos.strange.love/network":  "mainnet",
+			"cosmos.strange.love/type":     "FullNode",
 		}
 		require.Equal(t, wantLabels, pod.Labels)
 		require.NotNil(t, pod.Annotations)
@@ -552,6 +553,38 @@ gaiad start --home /home/operator/cosmos`
 		initConts := lo.SliceToMap(pod.Spec.InitContainers, func(c corev1.Container) (string, corev1.Container) { return c.Name, c })
 		require.ElementsMatch(t, []string{"clean-init", "chain-init", "new-init", "genesis-init", "config-merge"}, lo.Keys(initConts))
 		require.Equal(t, "foo:latest", initConts["chain-init"].Image)
+	})
+
+	t.Run("sets labels for", func(t *testing.T) {
+		t.Run("type", func(t *testing.T) {
+			crd := defaultCRD()
+
+			t.Run("given unspecified type sets type to FullNode", func(t *testing.T) {
+				builder := NewPodBuilder(&crd)
+				pod, err := builder.WithOrdinal(5).Build()
+				require.NoError(t, err)
+
+				require.Equal(t, "FullNode", pod.Labels["cosmos.strange.love/type"])
+			})
+
+			t.Run("given Sentry type", func(t *testing.T) {
+				crd.Spec.Type = "Sentry"
+				builder := NewPodBuilder(&crd)
+				pod, err := builder.WithOrdinal(5).Build()
+				require.NoError(t, err)
+
+				require.Equal(t, "Sentry", pod.Labels["cosmos.strange.love/type"])
+			})
+
+			t.Run("given FullNode type", func(t *testing.T) {
+				crd.Spec.Type = "FullNode"
+				builder := NewPodBuilder(&crd)
+				pod, err := builder.WithOrdinal(5).Build()
+				require.NoError(t, err)
+
+				require.Equal(t, "FullNode", pod.Labels["cosmos.strange.love/type"])
+			})
+		})
 	})
 }
 

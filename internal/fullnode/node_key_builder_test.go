@@ -41,6 +41,7 @@ func TestBuildNodeKeySecrets(t *testing.T) {
 				"app.kubernetes.io/instance":   fmt.Sprintf("juno-%d", i),
 				"app.kubernetes.io/version":    "v1.2.3",
 				"cosmos.strange.love/network":  "mainnet",
+				"cosmos.strange.love/type":     "FullNode",
 			}
 			require.Equal(t, wantLabels, got.Labels)
 
@@ -88,5 +89,41 @@ func TestBuildNodeKeySecrets(t *testing.T) {
 		secrets, err := BuildNodeKeySecrets(nil, &crd)
 		require.NoError(t, err)
 		require.Empty(t, secrets)
+	})
+
+	t.Run("sets label for", func(t *testing.T) {
+		var crd cosmosv1.CosmosFullNode
+		crd.Spec.Replicas = 3
+
+		t.Run("type", func(t *testing.T) {
+			t.Run("given unspecified type sets type to FullNode", func(t *testing.T) {
+				secrets, err := BuildNodeKeySecrets(nil, &crd)
+				require.NoError(t, err)
+
+				require.Equal(t, "FullNode", secrets[0].Object().Labels["cosmos.strange.love/type"])
+				require.Equal(t, "FullNode", secrets[1].Object().Labels["cosmos.strange.love/type"])
+				require.Equal(t, "FullNode", secrets[2].Object().Labels["cosmos.strange.love/type"])
+			})
+
+			t.Run("given Sentry type", func(t *testing.T) {
+				crd.Spec.Type = "Sentry"
+				secrets, err := BuildNodeKeySecrets(nil, &crd)
+				require.NoError(t, err)
+
+				require.Equal(t, "Sentry", secrets[0].Object().Labels["cosmos.strange.love/type"])
+				require.Equal(t, "Sentry", secrets[1].Object().Labels["cosmos.strange.love/type"])
+				require.Equal(t, "Sentry", secrets[2].Object().Labels["cosmos.strange.love/type"])
+			})
+
+			t.Run("given FullNode type", func(t *testing.T) {
+				crd.Spec.Type = "FullNode"
+				secrets, err := BuildNodeKeySecrets(nil, &crd)
+				require.NoError(t, err)
+
+				require.Equal(t, "FullNode", secrets[0].Object().Labels["cosmos.strange.love/type"])
+				require.Equal(t, "FullNode", secrets[1].Object().Labels["cosmos.strange.love/type"])
+				require.Equal(t, "FullNode", secrets[2].Object().Labels["cosmos.strange.love/type"])
+			})
+		})
 	})
 }

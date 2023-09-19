@@ -58,6 +58,7 @@ func TestBuildPVCs(t *testing.T) {
 				"app.kubernetes.io/instance":   fmt.Sprintf("juno-%d", i),
 				"app.kubernetes.io/version":    "v1.2.3",
 				"cosmos.strange.love/network":  "mainnet",
+				"cosmos.strange.love/type":     "FullNode",
 			}
 			require.Equal(t, wantLabels, got.Labels)
 
@@ -171,5 +172,41 @@ func TestBuildPVCs(t *testing.T) {
 			want := corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(tt.WantQuant)}
 			require.Equal(t, want, pvcs[0].Object().Spec.Resources.Requests, tt)
 		}
+	})
+
+	t.Run("sets label for", func(t *testing.T) {
+		crd := defaultCRD()
+		crd.Spec.Replicas = 3
+
+		t.Run("type", func(t *testing.T) {
+			t.Run("given unspecified type sets type to FullNode", func(t *testing.T) {
+				pvcs := BuildPVCs(&crd)
+				require.NotEmpty(t, pvcs)
+
+				require.Equal(t, "FullNode", pvcs[0].Object().Labels["cosmos.strange.love/type"])
+				require.Equal(t, "FullNode", pvcs[1].Object().Labels["cosmos.strange.love/type"])
+				require.Equal(t, "FullNode", pvcs[2].Object().Labels["cosmos.strange.love/type"])
+			})
+
+			t.Run("given Sentry type", func(t *testing.T) {
+				crd.Spec.Type = "Sentry"
+				pvcs := BuildPVCs(&crd)
+				require.NotEmpty(t, pvcs)
+
+				require.Equal(t, "Sentry", pvcs[0].Object().Labels["cosmos.strange.love/type"])
+				require.Equal(t, "Sentry", pvcs[1].Object().Labels["cosmos.strange.love/type"])
+				require.Equal(t, "Sentry", pvcs[2].Object().Labels["cosmos.strange.love/type"])
+			})
+
+			t.Run("given FullNode type", func(t *testing.T) {
+				crd.Spec.Type = "FullNode"
+				pvcs := BuildPVCs(&crd)
+				require.NotEmpty(t, pvcs)
+
+				require.Equal(t, "FullNode", pvcs[0].Object().Labels["cosmos.strange.love/type"])
+				require.Equal(t, "FullNode", pvcs[1].Object().Labels["cosmos.strange.love/type"])
+				require.Equal(t, "FullNode", pvcs[2].Object().Labels["cosmos.strange.love/type"])
+			})
+		})
 	})
 }

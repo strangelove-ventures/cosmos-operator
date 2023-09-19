@@ -60,6 +60,7 @@ func TestBuildConfigMaps(t *testing.T) {
 			"app.kubernetes.io/instance":   "agoric-0",
 			"app.kubernetes.io/version":    "v6.0.0",
 			"cosmos.strange.love/network":  "testnet",
+			"cosmos.strange.love/type":     "FullNode",
 		}
 		require.Empty(t, cm.Annotations)
 
@@ -385,6 +386,42 @@ func TestBuildConfigMaps(t *testing.T) {
 
 			require.Error(t, err)
 			require.Contains(t, err.Error(), "invalid toml in app overrides")
+		})
+	})
+
+	t.Run("sets labels for", func(t *testing.T) {
+		t.Run("type", func(t *testing.T) {
+			crd := defaultCRD()
+			crd.Spec.Replicas = 3
+
+			t.Run("given unspecified type sets type to FullNode", func(t *testing.T) {
+				cms, err := BuildConfigMaps(&crd, nil)
+				require.NoError(t, err)
+
+				require.Equal(t, "FullNode", cms[0].Object().Labels["cosmos.strange.love/type"])
+				require.Equal(t, "FullNode", cms[1].Object().Labels["cosmos.strange.love/type"])
+				require.Equal(t, "FullNode", cms[2].Object().Labels["cosmos.strange.love/type"])
+			})
+
+			t.Run("given Sentry type", func(t *testing.T) {
+				crd.Spec.Type = "Sentry"
+				cms, err := BuildConfigMaps(&crd, nil)
+				require.NoError(t, err)
+
+				require.Equal(t, "Sentry", cms[0].Object().Labels["cosmos.strange.love/type"])
+				require.Equal(t, "Sentry", cms[1].Object().Labels["cosmos.strange.love/type"])
+				require.Equal(t, "Sentry", cms[2].Object().Labels["cosmos.strange.love/type"])
+			})
+
+			t.Run("given FullNode type", func(t *testing.T) {
+				crd.Spec.Type = "FullNode"
+				cms, err := BuildConfigMaps(&crd, nil)
+				require.NoError(t, err)
+
+				require.Equal(t, "FullNode", cms[0].Object().Labels["cosmos.strange.love/type"])
+				require.Equal(t, "FullNode", cms[1].Object().Labels["cosmos.strange.love/type"])
+				require.Equal(t, "FullNode", cms[2].Object().Labels["cosmos.strange.love/type"])
+			})
 		})
 	})
 }
