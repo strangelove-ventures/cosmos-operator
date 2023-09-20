@@ -60,15 +60,24 @@ func TestBuildPods(t *testing.T) {
 	})
 
 	t.Run("instance overrides", func(t *testing.T) {
+		const (
+			image         = "agoric:latest"
+			overrideImage = "some_image:custom"
+			overridePod   = "agoric-5"
+		)
 		crd := &cosmosv1.CosmosFullNode{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "agoric",
 			},
 			Spec: cosmosv1.FullNodeSpec{
 				Replicas: 6,
+				PodTemplate: cosmosv1.PodSpec{
+					Image: image,
+				},
 				InstanceOverrides: map[string]cosmosv1.InstanceOverridesSpec{
-					"agoric-2": {DisableStrategy: ptr(cosmosv1.DisablePod)},
-					"agoric-4": {DisableStrategy: ptr(cosmosv1.DisableAll)},
+					"agoric-2":  {DisableStrategy: ptr(cosmosv1.DisablePod)},
+					"agoric-4":  {DisableStrategy: ptr(cosmosv1.DisableAll)},
+					overridePod: {Image: overrideImage},
 				},
 			},
 		}
@@ -82,6 +91,14 @@ func TestBuildPods(t *testing.T) {
 		})
 		got := lo.Map(pods, func(pod diff.Resource[*corev1.Pod], _ int) string { return pod.Object().Name })
 		require.Equal(t, want, got)
+		for _, pod := range pods {
+			image := pod.Object().Spec.Containers[0].Image
+			if pod.Object().Name == overridePod {
+				require.Equal(t, overrideImage, image)
+			} else {
+				require.Equal(t, image, image)
+			}
+		}
 	})
 
 	t.Run("scheduled volume snapshot pod candidate", func(t *testing.T) {

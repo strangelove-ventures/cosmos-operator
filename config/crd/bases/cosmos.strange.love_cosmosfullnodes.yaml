@@ -312,6 +312,9 @@ spec:
                       - Pod
                       - All
                       type: string
+                    image:
+                      description: Overrides an individual instance's Image.
+                      type: string
                     volumeClaimTemplate:
                       description: Overrides an individual instance's PVC.
                       properties:

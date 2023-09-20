@@ -696,6 +696,10 @@ type InstanceOverridesSpec struct {
 	// Overrides an individual instance's PVC.
 	// +optional
 	VolumeClaimTemplate *PersistentVolumeClaimSpec `json:"volumeClaimTemplate"`
+
+	// Overrides an individual instance's Image.
+	// +optional
+	Image string `json:"image"`
 }
 
 type DisableStrategy string

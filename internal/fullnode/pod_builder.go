@@ -21,7 +21,10 @@ import (
 
 var bufPool = sync.Pool{New: func() any { return new(bytes.Buffer) }}
 
-const healthCheckPort = healthcheck.Port
+const (
+	healthCheckPort = healthcheck.Port
+	mainContainer   = "node"
+)
 
 // PodBuilder builds corev1.Pods
 type PodBuilder struct {
@@ -65,7 +68,7 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 			Containers: []corev1.Container{
 				// Main start container.
 				{
-					Name:  "node",
+					Name:  mainContainer,
 					Image: tpl.Image,
 					// The following is a useful hack if you need to inspect the PV.
 					//Command: []string{"/bin/sh"},
