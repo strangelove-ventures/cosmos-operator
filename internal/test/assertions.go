@@ -1,9 +1,10 @@
 package test
 
 import (
+	"testing"
+
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func HasTypeLabel(t *testing.T, builder func(crd cosmosv1.CosmosFullNode) []map[string]string) {

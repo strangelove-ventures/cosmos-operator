@@ -3,8 +3,9 @@ package fullnode
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/strangelove-ventures/cosmos-operator/internal/test"
 	"testing"
+
+	"github.com/strangelove-ventures/cosmos-operator/internal/test"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/stretchr/testify/require"
