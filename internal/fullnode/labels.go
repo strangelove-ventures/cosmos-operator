@@ -18,9 +18,9 @@ func defaultLabels(crd *cosmosv1.CosmosFullNode, kvPairs ...string) map[string]s
 	if len(kvPairs)%2 != 0 {
 		panic(errors.New("key/value pairs must be even"))
 	}
-	nodeType := "FullNode"
+	nodeType := cosmosv1.FullNode
 	if crd.Spec.Type != "" {
-		nodeType = string(crd.Spec.Type)
+		nodeType = crd.Spec.Type
 	}
 	labels := map[string]string{
 		kube.ControllerLabel: "cosmos-operator",
@@ -28,7 +28,7 @@ func defaultLabels(crd *cosmosv1.CosmosFullNode, kvPairs ...string) map[string]s
 		kube.NameLabel:       appName(crd),
 		kube.VersionLabel:    kube.ParseImageVersion(crd.Spec.PodTemplate.Image),
 		networkLabel:         crd.Spec.ChainSpec.Network,
-		typeLabel:            nodeType,
+		typeLabel:            string(nodeType),
 	}
 	for i := 0; i < len(kvPairs); i += 2 {
 		labels[kvPairs[i]] = kvPairs[i+1]
