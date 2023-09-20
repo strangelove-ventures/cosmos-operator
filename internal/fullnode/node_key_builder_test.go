@@ -3,6 +3,7 @@ package fullnode
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/strangelove-ventures/cosmos-operator/internal/test"
 	"testing"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
@@ -91,39 +92,12 @@ func TestBuildNodeKeySecrets(t *testing.T) {
 		require.Empty(t, secrets)
 	})
 
-	t.Run("sets labels for", func(t *testing.T) {
-		var crd cosmosv1.CosmosFullNode
-		crd.Spec.Replicas = 3
-
-		t.Run("type", func(t *testing.T) {
-			t.Run("given unspecified type sets type to FullNode", func(t *testing.T) {
-				secrets, err := BuildNodeKeySecrets(nil, &crd)
-				require.NoError(t, err)
-
-				require.Equal(t, "FullNode", secrets[0].Object().Labels["cosmos.strange.love/type"])
-				require.Equal(t, "FullNode", secrets[1].Object().Labels["cosmos.strange.love/type"])
-				require.Equal(t, "FullNode", secrets[2].Object().Labels["cosmos.strange.love/type"])
-			})
-
-			t.Run("given Sentry type", func(t *testing.T) {
-				crd.Spec.Type = "Sentry"
-				secrets, err := BuildNodeKeySecrets(nil, &crd)
-				require.NoError(t, err)
-
-				require.Equal(t, "Sentry", secrets[0].Object().Labels["cosmos.strange.love/type"])
-				require.Equal(t, "Sentry", secrets[1].Object().Labels["cosmos.strange.love/type"])
-				require.Equal(t, "Sentry", secrets[2].Object().Labels["cosmos.strange.love/type"])
-			})
-
-			t.Run("given FullNode type", func(t *testing.T) {
-				crd.Spec.Type = "FullNode"
-				secrets, err := BuildNodeKeySecrets(nil, &crd)
-				require.NoError(t, err)
-
-				require.Equal(t, "FullNode", secrets[0].Object().Labels["cosmos.strange.love/type"])
-				require.Equal(t, "FullNode", secrets[1].Object().Labels["cosmos.strange.love/type"])
-				require.Equal(t, "FullNode", secrets[2].Object().Labels["cosmos.strange.love/type"])
-			})
-		})
+	test.HasTypeLabel(t, func(crd cosmosv1.CosmosFullNode) []map[string]string {
+		secrets, _ := BuildNodeKeySecrets(nil, &crd)
+		labels := make([]map[string]string, 0)
+		for _, secret := range secrets {
+			labels = append(labels, secret.Object().Labels)
+		}
+		return labels
 	})
 }

@@ -174,39 +174,12 @@ func TestBuildPVCs(t *testing.T) {
 		}
 	})
 
-	t.Run("sets labels for", func(t *testing.T) {
-		crd := defaultCRD()
-		crd.Spec.Replicas = 3
-
-		t.Run("type", func(t *testing.T) {
-			t.Run("given unspecified type sets type to FullNode", func(t *testing.T) {
-				pvcs := BuildPVCs(&crd)
-				require.NotEmpty(t, pvcs)
-
-				require.Equal(t, "FullNode", pvcs[0].Object().Labels["cosmos.strange.love/type"])
-				require.Equal(t, "FullNode", pvcs[1].Object().Labels["cosmos.strange.love/type"])
-				require.Equal(t, "FullNode", pvcs[2].Object().Labels["cosmos.strange.love/type"])
-			})
-
-			t.Run("given Sentry type", func(t *testing.T) {
-				crd.Spec.Type = "Sentry"
-				pvcs := BuildPVCs(&crd)
-				require.NotEmpty(t, pvcs)
-
-				require.Equal(t, "Sentry", pvcs[0].Object().Labels["cosmos.strange.love/type"])
-				require.Equal(t, "Sentry", pvcs[1].Object().Labels["cosmos.strange.love/type"])
-				require.Equal(t, "Sentry", pvcs[2].Object().Labels["cosmos.strange.love/type"])
-			})
-
-			t.Run("given FullNode type", func(t *testing.T) {
-				crd.Spec.Type = "FullNode"
-				pvcs := BuildPVCs(&crd)
-				require.NotEmpty(t, pvcs)
-
-				require.Equal(t, "FullNode", pvcs[0].Object().Labels["cosmos.strange.love/type"])
-				require.Equal(t, "FullNode", pvcs[1].Object().Labels["cosmos.strange.love/type"])
-				require.Equal(t, "FullNode", pvcs[2].Object().Labels["cosmos.strange.love/type"])
-			})
-		})
+	test.HasTypeLabel(t, func(crd cosmosv1.CosmosFullNode) []map[string]string {
+		pvcs := BuildPVCs(&crd)
+		labels := make([]map[string]string, 0)
+		for _, pvc := range pvcs {
+			labels = append(labels, pvc.Object().Labels)
+		}
+		return labels
 	})
 }

@@ -389,39 +389,12 @@ func TestBuildConfigMaps(t *testing.T) {
 		})
 	})
 
-	t.Run("sets labels for", func(t *testing.T) {
-		t.Run("type", func(t *testing.T) {
-			crd := defaultCRD()
-			crd.Spec.Replicas = 3
-
-			t.Run("given unspecified type sets type to FullNode", func(t *testing.T) {
-				cms, err := BuildConfigMaps(&crd, nil)
-				require.NoError(t, err)
-
-				require.Equal(t, "FullNode", cms[0].Object().Labels["cosmos.strange.love/type"])
-				require.Equal(t, "FullNode", cms[1].Object().Labels["cosmos.strange.love/type"])
-				require.Equal(t, "FullNode", cms[2].Object().Labels["cosmos.strange.love/type"])
-			})
-
-			t.Run("given Sentry type", func(t *testing.T) {
-				crd.Spec.Type = "Sentry"
-				cms, err := BuildConfigMaps(&crd, nil)
-				require.NoError(t, err)
-
-				require.Equal(t, "Sentry", cms[0].Object().Labels["cosmos.strange.love/type"])
-				require.Equal(t, "Sentry", cms[1].Object().Labels["cosmos.strange.love/type"])
-				require.Equal(t, "Sentry", cms[2].Object().Labels["cosmos.strange.love/type"])
-			})
-
-			t.Run("given FullNode type", func(t *testing.T) {
-				crd.Spec.Type = "FullNode"
-				cms, err := BuildConfigMaps(&crd, nil)
-				require.NoError(t, err)
-
-				require.Equal(t, "FullNode", cms[0].Object().Labels["cosmos.strange.love/type"])
-				require.Equal(t, "FullNode", cms[1].Object().Labels["cosmos.strange.love/type"])
-				require.Equal(t, "FullNode", cms[2].Object().Labels["cosmos.strange.love/type"])
-			})
-		})
+	test.HasTypeLabel(t, func(crd cosmosv1.CosmosFullNode) []map[string]string {
+		cms, _ := BuildConfigMaps(&crd, nil)
+		labels := make([]map[string]string, 0)
+		for _, cm := range cms {
+			labels = append(labels, cm.Object().Labels)
+		}
+		return labels
 	})
 }

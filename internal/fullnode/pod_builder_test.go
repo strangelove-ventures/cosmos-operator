@@ -555,36 +555,10 @@ gaiad start --home /home/operator/cosmos`
 		require.Equal(t, "foo:latest", initConts["chain-init"].Image)
 	})
 
-	t.Run("sets labels for", func(t *testing.T) {
-		t.Run("type", func(t *testing.T) {
-			crd := defaultCRD()
-
-			t.Run("given unspecified type sets type to FullNode", func(t *testing.T) {
-				builder := NewPodBuilder(&crd)
-				pod, err := builder.WithOrdinal(5).Build()
-				require.NoError(t, err)
-
-				require.Equal(t, "FullNode", pod.Labels["cosmos.strange.love/type"])
-			})
-
-			t.Run("given Sentry type", func(t *testing.T) {
-				crd.Spec.Type = "Sentry"
-				builder := NewPodBuilder(&crd)
-				pod, err := builder.WithOrdinal(5).Build()
-				require.NoError(t, err)
-
-				require.Equal(t, "Sentry", pod.Labels["cosmos.strange.love/type"])
-			})
-
-			t.Run("given FullNode type", func(t *testing.T) {
-				crd.Spec.Type = "FullNode"
-				builder := NewPodBuilder(&crd)
-				pod, err := builder.WithOrdinal(5).Build()
-				require.NoError(t, err)
-
-				require.Equal(t, "FullNode", pod.Labels["cosmos.strange.love/type"])
-			})
-		})
+	test.HasTypeLabel(t, func(crd cosmosv1.CosmosFullNode) []map[string]string {
+		builder := NewPodBuilder(&crd)
+		pod, _ := builder.WithOrdinal(5).Build()
+		return []map[string]string{pod.Labels}
 	})
 }
 

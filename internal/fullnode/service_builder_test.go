@@ -268,38 +268,12 @@ func TestBuildServices(t *testing.T) {
 		}
 	})
 
-	t.Run("sets labels for", func(t *testing.T) {
-		t.Run("type", func(t *testing.T) {
-			crd := defaultCRD()
-			crd.Spec.Replicas = 3
-
-			t.Run("given unspecified type sets type to FullNode", func(t *testing.T) {
-				svcs := BuildServices(&crd)
-
-				require.Equal(t, "FullNode", svcs[0].Object().Labels["cosmos.strange.love/type"])
-				require.Equal(t, "FullNode", svcs[1].Object().Labels["cosmos.strange.love/type"])
-				require.Equal(t, "FullNode", svcs[2].Object().Labels["cosmos.strange.love/type"])
-			})
-
-			t.Run("given Sentry type", func(t *testing.T) {
-				crd.Spec.Type = "Sentry"
-
-				svcs := BuildServices(&crd)
-
-				require.Equal(t, "Sentry", svcs[0].Object().Labels["cosmos.strange.love/type"])
-				require.Equal(t, "Sentry", svcs[1].Object().Labels["cosmos.strange.love/type"])
-				require.Equal(t, "Sentry", svcs[2].Object().Labels["cosmos.strange.love/type"])
-			})
-
-			t.Run("given FullNode type", func(t *testing.T) {
-				crd.Spec.Type = "FullNode"
-
-				svcs := BuildServices(&crd)
-
-				require.Equal(t, "FullNode", svcs[0].Object().Labels["cosmos.strange.love/type"])
-				require.Equal(t, "FullNode", svcs[1].Object().Labels["cosmos.strange.love/type"])
-				require.Equal(t, "FullNode", svcs[2].Object().Labels["cosmos.strange.love/type"])
-			})
-		})
+	test.HasTypeLabel(t, func(crd cosmosv1.CosmosFullNode) []map[string]string {
+		svcs := BuildServices(&crd)
+		labels := make([]map[string]string, 0)
+		for _, svc := range svcs {
+			labels = append(labels, svc.Object().Labels)
+		}
+		return labels
 	})
 }
