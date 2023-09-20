@@ -91,7 +91,7 @@ func TestBuildNodeKeySecrets(t *testing.T) {
 		require.Empty(t, secrets)
 	})
 
-	t.Run("sets label for", func(t *testing.T) {
+	t.Run("sets labels for", func(t *testing.T) {
 		var crd cosmosv1.CosmosFullNode
 		crd.Spec.Replicas = 3
 

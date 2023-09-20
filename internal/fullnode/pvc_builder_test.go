@@ -174,7 +174,7 @@ func TestBuildPVCs(t *testing.T) {
 		}
 	})
 
-	t.Run("sets label for", func(t *testing.T) {
+	t.Run("sets labels for", func(t *testing.T) {
 		crd := defaultCRD()
 		crd.Spec.Replicas = 3
 
