@@ -30,13 +30,22 @@ func BuildPods(crd *cosmosv1.CosmosFullNode, cksums ConfigChecksums) ([]diff.Res
 				continue
 			}
 			if o.Image != "" {
-				pod.Spec.Containers[0].Image = o.Image
+				setMainContainerImage(pod, o.Image)
 			}
 		}
 		pod.Annotations[configChecksumAnnotation] = cksums[client.ObjectKeyFromObject(pod)]
 		pods = append(pods, diff.Adapt(pod, i))
 	}
 	return pods, nil
+}
+
+func setMainContainerImage(pod *corev1.Pod, image string) {
+	for i := range pod.Spec.Containers {
+		if pod.Spec.Containers[i].Name == mainContainer {
+			pod.Spec.Containers[i].Image = image
+			return
+		}
+	}
 }
 
 func podCandidates(crd *cosmosv1.CosmosFullNode) map[string]struct{} {
