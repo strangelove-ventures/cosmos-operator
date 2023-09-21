@@ -58,6 +58,7 @@ func TestBuildPVCs(t *testing.T) {
 				"app.kubernetes.io/instance":   fmt.Sprintf("juno-%d", i),
 				"app.kubernetes.io/version":    "v1.2.3",
 				"cosmos.strange.love/network":  "mainnet",
+				"cosmos.strange.love/type":     "FullNode",
 			}
 			require.Equal(t, wantLabels, got.Labels)
 
@@ -171,5 +172,14 @@ func TestBuildPVCs(t *testing.T) {
 			want := corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(tt.WantQuant)}
 			require.Equal(t, want, pvcs[0].Object().Spec.Resources.Requests, tt)
 		}
+	})
+
+	test.HasTypeLabel(t, func(crd cosmosv1.CosmosFullNode) []map[string]string {
+		pvcs := BuildPVCs(&crd)
+		labels := make([]map[string]string, 0)
+		for _, pvc := range pvcs {
+			labels = append(labels, pvc.Object().Labels)
+		}
+		return labels
 	})
 }

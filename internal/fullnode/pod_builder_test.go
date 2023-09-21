@@ -63,6 +63,7 @@ func TestPodBuilder(t *testing.T) {
 			"app.kubernetes.io/name":       "osmosis",
 			"app.kubernetes.io/version":    "v1.2.3",
 			"cosmos.strange.love/network":  "mainnet",
+			"cosmos.strange.love/type":     "FullNode",
 		}
 		require.Equal(t, wantLabels, pod.Labels)
 		require.NotNil(t, pod.Annotations)
@@ -552,6 +553,12 @@ gaiad start --home /home/operator/cosmos`
 		initConts := lo.SliceToMap(pod.Spec.InitContainers, func(c corev1.Container) (string, corev1.Container) { return c.Name, c })
 		require.ElementsMatch(t, []string{"clean-init", "chain-init", "new-init", "genesis-init", "config-merge"}, lo.Keys(initConts))
 		require.Equal(t, "foo:latest", initConts["chain-init"].Image)
+	})
+
+	test.HasTypeLabel(t, func(crd cosmosv1.CosmosFullNode) []map[string]string {
+		builder := NewPodBuilder(&crd)
+		pod, _ := builder.WithOrdinal(5).Build()
+		return []map[string]string{pod.Labels}
 	})
 }
 
