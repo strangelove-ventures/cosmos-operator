@@ -60,6 +60,7 @@ func TestBuildConfigMaps(t *testing.T) {
 			"app.kubernetes.io/instance":   "agoric-0",
 			"app.kubernetes.io/version":    "v6.0.0",
 			"cosmos.strange.love/network":  "testnet",
+			"cosmos.strange.love/type":     "FullNode",
 		}
 		require.Empty(t, cm.Annotations)
 
@@ -386,5 +387,14 @@ func TestBuildConfigMaps(t *testing.T) {
 			require.Error(t, err)
 			require.Contains(t, err.Error(), "invalid toml in app overrides")
 		})
+	})
+
+	test.HasTypeLabel(t, func(crd cosmosv1.CosmosFullNode) []map[string]string {
+		cms, _ := BuildConfigMaps(&crd, nil)
+		labels := make([]map[string]string, 0)
+		for _, cm := range cms {
+			labels = append(labels, cm.Object().Labels)
+		}
+		return labels
 	})
 }

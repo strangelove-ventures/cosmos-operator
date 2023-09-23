@@ -19,7 +19,7 @@ import (
 
 // DiskUsager fetches disk usage statistics
 type DiskUsager interface {
-	DiskUsage(ctx context.Context, host string) (healthcheck.DiskUsageResponse, error)
+	DiskUsage(ctx context.Context, host, homeDir string) (healthcheck.DiskUsageResponse, error)
 }
 
 type PVCDiskUsage struct {
@@ -66,7 +66,7 @@ func (c DiskUsageCollector) CollectDiskUsage(ctx context.Context, crd *cosmosv1.
 			pod := pods.Items[i]
 			cctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 			defer cancel()
-			resp, err := c.diskClient.DiskUsage(cctx, "http://"+pod.Status.PodIP)
+			resp, err := c.diskClient.DiskUsage(cctx, "http://"+pod.Status.PodIP, ChainHomeDir(crd))
 			if err != nil {
 				errs[i] = fmt.Errorf("pod %s %s: %w", pod.Name, resp.Dir, err)
 				return nil

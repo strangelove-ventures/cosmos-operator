@@ -415,6 +415,16 @@ type ChainSpec struct {
 	// +kubebuilder:validation:MinLength:=1
 	Binary string `json:"binary"`
 
+	// The chain's home directory is where the chain's data and config is stored.
+	// This should be a single folder. E.g. .gaia, .dydxprotocol, .osmosisd, etc.
+	// Set via --home flag when running the binary.
+	// If empty, defaults to "cosmos" which translates to `chain start --home /home/operator/cosmos`.
+	// Historically, several chains do not respect the --home and save data outside --home which crashes the pods.
+	// Therefore, this option was introduced to mitigate those edge cases, so that you can specify the home directory
+	// to match the chain's default home dir.
+	// +optional
+	HomeDir string `json:"homeDir"`
+
 	// CometBFT (formerly Tendermint) configuration applied to config.toml.
 	// Although optional, it's highly recommended you configure this field.
 	// +optional
@@ -686,6 +696,10 @@ type InstanceOverridesSpec struct {
 	// Overrides an individual instance's PVC.
 	// +optional
 	VolumeClaimTemplate *PersistentVolumeClaimSpec `json:"volumeClaimTemplate"`
+
+	// Overrides an individual instance's Image.
+	// +optional
+	Image string `json:"image"`
 }
 
 type DisableStrategy string

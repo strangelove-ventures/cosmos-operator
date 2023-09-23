@@ -65,7 +65,7 @@ See the [quick start guide](./docs/quick_start.md).
 
 # Contributing
 
-See the [contributing guide](./docs/contributing.md).
+See the [contributing guide](./CONTRIBUTING.md).
 
 # Best Practices
 
@@ -91,7 +91,7 @@ Disclaimer: Strangelove has not committed to these enhancements and cannot estim
 
 # License
 
-Copyright 2022 Strangelove Ventures LLC.
+Copyright 2023 Strangelove Ventures LLC.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.

@@ -42,6 +42,7 @@ func TestBuildServices(t *testing.T) {
 				"app.kubernetes.io/version":    "v6.0.0",
 				"app.kubernetes.io/instance":   fmt.Sprintf("terra-%d", i),
 				"cosmos.strange.love/network":  "testnet",
+				"cosmos.strange.love/type":     "FullNode",
 			}
 			require.Equal(t, wantLabels, p2p.Labels)
 
@@ -186,6 +187,7 @@ func TestBuildServices(t *testing.T) {
 			"app.kubernetes.io/component":  "rpc",
 			"app.kubernetes.io/version":    "v6.0.0",
 			"cosmos.strange.love/network":  "testnet",
+			"cosmos.strange.love/type":     "FullNode",
 		}
 		require.Equal(t, wantLabels, rpc.Labels)
 
@@ -264,5 +266,14 @@ func TestBuildServices(t *testing.T) {
 		for _, svc := range svcs {
 			test.RequireValidMetadata(t, svc.Object())
 		}
+	})
+
+	test.HasTypeLabel(t, func(crd cosmosv1.CosmosFullNode) []map[string]string {
+		svcs := BuildServices(&crd)
+		labels := make([]map[string]string, 0)
+		for _, svc := range svcs {
+			labels = append(labels, svc.Object().Labels)
+		}
+		return labels
 	})
 }

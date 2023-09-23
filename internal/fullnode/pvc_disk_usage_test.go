@@ -17,10 +17,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type mockDiskUsager func(ctx context.Context, host string) (healthcheck.DiskUsageResponse, error)
+type mockDiskUsager func(ctx context.Context, host, homeDir string) (healthcheck.DiskUsageResponse, error)
 
-func (fn mockDiskUsager) DiskUsage(ctx context.Context, host string) (healthcheck.DiskUsageResponse, error) {
-	return fn(ctx, host)
+func (fn mockDiskUsager) DiskUsage(ctx context.Context, host, homeDir string) (healthcheck.DiskUsageResponse, error) {
+	return fn(ctx, host, homeDir)
 }
 
 func TestCollectDiskUsage(t *testing.T) {
@@ -55,7 +55,10 @@ func TestCollectDiskUsage(t *testing.T) {
 			},
 		}
 
-		diskClient := mockDiskUsager(func(ctx context.Context, host string) (healthcheck.DiskUsageResponse, error) {
+		diskClient := mockDiskUsager(func(ctx context.Context, host, homeDir string) (healthcheck.DiskUsageResponse, error) {
+			if homeDir != "/home/operator/cosmos" {
+				return healthcheck.DiskUsageResponse{}, fmt.Errorf("unexpected homeDir: %s", homeDir)
+			}
 			var free uint64
 			switch host {
 			case "http://10.0.0.0":
@@ -111,9 +114,37 @@ func TestCollectDiskUsage(t *testing.T) {
 		require.Equal(t, resource.MustParse("500Gi"), result.Capacity)
 	})
 
+	t.Run("custom home dir", func(t *testing.T) {
+		var reader mockReader
+		reader.ObjectList = corev1.PodList{Items: validPods}
+		reader.Object = corev1.PersistentVolumeClaim{
+			Status: corev1.PersistentVolumeClaimStatus{
+				Capacity: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("500Gi")},
+			},
+		}
+
+		diskClient := mockDiskUsager(func(ctx context.Context, host, homeDir string) (healthcheck.DiskUsageResponse, error) {
+			if homeDir != "/home/operator/.gaia" {
+				return healthcheck.DiskUsageResponse{}, fmt.Errorf("unexpected homeDir: %s", homeDir)
+			}
+			return healthcheck.DiskUsageResponse{
+				AllBytes:  1000,
+				FreeBytes: 900,
+			}, nil
+		})
+
+		coll := NewDiskUsageCollector(diskClient, &reader)
+
+		ccrd := crd.DeepCopy()
+		ccrd.Spec.ChainSpec.HomeDir = ".gaia"
+		_, err := coll.CollectDiskUsage(ctx, ccrd)
+
+		require.NoError(t, err)
+	})
+
 	t.Run("no pods found", func(t *testing.T) {
 		var reader mockReader
-		diskClient := mockDiskUsager(func(ctx context.Context, host string) (healthcheck.DiskUsageResponse, error) {
+		diskClient := mockDiskUsager(func(ctx context.Context, host, homeDir string) (healthcheck.DiskUsageResponse, error) {
 			panic("should not be called")
 		})
 
@@ -130,7 +161,7 @@ func TestCollectDiskUsage(t *testing.T) {
 			{ObjectMeta: metav1.ObjectMeta{Name: "pod-1"}, Status: corev1.PodStatus{PodIP: "10.0.0.1"}},
 		}}
 		reader.ListErr = errors.New("boom")
-		diskClient := mockDiskUsager(func(ctx context.Context, host string) (healthcheck.DiskUsageResponse, error) {
+		diskClient := mockDiskUsager(func(ctx context.Context, host, homeDir string) (healthcheck.DiskUsageResponse, error) {
 			panic("should not be called")
 		})
 
@@ -145,7 +176,7 @@ func TestCollectDiskUsage(t *testing.T) {
 		var reader mockReader
 		reader.ObjectList = corev1.PodList{Items: validPods}
 
-		diskClient := mockDiskUsager(func(ctx context.Context, host string) (healthcheck.DiskUsageResponse, error) {
+		diskClient := mockDiskUsager(func(ctx context.Context, host, homeDir string) (healthcheck.DiskUsageResponse, error) {
 			if host == "http://10.0.0.1" {
 				return healthcheck.DiskUsageResponse{}, errors.New("boom")
 			}
@@ -174,7 +205,7 @@ func TestCollectDiskUsage(t *testing.T) {
 			{ObjectMeta: metav1.ObjectMeta{Name: "2"}, Status: corev1.PodStatus{PodIP: "10.0.0.2"}},
 		}}
 
-		diskClient := mockDiskUsager(func(ctx context.Context, host string) (healthcheck.DiskUsageResponse, error) {
+		diskClient := mockDiskUsager(func(ctx context.Context, host, homeDir string) (healthcheck.DiskUsageResponse, error) {
 			return healthcheck.DiskUsageResponse{Dir: "/some/dir"}, errors.New("boom")
 		})
 

@@ -24,16 +24,30 @@ func BuildPods(crd *cosmosv1.CosmosFullNode, cksums ConfigChecksums) ([]diff.Res
 		if err != nil {
 			return nil, err
 		}
-		if disable := overrides[pod.Name].DisableStrategy; disable != nil {
-			continue
-		}
 		if _, shouldSnapshot := candidates[pod.Name]; shouldSnapshot {
 			continue
+		}
+		if o, ok := overrides[pod.Name]; ok {
+			if o.DisableStrategy != nil {
+				continue
+			}
+			if o.Image != "" {
+				setMainContainerImage(pod, o.Image)
+			}
 		}
 		pod.Annotations[configChecksumAnnotation] = cksums[client.ObjectKeyFromObject(pod)]
 		pods = append(pods, diff.Adapt(pod, i))
 	}
 	return pods, nil
+}
+
+func setMainContainerImage(pod *corev1.Pod, image string) {
+	for i := range pod.Spec.Containers {
+		if pod.Spec.Containers[i].Name == mainContainer {
+			pod.Spec.Containers[i].Image = image
+			return
+		}
+	}
 }
 
 func podCandidates(crd *cosmosv1.CosmosFullNode) map[string]struct{} {

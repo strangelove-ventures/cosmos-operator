@@ -19,7 +19,10 @@ func TestClient_DiskUsage(t *testing.T) {
 		httpClient = &http.Client{}
 	)
 
-	const host = "http://10.1.1.1"
+	const (
+		host    = "http://10.1.1.1"
+		homeDir = "/home/test"
+	)
 
 	t.Run("happy path", func(t *testing.T) {
 		client := NewClient(httpClient)
@@ -32,8 +35,9 @@ func TestClient_DiskUsage(t *testing.T) {
 		}
 
 		client.httpDo = func(req *http.Request) (*http.Response, error) {
-			require.Equal(t, "http://10.1.1.1:1251/disk", req.URL.String())
+			require.Equal(t, "http://10.1.1.1:1251/disk?dir=%2Fhome%2Ftest", req.URL.String())
 			require.Equal(t, "GET", req.Method)
+			require.Equal(t, homeDir, req.URL.Query().Get("dir"))
 
 			b, err := json.Marshal(want)
 			if err != nil {
@@ -42,7 +46,7 @@ func TestClient_DiskUsage(t *testing.T) {
 			return &http.Response{Body: io.NopCloser(bytes.NewReader(b))}, nil
 		}
 
-		got, err := client.DiskUsage(ctx, host)
+		got, err := client.DiskUsage(ctx, host, homeDir)
 
 		require.NoError(t, err)
 		require.Equal(t, want, got)
@@ -53,7 +57,7 @@ func TestClient_DiskUsage(t *testing.T) {
 		client.httpDo = func(req *http.Request) (*http.Response, error) {
 			return nil, errors.New("boom")
 		}
-		_, err := client.DiskUsage(ctx, host)
+		_, err := client.DiskUsage(ctx, host, "")
 
 		require.Error(t, err)
 		require.EqualError(t, err, "http do: boom")
@@ -73,7 +77,7 @@ func TestClient_DiskUsage(t *testing.T) {
 			}, nil
 		}
 
-		_, err := client.DiskUsage(ctx, host)
+		_, err := client.DiskUsage(ctx, host, "")
 
 		require.Error(t, err)
 		require.EqualError(t, err, "something bad happened")
@@ -88,7 +92,7 @@ func TestClient_DiskUsage(t *testing.T) {
 			}, nil
 		}
 
-		_, err := client.DiskUsage(ctx, host)
+		_, err := client.DiskUsage(ctx, host, "")
 
 		require.Error(t, err)
 		require.EqualError(t, err, "malformed json: unexpected EOF")
@@ -103,7 +107,7 @@ func TestClient_DiskUsage(t *testing.T) {
 			}, nil
 		}
 
-		_, err := client.DiskUsage(ctx, host)
+		_, err := client.DiskUsage(ctx, host, "")
 
 		require.Error(t, err)
 		require.EqualError(t, err, "invalid response: 0 free bytes")

@@ -14,6 +14,7 @@ spec:
     network: mainnet
     chainID: cosmoshub-4
     binary: gaiad
+    homeDir: .gaia # optional, defaults to "cosmos"
     skipInvariants: true
     genesisURL: "https://github.com/cosmos/mainnet/raw/master/genesis.cosmoshub-4.json.gz"
     genesisScript: "arbitrary script to download genesis file. e.g. curl https://url-to-genesis.com | jq '.genesis' > $GENESIS_FILE"
