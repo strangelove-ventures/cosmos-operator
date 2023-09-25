@@ -180,8 +180,10 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 
 	pod.Name = name
 	pod.Spec.InitContainers = initContainers(b.crd, name)
+
 	pod.Spec.Hostname = pod.Name
 	pod.Spec.Subdomain = b.crd.Name
+
 	pod.Spec.Volumes = []corev1.Volume{
 		{
 			Name: volChainHome,
