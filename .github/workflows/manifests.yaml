@@ -1,0 +1,22 @@
+name: Kube Manifests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '>=1.20.2'
+      - run: make generate manifests
+
+      - uses: CatChen/check-git-status-action@v1
+        with:
+          fail-if-not-clean: true
