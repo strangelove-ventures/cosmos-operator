@@ -56,6 +56,9 @@ func TestPodBuilder(t *testing.T) {
 		require.Equal(t, "test", pod.Namespace)
 		require.Equal(t, "osmosis-5", pod.Name)
 
+		require.Equal(t, "osmosis", pod.Spec.Subdomain)
+		require.Equal(t, "osmosis-5", pod.Spec.Hostname)
+
 		wantLabels := map[string]string{
 			"app.kubernetes.io/instance":   "osmosis-5",
 			"app.kubernetes.io/component":  "CosmosFullNode",

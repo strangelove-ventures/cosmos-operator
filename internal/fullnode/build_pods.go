@@ -22,8 +22,6 @@ func BuildPods(crd *cosmosv1.CosmosFullNode, cksums ConfigChecksums) ([]diff.Res
 		if err != nil {
 			return nil, err
 		}
-		pod.Spec.Hostname = pod.Name
-		pod.Spec.Subdomain = crd.Name
 		if _, shouldSnapshot := candidates[pod.Name]; shouldSnapshot {
 			continue
 		}
