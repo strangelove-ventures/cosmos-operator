@@ -6,8 +6,14 @@ import (
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/internal/diff"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
+	"gopkg.in/inf.v0"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+const (
+	SnapshotGrowthFactor = 102
 )
 
 var (
@@ -79,9 +85,23 @@ func pvcResources(crd *cosmosv1.CosmosFullNode) corev1.ResourceRequirements {
 		reqs = crd.Spec.VolumeClaimTemplate.Resources
 		size = reqs.Requests[corev1.ResourceStorage]
 	)
+
 	if autoScale := crd.Status.SelfHealing.PVCAutoScale; autoScale != nil {
-		if autoScale.RequestedSize.Cmp(size) > 0 {
-			reqs.Requests[corev1.ResourceStorage] = autoScale.RequestedSize
+		// This is the implementation using Int64 but it does not support fractions
+		//requestSize, unableToConvert := autoScale.RequestedSize.AsInt64()
+		//if unableToConvert == true {
+		//	fmt.Errorf("Unable to convert auto scale request")
+		//} else {
+		//	sizeWithPadding := resource.NewQuantity(int64(float64(requestSize)*SnapshotScalingFactor), resource.DecimalSI)
+		//	if sizeWithPadding.Cmp(size) > 0 {
+		//		reqs.Requests[corev1.ResourceStorage] = *sizeWithPadding
+		//	}
+		//}
+		requestedSize := autoScale.RequestedSize.DeepCopy()
+		newSize := requestedSize.AsDec()
+		sizeWithPadding := resource.NewDecimalQuantity(*newSize.Mul(newSize, inf.NewDec(SnapshotGrowthFactor, 2)), resource.DecimalSI)
+		if sizeWithPadding.Cmp(size) > 0 {
+			reqs.Requests[corev1.ResourceStorage] = *sizeWithPadding
 		}
 	}
 	return reqs
