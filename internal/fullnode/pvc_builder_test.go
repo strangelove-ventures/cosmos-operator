@@ -1,6 +1,7 @@
 package fullnode
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -15,6 +16,14 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
+func PrettyStruct(data interface{}) (string, error) {
+	val, err := json.MarshalIndent(data, "", "    ")
+	if err != nil {
+		return "", err
+	}
+	return string(val), nil
+}
+
 func TestBuildPVCs(t *testing.T) {
 	t.Parallel()
 
@@ -28,11 +37,15 @@ func TestBuildPVCs(t *testing.T) {
 				Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("100G")},
 			},
 		}
+
+		//println(PrettyStruct(crd.Spec.VolumeClaimTemplate))
+
 		crd.Spec.InstanceOverrides = map[string]cosmosv1.InstanceOverridesSpec{
 			"juno-0": {},
 		}
 
 		for i, r := range BuildPVCs(&crd) {
+			//println(PrettyStruct(r.Object()))
 			require.Equal(t, int64(i), r.Ordinal())
 			require.NotEmpty(t, r.Revision())
 		}
@@ -148,30 +161,81 @@ func TestBuildPVCs(t *testing.T) {
 		}
 	})
 
-	t.Run("pvc auto scale", func(t *testing.T) {
-		for _, tt := range []struct {
-			SpecQuant, AutoScaleQuant, WantQuant string
-		}{
-			{"100G", "99G", "100G"},
-			{"100G", "101G", "101G"},
-		} {
-			crd := defaultCRD()
-			crd.Spec.Replicas = 1
-			crd.Spec.VolumeClaimTemplate = cosmosv1.PersistentVolumeClaimSpec{
-				Resources: corev1.ResourceRequirements{
-					Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(tt.SpecQuant)},
-				},
-			}
-			crd.Status.SelfHealing.PVCAutoScale = &cosmosv1.PVCAutoScaleStatus{
-				RequestedSize: resource.MustParse(tt.AutoScaleQuant),
-			}
+	t.Run("pvc auto scale with padding", func(t *testing.T) {
+		t.Run("given auto scale size less then current size", func(t *testing.T) {
+			for _, tt := range []struct {
+				SpecQuant, AutoScaleQuant, WantQuant string
+			}{
+				{"100G", "97G", "100G"},
+			} {
+				crd := defaultCRD()
+				crd.Spec.Replicas = 1
+				crd.Spec.VolumeClaimTemplate = cosmosv1.PersistentVolumeClaimSpec{
+					Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(tt.SpecQuant)},
+					},
+				}
+				crd.Status.SelfHealing.PVCAutoScale = &cosmosv1.PVCAutoScaleStatus{
+					RequestedSize: resource.MustParse(tt.AutoScaleQuant),
+				}
 
-			pvcs := BuildPVCs(&crd)
-			require.Len(t, pvcs, 1, tt)
+				pvcs := BuildPVCs(&crd)
+				require.Len(t, pvcs, 1, tt)
 
-			want := corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(tt.WantQuant)}
-			require.Equal(t, want, pvcs[0].Object().Spec.Resources.Requests, tt)
-		}
+				want := corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(tt.WantQuant)}
+				require.Equal(t, want.Storage().Value(), pvcs[0].Object().Spec.Resources.Requests.Storage().Value(), tt)
+			}
+		})
+
+		t.Run("given auto scale size equal to current size", func(t *testing.T) {
+			for _, tt := range []struct {
+				SpecQuant, AutoScaleQuant, WantQuant string
+			}{
+				{"102G", "100G", "102G"},
+			} {
+				crd := defaultCRD()
+				crd.Spec.Replicas = 1
+				crd.Spec.VolumeClaimTemplate = cosmosv1.PersistentVolumeClaimSpec{
+					Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(tt.SpecQuant)},
+					},
+				}
+				crd.Status.SelfHealing.PVCAutoScale = &cosmosv1.PVCAutoScaleStatus{
+					RequestedSize: resource.MustParse(tt.AutoScaleQuant),
+				}
+
+				pvcs := BuildPVCs(&crd)
+				require.Len(t, pvcs, 1, tt)
+
+				want := corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(tt.WantQuant)}
+				require.Equal(t, want, pvcs[0].Object().Spec.Resources.Requests, tt)
+			}
+		})
+
+		t.Run("given auto scale size greater then current size", func(t *testing.T) {
+			for _, tt := range []struct {
+				SpecQuant, AutoScaleQuant, WantQuant string
+			}{
+				{"100G", "100G", "102G"},
+			} {
+				crd := defaultCRD()
+				crd.Spec.Replicas = 1
+				crd.Spec.VolumeClaimTemplate = cosmosv1.PersistentVolumeClaimSpec{
+					Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(tt.SpecQuant)},
+					},
+				}
+				crd.Status.SelfHealing.PVCAutoScale = &cosmosv1.PVCAutoScaleStatus{
+					RequestedSize: resource.MustParse(tt.AutoScaleQuant),
+				}
+
+				pvcs := BuildPVCs(&crd)
+				require.Len(t, pvcs, 1, tt)
+
+				want := corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(tt.WantQuant)}
+				require.Equal(t, want.Storage().Value(), pvcs[0].Object().Spec.Resources.Requests.Storage().Value(), tt)
+			}
+		})
 	})
 
 	test.HasTypeLabel(t, func(crd cosmosv1.CosmosFullNode) []map[string]string {
