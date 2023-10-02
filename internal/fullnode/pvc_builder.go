@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	SnapshotGrowthFactor = 102
+	snapshotGrowthFactor = 102
 )
 
 var (
@@ -87,19 +87,9 @@ func pvcResources(crd *cosmosv1.CosmosFullNode) corev1.ResourceRequirements {
 	)
 
 	if autoScale := crd.Status.SelfHealing.PVCAutoScale; autoScale != nil {
-		// This is the implementation using Int64 but it does not support fractions
-		//requestSize, unableToConvert := autoScale.RequestedSize.AsInt64()
-		//if unableToConvert == true {
-		//	fmt.Errorf("Unable to convert auto scale request")
-		//} else {
-		//	sizeWithPadding := resource.NewQuantity(int64(float64(requestSize)*SnapshotScalingFactor), resource.DecimalSI)
-		//	if sizeWithPadding.Cmp(size) > 0 {
-		//		reqs.Requests[corev1.ResourceStorage] = *sizeWithPadding
-		//	}
-		//}
 		requestedSize := autoScale.RequestedSize.DeepCopy()
 		newSize := requestedSize.AsDec()
-		sizeWithPadding := resource.NewDecimalQuantity(*newSize.Mul(newSize, inf.NewDec(SnapshotGrowthFactor, 2)), resource.DecimalSI)
+		sizeWithPadding := resource.NewDecimalQuantity(*newSize.Mul(newSize, inf.NewDec(snapshotGrowthFactor, 2)), resource.DecimalSI)
 		if sizeWithPadding.Cmp(size) > 0 {
 			reqs.Requests[corev1.ResourceStorage] = *sizeWithPadding
 		}
