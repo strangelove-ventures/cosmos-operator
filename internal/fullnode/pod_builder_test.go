@@ -222,10 +222,12 @@ func TestPodBuilder(t *testing.T) {
 		require.Equal(t, startContainer.Env[1].Value, "/home/operator/cosmos")
 		require.Equal(t, startContainer.Env[2].Name, "GENESIS_FILE")
 		require.Equal(t, startContainer.Env[2].Value, "/home/operator/cosmos/config/genesis.json")
-		require.Equal(t, startContainer.Env[3].Name, "CONFIG_DIR")
-		require.Equal(t, startContainer.Env[3].Value, "/home/operator/cosmos/config")
-		require.Equal(t, startContainer.Env[4].Name, "DATA_DIR")
-		require.Equal(t, startContainer.Env[4].Value, "/home/operator/cosmos/data")
+		require.Equal(t, startContainer.Env[3].Name, "ADDRBOOK_FILE")
+		require.Equal(t, startContainer.Env[3].Value, "/home/operator/cosmos/config/addrbook.json")
+		require.Equal(t, startContainer.Env[4].Name, "CONFIG_DIR")
+		require.Equal(t, startContainer.Env[4].Value, "/home/operator/cosmos/config")
+		require.Equal(t, startContainer.Env[5].Name, "DATA_DIR")
+		require.Equal(t, startContainer.Env[5].Value, "/home/operator/cosmos/data")
 		require.Equal(t, envVars(&crd), startContainer.Env)
 
 		healthContainer := pod.Spec.Containers[1]
@@ -242,11 +244,12 @@ func TestPodBuilder(t *testing.T) {
 		}
 		require.Equal(t, healthPort, healthContainer.Ports[0])
 
-		require.Len(t, lo.Map(pod.Spec.InitContainers, func(c corev1.Container, _ int) string { return c.Name }), 5)
+		require.Len(t, lo.Map(pod.Spec.InitContainers, func(c corev1.Container, _ int) string { return c.Name }), 6)
 
 		wantInitImages := []string{
 			"ghcr.io/strangelove-ventures/infra-toolkit:v0.0.1",
 			"main-image:v1.2.3",
+			"ghcr.io/strangelove-ventures/infra-toolkit:v0.0.1",
 			"ghcr.io/strangelove-ventures/infra-toolkit:v0.0.1",
 			"ghcr.io/strangelove-ventures/infra-toolkit:v0.0.1",
 			"ghcr.io/strangelove-ventures/infra-toolkit:v0.0.1",
@@ -267,7 +270,11 @@ func TestPodBuilder(t *testing.T) {
 		require.Contains(t, initCont.Args[1], `osmosisd init osmosis-6 --chain-id osmosis-123 --home "$CHAIN_HOME"`)
 		require.Contains(t, initCont.Args[1], `osmosisd init osmosis-6 --chain-id osmosis-123 --home "$HOME/.tmp"`)
 
-		mergeConfig := pod.Spec.InitContainers[3]
+		mergeConfig1 := pod.Spec.InitContainers[3]
+		// The order of config-merge arguments is important. Rightmost takes precedence.
+		require.Contains(t, mergeConfig1.Args[1], `echo Using default address book`)
+
+		mergeConfig := pod.Spec.InitContainers[4]
 		// The order of config-merge arguments is important. Rightmost takes precedence.
 		require.Contains(t, mergeConfig.Args[1], `config-merge -f toml "$TMP_DIR/config.toml" "$OVERLAY_DIR/config-overlay.toml" > "$CONFIG_DIR/config.toml"`)
 		require.Contains(t, mergeConfig.Args[1], `config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CONFIG_DIR/app.toml`)
@@ -293,10 +300,12 @@ func TestPodBuilder(t *testing.T) {
 		require.Equal(t, container.Env[1].Value, "/home/operator/.osmosisd")
 		require.Equal(t, container.Env[2].Name, "GENESIS_FILE")
 		require.Equal(t, container.Env[2].Value, "/home/operator/.osmosisd/config/genesis.json")
-		require.Equal(t, container.Env[3].Name, "CONFIG_DIR")
-		require.Equal(t, container.Env[3].Value, "/home/operator/.osmosisd/config")
-		require.Equal(t, container.Env[4].Name, "DATA_DIR")
-		require.Equal(t, container.Env[4].Value, "/home/operator/.osmosisd/data")
+		require.Equal(t, container.Env[3].Name, "ADDRBOOK_FILE")
+		require.Equal(t, container.Env[3].Value, "/home/operator/.osmosisd/config/addrbook.json")
+		require.Equal(t, container.Env[4].Name, "CONFIG_DIR")
+		require.Equal(t, container.Env[4].Value, "/home/operator/.osmosisd/config")
+		require.Equal(t, container.Env[5].Name, "DATA_DIR")
+		require.Equal(t, container.Env[5].Value, "/home/operator/.osmosisd/data")
 
 		require.NotEmpty(t, pod.Spec.InitContainers)
 
@@ -554,7 +563,7 @@ gaiad start --home /home/operator/cosmos`
 		require.Equal(t, "/foo", extraVol[0].MountPath)
 
 		initConts := lo.SliceToMap(pod.Spec.InitContainers, func(c corev1.Container) (string, corev1.Container) { return c.Name, c })
-		require.ElementsMatch(t, []string{"clean-init", "chain-init", "new-init", "genesis-init", "config-merge"}, lo.Keys(initConts))
+		require.ElementsMatch(t, []string{"clean-init", "chain-init", "new-init", "genesis-init", "addrbook-init", "config-merge"}, lo.Keys(initConts))
 		require.Equal(t, "foo:latest", initConts["chain-init"].Image)
 	})
 
