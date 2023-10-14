@@ -103,7 +103,7 @@ type LocalFullNodeRef struct {
 	// Index of the pod to snapshot. If not provided, will do any pod in the CosmosFullNode.
 	// Useful when snapshots are local to the same node as the pod, requiring snapshots across multiple pods/nodes.
 	// +optional
-	Ordinal *int32 `json:"index"`
+	Ordinal *int32 `json:"ordinal"`
 }
 
 // ScheduledVolumeSnapshotStatus defines the observed state of ScheduledVolumeSnapshot
