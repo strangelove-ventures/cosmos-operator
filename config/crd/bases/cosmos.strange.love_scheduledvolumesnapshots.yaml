@@ -67,6 +67,13 @@ spec:
                   ScheduledVolumeSnapshot. Instead delete the ScheduledVolumeSnapshot
                   and create a new one with the correct fullNodeRef.
                 properties:
+                  index:
+                    description: Index of the pod to snapshot. If not provided, will
+                      do any pod in the CosmosFullNode. Useful when snapshots are
+                      local to the same node as the pod, requiring snapshots across
+                      multiple pods/nodes.
+                    format: int32
+                    type: integer
                   name:
                     description: Name of the object, metadata.name
                     type: string
