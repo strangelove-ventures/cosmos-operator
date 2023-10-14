@@ -123,6 +123,75 @@ func TestVolumeSnapshotControl_FindCandidate(t *testing.T) {
 		require.Equal(t, candidate.Labels, got.PodLabels)
 	})
 
+	t.Run("happy path with index", func(t *testing.T) {
+		pods := make([]corev1.Pod, 3)
+		for i := range pods {
+			pods[i].Status.Conditions = []corev1.PodCondition{readyCondition}
+		}
+		var mClient mockPodClient
+		mClient.Items = pods
+
+		var fullnodeCRD cosmosv1.CosmosFullNode
+		fullnodeCRD.Name = fullNodeName
+		// Purposefully using PodBuilder to cross-test any breaking changes in PodBuilder which affects
+		// finding the PVC name.
+		candidate, err := fullnode.NewPodBuilder(&fullnodeCRD).WithOrdinal(1).Build()
+		require.NoError(t, err)
+
+		candidate.Annotations["app.kubernetes.io/ordinal"] = "1"
+
+		control := NewVolumeSnapshotControl(&mClient, mockPodFilter{
+			SyncedPodsFn: func(ctx context.Context, controller client.ObjectKey) []*corev1.Pod {
+				require.Equal(t, namespace, controller.Namespace)
+				require.Equal(t, fullNodeName, controller.Name)
+				return []*corev1.Pod{candidate, new(corev1.Pod), new(corev1.Pod)}
+			},
+		})
+
+		indexCRD := crd.DeepCopy()
+		index := int32(1)
+		indexCRD.Spec.FullNodeRef.Ordinal = &index
+
+		got, err := control.FindCandidate(ctx, indexCRD)
+		require.NoError(t, err)
+
+		require.Equal(t, "cosmoshub-1", got.PodName)
+		require.Equal(t, "pvc-cosmoshub-1", got.PVCName)
+		require.NotEmpty(t, got.PodLabels)
+		require.Equal(t, candidate.Labels, got.PodLabels)
+	})
+
+	t.Run("index not available", func(t *testing.T) {
+		pods := make([]corev1.Pod, 3)
+		for i := range pods {
+			pods[i].Status.Conditions = []corev1.PodCondition{readyCondition}
+		}
+		var mClient mockPodClient
+		mClient.Items = pods
+
+		var fullnodeCRD cosmosv1.CosmosFullNode
+		fullnodeCRD.Name = fullNodeName
+		// Purposefully using PodBuilder to cross-test any breaking changes in PodBuilder which affects
+		// finding the PVC name.
+		candidate, err := fullnode.NewPodBuilder(&fullnodeCRD).WithOrdinal(1).Build()
+		require.NoError(t, err)
+
+		control := NewVolumeSnapshotControl(&mClient, mockPodFilter{
+			SyncedPodsFn: func(ctx context.Context, controller client.ObjectKey) []*corev1.Pod {
+				require.Equal(t, namespace, controller.Namespace)
+				require.Equal(t, fullNodeName, controller.Name)
+				return []*corev1.Pod{candidate, new(corev1.Pod), new(corev1.Pod)}
+			},
+		})
+
+		indexCRD := crd.DeepCopy()
+		index := int32(2)
+		indexCRD.Spec.FullNodeRef.Ordinal = &index
+
+		_, err = control.FindCandidate(ctx, indexCRD)
+		require.ErrorContains(t, err, "in-sync pod with index 2 not found")
+	})
+
 	t.Run("custom min available", func(t *testing.T) {
 		var pod corev1.Pod
 		pod.Name = "found-me"

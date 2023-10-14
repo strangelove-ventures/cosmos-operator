@@ -67,7 +67,23 @@ func (control VolumeSnapshotControl) FindCandidate(ctx context.Context, crd *cos
 		return Candidate{}, fmt.Errorf("%d or more pods must be in-sync to prevent downtime, found %d in-sync", minAvail, availCount)
 	}
 
-	pod := synced[0]
+	var pod *corev1.Pod
+
+	if crd.Spec.FullNodeRef.Ordinal != nil {
+		podIndex := *crd.Spec.FullNodeRef.Ordinal
+		podIndexStr := fmt.Sprintf("%d", podIndex)
+		for _, p := range synced {
+			if p.Annotations["app.kubernetes.io/ordinal"] == podIndexStr {
+				pod = p
+				break
+			}
+		}
+		if pod == nil {
+			return Candidate{}, fmt.Errorf("in-sync pod with index %d not found", podIndex)
+		}
+	} else {
+		pod = synced[0]
+	}
 
 	return Candidate{
 		PodLabels: pod.Labels,
