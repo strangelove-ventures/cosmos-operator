@@ -18,7 +18,7 @@ COPY internal/ internal/
 
 ARG VERSION
 
-RUN CGO_ENABLED=1 LDFLAGS='-linkmode external -extldflags "-static"'; \
+RUN export CGO_ENABLED=1 LDFLAGS='-linkmode external -extldflags "-static"'; \
     go build -ldflags "-X github.com/strangelove-ventures/cosmos-operator/internal/version.version=$VERSION $LDFLAGS" -a -o manager .
 
 # Build final image from scratch
