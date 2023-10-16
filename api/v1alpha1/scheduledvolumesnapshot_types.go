@@ -99,6 +99,11 @@ type LocalFullNodeRef struct {
 	// DEPRECATED: CosmosFullNode must be in the same namespace as the ScheduledVolumeSnapshot. This field is ignored.
 	// +optional
 	Namespace string `json:"namespace"`
+
+	// Index of the pod to snapshot. If not provided, will do any pod in the CosmosFullNode.
+	// Useful when snapshots are local to the same node as the pod, requiring snapshots across multiple pods/nodes.
+	// +optional
+	Ordinal *int32 `json:"ordinal"`
 }
 
 // ScheduledVolumeSnapshotStatus defines the observed state of ScheduledVolumeSnapshot

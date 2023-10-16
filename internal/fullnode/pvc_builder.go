@@ -6,8 +6,14 @@ import (
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/internal/diff"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
+	"gopkg.in/inf.v0"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+const (
+	snapshotGrowthFactor = 102
 )
 
 var (
@@ -79,9 +85,13 @@ func pvcResources(crd *cosmosv1.CosmosFullNode) corev1.ResourceRequirements {
 		reqs = crd.Spec.VolumeClaimTemplate.Resources
 		size = reqs.Requests[corev1.ResourceStorage]
 	)
+
 	if autoScale := crd.Status.SelfHealing.PVCAutoScale; autoScale != nil {
-		if autoScale.RequestedSize.Cmp(size) > 0 {
-			reqs.Requests[corev1.ResourceStorage] = autoScale.RequestedSize
+		requestedSize := autoScale.RequestedSize.DeepCopy()
+		newSize := requestedSize.AsDec()
+		sizeWithPadding := resource.NewDecimalQuantity(*newSize.Mul(newSize, inf.NewDec(snapshotGrowthFactor, 2)), resource.DecimalSI)
+		if sizeWithPadding.Cmp(size) > 0 {
+			reqs.Requests[corev1.ResourceStorage] = *sizeWithPadding
 		}
 	}
 	return reqs
