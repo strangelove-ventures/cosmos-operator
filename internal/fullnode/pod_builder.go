@@ -278,6 +278,7 @@ func envVars(crd *cosmosv1.CosmosFullNode) []corev1.EnvVar {
 		{Name: "HOME", Value: workDir},
 		{Name: "CHAIN_HOME", Value: home},
 		{Name: "GENESIS_FILE", Value: path.Join(home, "config", "genesis.json")},
+		{Name: "ADDRBOOK_FILE", Value: path.Join(home, "config", "addrbook.json")},
 		{Name: "CONFIG_DIR", Value: path.Join(home, "config")},
 		{Name: "DATA_DIR", Value: path.Join(home, "data")},
 	}
@@ -287,6 +288,7 @@ func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Conta
 	tpl := crd.Spec.PodTemplate
 	binary := crd.Spec.ChainSpec.Binary
 	genesisCmd, genesisArgs := DownloadGenesisCommand(crd.Spec.ChainSpec)
+	addrbookCmd, addrbookArgs := DownloadAddrbookCommand(crd.Spec.ChainSpec)
 	env := envVars(crd)
 
 	initCmd := fmt.Sprintf("%s init %s --chain-id %s", binary, moniker, crd.Spec.ChainSpec.ChainID)
@@ -332,7 +334,15 @@ echo "Initializing into tmp dir for downstream processing..."
 			ImagePullPolicy: tpl.ImagePullPolicy,
 			WorkingDir:      workDir,
 		},
-
+		{
+			Name:            "addrbook-init",
+			Image:           infraToolImage,
+			Command:         []string{addrbookCmd},
+			Args:            addrbookArgs,
+			Env:             env,
+			ImagePullPolicy: tpl.ImagePullPolicy,
+			WorkingDir:      workDir,
+		},
 		{
 			Name:    "config-merge",
 			Image:   infraToolImage,

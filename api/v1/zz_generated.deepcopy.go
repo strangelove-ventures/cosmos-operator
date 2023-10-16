@@ -64,6 +64,16 @@ func (in *ChainSpec) DeepCopyInto(out *ChainSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.AddrbookURL != nil {
+		in, out := &in.AddrbookURL, &out.AddrbookURL
+		*out = new(string)
+		**out = **in
+	}
+	if in.AddrbookScript != nil {
+		in, out := &in.AddrbookScript, &out.AddrbookScript
+		*out = new(string)
+		**out = **in
+	}
 	if in.GenesisURL != nil {
 		in, out := &in.GenesisURL, &out.GenesisURL
 		*out = new(string)
