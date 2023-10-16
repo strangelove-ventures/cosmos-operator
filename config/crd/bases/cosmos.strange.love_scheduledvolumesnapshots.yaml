@@ -74,6 +74,13 @@ spec:
                     description: 'DEPRECATED: CosmosFullNode must be in the same namespace
                       as the ScheduledVolumeSnapshot. This field is ignored.'
                     type: string
+                  ordinal:
+                    description: Index of the pod to snapshot. If not provided, will
+                      do any pod in the CosmosFullNode. Useful when snapshots are
+                      local to the same node as the pod, requiring snapshots across
+                      multiple pods/nodes.
+                    format: int32
+                    type: integer
                 required:
                 - name
                 type: object
