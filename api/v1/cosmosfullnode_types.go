@@ -445,6 +445,27 @@ type ChainSpec struct {
 	// +optional
 	LogFormat *string `json:"logFormat"`
 
+	// URL to address book file to download from the internet.
+	// The operator detects and properly handles the following file extensions:
+	// .json, .json.gz, .tar, .tar.gz, .tar.gzip, .zip
+	// Use AddrbookScript if the chain has an unconventional file format or address book location.
+	// +optional
+	AddrbookURL *string `json:"addrbookURL"`
+
+	// Specify shell (sh) script commands to properly download and save the address book file.
+	// Prefer AddrbookURL if the file is in a conventional format.
+	// The available shell commands are from docker image ghcr.io/strangelove-ventures/infra-toolkit, including wget and curl.
+	// Save the file to env var $ADDRBOOK_FILE.
+	// E.g. curl https://url-to-addrbook.com > $ADDRBOOK_FILE
+	// Takes precedence over AddrbookURL.
+	// Hint: Use "set -eux" in your script.
+	// Available env vars:
+	// $HOME: The home directory.
+	// $ADDRBOOK_FILE: The location of the final address book file.
+	// $CONFIG_DIR: The location of the config dir that houses the address book file. Used for extracting from archives. The archive must have a single file called "addrbook.json".
+	// +optional
+	AddrbookScript *string `json:"addrbookScript"`
+
 	// URL to genesis file to download from the internet.
 	// Although this field is optional, you will almost always want to set it.
 	// If not set, uses the genesis file created from the init subcommand. (This behavior may be desirable for new chains or testing.)
