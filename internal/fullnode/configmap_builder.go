@@ -38,7 +38,30 @@ func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, peers Peers) ([]diff.Resource
 			return nil, err
 		}
 		buf.Reset()
-		if err := addAppToml(buf, data, crd.Spec.ChainSpec.App); err != nil {
+		appCfg := crd.Spec.ChainSpec.App
+		if len(crd.Spec.ChainSpec.Versions) > 0 {
+			instanceHeight := uint64(0)
+			for _, v := range crd.Status.SyncInfo.Pods {
+				if v.Pod == instance {
+					if v.Height != nil {
+						instanceHeight = *v.Height
+					}
+					break
+				}
+			}
+			haltHeight := uint64(0)
+			for i, v := range crd.Spec.ChainSpec.Versions {
+				haltHeight = v.UpgradeHeight
+				if instanceHeight < v.UpgradeHeight {
+					break
+				}
+				if i == len(crd.Spec.ChainSpec.Versions)-1 {
+					haltHeight = 0
+				}
+			}
+			appCfg.HaltHeight = ptr(haltHeight)
+		}
+		if err := addAppToml(buf, data, appCfg); err != nil {
 			return nil, err
 		}
 		buf.Reset()

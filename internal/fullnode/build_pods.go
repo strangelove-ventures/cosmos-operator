@@ -25,6 +25,28 @@ func BuildPods(crd *cosmosv1.CosmosFullNode, cksums ConfigChecksums) ([]diff.Res
 		if _, shouldSnapshot := candidates[pod.Name]; shouldSnapshot {
 			continue
 		}
+		if len(crd.Spec.ChainSpec.Versions) > 0 {
+			instanceHeight := uint64(0)
+			for _, instance := range crd.Status.SyncInfo.Pods {
+				if instance.Pod == pod.Name {
+					if instance.Height == nil {
+						break
+					}
+					instanceHeight = *instance.Height
+					break
+				}
+			}
+			var image string
+			for _, version := range crd.Spec.ChainSpec.Versions {
+				if instanceHeight < version.UpgradeHeight {
+					break
+				}
+				image = version.Image
+			}
+			if image != "" {
+				setMainContainerImage(pod, image)
+			}
+		}
 		if o, ok := overrides[pod.Name]; ok {
 			if o.DisableStrategy != nil {
 				continue

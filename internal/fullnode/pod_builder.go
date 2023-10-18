@@ -272,6 +272,11 @@ func ChainHomeDir(crd *cosmosv1.CosmosFullNode) string {
 	return workDir + "/cosmos"
 }
 
+func dataDir(crd *cosmosv1.CosmosFullNode) string {
+	home := ChainHomeDir(crd)
+	return path.Join(home, "data")
+}
+
 func envVars(crd *cosmosv1.CosmosFullNode) []corev1.EnvVar {
 	home := ChainHomeDir(crd)
 	return []corev1.EnvVar{
@@ -384,6 +389,31 @@ config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CON
 			WorkingDir:      workDir,
 		})
 	}
+
+	versionCheckCmd := []string{"/manager", "versioncheck"}
+	if crd.Spec.ChainSpec.DatabaseBackend != nil {
+		versionCheckCmd = append(versionCheckCmd, "-b", *crd.Spec.ChainSpec.DatabaseBackend)
+	}
+
+	// Append version check after snapshot download, if applicable.
+	// That way the version check will be after the database is initialized.
+	// This initContainer will update the crd status with the current height for the pod,
+	// And then panic if the image version is not correct for the current height.
+	// After the status is patched, the pod will be restarted with the correct image.
+	required = append(required, corev1.Container{
+		Name:    "version-check",
+		Image:   "ghcr.io/strangelove-ventures/cosmos-operator:" + version.DockerTag(),
+		Command: versionCheckCmd,
+		Resources: corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("5m"),
+				corev1.ResourceMemory: resource.MustParse("16Mi"),
+			},
+		},
+		Env:             env,
+		ImagePullPolicy: tpl.ImagePullPolicy,
+		WorkingDir:      workDir,
+	})
 
 	return required
 }

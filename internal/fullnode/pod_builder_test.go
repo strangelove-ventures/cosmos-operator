@@ -244,7 +244,7 @@ func TestPodBuilder(t *testing.T) {
 		}
 		require.Equal(t, healthPort, healthContainer.Ports[0])
 
-		require.Len(t, lo.Map(pod.Spec.InitContainers, func(c corev1.Container, _ int) string { return c.Name }), 6)
+		require.Len(t, lo.Map(pod.Spec.InitContainers, func(c corev1.Container, _ int) string { return c.Name }), 7)
 
 		wantInitImages := []string{
 			"ghcr.io/strangelove-ventures/infra-toolkit:v0.0.1",
@@ -253,6 +253,7 @@ func TestPodBuilder(t *testing.T) {
 			"ghcr.io/strangelove-ventures/infra-toolkit:v0.0.1",
 			"ghcr.io/strangelove-ventures/infra-toolkit:v0.0.1",
 			"ghcr.io/strangelove-ventures/infra-toolkit:v0.0.1",
+			"ghcr.io/strangelove-ventures/cosmos-operator:latest",
 		}
 		require.Equal(t, wantInitImages, lo.Map(pod.Spec.InitContainers, func(c corev1.Container, _ int) string {
 			return c.Image
@@ -563,7 +564,7 @@ gaiad start --home /home/operator/cosmos`
 		require.Equal(t, "/foo", extraVol[0].MountPath)
 
 		initConts := lo.SliceToMap(pod.Spec.InitContainers, func(c corev1.Container) (string, corev1.Container) { return c.Name, c })
-		require.ElementsMatch(t, []string{"clean-init", "chain-init", "new-init", "genesis-init", "addrbook-init", "config-merge"}, lo.Keys(initConts))
+		require.ElementsMatch(t, []string{"clean-init", "chain-init", "new-init", "genesis-init", "addrbook-init", "config-merge", "version-check"}, lo.Keys(initConts))
 		require.Equal(t, "foo:latest", initConts["chain-init"].Image)
 	})
 

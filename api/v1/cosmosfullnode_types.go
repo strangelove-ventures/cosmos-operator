@@ -17,6 +17,8 @@ limitations under the License.
 package v1
 
 import (
+	"fmt"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -524,6 +526,39 @@ type ChainSpec struct {
 	// +kubebuilder:validation:Minimum:=0
 	// +optional
 	PrivvalSleepSeconds *int32 `json:"privvalSleepSeconds"`
+
+	// DatabaseBackend must match in order to detect the block height
+	// of the chain prior to starting in order to pick the correct image version.
+	// options: goleveldb, rocksdb, pebbledb
+	// Defaults to goleveldb.
+	// +optional
+	DatabaseBackend *string `json:"databaseBackend"`
+
+	// Versions of the chain and which height they should be applied.
+	// When provided, the operator will automatically upgrade the chain as it reaches the specified heights.
+	// If not provided, the operator will not upgrade the chain, and will use the image specified in the pod spec.
+	// +optional
+	Versions ChainVersions `json:"versions"`
+}
+
+type ChainVersion struct {
+	// UpgradeHeight is the block height when this version is applied.
+	UpgradeHeight uint64 `json:"minHeight"`
+
+	// Image is the docker image for this version in "repository:tag" format. E.g. busybox:latest.
+	Image string `json:"image"`
+}
+
+type ChainVersions []ChainVersion
+
+func (cv ChainVersions) Validate() error {
+	lastHeight := uint64(0)
+	for _, v := range cv {
+		if v.UpgradeHeight < lastHeight {
+			return fmt.Errorf("upgrade height %d is less than last upgrade height %d. upgrades must be sequential", v.UpgradeHeight, lastHeight)
+		}
+	}
+	return nil
 }
 
 // CometConfig configures the config.toml.

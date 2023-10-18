@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func healthcheckCmd() *cobra.Command {
+func HealthCheckCmd() *cobra.Command {
 	hc := &cobra.Command{
 		Short:        "Start health check probe",
 		Use:          "healthcheck",
@@ -43,7 +43,7 @@ func startHealthCheckServer(cmd *cobra.Command, args []string) error {
 		httpClient  = &http.Client{Timeout: 30 * time.Second}
 		cometClient = cosmos.NewCometClient(httpClient)
 
-		zlog   = zapLogger("info", viper.GetString("log-format"))
+		zlog   = ZapLogger("info", viper.GetString("log-format"))
 		logger = zapr.NewLogger(zlog)
 	)
 	defer func() { _ = zlog.Sync() }()

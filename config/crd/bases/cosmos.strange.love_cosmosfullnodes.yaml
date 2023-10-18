@@ -220,6 +220,12 @@ spec:
                           limits.
                         type: string
                     type: object
+                  databaseBackend:
+                    description: 'DatabaseBackend must match in order to detect the
+                      block height of the chain prior to starting in order to pick
+                      the correct image version. options: goleveldb, rocksdb, pebbledb
+                      Defaults to goleveldb.'
+                    type: string
                   genesisScript:
                     description: 'Specify shell (sh) script commands to properly download
                       and save the genesis file. Prefer GenesisURL if the file is
@@ -310,6 +316,28 @@ spec:
                       if the snapshot archive is unconventional or requires special
                       handling.'
                     type: string
+                  versions:
+                    description: Versions of the chain and which height they should
+                      be applied. When provided, the operator will automatically upgrade
+                      the chain as it reaches the specified heights. If not provided,
+                      the operator will not upgrade the chain, and will use the image
+                      specified in the pod spec.
+                    items:
+                      properties:
+                        image:
+                          description: Image is the docker image for this version
+                            in "repository:tag" format. E.g. busybox:latest.
+                          type: string
+                        minHeight:
+                          description: UpgradeHeight is the block height when this
+                            version is applied.
+                          format: int64
+                          type: integer
+                      required:
+                      - image
+                      - minHeight
+                      type: object
+                    type: array
                 required:
                 - app
                 - binary
