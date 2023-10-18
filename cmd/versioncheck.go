@@ -72,7 +72,7 @@ func VersionCheckCmd() *cobra.Command {
 			}
 
 			crd := new(cosmosv1.CosmosFullNode)
-			if err := kClient.Get(ctx, namespacedName, crd); err != nil {
+			if err = kClient.Get(ctx, namespacedName, crd); err != nil {
 				panic(fmt.Errorf("failed to get crd: %w", err))
 			}
 
