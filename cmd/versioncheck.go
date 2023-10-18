@@ -36,30 +36,6 @@ func VersionCheckCmd() *cobra.Command {
 		Short: "Confirm correct image used for current node height",
 		Long:  `Open the Cosmos SDK chain database, get the height, update the crd status with the height, then check the image for the height and panic if it is incorrect.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Println("height called")
-
-			dataDir := os.Getenv("DATA_DIR")
-			backend, _ := cmd.Flags().GetString(flagBackend)
-
-			s, err := os.Stat(dataDir)
-			if err != nil {
-				panic(fmt.Errorf("failed to stat %s: %w", dataDir, err))
-			}
-
-			if !s.IsDir() {
-				panic(fmt.Errorf("%s is not a directory", dataDir))
-			}
-
-			db, err := dbm.NewDB("application", getBackend(backend), dataDir)
-			if err != nil {
-				panic(fmt.Errorf("failed to open db: %w", err))
-			}
-
-			store := rootmulti.NewStore(db, log.NewNopLogger(), nil)
-
-			height := store.LatestVersion()
-			fmt.Printf("%d", height)
-
 			nsbz, err := os.ReadFile(namespaceFile)
 			if err != nil {
 				panic(fmt.Errorf("failed to read namespace from service account: %w", err))
@@ -99,6 +75,33 @@ func VersionCheckCmd() *cobra.Command {
 			if err := kClient.Get(ctx, namespacedName, crd); err != nil {
 				panic(fmt.Errorf("failed to get crd: %w", err))
 			}
+
+			if len(crd.Spec.ChainSpec.Versions) == 0 {
+				fmt.Println("No versions specified, skipping version check")
+				return
+			}
+
+			dataDir := os.Getenv("DATA_DIR")
+			backend, _ := cmd.Flags().GetString(flagBackend)
+
+			s, err := os.Stat(dataDir)
+			if err != nil {
+				panic(fmt.Errorf("failed to stat %s: %w", dataDir, err))
+			}
+
+			if !s.IsDir() {
+				panic(fmt.Errorf("%s is not a directory", dataDir))
+			}
+
+			db, err := dbm.NewDB("application", getBackend(backend), dataDir)
+			if err != nil {
+				panic(fmt.Errorf("failed to open db: %w", err))
+			}
+
+			store := rootmulti.NewStore(db, log.NewNopLogger(), nil)
+
+			height := store.LatestVersion()
+			fmt.Printf("%d", height)
 
 			if err := kClient.Status().Patch(
 				ctx, crd,
