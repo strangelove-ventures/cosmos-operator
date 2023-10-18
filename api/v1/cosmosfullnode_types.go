@@ -543,7 +543,7 @@ type ChainSpec struct {
 
 type ChainVersion struct {
 	// UpgradeHeight is the block height when this version is applied.
-	UpgradeHeight uint64 `json:"minHeight"`
+	UpgradeHeight uint64 `json:"height"`
 
 	// Image is the docker image for this version in "repository:tag" format. E.g. busybox:latest.
 	Image string `json:"image"`

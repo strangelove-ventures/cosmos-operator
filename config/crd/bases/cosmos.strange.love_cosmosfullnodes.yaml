@@ -324,18 +324,18 @@ spec:
                       specified in the pod spec.
                     items:
                       properties:
-                        image:
-                          description: Image is the docker image for this version
-                            in "repository:tag" format. E.g. busybox:latest.
-                          type: string
-                        minHeight:
+                        height:
                           description: UpgradeHeight is the block height when this
                             version is applied.
                           format: int64
                           type: integer
+                        image:
+                          description: Image is the docker image for this version
+                            in "repository:tag" format. E.g. busybox:latest.
+                          type: string
                       required:
+                      - height
                       - image
-                      - minHeight
                       type: object
                     type: array
                 required:

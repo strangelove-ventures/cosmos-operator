@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/cobra"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -30,7 +31,7 @@ const (
 // It panics if the wrong image is specified for the pod for the height,
 // restarting the pod so that the correct image is used from the patched height.
 // this command is intended to be run as an init container.
-func VersionCheckCmd() *cobra.Command {
+func VersionCheckCmd(scheme *runtime.Scheme) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "versioncheck",
 		Short: "Confirm correct image used for current node height",
@@ -60,11 +61,6 @@ func VersionCheckCmd() *cobra.Command {
 			}
 
 			cosmosFullNodeName := thisPod.Labels["app.kubernetes.io/name"]
-
-			scheme, err := cosmosv1.SchemeBuilder.Build()
-			if err != nil {
-				panic(fmt.Errorf("failed to build scheme: %w", err))
-			}
 
 			kClient, err := client.New(config, client.Options{
 				Scheme: scheme,
@@ -113,7 +109,7 @@ func VersionCheckCmd() *cobra.Command {
 			if err := kClient.Status().Patch(
 				ctx, crd,
 				client.RawPatch(
-					types.StrategicMergePatchType,
+					types.MergePatchType,
 					[]byte(fmt.Sprintf(
 						`{"syncInfo":{"pods":[{"pod":"%s","time":"%s","height":%d,"inSync": false}]}}`,
 						thisPod.Name,

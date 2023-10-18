@@ -108,7 +108,7 @@ func rootCmd() *cobra.Command {
 
 	// Add subcommands here
 	root.AddCommand(opcmd.HealthCheckCmd())
-	root.AddCommand(opcmd.VersionCheckCmd())
+	root.AddCommand(opcmd.VersionCheckCmd(scheme))
 	root.AddCommand(&cobra.Command{
 		Short: "Print the version",
 		Use:   "version",
