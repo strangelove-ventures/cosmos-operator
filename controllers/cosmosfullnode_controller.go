@@ -43,15 +43,18 @@ const controllerOwnerField = ".metadata.controller"
 type CosmosFullNodeReconciler struct {
 	client.Client
 
-	cacheController  *cosmos.CacheController
-	configMapControl fullnode.ConfigMapControl
-	nodeKeyControl   fullnode.NodeKeyControl
-	peerCollector    *fullnode.PeerCollector
-	podControl       fullnode.PodControl
-	pvcControl       fullnode.PVCControl
-	recorder         record.EventRecorder
-	serviceControl   fullnode.ServiceControl
-	statusClient     *fullnode.StatusClient
+	cacheController           *cosmos.CacheController
+	configMapControl          fullnode.ConfigMapControl
+	nodeKeyControl            fullnode.NodeKeyControl
+	peerCollector             *fullnode.PeerCollector
+	podControl                fullnode.PodControl
+	pvcControl                fullnode.PVCControl
+	recorder                  record.EventRecorder
+	serviceControl            fullnode.ServiceControl
+	statusClient              *fullnode.StatusClient
+	serviceAccountControl     fullnode.ServiceAccountControl
+	clusterRoleControl        fullnode.ClusterRoleControl
+	clusterRoleBindingControl fullnode.ClusterRoleBindingControl
 }
 
 // NewFullNode returns a valid CosmosFullNode controller.
@@ -64,15 +67,18 @@ func NewFullNode(
 	return &CosmosFullNodeReconciler{
 		Client: client,
 
-		cacheController:  cacheController,
-		configMapControl: fullnode.NewConfigMapControl(client),
-		nodeKeyControl:   fullnode.NewNodeKeyControl(client),
-		peerCollector:    fullnode.NewPeerCollector(client),
-		podControl:       fullnode.NewPodControl(client, cacheController),
-		pvcControl:       fullnode.NewPVCControl(client),
-		recorder:         recorder,
-		serviceControl:   fullnode.NewServiceControl(client),
-		statusClient:     statusClient,
+		cacheController:           cacheController,
+		configMapControl:          fullnode.NewConfigMapControl(client),
+		nodeKeyControl:            fullnode.NewNodeKeyControl(client),
+		peerCollector:             fullnode.NewPeerCollector(client),
+		podControl:                fullnode.NewPodControl(client, cacheController),
+		pvcControl:                fullnode.NewPVCControl(client),
+		recorder:                  recorder,
+		serviceControl:            fullnode.NewServiceControl(client),
+		statusClient:              statusClient,
+		serviceAccountControl:     fullnode.NewServiceAccountControl(client),
+		clusterRoleControl:        fullnode.NewClusterRoleControl(client),
+		clusterRoleBindingControl: fullnode.NewClusterRoleBindingControl(client),
 	}
 }
 
@@ -139,6 +145,24 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	// Reconcile ConfigMaps.
 	configCksums, err := r.configMapControl.Reconcile(ctx, reporter, crd, peers)
+	if err != nil {
+		errs.Append(err)
+	}
+
+	// Reconcile service accounts.
+	err = r.serviceAccountControl.Reconcile(ctx, reporter, crd)
+	if err != nil {
+		errs.Append(err)
+	}
+
+	// Reconcile cluster roles.
+	err = r.clusterRoleControl.Reconcile(ctx, reporter, crd)
+	if err != nil {
+		errs.Append(err)
+	}
+
+	// Reconcile cluster role bindings.
+	err = r.clusterRoleBindingControl.Reconcile(ctx, reporter, crd)
 	if err != nil {
 		errs.Append(err)
 	}

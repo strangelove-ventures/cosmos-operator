@@ -57,6 +57,7 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 			Annotations: make(map[string]string),
 		},
 		Spec: corev1.PodSpec{
+			ServiceAccountName: serviceAccountName(crd),
 			SecurityContext: &corev1.PodSecurityContext{
 				RunAsUser:           ptr(int64(1025)),
 				RunAsGroup:          ptr(int64(1025)),
@@ -408,6 +409,7 @@ config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CON
 		Env:             env,
 		ImagePullPolicy: tpl.ImagePullPolicy,
 		WorkingDir:      workDir,
+		SecurityContext: &corev1.SecurityContext{},
 	})
 
 	return required
