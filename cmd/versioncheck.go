@@ -61,7 +61,14 @@ func VersionCheckCmd() *cobra.Command {
 
 			cosmosFullNodeName := thisPod.Labels["app.kubernetes.io/name"]
 
-			kClient, err := client.New(config, client.Options{})
+			scheme, err := cosmosv1.SchemeBuilder.Build()
+			if err != nil {
+				panic(fmt.Errorf("failed to build scheme: %w", err))
+			}
+
+			kClient, err := client.New(config, client.Options{
+				Scheme: scheme,
+			})
 			if err != nil {
 				panic(fmt.Errorf("failed to create kube client: %w", err))
 			}
