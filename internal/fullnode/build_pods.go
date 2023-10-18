@@ -27,6 +27,9 @@ func BuildPods(crd *cosmosv1.CosmosFullNode, cksums ConfigChecksums) ([]diff.Res
 		}
 		if len(crd.Spec.ChainSpec.Versions) > 0 {
 			instanceHeight := uint64(0)
+			if startupHeight, ok := crd.Status.StartupHeight[pod.Name]; ok {
+				instanceHeight = startupHeight
+			}
 			for _, instance := range crd.Status.SyncInfo.Pods {
 				if instance.Pod == pod.Name {
 					if instance.Height == nil {

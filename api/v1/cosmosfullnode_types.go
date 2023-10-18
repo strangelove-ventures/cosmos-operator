@@ -141,6 +141,10 @@ type FullNodeStatus struct {
 	// Current sync information. Collected every 60s.
 	// +optional
 	SyncInfo *SyncInfoStatus `json:"syncInfo,omitempty"`
+
+	// Startup information. collected when node starts up.
+	// +optional
+	StartupHeight map[string]uint64 `json:"startupInfo,omitempty"`
 }
 
 type SyncInfoStatus struct {

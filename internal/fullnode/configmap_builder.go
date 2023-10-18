@@ -41,6 +41,9 @@ func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, peers Peers) ([]diff.Resource
 		appCfg := crd.Spec.ChainSpec.App
 		if len(crd.Spec.ChainSpec.Versions) > 0 {
 			instanceHeight := uint64(0)
+			if startupHeight, ok := crd.Status.StartupHeight[instance]; ok {
+				instanceHeight = startupHeight
+			}
 			for _, v := range crd.Status.SyncInfo.Pods {
 				if v.Pod == instance {
 					if v.Height != nil {

@@ -72,7 +72,7 @@ func BuildRoles(crd *cosmosv1.CosmosFullNode) []diff.Resource[*rbacv1.Role] {
 			{
 				APIGroups: []string{"cosmos.strange.love"},
 				Resources: []string{"cosmosfullnodes/status"},
-				Verbs:     []string{"patch"},
+				Verbs:     []string{"update"},
 			},
 		},
 	}

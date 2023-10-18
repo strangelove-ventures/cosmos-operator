@@ -5995,6 +5995,12 @@ spec:
                     - requestedSize
                     type: object
                 type: object
+              startupInfo:
+                additionalProperties:
+                  format: int64
+                  type: integer
+                description: Startup information. collected when node starts up.
+                type: object
               status:
                 description: A generic message for the user. May contain errors.
                 type: string

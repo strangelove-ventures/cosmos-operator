@@ -6,7 +6,6 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"time"
 
 	"cosmossdk.io/log"
 	"cosmossdk.io/store/rootmulti"
@@ -106,17 +105,14 @@ func VersionCheckCmd(scheme *runtime.Scheme) *cobra.Command {
 			height := store.LatestVersion()
 			fmt.Printf("%d", height)
 
-			if err := kClient.Status().Patch(
+			if crd.Status.StartupHeight == nil {
+				crd.Status.StartupHeight = make(map[string]uint64)
+			}
+
+			crd.Status.StartupHeight[thisPod.Name] = uint64(height)
+
+			if err := kClient.Status().Update(
 				ctx, crd,
-				client.RawPatch(
-					types.MergePatchType,
-					[]byte(fmt.Sprintf(
-						`{"syncInfo":{"pods":[{"pod":"%s","time":"%s","height":%d,"inSync": false}]}}`,
-						thisPod.Name,
-						time.Now().Format(time.RFC3339),
-						height,
-					)),
-				),
 			); err != nil {
 				panic(fmt.Errorf("failed to patch status: %w", err))
 			}
