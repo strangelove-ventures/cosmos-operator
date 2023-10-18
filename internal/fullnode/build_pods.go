@@ -7,7 +7,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const configChecksumAnnotation = "cosmos.strange.love/config-checksum"
+const (
+	configChecksumAnnotation = "cosmos.strange.love/config-checksum"
+	desiredImageAnnotation   = "cosmos.strange.love/desired-image"
+)
 
 // BuildPods creates the final state of pods given the crd.
 func BuildPods(crd *cosmosv1.CosmosFullNode, cksums ConfigChecksums) ([]diff.Resource[*corev1.Pod], error) {
@@ -58,6 +61,7 @@ func BuildPods(crd *cosmosv1.CosmosFullNode, cksums ConfigChecksums) ([]diff.Res
 				setMainContainerImage(pod, o.Image)
 			}
 		}
+		pod.Annotations[desiredImageAnnotation] = pod.Spec.Containers[0].Image
 		pod.Annotations[configChecksumAnnotation] = cksums[client.ObjectKeyFromObject(pod)]
 		pods = append(pods, diff.Adapt(pod, i))
 	}
