@@ -28,7 +28,11 @@ func (sc ClusterRoleBindingControl) Reconcile(ctx context.Context, log kube.Logg
 	var crs rbacv1.ClusterRoleBindingList
 	if err := sc.client.List(ctx, &crs,
 		client.InNamespace(crd.Namespace),
-		client.MatchingFields{kube.ControllerOwnerField: crd.Name},
+		client.MatchingLabels{
+			kube.ControllerLabel: "cosmos-operator",
+			kube.ComponentLabel:  cosmosv1.CosmosFullNodeController,
+			kube.NameLabel:       appName(crd),
+		},
 	); err != nil {
 		return kube.TransientError(fmt.Errorf("list existing cluster role bindings: %w", err))
 	}

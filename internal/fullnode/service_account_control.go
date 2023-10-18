@@ -28,7 +28,11 @@ func (sc ServiceAccountControl) Reconcile(ctx context.Context, log kube.Logger, 
 	var svcs corev1.ServiceAccountList
 	if err := sc.client.List(ctx, &svcs,
 		client.InNamespace(crd.Namespace),
-		client.MatchingFields{kube.ControllerOwnerField: crd.Name},
+		client.MatchingLabels{
+			kube.ControllerLabel: "cosmos-operator",
+			kube.ComponentLabel:  cosmosv1.CosmosFullNodeController,
+			kube.NameLabel:       appName(crd),
+		},
 	); err != nil {
 		return kube.TransientError(fmt.Errorf("list existing service accounts: %w", err))
 	}
