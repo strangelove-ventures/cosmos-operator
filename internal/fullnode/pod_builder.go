@@ -272,11 +272,6 @@ func ChainHomeDir(crd *cosmosv1.CosmosFullNode) string {
 	return workDir + "/cosmos"
 }
 
-func dataDir(crd *cosmosv1.CosmosFullNode) string {
-	home := ChainHomeDir(crd)
-	return path.Join(home, "data")
-}
-
 func envVars(crd *cosmosv1.CosmosFullNode) []corev1.EnvVar {
 	home := ChainHomeDir(crd)
 	return []corev1.EnvVar{
