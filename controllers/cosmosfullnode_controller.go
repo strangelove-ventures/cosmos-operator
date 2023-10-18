@@ -53,8 +53,8 @@ type CosmosFullNodeReconciler struct {
 	serviceControl            fullnode.ServiceControl
 	statusClient              *fullnode.StatusClient
 	serviceAccountControl     fullnode.ServiceAccountControl
-	clusterRoleControl        fullnode.ClusterRoleControl
-	clusterRoleBindingControl fullnode.ClusterRoleBindingControl
+	clusterRoleControl        fullnode.RoleControl
+	clusterRoleBindingControl fullnode.RoleBindingControl
 }
 
 // NewFullNode returns a valid CosmosFullNode controller.
@@ -77,8 +77,8 @@ func NewFullNode(
 		serviceControl:            fullnode.NewServiceControl(client),
 		statusClient:              statusClient,
 		serviceAccountControl:     fullnode.NewServiceAccountControl(client),
-		clusterRoleControl:        fullnode.NewClusterRoleControl(client),
-		clusterRoleBindingControl: fullnode.NewClusterRoleBindingControl(client),
+		clusterRoleControl:        fullnode.NewRoleControl(client),
+		clusterRoleBindingControl: fullnode.NewRoleBindingControl(client),
 	}
 }
 
@@ -92,7 +92,7 @@ var (
 //+kubebuilder:rbac:groups=cosmos.strange.love,resources=cosmosfullnodes/finalizers,verbs=update
 // Generate RBAC roles to watch and update resources. IMPORTANT!!!! All resource names must be lowercase or cluster role will not work.
 //+kubebuilder:rbac:groups="",resources=pods;persistentvolumeclaims;services;serviceaccounts;configmaps,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups="rbac.authorization.k8s.io",resources=clusterroles;clusterrolebindings,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups="rbac.authorization.k8s.io",resources=roles;rolebindings,verbs=get;list;watch;create;update;patch;delete;bind;escalate
 //+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch
 //+kubebuilder:rbac:groups="",resources=events,verbs=create;update;patch
 

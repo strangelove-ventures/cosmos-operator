@@ -30,7 +30,7 @@ func (sc ServiceAccountControl) Reconcile(ctx context.Context, log kube.Logger, 
 		client.InNamespace(crd.Namespace),
 		client.MatchingLabels{
 			kube.ControllerLabel: "cosmos-operator",
-			kube.ComponentLabel:  cosmosv1.CosmosFullNodeController,
+			kube.ComponentLabel:  "vc",
 			kube.NameLabel:       appName(crd),
 		},
 	); err != nil {

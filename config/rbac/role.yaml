@@ -148,11 +148,13 @@ rules:
 - apiGroups:
   - rbac.authorization.k8s.io
   resources:
-  - clusterrolebindings
-  - clusterroles
+  - rolebindings
+  - roles
   verbs:
+  - bind
   - create
   - delete
+  - escalate
   - get
   - list
   - patch

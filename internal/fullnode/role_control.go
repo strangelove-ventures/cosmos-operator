@@ -12,51 +12,50 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// ClusterRoleControl creates or updates ClusterRoles.
-type ClusterRoleControl struct {
+// RoleControl creates or updates Roles.
+type RoleControl struct {
 	client Client
 }
 
-func NewClusterRoleControl(client Client) ClusterRoleControl {
-	return ClusterRoleControl{
+func NewRoleControl(client Client) RoleControl {
+	return RoleControl{
 		client: client,
 	}
 }
 
-// Reconcile creates or updates cluster roles.
-func (sc ClusterRoleControl) Reconcile(ctx context.Context, log kube.Logger, crd *cosmosv1.CosmosFullNode) kube.ReconcileError {
-	var crs rbacv1.ClusterRoleList
+// Reconcile creates or updates roles.
+func (sc RoleControl) Reconcile(ctx context.Context, log kube.Logger, crd *cosmosv1.CosmosFullNode) kube.ReconcileError {
+	var crs rbacv1.RoleList
 	if err := sc.client.List(ctx, &crs,
-		client.InNamespace(crd.Namespace),
 		client.MatchingLabels{
 			kube.ControllerLabel: "cosmos-operator",
-			kube.ComponentLabel:  cosmosv1.CosmosFullNodeController,
+			kube.ComponentLabel:  "vc",
 			kube.NameLabel:       appName(crd),
 		},
 	); err != nil {
-		return kube.TransientError(fmt.Errorf("list existing cluster roles: %w", err))
+		return kube.TransientError(fmt.Errorf("list existing roles: %w", err))
 	}
 
 	current := ptrSlice(crs.Items)
-	want := BuildClusterRoles(crd)
+	want := BuildRoles(crd)
 	diffed := diff.New(current, want)
 
 	for _, cr := range diffed.Creates() {
-		log.Info("Creating cluster role", "clusterRoleName", cr.Name)
+		log.Info("Creating role", "roleName", cr.Name)
 		if err := ctrl.SetControllerReference(crd, cr, sc.client.Scheme()); err != nil {
-			return kube.TransientError(fmt.Errorf("set controller reference on cluster role %q: %w", cr.Name, err))
+			return kube.TransientError(fmt.Errorf("set controller reference on role %q: %w", cr.Name, err))
 		}
 		// CreateOrUpdate (vs. only create) fixes a bug with current deployments where updating would remove the owner reference.
 		// This ensures we update the service with the owner reference.
 		if err := kube.CreateOrUpdate(ctx, sc.client, cr); err != nil {
-			return kube.TransientError(fmt.Errorf("create cluster role %q: %w", cr.Name, err))
+			return kube.TransientError(fmt.Errorf("create role %q: %w", cr.Name, err))
 		}
 	}
 
 	for _, cr := range diffed.Updates() {
-		log.Info("Updating cluster role", "clusterRoleName", cr.Name)
+		log.Info("Updating role", "roleName", cr.Name)
 		if err := sc.client.Update(ctx, cr); err != nil {
-			return kube.TransientError(fmt.Errorf("update cluster role %q: %w", cr.Name, err))
+			return kube.TransientError(fmt.Errorf("update role %q: %w", cr.Name, err))
 		}
 	}
 

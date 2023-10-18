@@ -13,8 +13,12 @@ func serviceAccountName(crd *cosmosv1.CosmosFullNode) string {
 	return crd.Name + "-vc"
 }
 
-func clusterRoleName(crd *cosmosv1.CosmosFullNode) string {
-	return crd.Name + "-cr"
+func roleName(crd *cosmosv1.CosmosFullNode) string {
+	return crd.Namespace + "-" + crd.Name + "-cr"
+}
+
+func roleBindingName(crd *cosmosv1.CosmosFullNode) string {
+	return crd.Namespace + "-" + crd.Name + "-crb"
 }
 
 // BuildServiceAccounts returns a list of service accounts given the crd.
@@ -40,18 +44,18 @@ func BuildServiceAccounts(crd *cosmosv1.CosmosFullNode) []diff.Resource[*corev1.
 	return diffSa
 }
 
-// BuildClusterRoles returns a list of cluster roles given the crd.
+// BuildRoles returns a list of role bindings given the crd.
 //
-// Creates a single cluster role for the version check.
-func BuildClusterRoles(crd *cosmosv1.CosmosFullNode) []diff.Resource[*rbacv1.ClusterRole] {
-	diffCr := make([]diff.Resource[*rbacv1.ClusterRole], 1)
-	cr := rbacv1.ClusterRole{
+// Creates a single role binding for the version check.
+func BuildRoles(crd *cosmosv1.CosmosFullNode) []diff.Resource[*rbacv1.Role] {
+	diffCr := make([]diff.Resource[*rbacv1.Role], 1)
+	cr := rbacv1.Role{
 		TypeMeta: v1.TypeMeta{
-			Kind:       "ClusterRole",
+			Kind:       "Role",
 			APIVersion: "rbac.authorization.k8s.io/v1",
 		},
 		ObjectMeta: v1.ObjectMeta{
-			Name:      clusterRoleName(crd),
+			Name:      roleName(crd),
 			Namespace: crd.Namespace,
 		},
 		Rules: []rbacv1.PolicyRule{
@@ -75,18 +79,18 @@ func BuildClusterRoles(crd *cosmosv1.CosmosFullNode) []diff.Resource[*rbacv1.Clu
 	return diffCr
 }
 
-// BuildClusterRoles returns a list of cluster role bindings given the crd.
+// BuildRoles returns a list of role binding bindings given the crd.
 //
-// Creates a single cluster role binding for the version check.
-func BuildClusterRoleBindings(crd *cosmosv1.CosmosFullNode) []diff.Resource[*rbacv1.ClusterRoleBinding] {
-	diffCrb := make([]diff.Resource[*rbacv1.ClusterRoleBinding], 1)
-	crb := rbacv1.ClusterRoleBinding{
+// Creates a single role binding binding for the version check.
+func BuildRoleBindings(crd *cosmosv1.CosmosFullNode) []diff.Resource[*rbacv1.RoleBinding] {
+	diffCrb := make([]diff.Resource[*rbacv1.RoleBinding], 1)
+	crb := rbacv1.RoleBinding{
 		TypeMeta: v1.TypeMeta{
-			Kind:       "ClusterRoleBinding",
+			Kind:       "RoleBinding",
 			APIVersion: "rbac.authorization.k8s.io/v1",
 		},
 		ObjectMeta: v1.ObjectMeta{
-			Name:      crd.Name + "-crb",
+			Name:      roleBindingName(crd),
 			Namespace: crd.Namespace,
 		},
 		Subjects: []rbacv1.Subject{
@@ -97,8 +101,8 @@ func BuildClusterRoleBindings(crd *cosmosv1.CosmosFullNode) []diff.Resource[*rba
 			},
 		},
 		RoleRef: rbacv1.RoleRef{
-			Kind:     "ClusterRole",
-			Name:     clusterRoleName(crd),
+			Kind:     "Role",
+			Name:     roleName(crd),
 			APIGroup: "rbac.authorization.k8s.io",
 		},
 	}

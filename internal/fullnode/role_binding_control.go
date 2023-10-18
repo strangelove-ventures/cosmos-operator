@@ -12,51 +12,50 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// ClusterRoleBindingControl creates or updates ClusterRoleBindings.
-type ClusterRoleBindingControl struct {
+// RoleBindingControl creates or updates RoleBindings.
+type RoleBindingControl struct {
 	client Client
 }
 
-func NewClusterRoleBindingControl(client Client) ClusterRoleBindingControl {
-	return ClusterRoleBindingControl{
+func NewRoleBindingControl(client Client) RoleBindingControl {
+	return RoleBindingControl{
 		client: client,
 	}
 }
 
-// Reconcile creates or updates cluster role bindings.
-func (sc ClusterRoleBindingControl) Reconcile(ctx context.Context, log kube.Logger, crd *cosmosv1.CosmosFullNode) kube.ReconcileError {
-	var crs rbacv1.ClusterRoleBindingList
+// Reconcile creates or updates role bindings.
+func (sc RoleBindingControl) Reconcile(ctx context.Context, log kube.Logger, crd *cosmosv1.CosmosFullNode) kube.ReconcileError {
+	var crs rbacv1.RoleBindingList
 	if err := sc.client.List(ctx, &crs,
-		client.InNamespace(crd.Namespace),
 		client.MatchingLabels{
 			kube.ControllerLabel: "cosmos-operator",
-			kube.ComponentLabel:  cosmosv1.CosmosFullNodeController,
+			kube.ComponentLabel:  "vc",
 			kube.NameLabel:       appName(crd),
 		},
 	); err != nil {
-		return kube.TransientError(fmt.Errorf("list existing cluster role bindings: %w", err))
+		return kube.TransientError(fmt.Errorf("list existing role bindings: %w", err))
 	}
 
 	current := ptrSlice(crs.Items)
-	want := BuildClusterRoleBindings(crd)
+	want := BuildRoleBindings(crd)
 	diffed := diff.New(current, want)
 
 	for _, cr := range diffed.Creates() {
-		log.Info("Creating cluster role binding", "clusterRoleBindingName", cr.Name)
+		log.Info("Creating role binding", "roleBindingName", cr.Name)
 		if err := ctrl.SetControllerReference(crd, cr, sc.client.Scheme()); err != nil {
-			return kube.TransientError(fmt.Errorf("set controller reference on cluster role binding %q: %w", cr.Name, err))
+			return kube.TransientError(fmt.Errorf("set controller reference on role binding %q: %w", cr.Name, err))
 		}
 		// CreateOrUpdate (vs. only create) fixes a bug with current deployments where updating would remove the owner reference.
 		// This ensures we update the service with the owner reference.
 		if err := kube.CreateOrUpdate(ctx, sc.client, cr); err != nil {
-			return kube.TransientError(fmt.Errorf("create cluster role binding %q: %w", cr.Name, err))
+			return kube.TransientError(fmt.Errorf("create role binding %q: %w", cr.Name, err))
 		}
 	}
 
 	for _, cr := range diffed.Updates() {
-		log.Info("Updating cluster role binding", "clusterRoleBindingName", cr.Name)
+		log.Info("Updating role binding", "roleBindingName", cr.Name)
 		if err := sc.client.Update(ctx, cr); err != nil {
-			return kube.TransientError(fmt.Errorf("update cluster role binding %q: %w", cr.Name, err))
+			return kube.TransientError(fmt.Errorf("update role binding %q: %w", cr.Name, err))
 		}
 	}
 
