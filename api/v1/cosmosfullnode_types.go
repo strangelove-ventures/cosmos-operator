@@ -546,11 +546,15 @@ type ChainSpec struct {
 }
 
 type ChainVersion struct {
-	// UpgradeHeight is the block height when this version is applied.
+	// The block height when this version should be applied.
 	UpgradeHeight uint64 `json:"height"`
 
-	// Image is the docker image for this version in "repository:tag" format. E.g. busybox:latest.
+	// The docker image for this version in "repository:tag" format. E.g. busybox:latest.
 	Image string `json:"image"`
+
+	// Determines if the node should forcefully halt at the upgrade height.
+	// +optional
+	SetHaltHeight bool `json:"setHaltHeight,omitempty"`
 }
 
 type ChainVersions []ChainVersion
