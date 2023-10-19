@@ -84,6 +84,27 @@ func (pc PodControl) Reconcile(ctx context.Context, reporter kube.Reporter, crd 
 	}
 
 	if len(diffed.Updates()) > 0 {
+		versionUpdated := false
+		for _, update := range diffed.Updates() {
+			for _, p := range pods.Items {
+				if p.Name == update.Name {
+					if p.Spec.Containers[0].Image != update.Spec.Containers[0].Image {
+						// version update, delete pod now.
+						reporter.Info("Deleting pod for version update", "podName", p.Name)
+						if err := pc.client.Delete(ctx, &p, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
+							return true, kube.TransientError(fmt.Errorf("update pod %q: %w", p.Name, err))
+						}
+						versionUpdated = true
+					}
+				}
+			}
+		}
+
+		if versionUpdated {
+			// Signal requeue.
+			return true, nil
+		}
+
 		var (
 			// This may be a source of confusion by passing currentPods vs. pods from diff.Updates().
 			// This is a leaky abstraction (which may be fixed in the future) because diff.Updates() pods are built
