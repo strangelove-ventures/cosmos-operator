@@ -342,8 +342,8 @@ func (in *FullNodeStatus) DeepCopyInto(out *FullNodeStatus) {
 		*out = new(SyncInfoStatus)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.StartupHeight != nil {
-		in, out := &in.StartupHeight, &out.StartupHeight
+	if in.Height != nil {
+		in, out := &in.Height, &out.Height
 		*out = make(map[string]uint64, len(*in))
 		for key, val := range *in {
 			(*out)[key] = val

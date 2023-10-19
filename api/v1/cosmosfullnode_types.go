@@ -142,9 +142,9 @@ type FullNodeStatus struct {
 	// +optional
 	SyncInfo *SyncInfoStatus `json:"syncInfo,omitempty"`
 
-	// Startup information. collected when node starts up.
+	// Latest Height information. collected when node starts up and when RPC is successfully queried.
 	// +optional
-	StartupHeight map[string]uint64 `json:"startupInfo,omitempty"`
+	Height map[string]uint64 `json:"height,omitempty"`
 }
 
 type SyncInfoStatus struct {

@@ -105,11 +105,11 @@ func VersionCheckCmd(scheme *runtime.Scheme) *cobra.Command {
 			height := store.LatestVersion()
 			fmt.Printf("%d", height)
 
-			if crd.Status.StartupHeight == nil {
-				crd.Status.StartupHeight = make(map[string]uint64)
+			if crd.Status.Height == nil {
+				crd.Status.Height = make(map[string]uint64)
 			}
 
-			crd.Status.StartupHeight[thisPod.Name] = uint64(height)
+			crd.Status.Height[thisPod.Name] = uint64(height)
 
 			if err := kClient.Status().Update(
 				ctx, crd,

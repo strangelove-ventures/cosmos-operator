@@ -227,6 +227,14 @@ func (r *CosmosFullNodeReconciler) updateStatus(ctx context.Context, crd *cosmos
 		status.StatusMessage = crd.Status.StatusMessage
 		status.Peers = crd.Status.Peers
 		status.SyncInfo = &consensus
+		for _, v := range consensus.Pods {
+			if v.Height != nil && *v.Height > 0 {
+				if status.Height == nil {
+					status.Height = make(map[string]uint64)
+				}
+				status.Height[v.Pod] = *v.Height
+			}
+		}
 	}); err != nil {
 		log.FromContext(ctx).Error(err, "Failed to patch status")
 	}

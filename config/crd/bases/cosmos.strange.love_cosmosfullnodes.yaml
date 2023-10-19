@@ -5937,6 +5937,13 @@ spec:
           status:
             description: FullNodeStatus defines the observed state of CosmosFullNode
             properties:
+              height:
+                additionalProperties:
+                  format: int64
+                  type: integer
+                description: Latest Height information. collected when node starts
+                  up and when RPC is successfully queried.
+                type: object
               observedGeneration:
                 description: The most recent generation observed by the controller.
                 format: int64
@@ -5994,12 +6001,6 @@ spec:
                     - requestedAt
                     - requestedSize
                     type: object
-                type: object
-              startupInfo:
-                additionalProperties:
-                  format: int64
-                  type: integer
-                description: Startup information. collected when node starts up.
                 type: object
               status:
                 description: A generic message for the user. May contain errors.
