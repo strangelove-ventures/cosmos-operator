@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/samber/lo"
+	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -112,4 +113,35 @@ func (coll StatusCollection) Synced() StatusCollection {
 // SyncedPods returns the pods that are caught up with the chain tip.
 func (coll StatusCollection) SyncedPods() []*corev1.Pod {
 	return lo.Map(coll.Synced(), func(status StatusItem, _ int) *corev1.Pod { return status.GetPod() })
+}
+
+// ReadyPods returns the pods that are caught up with the chain tip or ready to be upgraded.
+func (coll StatusCollection) ReadyPods(crd *cosmosv1.CosmosFullNode) (out []*corev1.Pod) {
+	for _, status := range coll {
+		if crd.Spec.ChainSpec.Versions != nil {
+			instanceHeight := uint64(0)
+			if height, ok := crd.Status.Height[status.Pod.Name]; ok {
+				instanceHeight = height
+			}
+			var image string
+			for _, version := range crd.Spec.ChainSpec.Versions {
+				if instanceHeight < version.UpgradeHeight {
+					break
+				}
+				image = version.Image
+			}
+			if image != "" && status.Pod.Spec.Containers[0].Image != image {
+				out = append(out, status.GetPod())
+				continue
+			}
+		}
+		if status.Err != nil {
+			continue
+		}
+		if status.Status.Result.SyncInfo.CatchingUp {
+			continue
+		}
+		out = append(out, status.GetPod())
+	}
+	return out
 }

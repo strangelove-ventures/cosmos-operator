@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/internal/diff"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
@@ -17,7 +16,7 @@ import (
 )
 
 type PodFilter interface {
-	SyncedPods(ctx context.Context, controller client.ObjectKey) []*corev1.Pod
+	ReadyPods(ctx context.Context, crd *cosmosv1.CosmosFullNode) []*corev1.Pod
 }
 
 // Client is a controller client. It is a subset of client.Client.
@@ -83,42 +82,37 @@ func (pc PodControl) Reconcile(ctx context.Context, reporter kube.Reporter, crd 
 		return true, nil
 	}
 
-	if len(diffed.Updates()) > 0 {
-		versionUpdated := false
-		for _, update := range diffed.Updates() {
-			for _, p := range pods.Items {
-				if p.Name == update.Name {
-					if p.Spec.Containers[0].Image != update.Spec.Containers[0].Image {
-						// version update, delete pod now.
-						reporter.Info("Deleting pod for version update", "podName", p.Name)
-						if err := pc.client.Delete(ctx, &p, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
-							return true, kube.TransientError(fmt.Errorf("update pod %q: %w", p.Name, err))
-						}
-						versionUpdated = true
-					}
-				}
-			}
-		}
-
-		if versionUpdated {
-			// Signal requeue.
-			return true, nil
-		}
-
+	diffedUpdates := diffed.Updates()
+	if len(diffedUpdates) > 0 {
 		var (
-			// This may be a source of confusion by passing currentPods vs. pods from diff.Updates().
-			// This is a leaky abstraction (which may be fixed in the future) because diff.Updates() pods are built
-			// from the operator and do not match what's returned by listing pods.
-			avail      = pc.podFilter.SyncedPods(ctx, client.ObjectKeyFromObject(crd))
+			avail      = pc.podFilter.ReadyPods(ctx, crd)
 			numUpdates = pc.computeRollout(crd.Spec.RolloutStrategy.MaxUnavailable, int(crd.Spec.Replicas), len(avail))
 		)
 
-		for _, pod := range lo.Slice(diffed.Updates(), 0, numUpdates) {
+		for i, pod := range avail {
+			if i >= numUpdates {
+				break
+			}
+			var diffedPod *corev1.Pod
+			for _, update := range diffedUpdates {
+				if update.Name == pod.Name {
+					diffedPod = update
+					break
+				}
+			}
+			if diffedPod == nil {
+				return true, kube.UnrecoverableError(fmt.Errorf("pod %q not found in diffed updates", pod.Name))
+			}
 			reporter.Info("Deleting pod for update", "podName", pod.Name)
 			// Because we should watch for deletes, we get a re-queued request, detect pod is missing, and re-create it.
 			if err := pc.client.Delete(ctx, pod, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
 				return true, kube.TransientError(fmt.Errorf("update pod %q: %w", pod.Name, err))
 			}
+		}
+
+		if len(avail) == numUpdates && len(diffedUpdates) == numUpdates {
+			// All pods are updated.
+			return false, nil
 		}
 
 		// Signal requeue.

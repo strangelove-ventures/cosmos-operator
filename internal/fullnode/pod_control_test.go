@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/internal/diff"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -12,16 +13,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type mockPodFilter func(ctx context.Context, controller client.ObjectKey) []*corev1.Pod
+type mockPodFilter func(ctx context.Context, crd *cosmosv1.CosmosFullNode) []*corev1.Pod
 
-func (fn mockPodFilter) SyncedPods(ctx context.Context, controller client.ObjectKey) []*corev1.Pod {
+func (fn mockPodFilter) ReadyPods(ctx context.Context, crd *cosmosv1.CosmosFullNode) []*corev1.Pod {
 	if ctx == nil {
 		panic("nil context")
 	}
-	return fn(ctx, controller)
+	return fn(ctx, crd)
 }
 
-var panicPodFilter = mockPodFilter(func(context.Context, client.ObjectKey) []*corev1.Pod {
+var panicPodFilter = mockPodFilter(func(context.Context, *cosmosv1.CosmosFullNode) []*corev1.Pod {
 	panic("SyncedPods should not be called")
 })
 
@@ -107,9 +108,9 @@ func TestPodControl_Reconcile(t *testing.T) {
 		}
 
 		var didFilter bool
-		podFilter := mockPodFilter(func(_ context.Context, controller client.ObjectKey) []*corev1.Pod {
-			require.Equal(t, namespace, controller.Namespace)
-			require.Equal(t, "hub", controller.Name)
+		podFilter := mockPodFilter(func(_ context.Context, crd *cosmosv1.CosmosFullNode) []*corev1.Pod {
+			require.Equal(t, namespace, crd.Namespace)
+			require.Equal(t, "hub", crd.Name)
 			didFilter = true
 			return existing[:1]
 		})
@@ -132,6 +133,6 @@ func TestPodControl_Reconcile(t *testing.T) {
 		require.True(t, didFilter)
 
 		require.Zero(t, mClient.CreateCount)
-		require.Equal(t, stubRollout, mClient.DeleteCount)
+		require.Equal(t, 1, mClient.DeleteCount)
 	})
 }
