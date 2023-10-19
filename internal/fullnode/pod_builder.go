@@ -46,7 +46,7 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 		probes              = podReadinessProbes(crd)
 	)
 
-	versionCheckCmd := []string{"/manager", "versioncheck", "-t"}
+	versionCheckCmd := []string{"/manager", "versioncheck", "-d"}
 	if crd.Spec.ChainSpec.DatabaseBackend != nil {
 		versionCheckCmd = append(versionCheckCmd, "-b", *crd.Spec.ChainSpec.DatabaseBackend)
 	}
@@ -270,6 +270,7 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 		// The healthcheck sidecar needs access to the home directory so it can read disk usage.
 		{Name: volChainHome, MountPath: ChainHomeDir(b.crd), ReadOnly: true},
 	}
+	pod.Spec.Containers[2].VolumeMounts = mounts
 
 	b.pod = pod
 	return b

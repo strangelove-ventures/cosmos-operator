@@ -4,16 +4,18 @@ Copyright © 2023 Strangelove Crypto, Inc.
 package cmd
 
 import (
+	"context"
 	"fmt"
+	"io"
 	"os"
-	"os/signal"
-	"syscall"
+	"time"
 
 	"cosmossdk.io/log"
 	"cosmossdk.io/store/rootmulti"
 	dbm "github.com/cosmos/cosmos-db"
 	"github.com/spf13/cobra"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -26,7 +28,9 @@ const (
 	namespaceFile = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
 
 	flagBackend = "backend"
-	flagOnTerm  = "on-terminate"
+	flagDaemon  = "daemon"
+
+	tickTime = 30 * time.Second
 )
 
 // VersionCheckCmd gets the height of this node and updates the status of the crd.
@@ -41,7 +45,7 @@ func VersionCheckCmd(scheme *runtime.Scheme) *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			dataDir := os.Getenv("DATA_DIR")
 			backend, _ := cmd.Flags().GetString(flagBackend)
-			onTerm, _ := cmd.Flags().GetBool(flagOnTerm)
+			daemon, _ := cmd.Flags().GetBool(flagDaemon)
 
 			nsbz, err := os.ReadFile(namespaceFile)
 			if err != nil {
@@ -80,13 +84,6 @@ func VersionCheckCmd(scheme *runtime.Scheme) *cobra.Command {
 				Name:      cosmosFullNodeName,
 			}
 
-			if onTerm {
-				fmt.Fprintln(cmd.OutOrStdout(), "Waiting for SIGTERM to run version check")
-				c := make(chan os.Signal, 1)
-				signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-				<-c
-			}
-
 			crd := new(cosmosv1.CosmosFullNode)
 			if err = kClient.Get(ctx, namespacedName, crd); err != nil {
 				panic(fmt.Errorf("failed to get crd: %w", err))
@@ -106,48 +103,93 @@ func VersionCheckCmd(scheme *runtime.Scheme) *cobra.Command {
 				panic(fmt.Errorf("%s is not a directory", dataDir))
 			}
 
-			db, err := dbm.NewDB("application", getBackend(backend), dataDir)
-			if err != nil {
-				panic(fmt.Errorf("failed to open db: %w", err))
-			}
-
-			store := rootmulti.NewStore(db, log.NewNopLogger(), nil)
-
-			height := store.LatestVersion() + 1
-
-			if crd.Status.Height == nil {
-				crd.Status.Height = make(map[string]uint64)
-			}
-
-			crd.Status.Height[thisPod.Name] = uint64(height)
-
-			if err := kClient.Status().Update(
-				ctx, crd,
-			); err != nil {
-				panic(fmt.Errorf("failed to patch status: %w", err))
-			}
-
-			var image string
-			for _, v := range crd.Spec.ChainSpec.Versions {
-				if uint64(height) < v.UpgradeHeight {
-					break
+			if daemon {
+				ticker := time.NewTicker(tickTime)
+				defer ticker.Stop()
+				for {
+					if err := checkVersion(cmd.Context(), nil, kClient, namespacedName, thisPod, dataDir, backend, cmd.OutOrStdout()); err != nil {
+						panic(err)
+					}
+					select {
+					case <-cmd.Context().Done():
+						return
+					case <-ticker.C:
+						ticker.Reset(tickTime)
+					}
 				}
-				image = v.Image
 			}
-
-			thisPodImage := thisPod.Spec.Containers[0].Image
-			if thisPodImage != image {
-				panic(fmt.Errorf("image mismatch for height %d: %s != %s", height, thisPodImage, image))
+			if err := checkVersion(cmd.Context(), crd, kClient, namespacedName, thisPod, dataDir, backend, cmd.OutOrStdout()); err != nil {
+				panic(err)
 			}
-
-			fmt.Fprintf(cmd.OutOrStdout(), "Verified correct image for height %d: %s\n", height, image)
 		},
 	}
 
 	cmd.Flags().StringP(flagBackend, "b", "goleveldb", "Database backend")
-	cmd.Flags().BoolP(flagOnTerm, "t", false, "Wait for SIGTERM before running")
+	cmd.Flags().BoolP(flagDaemon, "d", false, "Run as daemon")
 
 	return cmd
+}
+
+func checkVersion(
+	ctx context.Context,
+	crd *cosmosv1.CosmosFullNode,
+	kClient client.Client,
+	namespacedName types.NamespacedName,
+	thisPod *corev1.Pod,
+	dataDir string,
+	backend string,
+	writer io.Writer,
+) error {
+	db, err := dbm.NewDB("application", getBackend(backend), dataDir)
+	if err != nil {
+		if crd == nil {
+			fmt.Fprintf(writer, "Failed to open db: %s. The node is likely running.\n", err)
+			// This is okay, we will read it later if the node shuts down.
+			return nil
+		} else {
+			return fmt.Errorf("failed to open db: %w", err)
+		}
+	}
+	store := rootmulti.NewStore(db, log.NewNopLogger(), nil)
+
+	height := store.LatestVersion() + 1
+	db.Close()
+
+	if crd == nil {
+		crd = new(cosmosv1.CosmosFullNode)
+		if err := kClient.Get(ctx, namespacedName, crd); err != nil {
+			return fmt.Errorf("failed to get crd: %w", err)
+		}
+	}
+
+	if crd.Status.Height == nil {
+		crd.Status.Height = make(map[string]uint64)
+	}
+
+	crd.Status.Height[thisPod.Name] = uint64(height)
+
+	if err := kClient.Status().Update(
+		ctx, crd,
+	); err != nil {
+		return fmt.Errorf("failed to patch status: %w", err)
+	}
+
+	var image string
+	for _, v := range crd.Spec.ChainSpec.Versions {
+		if uint64(height) < v.UpgradeHeight {
+			break
+		}
+		image = v.Image
+	}
+
+	thisPodImage := thisPod.Spec.Containers[0].Image
+	if thisPodImage != image {
+		return fmt.Errorf("image mismatch for height %d: %s != %s", height, thisPodImage, image)
+	}
+
+	fmt.Fprintf(writer, "Verified correct image for height %d: %s\n", height, image)
+
+	return nil
 }
 
 func getBackend(backend string) dbm.BackendType {
