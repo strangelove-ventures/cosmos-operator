@@ -102,7 +102,7 @@ func VersionCheckCmd(scheme *runtime.Scheme) *cobra.Command {
 
 			store := rootmulti.NewStore(db, log.NewNopLogger(), nil)
 
-			height := store.LatestVersion()
+			height := store.LatestVersion() + 1
 			fmt.Printf("%d", height)
 
 			if crd.Status.Height == nil {
