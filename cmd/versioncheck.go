@@ -6,6 +6,8 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"cosmossdk.io/log"
 	"cosmossdk.io/store/rootmulti"
@@ -24,6 +26,7 @@ const (
 	namespaceFile = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
 
 	flagBackend = "backend"
+	flagOnTerm  = "on-terminate"
 )
 
 // VersionCheckCmd gets the height of this node and updates the status of the crd.
@@ -36,6 +39,10 @@ func VersionCheckCmd(scheme *runtime.Scheme) *cobra.Command {
 		Short: "Confirm correct image used for current node height",
 		Long:  `Open the Cosmos SDK chain database, get the height, update the crd status with the height, then check the image for the height and panic if it is incorrect.`,
 		Run: func(cmd *cobra.Command, args []string) {
+			dataDir := os.Getenv("DATA_DIR")
+			backend, _ := cmd.Flags().GetString(flagBackend)
+			onTerm, _ := cmd.Flags().GetBool(flagOnTerm)
+
 			nsbz, err := os.ReadFile(namespaceFile)
 			if err != nil {
 				panic(fmt.Errorf("failed to read namespace from service account: %w", err))
@@ -73,18 +80,22 @@ func VersionCheckCmd(scheme *runtime.Scheme) *cobra.Command {
 				Name:      cosmosFullNodeName,
 			}
 
+			if onTerm {
+				fmt.Fprintln(cmd.OutOrStdout(), "Waiting for SIGTERM to run version check")
+				c := make(chan os.Signal, 1)
+				signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+				<-c
+			}
+
 			crd := new(cosmosv1.CosmosFullNode)
 			if err = kClient.Get(ctx, namespacedName, crd); err != nil {
 				panic(fmt.Errorf("failed to get crd: %w", err))
 			}
 
 			if len(crd.Spec.ChainSpec.Versions) == 0 {
-				fmt.Println("No versions specified, skipping version check")
+				fmt.Fprintln(cmd.OutOrStdout(), "No versions specified, skipping version check")
 				return
 			}
-
-			dataDir := os.Getenv("DATA_DIR")
-			backend, _ := cmd.Flags().GetString(flagBackend)
 
 			s, err := os.Stat(dataDir)
 			if err != nil {
@@ -103,7 +114,6 @@ func VersionCheckCmd(scheme *runtime.Scheme) *cobra.Command {
 			store := rootmulti.NewStore(db, log.NewNopLogger(), nil)
 
 			height := store.LatestVersion() + 1
-			fmt.Printf("%d", height)
 
 			if crd.Status.Height == nil {
 				crd.Status.Height = make(map[string]uint64)
@@ -130,11 +140,12 @@ func VersionCheckCmd(scheme *runtime.Scheme) *cobra.Command {
 				panic(fmt.Errorf("image mismatch for height %d: %s != %s", height, thisPodImage, image))
 			}
 
-			fmt.Printf("Verified correct image for height %d: %s\n", height, image)
+			fmt.Fprintf(cmd.OutOrStdout(), "Verified correct image for height %d: %s\n", height, image)
 		},
 	}
 
 	cmd.Flags().StringP(flagBackend, "b", "goleveldb", "Database backend")
+	cmd.Flags().BoolP(flagOnTerm, "t", false, "Wait for SIGTERM before running")
 
 	return cmd
 }

@@ -46,6 +46,11 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 		probes              = podReadinessProbes(crd)
 	)
 
+	versionCheckCmd := []string{"/manager", "versioncheck", "-t"}
+	if crd.Spec.ChainSpec.DatabaseBackend != nil {
+		versionCheckCmd = append(versionCheckCmd, "-b", *crd.Spec.ChainSpec.DatabaseBackend)
+	}
+
 	pod := corev1.Pod{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Pod",
@@ -84,27 +89,42 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 					ImagePullPolicy: tpl.ImagePullPolicy,
 					WorkingDir:      workDir,
 				},
+				// healthcheck sidecar
+				{
+					Name: "healthcheck",
+					// Available images: https://github.com/orgs/strangelove-ventures/packages?repo_name=cosmos-operator
+					// IMPORTANT: Must use v0.6.2 or later.
+					Image:   "ghcr.io/strangelove-ventures/cosmos-operator:" + version.DockerTag(),
+					Command: []string{"/manager", "healthcheck"},
+					Ports:   []corev1.ContainerPort{{ContainerPort: healthCheckPort, Protocol: corev1.ProtocolTCP}},
+					Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("5m"),
+							corev1.ResourceMemory: resource.MustParse("16Mi"),
+						},
+					},
+					ReadinessProbe:  probes[1],
+					ImagePullPolicy: tpl.ImagePullPolicy,
+				},
+				// version check sidecar, runs on terminate in case the instance is halting for upgrade.
+				{
+					Name:    "version-check-term",
+					Image:   "ghcr.io/strangelove-ventures/cosmos-operator:" + version.DockerTag(),
+					Command: versionCheckCmd,
+					Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("5m"),
+							corev1.ResourceMemory: resource.MustParse("16Mi"),
+						},
+					},
+					Env:             envVars(crd),
+					ImagePullPolicy: tpl.ImagePullPolicy,
+					WorkingDir:      workDir,
+					SecurityContext: &corev1.SecurityContext{},
+				},
 			},
 		},
 	}
-
-	// Add healtcheck sidecar
-	pod.Spec.Containers = append(pod.Spec.Containers, corev1.Container{
-		Name: "healthcheck",
-		// Available images: https://github.com/orgs/strangelove-ventures/packages?repo_name=cosmos-operator
-		// IMPORTANT: Must use v0.6.2 or later.
-		Image:   "ghcr.io/strangelove-ventures/cosmos-operator:" + version.DockerTag(),
-		Command: []string{"/manager", "healthcheck"},
-		Ports:   []corev1.ContainerPort{{ContainerPort: healthCheckPort, Protocol: corev1.ProtocolTCP}},
-		Resources: corev1.ResourceRequirements{
-			Requests: corev1.ResourceList{
-				corev1.ResourceCPU:    resource.MustParse("5m"),
-				corev1.ResourceMemory: resource.MustParse("16Mi"),
-			},
-		},
-		ReadinessProbe:  probes[1],
-		ImagePullPolicy: tpl.ImagePullPolicy,
-	})
 
 	preserveMergeInto(pod.Labels, tpl.Metadata.Labels)
 	preserveMergeInto(pod.Annotations, tpl.Metadata.Annotations)

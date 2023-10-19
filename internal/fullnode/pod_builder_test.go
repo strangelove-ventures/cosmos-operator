@@ -208,7 +208,7 @@ func TestPodBuilder(t *testing.T) {
 		pod, err := builder.WithOrdinal(6).Build()
 		require.NoError(t, err)
 
-		require.Len(t, pod.Spec.Containers, 2)
+		require.Len(t, pod.Spec.Containers, 3)
 
 		startContainer := pod.Spec.Containers[0]
 		require.Equal(t, "node", startContainer.Name)
@@ -288,7 +288,7 @@ func TestPodBuilder(t *testing.T) {
 		pod, err := builder.WithOrdinal(6).Build()
 		require.NoError(t, err)
 
-		require.Len(t, pod.Spec.Containers, 2)
+		require.Len(t, pod.Spec.Containers, 3)
 
 		container := pod.Spec.Containers[0]
 		require.Equal(t, "node", container.Name)
@@ -347,7 +347,7 @@ func TestPodBuilder(t *testing.T) {
 		require.Equal(t, "osmosis-node-key-5", vols[4].Secret.SecretName)
 		require.Equal(t, []corev1.KeyToPath{{Key: "node_key.json", Path: "node_key.json"}}, vols[4].Secret.Items)
 
-		require.Equal(t, len(pod.Spec.Containers), 2)
+		require.Equal(t, len(pod.Spec.Containers), 3)
 
 		c := pod.Spec.Containers[0]
 		require.Equal(t, "node", c.Name) // Sanity check
@@ -523,7 +523,7 @@ gaiad start --home /home/operator/cosmos`
 			require.Nilf(t, cont.ReadinessProbe, "container %d", i)
 		}
 
-		require.Equal(t, 2, len(pod.Spec.Containers))
+		require.Equal(t, 3, len(pod.Spec.Containers))
 		require.Equal(t, "node", pod.Spec.Containers[0].Name)
 
 		sidecar := pod.Spec.Containers[1]
@@ -558,7 +558,7 @@ gaiad start --home /home/operator/cosmos`
 		require.Equal(t, &corev1.EmptyDirVolumeSource{}, vols["foo-vol"].VolumeSource.EmptyDir)
 
 		containers := lo.SliceToMap(pod.Spec.Containers, func(c corev1.Container) (string, corev1.Container) { return c.Name, c })
-		require.ElementsMatch(t, []string{"node", "new-sidecar", "healthcheck"}, lo.Keys(containers))
+		require.ElementsMatch(t, []string{"node", "new-sidecar", "healthcheck", "version-check-term"}, lo.Keys(containers))
 
 		extraVol := lo.Filter(containers["node"].VolumeMounts, func(vm corev1.VolumeMount, _ int) bool { return vm.Name == "foo-vol" })
 		require.Equal(t, "/foo", extraVol[0].MountPath)
