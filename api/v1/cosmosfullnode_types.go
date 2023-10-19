@@ -17,8 +17,6 @@ limitations under the License.
 package v1
 
 import (
-	"fmt"
-
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -542,7 +540,7 @@ type ChainSpec struct {
 	// When provided, the operator will automatically upgrade the chain as it reaches the specified heights.
 	// If not provided, the operator will not upgrade the chain, and will use the image specified in the pod spec.
 	// +optional
-	Versions ChainVersions `json:"versions"`
+	Versions []ChainVersion `json:"versions"`
 }
 
 type ChainVersion struct {
@@ -555,18 +553,6 @@ type ChainVersion struct {
 	// Determines if the node should forcefully halt at the upgrade height.
 	// +optional
 	SetHaltHeight bool `json:"setHaltHeight,omitempty"`
-}
-
-type ChainVersions []ChainVersion
-
-func (cv ChainVersions) Validate() error {
-	lastHeight := uint64(0)
-	for _, v := range cv {
-		if v.UpgradeHeight < lastHeight {
-			return fmt.Errorf("upgrade height %d is less than last upgrade height %d. upgrades must be sequential", v.UpgradeHeight, lastHeight)
-		}
-	}
-	return nil
 }
 
 // CometConfig configures the config.toml.
