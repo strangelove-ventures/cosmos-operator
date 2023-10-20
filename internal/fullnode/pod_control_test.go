@@ -4,8 +4,11 @@ import (
 	"context"
 	"testing"
 
+	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	"github.com/strangelove-ventures/cosmos-operator/internal/cosmos"
 	"github.com/strangelove-ventures/cosmos-operator/internal/diff"
+	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -13,16 +16,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type mockPodFilter func(ctx context.Context, crd *cosmosv1.CosmosFullNode) []*corev1.Pod
+type mockPodFilter func(ctx context.Context, crd *cosmosv1.CosmosFullNode) []cosmos.PodStatus
 
-func (fn mockPodFilter) ReadyPods(ctx context.Context, crd *cosmosv1.CosmosFullNode) []*corev1.Pod {
+func (fn mockPodFilter) PodsWithStatus(ctx context.Context, crd *cosmosv1.CosmosFullNode) []cosmos.PodStatus {
 	if ctx == nil {
 		panic("nil context")
 	}
 	return fn(ctx, crd)
 }
 
-var panicPodFilter = mockPodFilter(func(context.Context, *cosmosv1.CosmosFullNode) []*corev1.Pod {
+var panicPodFilter = mockPodFilter(func(context.Context, *cosmosv1.CosmosFullNode) []cosmos.PodStatus {
 	panic("SyncedPods should not be called")
 })
 
@@ -97,6 +100,9 @@ func TestPodControl_Reconcile(t *testing.T) {
 		crd.Name = "hub"
 		crd.Namespace = namespace
 		crd.Spec.Replicas = 5
+		crd.Spec.RolloutStrategy = cosmosv1.RolloutStrategy{
+			MaxUnavailable: ptr(intstr.FromInt(2)),
+		}
 
 		pods, err := BuildPods(&crd, nil)
 		require.NoError(t, err)
@@ -108,11 +114,17 @@ func TestPodControl_Reconcile(t *testing.T) {
 		}
 
 		var didFilter bool
-		podFilter := mockPodFilter(func(_ context.Context, crd *cosmosv1.CosmosFullNode) []*corev1.Pod {
+		podFilter := mockPodFilter(func(_ context.Context, crd *cosmosv1.CosmosFullNode) []cosmos.PodStatus {
 			require.Equal(t, namespace, crd.Namespace)
 			require.Equal(t, "hub", crd.Name)
 			didFilter = true
-			return existing[:1]
+			return lo.Map(existing, func(pod *corev1.Pod, i int) cosmos.PodStatus {
+				return cosmos.PodStatus{
+					Pod:          pod,
+					RPCReachable: true,
+					Synced:       true,
+				}
+			})
 		})
 
 		control := NewPodControl(&mClient, podFilter)
@@ -120,8 +132,8 @@ func TestPodControl_Reconcile(t *testing.T) {
 
 		control.computeRollout = func(maxUnavail *intstr.IntOrString, desired, ready int) int {
 			require.EqualValues(t, crd.Spec.Replicas, desired)
-			require.Equal(t, 1, ready) // mockPodFilter only returns 1 candidate as ready
-			return stubRollout
+			require.Equal(t, stubRollout, ready) // mockPodFilter only returns 1 candidate as ready
+			return kube.ComputeRollout(maxUnavail, desired, ready)
 		}
 
 		// Trigger updates
@@ -133,6 +145,295 @@ func TestPodControl_Reconcile(t *testing.T) {
 		require.True(t, didFilter)
 
 		require.Zero(t, mClient.CreateCount)
-		require.Equal(t, 1, mClient.DeleteCount)
+		require.Equal(t, 2, mClient.DeleteCount)
+
+		didFilter = false
+		podFilter = mockPodFilter(func(_ context.Context, crd *cosmosv1.CosmosFullNode) []cosmos.PodStatus {
+			require.Equal(t, namespace, crd.Namespace)
+			require.Equal(t, "hub", crd.Name)
+			didFilter = true
+			return lo.Map(existing, func(pod *corev1.Pod, i int) cosmos.PodStatus {
+				ps := cosmos.PodStatus{
+					Pod:          pod,
+					RPCReachable: true,
+					Synced:       true,
+				}
+				if i < 2 {
+					ps.RPCReachable = false
+					ps.Synced = false
+				}
+				return ps
+			})
+		})
+
+		control = NewPodControl(&mClient, podFilter)
+
+		requeue, err = control.Reconcile(ctx, nopReporter, &crd, nil)
+		require.NoError(t, err)
+		require.True(t, requeue)
+
+		require.True(t, didFilter)
+
+		require.Zero(t, mClient.CreateCount)
+
+		// should not delete any more yet.
+		require.Equal(t, 2, mClient.DeleteCount)
+	})
+
+	t.Run("rollout version upgrade rolling", func(t *testing.T) {
+		crd := defaultCRD()
+		crd.Name = "hub"
+		crd.Namespace = namespace
+		crd.Spec.Replicas = 5
+		crd.Spec.RolloutStrategy = cosmosv1.RolloutStrategy{
+			MaxUnavailable: ptr(intstr.FromInt(2)),
+		}
+		crd.Spec.ChainSpec = cosmosv1.ChainSpec{
+			Versions: []cosmosv1.ChainVersion{
+				{
+					Image: "image",
+				},
+				{
+					UpgradeHeight: 100,
+					Image:         "new-image",
+				},
+			},
+		}
+		crd.Status.Height = make(map[string]uint64)
+
+		pods, err := BuildPods(&crd, nil)
+		require.NoError(t, err)
+		existing := diff.New(nil, pods).Creates()
+
+		var mClient mockPodClient
+		mClient.ObjectList = corev1.PodList{
+			Items: valueSlice(existing),
+		}
+
+		var didFilter bool
+		podFilter := mockPodFilter(func(_ context.Context, crd *cosmosv1.CosmosFullNode) []cosmos.PodStatus {
+			require.Equal(t, namespace, crd.Namespace)
+			require.Equal(t, "hub", crd.Name)
+			didFilter = true
+			return lo.Map(existing, func(pod *corev1.Pod, i int) cosmos.PodStatus {
+				return cosmos.PodStatus{
+					Pod: pod,
+					// pods are at or above upgrade height and not reachable
+					AwaitingUpgrade: true,
+					RPCReachable:    true,
+					Synced:          false,
+				}
+			})
+		})
+
+		control := NewPodControl(&mClient, podFilter)
+
+		control.computeRollout = func(maxUnavail *intstr.IntOrString, desired, ready int) int {
+			require.EqualValues(t, crd.Spec.Replicas, desired)
+			require.Equal(t, 5, ready) // all are reachable and reporting ready, so we will maintain liveliness.
+			return kube.ComputeRollout(maxUnavail, desired, ready)
+		}
+
+		// Trigger updates
+		for _, pod := range existing {
+			crd.Status.Height[pod.Name] = 100
+		}
+
+		requeue, err := control.Reconcile(ctx, nopReporter, &crd, nil)
+		require.NoError(t, err)
+
+		// only handled 2 updates, so should requeue.
+		require.True(t, requeue)
+
+		require.True(t, didFilter)
+
+		require.Zero(t, mClient.CreateCount)
+		require.Equal(t, 2, mClient.DeleteCount)
+
+		existing[0].Spec.Containers[0].Image = "new-image"
+		existing[1].Spec.Containers[0].Image = "new-image"
+		mClient.ObjectList = corev1.PodList{
+			Items: valueSlice(existing),
+		}
+
+		// 2 are now unavailable, working on upgrade
+
+		didFilter = false
+		podFilter = mockPodFilter(func(_ context.Context, crd *cosmosv1.CosmosFullNode) []cosmos.PodStatus {
+			require.Equal(t, namespace, crd.Namespace)
+			require.Equal(t, "hub", crd.Name)
+			didFilter = true
+			return lo.Map(existing, func(pod *corev1.Pod, i int) cosmos.PodStatus {
+				ps := cosmos.PodStatus{
+					Pod:          pod,
+					RPCReachable: true,
+					Synced:       true,
+				}
+				if i < 2 {
+					ps.RPCReachable = false
+					ps.Synced = false
+				}
+				return ps
+			})
+		})
+
+		control = NewPodControl(&mClient, podFilter)
+
+		requeue, err = control.Reconcile(ctx, nopReporter, &crd, nil)
+		require.NoError(t, err)
+
+		// no further updates yet, should requeue.
+		require.True(t, requeue)
+
+		require.True(t, didFilter)
+
+		require.Zero(t, mClient.CreateCount)
+
+		// should not delete any more yet.
+		require.Equal(t, 2, mClient.DeleteCount)
+
+		// mock out that one of the pods completed the upgrade. should begin upgrading one more
+
+		didFilter = false
+		podFilter = mockPodFilter(func(_ context.Context, crd *cosmosv1.CosmosFullNode) []cosmos.PodStatus {
+			require.Equal(t, namespace, crd.Namespace)
+			require.Equal(t, "hub", crd.Name)
+			didFilter = true
+			return lo.Map(existing, func(pod *corev1.Pod, i int) cosmos.PodStatus {
+				ps := cosmos.PodStatus{
+					Pod:          pod,
+					RPCReachable: true,
+					Synced:       true,
+				}
+				if i == 1 {
+					ps.RPCReachable = false
+					ps.Synced = false
+				}
+				return ps
+			})
+		})
+
+		control = NewPodControl(&mClient, podFilter)
+
+		requeue, err = control.Reconcile(ctx, nopReporter, &crd, nil)
+		require.NoError(t, err)
+
+		// only handled 1 updates, so should requeue.
+		require.True(t, requeue)
+
+		require.True(t, didFilter)
+
+		require.Zero(t, mClient.CreateCount)
+
+		// should delete one more
+		require.Equal(t, 3, mClient.DeleteCount)
+
+		existing[2].Spec.Containers[0].Image = "new-image"
+		mClient.ObjectList = corev1.PodList{
+			Items: valueSlice(existing),
+		}
+
+		// mock out that both pods completed the upgrade. should begin upgrading the last 2
+
+		didFilter = false
+		podFilter = mockPodFilter(func(_ context.Context, crd *cosmosv1.CosmosFullNode) []cosmos.PodStatus {
+			require.Equal(t, namespace, crd.Namespace)
+			require.Equal(t, "hub", crd.Name)
+			didFilter = true
+			return lo.Map(existing, func(pod *corev1.Pod, i int) cosmos.PodStatus {
+				return cosmos.PodStatus{
+					Pod:          pod,
+					RPCReachable: true,
+					Synced:       true,
+				}
+			})
+		})
+
+		control = NewPodControl(&mClient, podFilter)
+
+		requeue, err = control.Reconcile(ctx, nopReporter, &crd, nil)
+		require.NoError(t, err)
+
+		// all updates are now handled, no longer need requeue.
+		require.True(t, requeue)
+
+		require.True(t, didFilter)
+
+		require.Zero(t, mClient.CreateCount)
+
+		// should delete the last 2
+		require.Equal(t, 5, mClient.DeleteCount)
+	})
+
+	t.Run("rollout version upgrade halt", func(t *testing.T) {
+		crd := defaultCRD()
+		crd.Name = "hub"
+		crd.Namespace = namespace
+		crd.Spec.Replicas = 5
+		crd.Spec.RolloutStrategy = cosmosv1.RolloutStrategy{
+			MaxUnavailable: ptr(intstr.FromInt(2)),
+		}
+		crd.Spec.ChainSpec = cosmosv1.ChainSpec{
+			Versions: []cosmosv1.ChainVersion{
+				{
+					Image: "image",
+				},
+				{
+					UpgradeHeight: 100,
+					Image:         "new-image",
+					SetHaltHeight: true,
+				},
+			},
+		}
+		crd.Status.Height = make(map[string]uint64)
+
+		pods, err := BuildPods(&crd, nil)
+		require.NoError(t, err)
+		existing := diff.New(nil, pods).Creates()
+
+		var mClient mockPodClient
+		mClient.ObjectList = corev1.PodList{
+			Items: valueSlice(existing),
+		}
+
+		var didFilter bool
+		podFilter := mockPodFilter(func(_ context.Context, crd *cosmosv1.CosmosFullNode) []cosmos.PodStatus {
+			require.Equal(t, namespace, crd.Namespace)
+			require.Equal(t, "hub", crd.Name)
+			didFilter = true
+			return lo.Map(existing, func(pod *corev1.Pod, i int) cosmos.PodStatus {
+				return cosmos.PodStatus{
+					Pod: pod,
+					// pods are at or above upgrade height and not reachable
+					AwaitingUpgrade: true,
+					RPCReachable:    false,
+					Synced:          false,
+				}
+			})
+		})
+
+		control := NewPodControl(&mClient, podFilter)
+
+		control.computeRollout = func(maxUnavail *intstr.IntOrString, desired, ready int) int {
+			require.EqualValues(t, crd.Spec.Replicas, desired)
+			require.Equal(t, 0, ready) // mockPodFilter returns no pods as synced, but all are at the upgrade height.
+			return kube.ComputeRollout(maxUnavail, desired, ready)
+		}
+
+		// Trigger updates
+		for _, pod := range existing {
+			crd.Status.Height[pod.Name] = 100
+		}
+
+		requeue, err := control.Reconcile(ctx, nopReporter, &crd, nil)
+		require.NoError(t, err)
+
+		// all updates are handled, so should not requeue
+		require.False(t, requeue)
+
+		require.True(t, didFilter)
+
+		require.Zero(t, mClient.CreateCount)
+		require.Equal(t, 5, mClient.DeleteCount)
 	})
 }

@@ -168,9 +168,9 @@ func (c *CacheController) SyncedPods(ctx context.Context, controller client.Obje
 	return kube.AvailablePods(c.Collect(ctx, controller).SyncedPods(), 5*time.Second, time.Now())
 }
 
-// ReadyPods returns the pods that are ready to be upgraded or in sync (i.e. caught up with chain tip).
-func (c *CacheController) ReadyPods(ctx context.Context, crd *cosmosv1.CosmosFullNode) []*corev1.Pod {
-	return c.Collect(ctx, client.ObjectKeyFromObject(crd)).ReadyPods(crd)
+// PodsWithStatus returns all pods with their status.
+func (c *CacheController) PodsWithStatus(ctx context.Context, crd *cosmosv1.CosmosFullNode) []PodStatus {
+	return c.Collect(ctx, client.ObjectKeyFromObject(crd)).PodsWithStatus(crd)
 }
 
 func (c *CacheController) listPods(ctx context.Context, controller client.ObjectKey) ([]corev1.Pod, error) {

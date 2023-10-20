@@ -115,9 +115,21 @@ func (coll StatusCollection) SyncedPods() []*corev1.Pod {
 	return lo.Map(coll.Synced(), func(status StatusItem, _ int) *corev1.Pod { return status.GetPod() })
 }
 
-// ReadyPods returns the pods that are caught up with the chain tip or ready to be upgraded.
-func (coll StatusCollection) ReadyPods(crd *cosmosv1.CosmosFullNode) (out []*corev1.Pod) {
-	for _, status := range coll {
+// PodStatus is the status of a pod.
+type PodStatus struct {
+	Pod             *corev1.Pod
+	RPCReachable    bool
+	Synced          bool
+	AwaitingUpgrade bool
+}
+
+// PodsWithStatus returns all pods with their status.
+func (coll StatusCollection) PodsWithStatus(crd *cosmosv1.CosmosFullNode) []PodStatus {
+	out := make([]PodStatus, len(coll))
+	for i, status := range coll {
+		ps := PodStatus{
+			Pod: status.GetPod(),
+		}
 		if crd.Spec.ChainSpec.Versions != nil {
 			instanceHeight := uint64(0)
 			if height, ok := crd.Status.Height[status.Pod.Name]; ok {
@@ -131,17 +143,17 @@ func (coll StatusCollection) ReadyPods(crd *cosmosv1.CosmosFullNode) (out []*cor
 				image = version.Image
 			}
 			if image != "" && status.Pod.Spec.Containers[0].Image != image {
-				out = append(out, status.GetPod())
-				continue
+				ps.AwaitingUpgrade = true
 			}
 		}
-		if status.Err != nil {
-			continue
+		if status.Err == nil {
+			ps.RPCReachable = true
+			if !status.Status.Result.SyncInfo.CatchingUp {
+				ps.Synced = true
+			}
 		}
-		if status.Status.Result.SyncInfo.CatchingUp {
-			continue
-		}
-		out = append(out, status.GetPod())
+
+		out[i] = ps
 	}
 	return out
 }
