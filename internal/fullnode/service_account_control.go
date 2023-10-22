@@ -25,8 +25,8 @@ func NewServiceAccountControl(client Client) ServiceAccountControl {
 
 // Reconcile creates or updates service accounts.
 func (sc ServiceAccountControl) Reconcile(ctx context.Context, log kube.Logger, crd *cosmosv1.CosmosFullNode) kube.ReconcileError {
-	var svcs corev1.ServiceAccountList
-	if err := sc.client.List(ctx, &svcs,
+	var sas corev1.ServiceAccountList
+	if err := sc.client.List(ctx, &sas,
 		client.InNamespace(crd.Namespace),
 		client.MatchingLabels{
 			kube.ControllerLabel: "cosmos-operator",
@@ -37,26 +37,26 @@ func (sc ServiceAccountControl) Reconcile(ctx context.Context, log kube.Logger, 
 		return kube.TransientError(fmt.Errorf("list existing service accounts: %w", err))
 	}
 
-	current := ptrSlice(svcs.Items)
+	current := ptrSlice(sas.Items)
 	want := BuildServiceAccounts(crd)
 	diffed := diff.New(current, want)
 
-	for _, svc := range diffed.Creates() {
-		log.Info("Creating service account", "svcAccountName", svc.Name)
-		if err := ctrl.SetControllerReference(crd, svc, sc.client.Scheme()); err != nil {
-			return kube.TransientError(fmt.Errorf("set controller reference on service account %q: %w", svc.Name, err))
+	for _, sa := range diffed.Creates() {
+		log.Info("Creating service account", "name", sa.Name)
+		if err := ctrl.SetControllerReference(crd, sa, sc.client.Scheme()); err != nil {
+			return kube.TransientError(fmt.Errorf("set controller reference on service account %q: %w", sa.Name, err))
 		}
 		// CreateOrUpdate (vs. only create) fixes a bug with current deployments where updating would remove the owner reference.
 		// This ensures we update the service with the owner reference.
-		if err := kube.CreateOrUpdate(ctx, sc.client, svc); err != nil {
-			return kube.TransientError(fmt.Errorf("create service account %q: %w", svc.Name, err))
+		if err := kube.CreateOrUpdate(ctx, sc.client, sa); err != nil {
+			return kube.TransientError(fmt.Errorf("create service account %q: %w", sa.Name, err))
 		}
 	}
 
-	for _, svc := range diffed.Updates() {
-		log.Info("Updating service account", "svcAccountName", svc.Name)
-		if err := sc.client.Update(ctx, svc); err != nil {
-			return kube.TransientError(fmt.Errorf("update service account %q: %w", svc.Name, err))
+	for _, sa := range diffed.Updates() {
+		log.Info("Updating service account", "name", sa.Name)
+		if err := sc.client.Update(ctx, sa); err != nil {
+			return kube.TransientError(fmt.Errorf("update service account %q: %w", sa.Name, err))
 		}
 	}
 

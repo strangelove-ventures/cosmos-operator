@@ -10,15 +10,15 @@ import (
 )
 
 func serviceAccountName(crd *cosmosv1.CosmosFullNode) string {
-	return crd.Name + "-vc"
+	return crd.Name + "-vc-sa"
 }
 
 func roleName(crd *cosmosv1.CosmosFullNode) string {
-	return crd.Namespace + "-" + crd.Name + "-cr"
+	return crd.Name + "-vc-r"
 }
 
 func roleBindingName(crd *cosmosv1.CosmosFullNode) string {
-	return crd.Namespace + "-" + crd.Name + "-crb"
+	return crd.Name + "-vc-rb"
 }
 
 // BuildServiceAccounts returns a list of service accounts given the crd.

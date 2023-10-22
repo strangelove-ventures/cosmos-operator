@@ -27,6 +27,7 @@ func NewRoleBindingControl(client Client) RoleBindingControl {
 func (sc RoleBindingControl) Reconcile(ctx context.Context, log kube.Logger, crd *cosmosv1.CosmosFullNode) kube.ReconcileError {
 	var crs rbacv1.RoleBindingList
 	if err := sc.client.List(ctx, &crs,
+		client.InNamespace(crd.Namespace),
 		client.MatchingLabels{
 			kube.ControllerLabel: "cosmos-operator",
 			kube.ComponentLabel:  "vc",
@@ -41,7 +42,7 @@ func (sc RoleBindingControl) Reconcile(ctx context.Context, log kube.Logger, crd
 	diffed := diff.New(current, want)
 
 	for _, cr := range diffed.Creates() {
-		log.Info("Creating role binding", "roleBindingName", cr.Name)
+		log.Info("Creating role binding", "name", cr.Name)
 		if err := ctrl.SetControllerReference(crd, cr, sc.client.Scheme()); err != nil {
 			return kube.TransientError(fmt.Errorf("set controller reference on role binding %q: %w", cr.Name, err))
 		}
@@ -53,7 +54,7 @@ func (sc RoleBindingControl) Reconcile(ctx context.Context, log kube.Logger, crd
 	}
 
 	for _, cr := range diffed.Updates() {
-		log.Info("Updating role binding", "roleBindingName", cr.Name)
+		log.Info("Updating role binding", "name", cr.Name)
 		if err := sc.client.Update(ctx, cr); err != nil {
 			return kube.TransientError(fmt.Errorf("update role binding %q: %w", cr.Name, err))
 		}
