@@ -107,13 +107,13 @@ func VersionCheckCmd(scheme *runtime.Scheme) *cobra.Command {
 				ticker := time.NewTicker(tickTime)
 				defer ticker.Stop()
 				for {
-					if err := checkVersion(cmd.Context(), nil, kClient, namespacedName, thisPod, dataDir, backend, cmd.OutOrStdout()); err != nil {
-						panic(err)
-					}
 					select {
 					case <-cmd.Context().Done():
 						return
 					case <-ticker.C:
+						if err := checkVersion(cmd.Context(), nil, kClient, namespacedName, thisPod, dataDir, backend, cmd.OutOrStdout()); err != nil {
+							panic(err)
+						}
 						ticker.Reset(tickTime)
 					}
 				}
