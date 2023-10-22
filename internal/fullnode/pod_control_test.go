@@ -239,6 +239,8 @@ func TestPodControl_Reconcile(t *testing.T) {
 			crd.Status.Height[pod.Name] = 100
 		}
 
+		// Reconcile 1, should update 0 and 1
+
 		requeue, err := control.Reconcile(ctx, nopReporter, &crd, nil)
 		require.NoError(t, err)
 
@@ -250,8 +252,20 @@ func TestPodControl_Reconcile(t *testing.T) {
 		require.Zero(t, mClient.CreateCount)
 		require.Equal(t, 2, mClient.DeleteCount)
 
+		// revision hash must be taken without the revision label and the ordinal annotation.
 		existing[0].Spec.Containers[0].Image = "new-image"
+		delete(existing[0].Labels, "app.kubernetes.io/revision")
+		delete(existing[0].Annotations, "app.kubernetes.io/ordinal")
+		rev0 := diff.Adapt(existing[0], 0).Revision()
+		existing[0].Labels["app.kubernetes.io/revision"] = rev0
+		existing[0].Annotations["app.kubernetes.io/ordinal"] = "0"
+
 		existing[1].Spec.Containers[0].Image = "new-image"
+		delete(existing[1].Labels, "app.kubernetes.io/revision")
+		delete(existing[1].Annotations, "app.kubernetes.io/ordinal")
+		rev1 := diff.Adapt(existing[1], 1).Revision()
+		existing[1].Labels["app.kubernetes.io/revision"] = rev1
+		existing[1].Annotations["app.kubernetes.io/ordinal"] = "1"
 		mClient.ObjectList = corev1.PodList{
 			Items: valueSlice(existing),
 		}
@@ -272,12 +286,16 @@ func TestPodControl_Reconcile(t *testing.T) {
 				if i < 2 {
 					ps.RPCReachable = false
 					ps.Synced = false
+				} else {
+					ps.AwaitingUpgrade = true
 				}
 				return ps
 			})
 		})
 
 		control = NewPodControl(&mClient, podFilter)
+
+		// Reconcile 2, should not update anything because 0 and 1 are still in progress.
 
 		requeue, err = control.Reconcile(ctx, nopReporter, &crd, nil)
 		require.NoError(t, err)
@@ -309,11 +327,16 @@ func TestPodControl_Reconcile(t *testing.T) {
 					ps.RPCReachable = false
 					ps.Synced = false
 				}
+				if i >= 2 {
+					ps.AwaitingUpgrade = true
+				}
 				return ps
 			})
 		})
 
 		control = NewPodControl(&mClient, podFilter)
+
+		// Reconcile 3, should update 2 (only one) because 1 is still in progress, but 0 is done.
 
 		requeue, err = control.Reconcile(ctx, nopReporter, &crd, nil)
 		require.NoError(t, err)
@@ -329,6 +352,11 @@ func TestPodControl_Reconcile(t *testing.T) {
 		require.Equal(t, 3, mClient.DeleteCount)
 
 		existing[2].Spec.Containers[0].Image = "new-image"
+		delete(existing[2].Labels, "app.kubernetes.io/revision")
+		delete(existing[2].Annotations, "app.kubernetes.io/ordinal")
+		rev2 := diff.Adapt(existing[2], 2).Revision()
+		existing[2].Labels["app.kubernetes.io/revision"] = rev2
+		existing[2].Annotations["app.kubernetes.io/ordinal"] = "2"
 		mClient.ObjectList = corev1.PodList{
 			Items: valueSlice(existing),
 		}
@@ -341,21 +369,27 @@ func TestPodControl_Reconcile(t *testing.T) {
 			require.Equal(t, "hub", crd.Name)
 			didFilter = true
 			return lo.Map(existing, func(pod *corev1.Pod, i int) cosmos.PodStatus {
-				return cosmos.PodStatus{
+				ps := cosmos.PodStatus{
 					Pod:          pod,
 					RPCReachable: true,
 					Synced:       true,
 				}
+				if i >= 3 {
+					ps.AwaitingUpgrade = true
+				}
+				return ps
 			})
 		})
 
 		control = NewPodControl(&mClient, podFilter)
 
+		// Reconcile 4, should update 3 and 4 because the rest are done.
+
 		requeue, err = control.Reconcile(ctx, nopReporter, &crd, nil)
 		require.NoError(t, err)
 
 		// all updates are now handled, no longer need requeue.
-		require.True(t, requeue)
+		require.False(t, requeue)
 
 		require.True(t, didFilter)
 

@@ -94,15 +94,15 @@ func (pc PodControl) Reconcile(ctx context.Context, reporter kube.Reporter, crd 
 			deletedPods      = make(map[string]bool)
 		)
 
-		for _, update := range diffedUpdates {
-			for _, ps := range podsWithStatus {
+		for _, ps := range podsWithStatus {
+			if ps.Synced {
+				inSyncPods[ps.Pod.Name] = true
+			}
+			if ps.RPCReachable {
+				rpcReachablePods[ps.Pod.Name] = true
+			}
+			for _, update := range diffedUpdates {
 				if ps.Pod.Name == update.Name {
-					if ps.Synced {
-						inSyncPods[ps.Pod.Name] = true
-					}
-					if ps.RPCReachable {
-						rpcReachablePods[ps.Pod.Name] = true
-					}
 					if ps.AwaitingUpgrade {
 						if !ps.RPCReachable {
 							upgradePods[ps.Pod.Name] = true
