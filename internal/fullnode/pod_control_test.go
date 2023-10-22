@@ -2,6 +2,7 @@ package fullnode
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/samber/lo"
@@ -252,20 +253,11 @@ func TestPodControl_Reconcile(t *testing.T) {
 		require.Zero(t, mClient.CreateCount)
 		require.Equal(t, 2, mClient.DeleteCount)
 
-		// revision hash must be taken without the revision label and the ordinal annotation.
 		existing[0].Spec.Containers[0].Image = "new-image"
-		delete(existing[0].Labels, "app.kubernetes.io/revision")
-		delete(existing[0].Annotations, "app.kubernetes.io/ordinal")
-		rev0 := diff.Adapt(existing[0], 0).Revision()
-		existing[0].Labels["app.kubernetes.io/revision"] = rev0
-		existing[0].Annotations["app.kubernetes.io/ordinal"] = "0"
-
 		existing[1].Spec.Containers[0].Image = "new-image"
-		delete(existing[1].Labels, "app.kubernetes.io/revision")
-		delete(existing[1].Annotations, "app.kubernetes.io/ordinal")
-		rev1 := diff.Adapt(existing[1], 1).Revision()
-		existing[1].Labels["app.kubernetes.io/revision"] = rev1
-		existing[1].Annotations["app.kubernetes.io/ordinal"] = "1"
+
+		recalculatePodRevision(existing[0], 0)
+		recalculatePodRevision(existing[1], 1)
 		mClient.ObjectList = corev1.PodList{
 			Items: valueSlice(existing),
 		}
@@ -352,11 +344,7 @@ func TestPodControl_Reconcile(t *testing.T) {
 		require.Equal(t, 3, mClient.DeleteCount)
 
 		existing[2].Spec.Containers[0].Image = "new-image"
-		delete(existing[2].Labels, "app.kubernetes.io/revision")
-		delete(existing[2].Annotations, "app.kubernetes.io/ordinal")
-		rev2 := diff.Adapt(existing[2], 2).Revision()
-		existing[2].Labels["app.kubernetes.io/revision"] = rev2
-		existing[2].Annotations["app.kubernetes.io/ordinal"] = "2"
+		recalculatePodRevision(existing[2], 2)
 		mClient.ObjectList = corev1.PodList{
 			Items: valueSlice(existing),
 		}
@@ -470,4 +458,13 @@ func TestPodControl_Reconcile(t *testing.T) {
 		require.Zero(t, mClient.CreateCount)
 		require.Equal(t, 5, mClient.DeleteCount)
 	})
+}
+
+// revision hash must be taken without the revision label and the ordinal annotation.
+func recalculatePodRevision(pod *corev1.Pod, ordinal int) {
+	delete(pod.Labels, "app.kubernetes.io/revision")
+	delete(pod.Annotations, "app.kubernetes.io/ordinal")
+	rev1 := diff.Adapt(pod, ordinal).Revision()
+	pod.Labels["app.kubernetes.io/revision"] = rev1
+	pod.Annotations["app.kubernetes.io/ordinal"] = fmt.Sprintf("%d", ordinal)
 }
