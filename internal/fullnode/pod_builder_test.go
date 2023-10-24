@@ -558,7 +558,7 @@ gaiad start --home /home/operator/cosmos`
 		require.Equal(t, &corev1.EmptyDirVolumeSource{}, vols["foo-vol"].VolumeSource.EmptyDir)
 
 		containers := lo.SliceToMap(pod.Spec.Containers, func(c corev1.Container) (string, corev1.Container) { return c.Name, c })
-		require.ElementsMatch(t, []string{"node", "new-sidecar", "healthcheck", "version-check-term"}, lo.Keys(containers))
+		require.ElementsMatch(t, []string{"node", "new-sidecar", "healthcheck"}, lo.Keys(containers))
 
 		extraVol := lo.Filter(containers["node"].VolumeMounts, func(vm corev1.VolumeMount, _ int) bool { return vm.Name == "foo-vol" })
 		require.Equal(t, "/foo", extraVol[0].MountPath)
@@ -566,6 +566,42 @@ gaiad start --home /home/operator/cosmos`
 		initConts := lo.SliceToMap(pod.Spec.InitContainers, func(c corev1.Container) (string, corev1.Container) { return c.Name, c })
 		require.ElementsMatch(t, []string{"clean-init", "chain-init", "new-init", "genesis-init", "addrbook-init", "config-merge", "version-check"}, lo.Keys(initConts))
 		require.Equal(t, "foo:latest", initConts["chain-init"].Image)
+	})
+
+	t.Run("containers with chain spec versions", func(t *testing.T) {
+		crd := defaultCRD()
+		crd.Spec.PodTemplate.Volumes = []corev1.Volume{
+			{Name: "foo-vol", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+		}
+		crd.Spec.PodTemplate.InitContainers = []corev1.Container{
+			{Name: "chain-init", Image: "foo:latest", VolumeMounts: []corev1.VolumeMount{
+				{Name: "foo-vol", MountPath: "/foo"}, // Should be merged with existing.
+			}},
+			{Name: "new-init", Image: "new-init:latest"}, // New container.
+		}
+		crd.Spec.PodTemplate.Containers = []corev1.Container{
+			{Name: "node", VolumeMounts: []corev1.VolumeMount{
+				{Name: "foo-vol", MountPath: "/foo"}, // Should be merged with existing.
+			}},
+			{Name: "new-sidecar", Image: "new-sidecar:latest"}, // New container.
+		}
+		crd.Spec.ChainSpec.Versions = []cosmosv1.ChainVersion{
+			{
+				UpgradeHeight: 1,
+				Image:         "image:v1.0.0",
+			},
+			{
+				UpgradeHeight: 100,
+				Image:         "image:v2.0.0",
+			},
+		}
+
+		builder := NewPodBuilder(&crd)
+		pod, err := builder.WithOrdinal(0).Build()
+		require.NoError(t, err)
+
+		containers := lo.SliceToMap(pod.Spec.Containers, func(c corev1.Container) (string, corev1.Container) { return c.Name, c })
+		require.ElementsMatch(t, []string{"node", "new-sidecar", "healthcheck", "version-check-interval"}, lo.Keys(containers))
 	})
 
 	test.HasTypeLabel(t, func(crd cosmosv1.CosmosFullNode) []map[string]string {
