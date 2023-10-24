@@ -106,24 +106,27 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 					ReadinessProbe:  probes[1],
 					ImagePullPolicy: tpl.ImagePullPolicy,
 				},
-				// version check sidecar, runs on terminate in case the instance is halting for upgrade.
-				{
-					Name:    "version-check-term",
-					Image:   "ghcr.io/strangelove-ventures/cosmos-operator:" + version.DockerTag(),
-					Command: versionCheckCmd,
-					Resources: corev1.ResourceRequirements{
-						Requests: corev1.ResourceList{
-							corev1.ResourceCPU:    resource.MustParse("5m"),
-							corev1.ResourceMemory: resource.MustParse("16Mi"),
-						},
-					},
-					Env:             envVars(crd),
-					ImagePullPolicy: tpl.ImagePullPolicy,
-					WorkingDir:      workDir,
-					SecurityContext: &corev1.SecurityContext{},
-				},
 			},
 		},
+	}
+
+	if len(crd.Spec.ChainSpec.Versions) > 0 {
+		// version check sidecar, runs on inverval in case the instance is halting for upgrade.
+		pod.Spec.Containers = append(pod.Spec.Containers, corev1.Container{
+			Name:    "version-check-interval",
+			Image:   "ghcr.io/strangelove-ventures/cosmos-operator:" + version.DockerTag(),
+			Command: versionCheckCmd,
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("5m"),
+					corev1.ResourceMemory: resource.MustParse("16Mi"),
+				},
+			},
+			Env:             envVars(crd),
+			ImagePullPolicy: tpl.ImagePullPolicy,
+			WorkingDir:      workDir,
+			SecurityContext: &corev1.SecurityContext{},
+		})
 	}
 
 	preserveMergeInto(pod.Labels, tpl.Metadata.Labels)
@@ -270,7 +273,9 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 		// The healthcheck sidecar needs access to the home directory so it can read disk usage.
 		{Name: volChainHome, MountPath: ChainHomeDir(b.crd), ReadOnly: true},
 	}
-	pod.Spec.Containers[2].VolumeMounts = mounts
+	if len(pod.Spec.Containers) > 2 {
+		pod.Spec.Containers[2].VolumeMounts = mounts
+	}
 
 	b.pod = pod
 	return b
