@@ -139,6 +139,10 @@ type FullNodeStatus struct {
 	// Current sync information. Collected every 60s.
 	// +optional
 	SyncInfo *SyncInfoStatus `json:"syncInfo,omitempty"`
+
+	// Latest Height information. collected when node starts up and when RPC is successfully queried.
+	// +optional
+	Height map[string]uint64 `json:"height,omitempty"`
 }
 
 type SyncInfoStatus struct {
@@ -524,6 +528,31 @@ type ChainSpec struct {
 	// +kubebuilder:validation:Minimum:=0
 	// +optional
 	PrivvalSleepSeconds *int32 `json:"privvalSleepSeconds"`
+
+	// DatabaseBackend must match in order to detect the block height
+	// of the chain prior to starting in order to pick the correct image version.
+	// options: goleveldb, rocksdb, pebbledb
+	// Defaults to goleveldb.
+	// +optional
+	DatabaseBackend *string `json:"databaseBackend"`
+
+	// Versions of the chain and which height they should be applied.
+	// When provided, the operator will automatically upgrade the chain as it reaches the specified heights.
+	// If not provided, the operator will not upgrade the chain, and will use the image specified in the pod spec.
+	// +optional
+	Versions []ChainVersion `json:"versions"`
+}
+
+type ChainVersion struct {
+	// The block height when this version should be applied.
+	UpgradeHeight uint64 `json:"height"`
+
+	// The docker image for this version in "repository:tag" format. E.g. busybox:latest.
+	Image string `json:"image"`
+
+	// Determines if the node should forcefully halt at the upgrade height.
+	// +optional
+	SetHaltHeight bool `json:"setHaltHeight,omitempty"`
 }
 
 // CometConfig configures the config.toml.

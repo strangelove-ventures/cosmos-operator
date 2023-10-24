@@ -7,6 +7,7 @@ import (
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -87,6 +88,12 @@ func (m *mockClient[T]) List(ctx context.Context, list client.ObjectList, opts .
 		*ref = m.ObjectList.(corev1.ConfigMapList)
 	case *corev1.SecretList:
 		*ref = m.ObjectList.(corev1.SecretList)
+	case *corev1.ServiceAccountList:
+		*ref = m.ObjectList.(corev1.ServiceAccountList)
+	case *rbacv1.RoleList:
+		*ref = m.ObjectList.(rbacv1.RoleList)
+	case *rbacv1.RoleBindingList:
+		*ref = m.ObjectList.(rbacv1.RoleBindingList)
 	default:
 		panic(fmt.Errorf("unknown ObjectList type: %T", m.ObjectList))
 	}

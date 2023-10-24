@@ -7,7 +7,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const configChecksumAnnotation = "cosmos.strange.love/config-checksum"
+const (
+	configChecksumAnnotation = "cosmos.strange.love/config-checksum"
+)
 
 // BuildPods creates the final state of pods given the crd.
 func BuildPods(crd *cosmosv1.CosmosFullNode, cksums ConfigChecksums) ([]diff.Resource[*corev1.Pod], error) {
@@ -24,6 +26,22 @@ func BuildPods(crd *cosmosv1.CosmosFullNode, cksums ConfigChecksums) ([]diff.Res
 		}
 		if _, shouldSnapshot := candidates[pod.Name]; shouldSnapshot {
 			continue
+		}
+		if len(crd.Spec.ChainSpec.Versions) > 0 {
+			instanceHeight := uint64(0)
+			if height, ok := crd.Status.Height[pod.Name]; ok {
+				instanceHeight = height
+			}
+			var image string
+			for _, version := range crd.Spec.ChainSpec.Versions {
+				if instanceHeight < version.UpgradeHeight {
+					break
+				}
+				image = version.Image
+			}
+			if image != "" {
+				setMainContainerImage(pod, image)
+			}
 		}
 		if o, ok := overrides[pod.Name]; ok {
 			if o.DisableStrategy != nil {

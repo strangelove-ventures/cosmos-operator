@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/samber/lo"
+	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -112,4 +113,47 @@ func (coll StatusCollection) Synced() StatusCollection {
 // SyncedPods returns the pods that are caught up with the chain tip.
 func (coll StatusCollection) SyncedPods() []*corev1.Pod {
 	return lo.Map(coll.Synced(), func(status StatusItem, _ int) *corev1.Pod { return status.GetPod() })
+}
+
+// PodStatus is the status of a pod.
+type PodStatus struct {
+	Pod             *corev1.Pod
+	RPCReachable    bool
+	Synced          bool
+	AwaitingUpgrade bool
+}
+
+// PodsWithStatus returns all pods with their status.
+func (coll StatusCollection) PodsWithStatus(crd *cosmosv1.CosmosFullNode) []PodStatus {
+	out := make([]PodStatus, len(coll))
+	for i, status := range coll {
+		ps := PodStatus{
+			Pod: status.GetPod(),
+		}
+		if crd.Spec.ChainSpec.Versions != nil {
+			instanceHeight := uint64(0)
+			if height, ok := crd.Status.Height[status.Pod.Name]; ok {
+				instanceHeight = height
+			}
+			var image string
+			for _, version := range crd.Spec.ChainSpec.Versions {
+				if instanceHeight < version.UpgradeHeight {
+					break
+				}
+				image = version.Image
+			}
+			if image != "" && status.Pod.Spec.Containers[0].Image != image {
+				ps.AwaitingUpgrade = true
+			}
+		}
+		if status.Err == nil {
+			ps.RPCReachable = true
+			if !status.Status.Result.SyncInfo.CatchingUp {
+				ps.Synced = true
+			}
+		}
+
+		out[i] = ps
+	}
+	return out
 }

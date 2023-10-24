@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	"github.com/strangelove-ventures/cosmos-operator/internal/cosmos"
 	"github.com/strangelove-ventures/cosmos-operator/internal/diff"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	corev1 "k8s.io/api/core/v1"
@@ -17,7 +17,7 @@ import (
 )
 
 type PodFilter interface {
-	SyncedPods(ctx context.Context, controller client.ObjectKey) []*corev1.Pod
+	PodsWithStatus(ctx context.Context, crd *cosmosv1.CosmosFullNode) []cosmos.PodStatus
 }
 
 // Client is a controller client. It is a subset of client.Client.
@@ -83,21 +83,84 @@ func (pc PodControl) Reconcile(ctx context.Context, reporter kube.Reporter, crd 
 		return true, nil
 	}
 
-	if len(diffed.Updates()) > 0 {
+	diffedUpdates := diffed.Updates()
+	if len(diffedUpdates) > 0 {
 		var (
-			// This may be a source of confusion by passing currentPods vs. pods from diff.Updates().
-			// This is a leaky abstraction (which may be fixed in the future) because diff.Updates() pods are built
-			// from the operator and do not match what's returned by listing pods.
-			avail      = pc.podFilter.SyncedPods(ctx, client.ObjectKeyFromObject(crd))
-			numUpdates = pc.computeRollout(crd.Spec.RolloutStrategy.MaxUnavailable, int(crd.Spec.Replicas), len(avail))
+			podsWithStatus   = pc.podFilter.PodsWithStatus(ctx, crd)
+			upgradePods      = make(map[string]bool)
+			otherUpdates     = make(map[string]*corev1.Pod)
+			rpcReachablePods = make(map[string]bool)
+			inSyncPods       = make(map[string]bool)
+			deletedPods      = make(map[string]bool)
 		)
 
-		for _, pod := range lo.Slice(diffed.Updates(), 0, numUpdates) {
-			reporter.Info("Deleting pod for update", "podName", pod.Name)
+		for _, ps := range podsWithStatus {
+			if ps.Synced {
+				inSyncPods[ps.Pod.Name] = true
+			}
+			if ps.RPCReachable {
+				rpcReachablePods[ps.Pod.Name] = true
+			}
+			for _, update := range diffedUpdates {
+				if ps.Pod.Name == update.Name {
+					if ps.AwaitingUpgrade {
+						if !ps.RPCReachable {
+							upgradePods[ps.Pod.Name] = true
+							reporter.Info("Deleting pod for version upgrade", "podName", ps.Pod.Name)
+							// Because we should watch for deletes, we get a re-queued request, detect pod is missing, and re-create it.
+							if err := pc.client.Delete(ctx, ps.Pod, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
+								return true, kube.TransientError(fmt.Errorf("upgrade pod version %q: %w", ps.Pod.Name, err))
+							}
+							deletedPods[ps.Pod.Name] = true
+						} else {
+							otherUpdates[ps.Pod.Name] = ps.Pod
+						}
+					} else {
+						otherUpdates[ps.Pod.Name] = ps.Pod
+					}
+					break
+				}
+			}
+		}
+
+		// If we don't have any pods in sync, we are down anyways, so we can use the number of RPC reachable pods for computing the rollout,
+		// with the goal of recovering the pods as quickly as possible.
+		ready := len(inSyncPods)
+		if ready == 0 {
+			ready = len(rpcReachablePods)
+		}
+
+		numUpdates := pc.computeRollout(crd.Spec.RolloutStrategy.MaxUnavailable, int(crd.Spec.Replicas), ready)
+
+		updated := len(upgradePods)
+
+		if updated == len(diffedUpdates) {
+			// All pods are updated.
+			return false, nil
+		}
+
+		if updated >= numUpdates {
+			// Signal requeue.
+			return true, nil
+		}
+
+		for podName, pod := range otherUpdates {
+			reporter.Info("Deleting pod for update", "podName", podName)
 			// Because we should watch for deletes, we get a re-queued request, detect pod is missing, and re-create it.
 			if err := pc.client.Delete(ctx, pod, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
-				return true, kube.TransientError(fmt.Errorf("update pod %q: %w", pod.Name, err))
+				return true, kube.TransientError(fmt.Errorf("update pod %q: %w", podName, err))
 			}
+			deletedPods[podName] = true
+			updated++
+			if updated >= numUpdates {
+				// done for this round
+				break
+			}
+		}
+
+		if len(diffedUpdates) == updated {
+			// All pods are updated.
+			return false, nil
 		}
 
 		// Signal requeue.
