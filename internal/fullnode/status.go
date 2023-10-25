@@ -3,7 +3,6 @@ package fullnode
 import (
 	"context"
 
-	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/internal/cosmos"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,24 +26,25 @@ func SyncInfoStatus(
 	ctx context.Context,
 	crd *cosmosv1.CosmosFullNode,
 	collector StatusCollector,
-) cosmosv1.SyncInfoStatus {
-	var status cosmosv1.SyncInfoStatus
+) map[string]*cosmosv1.SyncInfoPodStatus {
+	status := make(map[string]*cosmosv1.SyncInfoPodStatus, crd.Spec.Replicas)
 
 	coll := collector.Collect(ctx, client.ObjectKeyFromObject(crd))
 
-	status.Pods = lo.Map(coll, func(item cosmos.StatusItem, _ int) cosmosv1.SyncInfoPodStatus {
+	for _, item := range coll {
 		var stat cosmosv1.SyncInfoPodStatus
-		stat.Pod = item.GetPod().Name
+		podName := item.GetPod().Name
 		stat.Timestamp = metav1.NewTime(item.Timestamp())
 		comet, err := item.GetStatus()
 		if err != nil {
 			stat.Error = ptr(err.Error())
-			return stat
+			status[podName] = &stat
+			continue
 		}
 		stat.Height = ptr(comet.LatestBlockHeight())
 		stat.InSync = ptr(!comet.Result.SyncInfo.CatchingUp)
-		return stat
-	})
+		status[podName] = &stat
+	}
 
 	return status
 }

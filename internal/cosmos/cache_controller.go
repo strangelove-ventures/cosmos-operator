@@ -149,6 +149,22 @@ func (c *CacheController) Reconcile(ctx context.Context, req reconcile.Request) 
 	return finishResult, nil
 }
 
+// Invalidate removes the given pods status from the cache.
+func (c *CacheController) Invalidate(controller client.ObjectKey, pods []string) {
+	v, _ := c.cache.Get(controller)
+	now := time.Now()
+	for _, s := range v {
+		for _, pod := range pods {
+			if s.Pod.Name == pod {
+				s.Status = CometStatus{}
+				s.Err = fmt.Errorf("invalidated")
+				s.TS = now
+			}
+		}
+	}
+	c.cache.Update(controller, v)
+}
+
 // Collect returns a StatusCollection for the given controller. Only returns cached CometStatus.
 func (c *CacheController) Collect(ctx context.Context, controller client.ObjectKey) StatusCollection {
 	pods, err := c.listPods(ctx, controller)
@@ -166,11 +182,6 @@ func (c *CacheController) Collect(ctx context.Context, controller client.ObjectK
 // SyncedPods returns only the pods that are ready and in sync (i.e. caught up with chain tip).
 func (c *CacheController) SyncedPods(ctx context.Context, controller client.ObjectKey) []*corev1.Pod {
 	return kube.AvailablePods(c.Collect(ctx, controller).SyncedPods(), 5*time.Second, time.Now())
-}
-
-// PodsWithStatus returns all pods with their status.
-func (c *CacheController) PodsWithStatus(ctx context.Context, crd *cosmosv1.CosmosFullNode) []PodStatus {
-	return c.Collect(ctx, client.ObjectKeyFromObject(crd)).PodsWithStatus(crd)
 }
 
 func (c *CacheController) listPods(ctx context.Context, controller client.ObjectKey) ([]corev1.Pod, error) {

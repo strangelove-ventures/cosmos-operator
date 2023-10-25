@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
-	"github.com/strangelove-ventures/cosmos-operator/internal/cosmos"
 	"github.com/strangelove-ventures/cosmos-operator/internal/diff"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	corev1 "k8s.io/api/core/v1"
@@ -16,10 +15,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type PodFilter interface {
-	PodsWithStatus(ctx context.Context, crd *cosmosv1.CosmosFullNode) []cosmos.PodStatus
-}
-
 // Client is a controller client. It is a subset of client.Client.
 type Client interface {
 	client.Reader
@@ -28,25 +23,35 @@ type Client interface {
 	Scheme() *runtime.Scheme
 }
 
+type CacheInvalidator interface {
+	Invalidate(controller client.ObjectKey, pods []string)
+}
+
 // PodControl reconciles pods for a CosmosFullNode.
 type PodControl struct {
-	client         Client
-	podFilter      PodFilter
-	computeRollout func(maxUnavail *intstr.IntOrString, desired, ready int) int
+	client           Client
+	cacheInvalidator CacheInvalidator
+	computeRollout   func(maxUnavail *intstr.IntOrString, desired, ready int) int
 }
 
 // NewPodControl returns a valid PodControl.
-func NewPodControl(client Client, filter PodFilter) PodControl {
+func NewPodControl(client Client, cacheInvalidator CacheInvalidator) PodControl {
 	return PodControl{
-		client:         client,
-		podFilter:      filter,
-		computeRollout: kube.ComputeRollout,
+		client:           client,
+		cacheInvalidator: cacheInvalidator,
+		computeRollout:   kube.ComputeRollout,
 	}
 }
 
 // Reconcile is the control loop for pods. The bool return value, if true, indicates the controller should requeue
 // the request.
-func (pc PodControl) Reconcile(ctx context.Context, reporter kube.Reporter, crd *cosmosv1.CosmosFullNode, cksums ConfigChecksums) (bool, kube.ReconcileError) {
+func (pc PodControl) Reconcile(
+	ctx context.Context,
+	reporter kube.Reporter,
+	crd *cosmosv1.CosmosFullNode,
+	cksums ConfigChecksums,
+	syncInfo map[string]*cosmosv1.SyncInfoPodStatus,
+) (bool, kube.ReconcileError) {
 	var pods corev1.PodList
 	if err := pc.client.List(ctx, &pods,
 		client.InNamespace(crd.Namespace),
@@ -62,7 +67,7 @@ func (pc PodControl) Reconcile(ctx context.Context, reporter kube.Reporter, crd 
 	diffed := diff.New(ptrSlice(pods.Items), wantPods)
 
 	for _, pod := range diffed.Creates() {
-		reporter.Info("Creating pod", "pod", pod.Name)
+		reporter.Info("Creating pod", "name", pod.Name)
 		if err := ctrl.SetControllerReference(crd, pod, pc.client.Scheme()); err != nil {
 			return true, kube.TransientError(fmt.Errorf("set controller reference on pod %q: %w", pod.Name, err))
 		}
@@ -71,11 +76,24 @@ func (pc PodControl) Reconcile(ctx context.Context, reporter kube.Reporter, crd 
 		}
 	}
 
+	var invalidateCache []string
+
+	defer func() {
+		if pc.cacheInvalidator == nil {
+			return
+		}
+		if len(invalidateCache) > 0 {
+			pc.cacheInvalidator.Invalidate(client.ObjectKeyFromObject(crd), invalidateCache)
+		}
+	}()
+
 	for _, pod := range diffed.Deletes() {
-		reporter.Info("Deleting pod", "pod", pod.Name)
+		reporter.Info("Deleting pod", "name", pod.Name)
 		if err := pc.client.Delete(ctx, pod, client.PropagationPolicy(metav1.DeletePropagationForeground)); kube.IgnoreNotFound(err) != nil {
 			return true, kube.TransientError(fmt.Errorf("delete pod %q: %w", pod.Name, err))
 		}
+		delete(syncInfo, pod.Name)
+		invalidateCache = append(invalidateCache, pod.Name)
 	}
 
 	if len(diffed.Creates())+len(diffed.Deletes()) > 0 {
@@ -86,37 +104,49 @@ func (pc PodControl) Reconcile(ctx context.Context, reporter kube.Reporter, crd 
 	diffedUpdates := diffed.Updates()
 	if len(diffedUpdates) > 0 {
 		var (
-			podsWithStatus   = pc.podFilter.PodsWithStatus(ctx, crd)
-			upgradePods      = make(map[string]bool)
-			otherUpdates     = make(map[string]*corev1.Pod)
-			rpcReachablePods = make(map[string]bool)
-			inSyncPods       = make(map[string]bool)
-			deletedPods      = make(map[string]bool)
+			updatedPods      = 0
+			rpcReachablePods = 0
+			inSyncPods       = 0
+			otherUpdates     = []*corev1.Pod{}
 		)
 
-		for _, ps := range podsWithStatus {
-			if ps.Synced {
-				inSyncPods[ps.Pod.Name] = true
+		for _, existing := range pods.Items {
+			podName := existing.Name
+
+			if existing.DeletionTimestamp != nil {
+				// Pod is being deleted, so we skip it.
+				continue
 			}
-			if ps.RPCReachable {
-				rpcReachablePods[ps.Pod.Name] = true
+
+			var rpcReachable bool
+			if ps, ok := syncInfo[podName]; ok {
+				if ps.InSync != nil && *ps.InSync {
+					inSyncPods++
+				}
+				rpcReachable = ps.Error == nil
+				if rpcReachable {
+					rpcReachablePods++
+				}
 			}
 			for _, update := range diffedUpdates {
-				if ps.Pod.Name == update.Name {
-					if ps.AwaitingUpgrade {
-						if !ps.RPCReachable {
-							upgradePods[ps.Pod.Name] = true
-							reporter.Info("Deleting pod for version upgrade", "podName", ps.Pod.Name)
+				if podName == update.Name {
+					if existing.Spec.Containers[0].Image != update.Spec.Containers[0].Image {
+						// awaiting upgrade
+						if !rpcReachable {
+							updatedPods++
+							reporter.Info("Deleting pod for version upgrade", "name", podName)
 							// Because we should watch for deletes, we get a re-queued request, detect pod is missing, and re-create it.
-							if err := pc.client.Delete(ctx, ps.Pod, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
-								return true, kube.TransientError(fmt.Errorf("upgrade pod version %q: %w", ps.Pod.Name, err))
+							if err := pc.client.Delete(ctx, update, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
+								return true, kube.TransientError(fmt.Errorf("upgrade pod version %q: %w", podName, err))
 							}
-							deletedPods[ps.Pod.Name] = true
+							syncInfo[podName].InSync = nil
+							syncInfo[podName].Error = ptr("version upgrade in progress")
+							invalidateCache = append(invalidateCache, podName)
 						} else {
-							otherUpdates[ps.Pod.Name] = ps.Pod
+							otherUpdates = append(otherUpdates, update)
 						}
 					} else {
-						otherUpdates[ps.Pod.Name] = ps.Pod
+						otherUpdates = append(otherUpdates, update)
 					}
 					break
 				}
@@ -125,40 +155,41 @@ func (pc PodControl) Reconcile(ctx context.Context, reporter kube.Reporter, crd 
 
 		// If we don't have any pods in sync, we are down anyways, so we can use the number of RPC reachable pods for computing the rollout,
 		// with the goal of recovering the pods as quickly as possible.
-		ready := len(inSyncPods)
+		ready := inSyncPods
 		if ready == 0 {
-			ready = len(rpcReachablePods)
+			ready = rpcReachablePods
 		}
 
 		numUpdates := pc.computeRollout(crd.Spec.RolloutStrategy.MaxUnavailable, int(crd.Spec.Replicas), ready)
 
-		updated := len(upgradePods)
-
-		if updated == len(diffedUpdates) {
+		if updatedPods == len(diffedUpdates) {
 			// All pods are updated.
 			return false, nil
 		}
 
-		if updated >= numUpdates {
+		if updatedPods >= numUpdates {
 			// Signal requeue.
 			return true, nil
 		}
 
-		for podName, pod := range otherUpdates {
-			reporter.Info("Deleting pod for update", "podName", podName)
+		for _, pod := range otherUpdates {
+			podName := pod.Name
+			reporter.Info("Deleting pod for update", "name", podName)
 			// Because we should watch for deletes, we get a re-queued request, detect pod is missing, and re-create it.
 			if err := pc.client.Delete(ctx, pod, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
 				return true, kube.TransientError(fmt.Errorf("update pod %q: %w", podName, err))
 			}
-			deletedPods[podName] = true
-			updated++
-			if updated >= numUpdates {
+			syncInfo[podName].InSync = nil
+			syncInfo[podName].Error = ptr("update in progress")
+			invalidateCache = append(invalidateCache, podName)
+			updatedPods++
+			if updatedPods >= numUpdates {
 				// done for this round
 				break
 			}
 		}
 
-		if len(diffedUpdates) == updated {
+		if len(diffedUpdates) == updatedPods {
 			// All pods are updated.
 			return false, nil
 		}
