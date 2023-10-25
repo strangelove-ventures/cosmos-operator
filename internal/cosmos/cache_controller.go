@@ -168,11 +168,6 @@ func (c *CacheController) SyncedPods(ctx context.Context, controller client.Obje
 	return kube.AvailablePods(c.Collect(ctx, controller).SyncedPods(), 5*time.Second, time.Now())
 }
 
-// PodsWithStatus returns all pods with their status.
-func (c *CacheController) PodsWithStatus(ctx context.Context, crd *cosmosv1.CosmosFullNode) []PodStatus {
-	return c.Collect(ctx, client.ObjectKeyFromObject(crd)).PodsWithStatus(crd)
-}
-
 func (c *CacheController) listPods(ctx context.Context, controller client.ObjectKey) ([]corev1.Pod, error) {
 	var pods corev1.PodList
 	if err := c.client.List(ctx, &pods,

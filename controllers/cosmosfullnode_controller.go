@@ -71,7 +71,7 @@ func NewFullNode(
 		configMapControl:          fullnode.NewConfigMapControl(client),
 		nodeKeyControl:            fullnode.NewNodeKeyControl(client),
 		peerCollector:             fullnode.NewPeerCollector(client),
-		podControl:                fullnode.NewPodControl(client, cacheController),
+		podControl:                fullnode.NewPodControl(client),
 		pvcControl:                fullnode.NewPVCControl(client),
 		recorder:                  recorder,
 		serviceControl:            fullnode.NewServiceControl(client),
@@ -118,7 +118,10 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	reporter := kube.NewEventReporter(logger, r.recorder, crd)
 
 	fullnode.ResetStatus(crd)
-	defer r.updateStatus(ctx, crd)
+
+	syncInfo := fullnode.SyncInfoStatus(ctx, crd, r.cacheController)
+
+	defer r.updateStatus(ctx, crd, &syncInfo)
 
 	errs := &kube.ReconcileErrors{}
 
@@ -169,7 +172,7 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	// Reconcile pods.
-	podRequeue, err := r.podControl.Reconcile(ctx, reporter, crd, configCksums)
+	podRequeue, err := r.podControl.Reconcile(ctx, reporter, crd, configCksums, &syncInfo)
 	if err != nil {
 		errs.Append(err)
 	}
@@ -218,16 +221,14 @@ func (r *CosmosFullNodeReconciler) resultWithErr(crd *cosmosv1.CosmosFullNode, e
 	return stopResult, err
 }
 
-func (r *CosmosFullNodeReconciler) updateStatus(ctx context.Context, crd *cosmosv1.CosmosFullNode) {
-	consensus := fullnode.SyncInfoStatus(ctx, crd, r.cacheController)
-
+func (r *CosmosFullNodeReconciler) updateStatus(ctx context.Context, crd *cosmosv1.CosmosFullNode, syncInfo *cosmosv1.SyncInfoStatus) {
 	if err := r.statusClient.SyncUpdate(ctx, client.ObjectKeyFromObject(crd), func(status *cosmosv1.FullNodeStatus) {
 		status.ObservedGeneration = crd.Status.ObservedGeneration
 		status.Phase = crd.Status.Phase
 		status.StatusMessage = crd.Status.StatusMessage
 		status.Peers = crd.Status.Peers
-		status.SyncInfo = &consensus
-		for _, v := range consensus.Pods {
+		status.SyncInfo = syncInfo
+		for _, v := range syncInfo.Pods {
 			if v.Height != nil && *v.Height > 0 {
 				if status.Height == nil {
 					status.Height = make(map[string]uint64)

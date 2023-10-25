@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
-	"github.com/strangelove-ventures/cosmos-operator/internal/cosmos"
 	"github.com/strangelove-ventures/cosmos-operator/internal/diff"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	corev1 "k8s.io/api/core/v1"
@@ -15,10 +14,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
-
-type PodFilter interface {
-	PodsWithStatus(ctx context.Context, crd *cosmosv1.CosmosFullNode) []cosmos.PodStatus
-}
 
 // Client is a controller client. It is a subset of client.Client.
 type Client interface {
@@ -31,22 +26,26 @@ type Client interface {
 // PodControl reconciles pods for a CosmosFullNode.
 type PodControl struct {
 	client         Client
-	podFilter      PodFilter
 	computeRollout func(maxUnavail *intstr.IntOrString, desired, ready int) int
 }
 
 // NewPodControl returns a valid PodControl.
-func NewPodControl(client Client, filter PodFilter) PodControl {
+func NewPodControl(client Client) PodControl {
 	return PodControl{
 		client:         client,
-		podFilter:      filter,
 		computeRollout: kube.ComputeRollout,
 	}
 }
 
 // Reconcile is the control loop for pods. The bool return value, if true, indicates the controller should requeue
 // the request.
-func (pc PodControl) Reconcile(ctx context.Context, reporter kube.Reporter, crd *cosmosv1.CosmosFullNode, cksums ConfigChecksums) (bool, kube.ReconcileError) {
+func (pc PodControl) Reconcile(
+	ctx context.Context,
+	reporter kube.Reporter,
+	crd *cosmosv1.CosmosFullNode,
+	cksums ConfigChecksums,
+	syncInfo *cosmosv1.SyncInfoStatus,
+) (bool, kube.ReconcileError) {
 	var pods corev1.PodList
 	if err := pc.client.List(ctx, &pods,
 		client.InNamespace(crd.Namespace),
@@ -62,7 +61,7 @@ func (pc PodControl) Reconcile(ctx context.Context, reporter kube.Reporter, crd 
 	diffed := diff.New(ptrSlice(pods.Items), wantPods)
 
 	for _, pod := range diffed.Creates() {
-		reporter.Info("Creating pod", "pod", pod.Name)
+		reporter.Info("Creating pod", "name", pod.Name)
 		if err := ctrl.SetControllerReference(crd, pod, pc.client.Scheme()); err != nil {
 			return true, kube.TransientError(fmt.Errorf("set controller reference on pod %q: %w", pod.Name, err))
 		}
@@ -72,7 +71,7 @@ func (pc PodControl) Reconcile(ctx context.Context, reporter kube.Reporter, crd 
 	}
 
 	for _, pod := range diffed.Deletes() {
-		reporter.Info("Deleting pod", "pod", pod.Name)
+		reporter.Info("Deleting pod", "name", pod.Name)
 		if err := pc.client.Delete(ctx, pod, client.PropagationPolicy(metav1.DeletePropagationForeground)); kube.IgnoreNotFound(err) != nil {
 			return true, kube.TransientError(fmt.Errorf("delete pod %q: %w", pod.Name, err))
 		}
@@ -86,37 +85,54 @@ func (pc PodControl) Reconcile(ctx context.Context, reporter kube.Reporter, crd 
 	diffedUpdates := diffed.Updates()
 	if len(diffedUpdates) > 0 {
 		var (
-			podsWithStatus   = pc.podFilter.PodsWithStatus(ctx, crd)
 			upgradePods      = make(map[string]bool)
 			otherUpdates     = make(map[string]*corev1.Pod)
-			rpcReachablePods = make(map[string]bool)
-			inSyncPods       = make(map[string]bool)
-			deletedPods      = make(map[string]bool)
+			rpcReachablePods = 0
+			inSyncPods       = 0
 		)
 
-		for _, ps := range podsWithStatus {
-			if ps.Synced {
-				inSyncPods[ps.Pod.Name] = true
+	PodsLoop:
+		for _, ps := range syncInfo.Pods {
+			for _, existing := range pods.Items {
+				if existing.Name == ps.Pod {
+					if existing.DeletionTimestamp != nil {
+						continue PodsLoop
+					}
+					break
+				}
 			}
-			if ps.RPCReachable {
-				rpcReachablePods[ps.Pod.Name] = true
+
+			if ps.InSync != nil && *ps.InSync {
+				inSyncPods++
+			}
+			rpcReachable := ps.Error == nil
+			if rpcReachable {
+				rpcReachablePods++
 			}
 			for _, update := range diffedUpdates {
-				if ps.Pod.Name == update.Name {
-					if ps.AwaitingUpgrade {
-						if !ps.RPCReachable {
-							upgradePods[ps.Pod.Name] = true
-							reporter.Info("Deleting pod for version upgrade", "podName", ps.Pod.Name)
-							// Because we should watch for deletes, we get a re-queued request, detect pod is missing, and re-create it.
-							if err := pc.client.Delete(ctx, ps.Pod, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
-								return true, kube.TransientError(fmt.Errorf("upgrade pod version %q: %w", ps.Pod.Name, err))
+				if ps.Pod == update.Name {
+					awaitingUpgrade := false
+					for _, existing := range pods.Items {
+						if existing.Name == ps.Pod {
+							if existing.Spec.Containers[0].Image != update.Spec.Containers[0].Image {
+								awaitingUpgrade = true
 							}
-							deletedPods[ps.Pod.Name] = true
+							break
+						}
+					}
+					if awaitingUpgrade {
+						if !rpcReachable {
+							upgradePods[ps.Pod] = true
+							reporter.Info("Deleting pod for version upgrade", "name", ps.Pod)
+							// Because we should watch for deletes, we get a re-queued request, detect pod is missing, and re-create it.
+							if err := pc.client.Delete(ctx, update, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
+								return true, kube.TransientError(fmt.Errorf("upgrade pod version %q: %w", ps.Pod, err))
+							}
 						} else {
-							otherUpdates[ps.Pod.Name] = ps.Pod
+							otherUpdates[ps.Pod] = update
 						}
 					} else {
-						otherUpdates[ps.Pod.Name] = ps.Pod
+						otherUpdates[ps.Pod] = update
 					}
 					break
 				}
@@ -125,9 +141,9 @@ func (pc PodControl) Reconcile(ctx context.Context, reporter kube.Reporter, crd 
 
 		// If we don't have any pods in sync, we are down anyways, so we can use the number of RPC reachable pods for computing the rollout,
 		// with the goal of recovering the pods as quickly as possible.
-		ready := len(inSyncPods)
+		ready := inSyncPods
 		if ready == 0 {
-			ready = len(rpcReachablePods)
+			ready = rpcReachablePods
 		}
 
 		numUpdates := pc.computeRollout(crd.Spec.RolloutStrategy.MaxUnavailable, int(crd.Spec.Replicas), ready)
@@ -150,7 +166,6 @@ func (pc PodControl) Reconcile(ctx context.Context, reporter kube.Reporter, crd 
 			if err := pc.client.Delete(ctx, pod, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
 				return true, kube.TransientError(fmt.Errorf("update pod %q: %w", podName, err))
 			}
-			deletedPods[podName] = true
 			updated++
 			if updated >= numUpdates {
 				// done for this round
