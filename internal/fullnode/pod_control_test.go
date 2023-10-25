@@ -149,10 +149,35 @@ func TestPodControl_Reconcile(t *testing.T) {
 		require.True(t, requeue)
 
 		require.Zero(t, mClient.CreateCount)
+
+		now := metav1.Now()
+		existing[0].DeletionTimestamp = ptr(now)
+		existing[1].DeletionTimestamp = ptr(now)
+
+		mClient.ObjectList = corev1.PodList{
+			Items: valueSlice(existing),
+		}
+
+		control.computeRollout = func(maxUnavail *intstr.IntOrString, desired, ready int) int {
+			require.EqualValues(t, crd.Spec.Replicas, desired)
+			require.Equal(t, 3, ready) // only 3 should be marked ready because 2 are in the deleting state.
+			return kube.ComputeRollout(maxUnavail, desired, ready)
+		}
+
+		requeue, err = control.Reconcile(ctx, nopReporter, &crd, nil, syncInfo)
+		require.NoError(t, err)
+
+		require.True(t, requeue)
+
+		// pod status has not changed, but 0 and 1 are now in deleting state.
+		// should not delete any more.
 		require.Equal(t, 2, mClient.DeleteCount)
 
+		// once pod deletion is complete, new pods are created with new image.
 		existing[0].Spec.Containers[0].Image = "new-image"
 		existing[1].Spec.Containers[0].Image = "new-image"
+		existing[0].DeletionTimestamp = nil
+		existing[1].DeletionTimestamp = nil
 
 		recalculatePodRevision(existing[0], 0)
 		recalculatePodRevision(existing[1], 1)
@@ -168,7 +193,7 @@ func TestPodControl_Reconcile(t *testing.T) {
 
 		control.computeRollout = func(maxUnavail *intstr.IntOrString, desired, ready int) int {
 			require.EqualValues(t, crd.Spec.Replicas, desired)
-			require.Equal(t, 3, ready) // mockPodFilter only returns 1 candidate as ready
+			require.Equal(t, 3, ready)
 			return kube.ComputeRollout(maxUnavail, desired, ready)
 		}
 
@@ -268,8 +293,33 @@ func TestPodControl_Reconcile(t *testing.T) {
 		require.Zero(t, mClient.CreateCount)
 		require.Equal(t, 2, mClient.DeleteCount)
 
+		now := metav1.Now()
+		existing[0].DeletionTimestamp = ptr(now)
+		existing[1].DeletionTimestamp = ptr(now)
+
+		mClient.ObjectList = corev1.PodList{
+			Items: valueSlice(existing),
+		}
+
+		control.computeRollout = func(maxUnavail *intstr.IntOrString, desired, ready int) int {
+			require.EqualValues(t, crd.Spec.Replicas, desired)
+			require.Equal(t, 3, ready) // only 3 should be marked ready because 2 are in the deleting state.
+			return kube.ComputeRollout(maxUnavail, desired, ready)
+		}
+
+		requeue, err = control.Reconcile(ctx, nopReporter, &crd, nil, syncInfo)
+		require.NoError(t, err)
+
+		require.True(t, requeue)
+
+		// pod status has not changed, but 0 and 1 are now in deleting state.
+		// should not delete any more.
+		require.Equal(t, 2, mClient.DeleteCount)
+
 		existing[0].Spec.Containers[0].Image = "new-image"
 		existing[1].Spec.Containers[0].Image = "new-image"
+		existing[0].DeletionTimestamp = nil
+		existing[1].DeletionTimestamp = nil
 
 		recalculatePodRevision(existing[0], 0)
 		recalculatePodRevision(existing[1], 1)
@@ -327,7 +377,30 @@ func TestPodControl_Reconcile(t *testing.T) {
 		// should delete one more
 		require.Equal(t, 3, mClient.DeleteCount)
 
+		now = metav1.Now()
+		existing[2].DeletionTimestamp = ptr(now)
+
+		mClient.ObjectList = corev1.PodList{
+			Items: valueSlice(existing),
+		}
+
+		control.computeRollout = func(maxUnavail *intstr.IntOrString, desired, ready int) int {
+			require.EqualValues(t, crd.Spec.Replicas, desired)
+			require.Equal(t, 3, ready) // only 3 should be marked ready because 2 is in the deleting state and 1 is still in progress upgrading.
+			return kube.ComputeRollout(maxUnavail, desired, ready)
+		}
+
+		requeue, err = control.Reconcile(ctx, nopReporter, &crd, nil, syncInfo)
+		require.NoError(t, err)
+
+		require.True(t, requeue)
+
+		// pod status has not changed, but 2 is now in deleting state.
+		// should not delete any more.
+		require.Equal(t, 3, mClient.DeleteCount)
+
 		existing[2].Spec.Containers[0].Image = "new-image"
+		existing[2].DeletionTimestamp = nil
 		recalculatePodRevision(existing[2], 2)
 		mClient.ObjectList = corev1.PodList{
 			Items: valueSlice(existing),
