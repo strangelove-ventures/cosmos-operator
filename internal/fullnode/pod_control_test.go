@@ -481,6 +481,7 @@ func recalculatePodRevision(pod *corev1.Pod, ordinal int) {
 func newPodWithNewImage(pod *corev1.Pod) {
 	pod.DeletionTimestamp = nil
 	pod.Spec.Containers[0].Image = "new-image"
+	pod.Spec.InitContainers[1].Image = "new-image"
 }
 
 func deletedPod(pod *corev1.Pod) {
