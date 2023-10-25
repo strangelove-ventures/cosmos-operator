@@ -23,17 +23,23 @@ type Client interface {
 	Scheme() *runtime.Scheme
 }
 
+type CacheInvalidator interface {
+	Invalidate(controller client.ObjectKey, pods []string)
+}
+
 // PodControl reconciles pods for a CosmosFullNode.
 type PodControl struct {
-	client         Client
-	computeRollout func(maxUnavail *intstr.IntOrString, desired, ready int) int
+	client           Client
+	cacheInvalidator CacheInvalidator
+	computeRollout   func(maxUnavail *intstr.IntOrString, desired, ready int) int
 }
 
 // NewPodControl returns a valid PodControl.
-func NewPodControl(client Client) PodControl {
+func NewPodControl(client Client, cacheInvalidator CacheInvalidator) PodControl {
 	return PodControl{
-		client:         client,
-		computeRollout: kube.ComputeRollout,
+		client:           client,
+		cacheInvalidator: cacheInvalidator,
+		computeRollout:   kube.ComputeRollout,
 	}
 }
 
@@ -44,7 +50,7 @@ func (pc PodControl) Reconcile(
 	reporter kube.Reporter,
 	crd *cosmosv1.CosmosFullNode,
 	cksums ConfigChecksums,
-	syncInfo *cosmosv1.SyncInfoStatus,
+	syncInfo map[string]*cosmosv1.SyncInfoPodStatus,
 ) (bool, kube.ReconcileError) {
 	var pods corev1.PodList
 	if err := pc.client.List(ctx, &pods,
@@ -70,11 +76,24 @@ func (pc PodControl) Reconcile(
 		}
 	}
 
+	var invalidateCache []string
+
+	defer func() {
+		if pc.cacheInvalidator == nil {
+			return
+		}
+		if len(invalidateCache) > 0 {
+			pc.cacheInvalidator.Invalidate(client.ObjectKeyFromObject(crd), invalidateCache)
+		}
+	}()
+
 	for _, pod := range diffed.Deletes() {
 		reporter.Info("Deleting pod", "name", pod.Name)
 		if err := pc.client.Delete(ctx, pod, client.PropagationPolicy(metav1.DeletePropagationForeground)); kube.IgnoreNotFound(err) != nil {
 			return true, kube.TransientError(fmt.Errorf("delete pod %q: %w", pod.Name, err))
 		}
+		delete(syncInfo, pod.Name)
+		invalidateCache = append(invalidateCache, pod.Name)
 	}
 
 	if len(diffed.Creates())+len(diffed.Deletes()) > 0 {
@@ -85,54 +104,49 @@ func (pc PodControl) Reconcile(
 	diffedUpdates := diffed.Updates()
 	if len(diffedUpdates) > 0 {
 		var (
-			upgradePods      = make(map[string]bool)
-			otherUpdates     = make(map[string]*corev1.Pod)
+			updatedPods      = 0
 			rpcReachablePods = 0
 			inSyncPods       = 0
+			otherUpdates     = []*corev1.Pod{}
 		)
 
-	PodsLoop:
-		for _, ps := range syncInfo.Pods {
-			for _, existing := range pods.Items {
-				if existing.Name == ps.Pod {
-					if existing.DeletionTimestamp != nil {
-						continue PodsLoop
-					}
-					break
-				}
+		for _, existing := range pods.Items {
+			podName := existing.Name
+
+			if existing.DeletionTimestamp != nil {
+				// Pod is being deleted, so we skip it.
+				continue
 			}
 
-			if ps.InSync != nil && *ps.InSync {
-				inSyncPods++
-			}
-			rpcReachable := ps.Error == nil
-			if rpcReachable {
-				rpcReachablePods++
+			var rpcReachable bool
+			if ps, ok := syncInfo[podName]; ok {
+				if ps.InSync != nil && *ps.InSync {
+					inSyncPods++
+				}
+				rpcReachable = ps.Error == nil
+				if rpcReachable {
+					rpcReachablePods++
+				}
 			}
 			for _, update := range diffedUpdates {
-				if ps.Pod == update.Name {
-					awaitingUpgrade := false
-					for _, existing := range pods.Items {
-						if existing.Name == ps.Pod {
-							if existing.Spec.Containers[0].Image != update.Spec.Containers[0].Image {
-								awaitingUpgrade = true
-							}
-							break
-						}
-					}
-					if awaitingUpgrade {
+				if podName == update.Name {
+					if existing.Spec.Containers[0].Image != update.Spec.Containers[0].Image {
+						// awaiting upgrade
 						if !rpcReachable {
-							upgradePods[ps.Pod] = true
-							reporter.Info("Deleting pod for version upgrade", "name", ps.Pod)
+							updatedPods++
+							reporter.Info("Deleting pod for version upgrade", "name", podName)
 							// Because we should watch for deletes, we get a re-queued request, detect pod is missing, and re-create it.
 							if err := pc.client.Delete(ctx, update, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
-								return true, kube.TransientError(fmt.Errorf("upgrade pod version %q: %w", ps.Pod, err))
+								return true, kube.TransientError(fmt.Errorf("upgrade pod version %q: %w", podName, err))
 							}
+							syncInfo[podName].InSync = nil
+							syncInfo[podName].Error = ptr("version upgrade in progress")
+							invalidateCache = append(invalidateCache, podName)
 						} else {
-							otherUpdates[ps.Pod] = update
+							otherUpdates = append(otherUpdates, update)
 						}
 					} else {
-						otherUpdates[ps.Pod] = update
+						otherUpdates = append(otherUpdates, update)
 					}
 					break
 				}
@@ -148,32 +162,34 @@ func (pc PodControl) Reconcile(
 
 		numUpdates := pc.computeRollout(crd.Spec.RolloutStrategy.MaxUnavailable, int(crd.Spec.Replicas), ready)
 
-		updated := len(upgradePods)
-
-		if updated == len(diffedUpdates) {
+		if updatedPods == len(diffedUpdates) {
 			// All pods are updated.
 			return false, nil
 		}
 
-		if updated >= numUpdates {
+		if updatedPods >= numUpdates {
 			// Signal requeue.
 			return true, nil
 		}
 
-		for podName, pod := range otherUpdates {
-			reporter.Info("Deleting pod for update", "podName", podName)
+		for _, pod := range otherUpdates {
+			podName := pod.Name
+			reporter.Info("Deleting pod for update", "name", podName)
 			// Because we should watch for deletes, we get a re-queued request, detect pod is missing, and re-create it.
 			if err := pc.client.Delete(ctx, pod, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
 				return true, kube.TransientError(fmt.Errorf("update pod %q: %w", podName, err))
 			}
-			updated++
-			if updated >= numUpdates {
+			syncInfo[podName].InSync = nil
+			syncInfo[podName].Error = ptr("update in progress")
+			invalidateCache = append(invalidateCache, podName)
+			updatedPods++
+			if updatedPods >= numUpdates {
 				// done for this round
 				break
 			}
 		}
 
-		if len(diffedUpdates) == updated {
+		if len(diffedUpdates) == updatedPods {
 			// All pods are updated.
 			return false, nil
 		}

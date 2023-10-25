@@ -138,21 +138,14 @@ type FullNodeStatus struct {
 
 	// Current sync information. Collected every 60s.
 	// +optional
-	SyncInfo *SyncInfoStatus `json:"syncInfo,omitempty"`
+	SyncInfo map[string]*SyncInfoPodStatus `json:"sync,omitempty"`
 
 	// Latest Height information. collected when node starts up and when RPC is successfully queried.
 	// +optional
 	Height map[string]uint64 `json:"height,omitempty"`
 }
 
-type SyncInfoStatus struct {
-	// The latest consensus state of pods.
-	Pods []SyncInfoPodStatus `json:"pods"`
-}
-
 type SyncInfoPodStatus struct {
-	// Pod's name.
-	Pod string `json:"pod"`
 	// When consensus information was fetched.
 	Timestamp metav1.Time `json:"timestamp"`
 	// Latest height if no error encountered.

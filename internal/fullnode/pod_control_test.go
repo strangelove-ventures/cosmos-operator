@@ -15,10 +15,50 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+type mockPodClient struct{ mockClient[*corev1.Pod] }
+
+func newMockPodClient(pods []*corev1.Pod) *mockPodClient {
+	return &mockPodClient{
+		mockClient: mockClient[*corev1.Pod]{
+			ObjectList: corev1.PodList{
+				Items: valueSlice(pods),
+			},
+		},
+	}
+}
+
+func (c *mockPodClient) setPods(pods []*corev1.Pod) {
+	c.ObjectList = corev1.PodList{
+		Items: valueSlice(pods),
+	}
+}
+
+func (c *mockPodClient) upgradePods(
+	t *testing.T,
+	crdName string,
+	ordinals ...int,
+) {
+	existing := ptrSlice(c.ObjectList.(corev1.PodList).Items)
+	for _, ordinal := range ordinals {
+		updatePod(t, crdName, ordinal, existing, newPodWithNewImage, true)
+	}
+	c.setPods(existing)
+}
+
+func (c *mockPodClient) deletePods(
+	t *testing.T,
+	crdName string,
+	ordinals ...int,
+) {
+	existing := ptrSlice(c.ObjectList.(corev1.PodList).Items)
+	for _, ordinal := range ordinals {
+		updatePod(t, crdName, ordinal, existing, deletedPod, false)
+	}
+	c.setPods(existing)
+}
+
 func TestPodControl_Reconcile(t *testing.T) {
 	t.Parallel()
-
-	type mockPodClient = mockClient[*corev1.Pod]
 
 	ctx := context.Background()
 	const namespace = "test"
@@ -31,23 +71,17 @@ func TestPodControl_Reconcile(t *testing.T) {
 
 		pods, err := BuildPods(&crd, nil)
 		require.NoError(t, err)
-		existing := diff.New(nil, pods).Creates()[0]
+		existing := diff.New(nil, pods).Creates()
 
-		var mClient mockPodClient
-		mClient.ObjectList = corev1.PodList{
-			Items: []corev1.Pod{*existing},
+		require.Len(t, existing, 1)
+
+		mClient := newMockPodClient(existing)
+
+		syncInfo := map[string]*cosmosv1.SyncInfoPodStatus{
+			"hub-0": {InSync: ptr(true)},
 		}
 
-		syncInfo := &cosmosv1.SyncInfoStatus{
-			Pods: []cosmosv1.SyncInfoPodStatus{
-				{
-					Pod:    "hub-0",
-					InSync: ptr(true),
-				},
-			},
-		}
-
-		control := NewPodControl(&mClient)
+		control := NewPodControl(mClient, nil)
 		requeue, err := control.Reconcile(ctx, nopReporter, &crd, nil, syncInfo)
 		require.NoError(t, err)
 		require.False(t, requeue)
@@ -68,15 +102,12 @@ func TestPodControl_Reconcile(t *testing.T) {
 		crd.Namespace = namespace
 		crd.Spec.Replicas = 3
 
-		var mClient mockPodClient
-		mClient.ObjectList = corev1.PodList{
-			Items: []corev1.Pod{
-				{ObjectMeta: metav1.ObjectMeta{Name: "hub-98"}},
-				{ObjectMeta: metav1.ObjectMeta{Name: "hub-99"}},
-			},
-		}
+		mClient := newMockPodClient([]*corev1.Pod{
+			{ObjectMeta: metav1.ObjectMeta{Name: "hub-98"}},
+			{ObjectMeta: metav1.ObjectMeta{Name: "hub-99"}},
+		})
 
-		control := NewPodControl(&mClient)
+		control := NewPodControl(mClient, nil)
 		requeue, err := control.Reconcile(ctx, nopReporter, &crd, nil, nil)
 		require.NoError(t, err)
 		require.True(t, requeue)
@@ -101,40 +132,18 @@ func TestPodControl_Reconcile(t *testing.T) {
 
 		pods, err := BuildPods(&crd, nil)
 		require.NoError(t, err)
-		existing := diff.New(nil, pods).Creates()
 
-		mClient := mockPodClient{
-			ObjectList: corev1.PodList{
-				Items: valueSlice(existing),
-			},
+		mClient := newMockPodClient(diff.New(nil, pods).Creates())
+
+		syncInfo := map[string]*cosmosv1.SyncInfoPodStatus{
+			"hub-0": {InSync: ptr(true)},
+			"hub-1": {InSync: ptr(true)},
+			"hub-2": {InSync: ptr(true)},
+			"hub-3": {InSync: ptr(true)},
+			"hub-4": {InSync: ptr(true)},
 		}
 
-		syncInfo := &cosmosv1.SyncInfoStatus{
-			Pods: []cosmosv1.SyncInfoPodStatus{
-				{
-					Pod:    "hub-0",
-					InSync: ptr(true),
-				},
-				{
-					Pod:    "hub-1",
-					InSync: ptr(true),
-				},
-				{
-					Pod:    "hub-2",
-					InSync: ptr(true),
-				},
-				{
-					Pod:    "hub-3",
-					InSync: ptr(true),
-				},
-				{
-					Pod:    "hub-4",
-					InSync: ptr(true),
-				},
-			},
-		}
-
-		control := NewPodControl(&mClient)
+		control := NewPodControl(mClient, nil)
 
 		control.computeRollout = func(maxUnavail *intstr.IntOrString, desired, ready int) int {
 			require.EqualValues(t, crd.Spec.Replicas, desired)
@@ -150,13 +159,7 @@ func TestPodControl_Reconcile(t *testing.T) {
 
 		require.Zero(t, mClient.CreateCount)
 
-		now := metav1.Now()
-		existing[0].DeletionTimestamp = ptr(now)
-		existing[1].DeletionTimestamp = ptr(now)
-
-		mClient.ObjectList = corev1.PodList{
-			Items: valueSlice(existing),
-		}
+		mClient.deletePods(t, crd.Name, 0, 1)
 
 		control.computeRollout = func(maxUnavail *intstr.IntOrString, desired, ready int) int {
 			require.EqualValues(t, crd.Spec.Replicas, desired)
@@ -174,22 +177,13 @@ func TestPodControl_Reconcile(t *testing.T) {
 		require.Equal(t, 2, mClient.DeleteCount)
 
 		// once pod deletion is complete, new pods are created with new image.
-		existing[0].Spec.Containers[0].Image = "new-image"
-		existing[1].Spec.Containers[0].Image = "new-image"
-		existing[0].DeletionTimestamp = nil
-		existing[1].DeletionTimestamp = nil
+		mClient.upgradePods(t, crd.Name, 0, 1)
 
-		recalculatePodRevision(existing[0], 0)
-		recalculatePodRevision(existing[1], 1)
-		mClient.ObjectList = corev1.PodList{
-			Items: valueSlice(existing),
-		}
+		syncInfo["hub-0"].InSync = nil
+		syncInfo["hub-0"].Error = ptr("upgrade in progress")
 
-		syncInfo.Pods[0].InSync = nil
-		syncInfo.Pods[0].Error = ptr("upgrade in progress")
-
-		syncInfo.Pods[1].InSync = nil
-		syncInfo.Pods[1].Error = ptr("upgrade in progress")
+		syncInfo["hub-1"].InSync = nil
+		syncInfo["hub-1"].Error = ptr("upgrade in progress")
 
 		control.computeRollout = func(maxUnavail *intstr.IntOrString, desired, ready int) int {
 			require.EqualValues(t, crd.Spec.Replicas, desired)
@@ -232,44 +226,33 @@ func TestPodControl_Reconcile(t *testing.T) {
 		require.NoError(t, err)
 		existing := diff.New(nil, pods).Creates()
 
-		mClient := mockPodClient{
-			ObjectList: corev1.PodList{
-				Items: valueSlice(existing),
-			},
-		}
+		mClient := newMockPodClient(existing)
 
 		// pods are at upgrade height and reachable
-		syncInfo := &cosmosv1.SyncInfoStatus{
-			Pods: []cosmosv1.SyncInfoPodStatus{
-				{
-					Pod:    "hub-0",
-					Height: ptr(uint64(100)),
-					InSync: ptr(true),
-				},
-				{
-					Pod:    "hub-1",
-					Height: ptr(uint64(100)),
-					InSync: ptr(true),
-				},
-				{
-					Pod:    "hub-2",
-					Height: ptr(uint64(100)),
-					InSync: ptr(true),
-				},
-				{
-					Pod:    "hub-3",
-					Height: ptr(uint64(100)),
-					InSync: ptr(true),
-				},
-				{
-					Pod:    "hub-4",
-					Height: ptr(uint64(100)),
-					InSync: ptr(true),
-				},
+		syncInfo := map[string]*cosmosv1.SyncInfoPodStatus{
+			"hub-0": {
+				Height: ptr(uint64(100)),
+				InSync: ptr(true),
+			},
+			"hub-1": {
+				Height: ptr(uint64(100)),
+				InSync: ptr(true),
+			},
+			"hub-2": {
+				Height: ptr(uint64(100)),
+				InSync: ptr(true),
+			},
+			"hub-3": {
+				Height: ptr(uint64(100)),
+				InSync: ptr(true),
+			},
+			"hub-4": {
+				Height: ptr(uint64(100)),
+				InSync: ptr(true),
 			},
 		}
 
-		control := NewPodControl(&mClient)
+		control := NewPodControl(mClient, nil)
 
 		control.computeRollout = func(maxUnavail *intstr.IntOrString, desired, ready int) int {
 			require.EqualValues(t, crd.Spec.Replicas, desired)
@@ -293,13 +276,7 @@ func TestPodControl_Reconcile(t *testing.T) {
 		require.Zero(t, mClient.CreateCount)
 		require.Equal(t, 2, mClient.DeleteCount)
 
-		now := metav1.Now()
-		existing[0].DeletionTimestamp = ptr(now)
-		existing[1].DeletionTimestamp = ptr(now)
-
-		mClient.ObjectList = corev1.PodList{
-			Items: valueSlice(existing),
-		}
+		mClient.deletePods(t, crd.Name, 0, 1)
 
 		control.computeRollout = func(maxUnavail *intstr.IntOrString, desired, ready int) int {
 			require.EqualValues(t, crd.Spec.Replicas, desired)
@@ -316,23 +293,14 @@ func TestPodControl_Reconcile(t *testing.T) {
 		// should not delete any more.
 		require.Equal(t, 2, mClient.DeleteCount)
 
-		existing[0].Spec.Containers[0].Image = "new-image"
-		existing[1].Spec.Containers[0].Image = "new-image"
-		existing[0].DeletionTimestamp = nil
-		existing[1].DeletionTimestamp = nil
-
-		recalculatePodRevision(existing[0], 0)
-		recalculatePodRevision(existing[1], 1)
-		mClient.ObjectList = corev1.PodList{
-			Items: valueSlice(existing),
-		}
+		mClient.upgradePods(t, crd.Name, 0, 1)
 
 		// 0 and 1 are now unavailable, working on upgrade
-		syncInfo.Pods[0].InSync = nil
-		syncInfo.Pods[0].Error = ptr("upgrade in progress")
+		syncInfo["hub-0"].InSync = nil
+		syncInfo["hub-0"].Error = ptr("upgrade in progress")
 
-		syncInfo.Pods[1].InSync = nil
-		syncInfo.Pods[1].Error = ptr("upgrade in progress")
+		syncInfo["hub-1"].InSync = nil
+		syncInfo["hub-1"].Error = ptr("upgrade in progress")
 
 		// Reconcile 2, should not update anything because 0 and 1 are still in progress.
 
@@ -354,9 +322,9 @@ func TestPodControl_Reconcile(t *testing.T) {
 		require.Equal(t, 2, mClient.DeleteCount)
 
 		// mock out that one of the pods completed the upgrade. should begin upgrading one more
-		syncInfo.Pods[0].InSync = ptr(true)
-		syncInfo.Pods[0].Height = ptr(uint64(101))
-		syncInfo.Pods[0].Error = nil
+		syncInfo["hub-0"].InSync = ptr(true)
+		syncInfo["hub-0"].Height = ptr(uint64(101))
+		syncInfo["hub-0"].Error = nil
 
 		// Reconcile 3, should update pod 2 (only one) because 1 is still in progress, but 0 is done.
 
@@ -377,12 +345,7 @@ func TestPodControl_Reconcile(t *testing.T) {
 		// should delete one more
 		require.Equal(t, 3, mClient.DeleteCount)
 
-		now = metav1.Now()
-		existing[2].DeletionTimestamp = ptr(now)
-
-		mClient.ObjectList = corev1.PodList{
-			Items: valueSlice(existing),
-		}
+		mClient.deletePods(t, crd.Name, 2)
 
 		control.computeRollout = func(maxUnavail *intstr.IntOrString, desired, ready int) int {
 			require.EqualValues(t, crd.Spec.Replicas, desired)
@@ -399,21 +362,16 @@ func TestPodControl_Reconcile(t *testing.T) {
 		// should not delete any more.
 		require.Equal(t, 3, mClient.DeleteCount)
 
-		existing[2].Spec.Containers[0].Image = "new-image"
-		existing[2].DeletionTimestamp = nil
-		recalculatePodRevision(existing[2], 2)
-		mClient.ObjectList = corev1.PodList{
-			Items: valueSlice(existing),
-		}
+		mClient.upgradePods(t, crd.Name, 2)
 
 		// mock out that both pods completed the upgrade. should begin upgrading the last 2
-		syncInfo.Pods[1].InSync = ptr(true)
-		syncInfo.Pods[1].Height = ptr(uint64(101))
-		syncInfo.Pods[1].Error = nil
+		syncInfo["hub-1"].InSync = ptr(true)
+		syncInfo["hub-1"].Height = ptr(uint64(101))
+		syncInfo["hub-1"].Error = nil
 
-		syncInfo.Pods[2].InSync = ptr(true)
-		syncInfo.Pods[2].Height = ptr(uint64(101))
-		syncInfo.Pods[2].Error = nil
+		syncInfo["hub-2"].InSync = ptr(true)
+		syncInfo["hub-2"].Height = ptr(uint64(101))
+		syncInfo["hub-2"].Error = nil
 
 		// Reconcile 4, should update 3 and 4 because the rest are done.
 
@@ -461,44 +419,33 @@ func TestPodControl_Reconcile(t *testing.T) {
 		require.NoError(t, err)
 		existing := diff.New(nil, pods).Creates()
 
-		mClient := mockPodClient{
-			ObjectList: corev1.PodList{
-				Items: valueSlice(existing),
-			},
-		}
+		mClient := newMockPodClient(existing)
 
 		// pods are at upgrade height and reachable
-		syncInfo := &cosmosv1.SyncInfoStatus{
-			Pods: []cosmosv1.SyncInfoPodStatus{
-				{
-					Pod:    "hub-0",
-					Height: ptr(uint64(100)),
-					Error:  ptr("panic at upgrade height"),
-				},
-				{
-					Pod:    "hub-1",
-					Height: ptr(uint64(100)),
-					Error:  ptr("panic at upgrade height"),
-				},
-				{
-					Pod:    "hub-2",
-					Height: ptr(uint64(100)),
-					Error:  ptr("panic at upgrade height"),
-				},
-				{
-					Pod:    "hub-3",
-					Height: ptr(uint64(100)),
-					Error:  ptr("panic at upgrade height"),
-				},
-				{
-					Pod:    "hub-4",
-					Height: ptr(uint64(100)),
-					Error:  ptr("panic at upgrade height"),
-				},
+		syncInfo := map[string]*cosmosv1.SyncInfoPodStatus{
+			"hub-0": {
+				Height: ptr(uint64(100)),
+				Error:  ptr("panic at upgrade height"),
+			},
+			"hub-1": {
+				Height: ptr(uint64(100)),
+				Error:  ptr("panic at upgrade height"),
+			},
+			"hub-2": {
+				Height: ptr(uint64(100)),
+				Error:  ptr("panic at upgrade height"),
+			},
+			"hub-3": {
+				Height: ptr(uint64(100)),
+				Error:  ptr("panic at upgrade height"),
+			},
+			"hub-4": {
+				Height: ptr(uint64(100)),
+				Error:  ptr("panic at upgrade height"),
 			},
 		}
 
-		control := NewPodControl(&mClient)
+		control := NewPodControl(mClient, nil)
 
 		control.computeRollout = func(maxUnavail *intstr.IntOrString, desired, ready int) int {
 			require.EqualValues(t, crd.Spec.Replicas, desired)
@@ -529,4 +476,28 @@ func recalculatePodRevision(pod *corev1.Pod, ordinal int) {
 	rev1 := diff.Adapt(pod, ordinal).Revision()
 	pod.Labels["app.kubernetes.io/revision"] = rev1
 	pod.Annotations["app.kubernetes.io/ordinal"] = fmt.Sprintf("%d", ordinal)
+}
+
+func newPodWithNewImage(pod *corev1.Pod) {
+	pod.DeletionTimestamp = nil
+	pod.Spec.Containers[0].Image = "new-image"
+}
+
+func deletedPod(pod *corev1.Pod) {
+	pod.DeletionTimestamp = ptr(metav1.Now())
+}
+
+func updatePod(t *testing.T, crdName string, ordinal int, pods []*corev1.Pod, updateFn func(pod *corev1.Pod), recalc bool) {
+	podName := fmt.Sprintf("%s-%d", crdName, ordinal)
+	for _, pod := range pods {
+		if pod.Name == podName {
+			updateFn(pod)
+			if recalc {
+				recalculatePodRevision(pod, ordinal)
+			}
+			return
+		}
+	}
+
+	require.FailNow(t, "pod not found", podName)
 }
