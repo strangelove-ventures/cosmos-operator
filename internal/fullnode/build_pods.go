@@ -40,7 +40,7 @@ func BuildPods(crd *cosmosv1.CosmosFullNode, cksums ConfigChecksums) ([]diff.Res
 				image = version.Image
 			}
 			if image != "" {
-				setMainContainerImage(pod, image)
+				setChainContainerImage(pod, image)
 			}
 		}
 		if o, ok := overrides[pod.Name]; ok {
@@ -48,7 +48,7 @@ func BuildPods(crd *cosmosv1.CosmosFullNode, cksums ConfigChecksums) ([]diff.Res
 				continue
 			}
 			if o.Image != "" {
-				setMainContainerImage(pod, o.Image)
+				setChainContainerImage(pod, o.Image)
 			}
 		}
 		pod.Annotations[configChecksumAnnotation] = cksums[client.ObjectKeyFromObject(pod)]
@@ -57,11 +57,17 @@ func BuildPods(crd *cosmosv1.CosmosFullNode, cksums ConfigChecksums) ([]diff.Res
 	return pods, nil
 }
 
-func setMainContainerImage(pod *corev1.Pod, image string) {
+func setChainContainerImage(pod *corev1.Pod, image string) {
 	for i := range pod.Spec.Containers {
 		if pod.Spec.Containers[i].Name == mainContainer {
 			pod.Spec.Containers[i].Image = image
-			return
+			break
+		}
+	}
+	for i := range pod.Spec.InitContainers {
+		if pod.Spec.InitContainers[i].Name == chainInitContainer {
+			pod.Spec.InitContainers[i].Image = image
+			break
 		}
 	}
 }

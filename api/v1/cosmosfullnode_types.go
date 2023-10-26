@@ -194,7 +194,10 @@ type PodSpec struct {
 
 	// Image is the docker reference in "repository:tag" format. E.g. busybox:latest.
 	// This is for the main container running the chain process.
+	// Note: for granular control over which images are applied at certain block heights,
+	// use spec.chain.versions instead.
 	// +kubebuilder:validation:MinLength:=1
+	// +optional
 	Image string `json:"image"`
 
 	// Image pull policy.

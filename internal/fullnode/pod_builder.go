@@ -22,8 +22,9 @@ import (
 var bufPool = sync.Pool{New: func() any { return new(bytes.Buffer) }}
 
 const (
-	healthCheckPort = healthcheck.Port
-	mainContainer   = "node"
+	healthCheckPort    = healthcheck.Port
+	mainContainer      = "node"
+	chainInitContainer = "chain-init"
 )
 
 // PodBuilder builds corev1.Pods
@@ -330,7 +331,7 @@ func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Conta
 			WorkingDir:      workDir,
 		},
 		{
-			Name:    "chain-init",
+			Name:    chainInitContainer,
 			Image:   tpl.Image,
 			Command: []string{"sh"},
 			Args: []string{"-c",
