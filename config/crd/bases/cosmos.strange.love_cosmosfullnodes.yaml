@@ -2616,9 +2616,11 @@ spec:
                       type: object
                     type: array
                   image:
-                    description: Image is the docker reference in "repository:tag"
+                    description: 'Image is the docker reference in "repository:tag"
                       format. E.g. busybox:latest. This is for the main container
-                      running the chain process.
+                      running the chain process. Note: for granular control over which
+                      images are applied at certain block heights, use spec.chain.versions
+                      instead.'
                     minLength: 1
                     type: string
                   imagePullPolicy:
@@ -5595,8 +5597,6 @@ spec:
                       - name
                       type: object
                     type: array
-                required:
-                - image
                 type: object
               replicas:
                 description: Number of replicas to create. Individual replicas have
