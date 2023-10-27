@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 
+	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -58,6 +59,8 @@ func (m *mockClient[T]) Get(ctx context.Context, key client.ObjectKey, obj clien
 		*ref = m.Object.(corev1.PersistentVolumeClaim)
 	case *cosmosv1.CosmosFullNode:
 		*ref = m.Object.(cosmosv1.CosmosFullNode)
+	case *snapshotv1.VolumeSnapshot:
+		*ref = m.Object.(snapshotv1.VolumeSnapshot)
 	default:
 		panic(fmt.Errorf("unknown Object type: %T", m.ObjectList))
 	}

@@ -679,8 +679,18 @@ func (in *SelfHealingStatus) DeepCopyInto(out *SelfHealingStatus) {
 	*out = *in
 	if in.PVCAutoScale != nil {
 		in, out := &in.PVCAutoScale, &out.PVCAutoScale
-		*out = new(PVCAutoScaleStatus)
-		(*in).DeepCopyInto(*out)
+		*out = make(map[string]*PVCAutoScaleStatus, len(*in))
+		for key, val := range *in {
+			var outVal *PVCAutoScaleStatus
+			if val == nil {
+				(*out)[key] = nil
+			} else {
+				in, out := &val, &outVal
+				*out = new(PVCAutoScaleStatus)
+				(*in).DeepCopyInto(*out)
+			}
+			(*out)[key] = outVal
+		}
 	}
 }
 
