@@ -111,9 +111,7 @@ func TestPVCControl_Reconcile(t *testing.T) {
 		crd.Spec.VolumeClaimTemplate.AutoDataSource = &cosmosv1.AutoDataSource{
 			VolumeSnapshotSelector: map[string]string{"label": "vol-snapshot"},
 		}
-		crd.Spec.VolumeClaimTemplate.Resources = corev1.ResourceRequirements{
-			Requests: corev1.ResourceList{"storage": resource.MustParse("100Gi")},
-		}
+
 		var volCallCount int
 		control.recentVolumeSnapshot = func(ctx context.Context, lister kube.Lister, namespace string, selector map[string]string) (*snapshotv1.VolumeSnapshot, error) {
 			require.NotNil(t, ctx)
@@ -165,9 +163,6 @@ func TestPVCControl_Reconcile(t *testing.T) {
 			VolumeSnapshotSelector: map[string]string{"label": "vol-snapshot"},
 		}
 		crd.Spec.VolumeClaimTemplate.DataSource = crdDataSource
-		crd.Spec.VolumeClaimTemplate.Resources = corev1.ResourceRequirements{
-			Requests: corev1.ResourceList{"storage": resource.MustParse("100Gi")},
-		}
 
 		control.recentVolumeSnapshot = func(ctx context.Context, lister kube.Lister, namespace string, selector map[string]string) (*snapshotv1.VolumeSnapshot, error) {
 			panic("should not be called")
@@ -238,9 +233,7 @@ func TestPVCControl_Reconcile(t *testing.T) {
 
 		// Cause a change
 		crd.Spec.VolumeClaimTemplate.VolumeMode = ptr(corev1.PersistentVolumeMode("should not be in the patch"))
-		crd.Spec.VolumeClaimTemplate.Resources = corev1.ResourceRequirements{
-			Requests: corev1.ResourceList{"memory": resource.MustParse("1Gi")},
-		}
+		crd.Spec.VolumeClaimTemplate.Resources.Requests["memory"] = resource.MustParse("1Gi")
 
 		control := testPVCControl(&mClient)
 		requeue, rerr := control.Reconcile(ctx, nopReporter, &crd, &PVCStatusChanges{})
@@ -274,9 +267,8 @@ func TestPVCControl_Reconcile(t *testing.T) {
 		}
 
 		// Cause a change
-		crd.Spec.VolumeClaimTemplate.Resources = corev1.ResourceRequirements{
-			Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("1Ti")},
-		}
+		crd.Spec.VolumeClaimTemplate.Resources.Requests[corev1.ResourceStorage] = resource.MustParse("1Ti")
+
 		control := testPVCControl(&mClient)
 		requeue, rerr := control.Reconcile(ctx, nopReporter, &crd, &PVCStatusChanges{})
 		require.NoError(t, rerr)

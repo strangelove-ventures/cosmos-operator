@@ -388,8 +388,8 @@ spec:
                           properties:
                             matchInstance:
                               description: If true, the volume snapshot selector will
-                                make sure the PVC is restored for the same instance
-                                as the VolumeSnapshot. This is useful if the VolumeSnapshots
+                                make sure the PVC is restored from a VolumeSnapshot
+                                on the same node. This is useful if the VolumeSnapshots
                                 are local to the node, e.g. for topolvm.
                               type: boolean
                             volumeSnapshotSelector:
@@ -5824,9 +5824,9 @@ spec:
                     properties:
                       matchInstance:
                         description: If true, the volume snapshot selector will make
-                          sure the PVC is restored for the same instance as the VolumeSnapshot.
-                          This is useful if the VolumeSnapshots are local to the node,
-                          e.g. for topolvm.
+                          sure the PVC is restored from a VolumeSnapshot on the same
+                          node. This is useful if the VolumeSnapshots are local to
+                          the node, e.g. for topolvm.
                         type: boolean
                       volumeSnapshotSelector:
                         additionalProperties:

@@ -37,6 +37,11 @@ func defaultCRD() cosmosv1.CosmosFullNode {
 					},
 				},
 			},
+			VolumeClaimTemplate: cosmosv1.PersistentVolumeClaimSpec{
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("100Gi")},
+				},
+			},
 		},
 	}
 }

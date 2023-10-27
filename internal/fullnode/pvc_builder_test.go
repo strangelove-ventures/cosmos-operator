@@ -22,12 +22,7 @@ func TestBuildPVCs(t *testing.T) {
 		crd := defaultCRD()
 		crd.Name = "juno"
 		crd.Spec.Replicas = 3
-		crd.Spec.VolumeClaimTemplate = cosmosv1.PersistentVolumeClaimSpec{
-			StorageClassName: "test-storage-class",
-			Resources: corev1.ResourceRequirements{
-				Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("100G")},
-			},
-		}
+		crd.Spec.VolumeClaimTemplate.StorageClassName = "test-storage-class"
 
 		crd.Spec.InstanceOverrides = map[string]cosmosv1.InstanceOverridesSpec{
 			"juno-0": {},
@@ -80,20 +75,15 @@ func TestBuildPVCs(t *testing.T) {
 	t.Run("advanced configuration", func(t *testing.T) {
 		crd := defaultCRD()
 		crd.Spec.Replicas = 1
-		crd.Spec.VolumeClaimTemplate = cosmosv1.PersistentVolumeClaimSpec{
-			Metadata: cosmosv1.Metadata{
-				Labels:      map[string]string{"label": "value", "app.kubernetes.io/created-by": "should not see me"},
-				Annotations: map[string]string{"annot": "value"},
-			},
-			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteMany},
-			VolumeMode:  ptr(corev1.PersistentVolumeBlock),
-			DataSource: &corev1.TypedLocalObjectReference{
-				Kind: "TestKind",
-				Name: "source-name",
-			},
-			Resources: corev1.ResourceRequirements{
-				Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("100G")},
-			},
+		crd.Spec.VolumeClaimTemplate.Metadata = cosmosv1.Metadata{
+			Labels:      map[string]string{"label": "value", "app.kubernetes.io/created-by": "should not see me"},
+			Annotations: map[string]string{"annot": "value"},
+		}
+		crd.Spec.VolumeClaimTemplate.AccessModes = []corev1.PersistentVolumeAccessMode{corev1.ReadWriteMany}
+		crd.Spec.VolumeClaimTemplate.VolumeMode = ptr(corev1.PersistentVolumeBlock)
+		crd.Spec.VolumeClaimTemplate.DataSource = &corev1.TypedLocalObjectReference{
+			Kind: "TestKind",
+			Name: "source-name",
 		}
 
 		pvcs := BuildPVCs(&crd, map[int32]*dataSource{
@@ -170,11 +160,8 @@ func TestBuildPVCs(t *testing.T) {
 			} {
 				crd := defaultCRD()
 				crd.Spec.Replicas = 1
-				crd.Spec.VolumeClaimTemplate = cosmosv1.PersistentVolumeClaimSpec{
-					Resources: corev1.ResourceRequirements{
-						Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(tt.SpecQuant)},
-					},
-				}
+				crd.Spec.VolumeClaimTemplate.Resources.Requests[corev1.ResourceStorage] = resource.MustParse(tt.SpecQuant)
+
 				crd.Status.SelfHealing.PVCAutoScale = map[string]*cosmosv1.PVCAutoScaleStatus{
 					"pvc-osmosis-0": {
 						RequestedSize: resource.MustParse(tt.AutoScaleQuant),
@@ -197,11 +184,8 @@ func TestBuildPVCs(t *testing.T) {
 			} {
 				crd := defaultCRD()
 				crd.Spec.Replicas = 1
-				crd.Spec.VolumeClaimTemplate = cosmosv1.PersistentVolumeClaimSpec{
-					Resources: corev1.ResourceRequirements{
-						Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(tt.SpecQuant)},
-					},
-				}
+				crd.Spec.VolumeClaimTemplate.Resources.Requests[corev1.ResourceStorage] = resource.MustParse(tt.SpecQuant)
+
 				crd.Status.SelfHealing.PVCAutoScale = map[string]*cosmosv1.PVCAutoScaleStatus{
 					"pvc-osmosis-0": {
 						RequestedSize: resource.MustParse(tt.AutoScaleQuant),
@@ -224,11 +208,8 @@ func TestBuildPVCs(t *testing.T) {
 			} {
 				crd := defaultCRD()
 				crd.Spec.Replicas = 1
-				crd.Spec.VolumeClaimTemplate = cosmosv1.PersistentVolumeClaimSpec{
-					Resources: corev1.ResourceRequirements{
-						Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(tt.SpecQuant)},
-					},
-				}
+				crd.Spec.VolumeClaimTemplate.Resources.Requests[corev1.ResourceStorage] = resource.MustParse(tt.SpecQuant)
+
 				crd.Status.SelfHealing.PVCAutoScale = map[string]*cosmosv1.PVCAutoScaleStatus{
 					"pvc-osmosis-0": {
 						RequestedSize: resource.MustParse(tt.AutoScaleQuant),

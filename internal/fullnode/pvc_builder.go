@@ -56,7 +56,9 @@ func BuildPVCs(
 		} else {
 			for _, pvc := range currentPVCs {
 				if pvc.Name == name {
-					existingSize = pvc.Spec.Resources.Requests[corev1.ResourceStorage]
+					if pvc.DeletionTimestamp == nil && pvc.Status.Phase == corev1.ClaimBound {
+						existingSize = pvc.Status.Capacity[corev1.ResourceStorage]
+					}
 					break
 				}
 			}
@@ -82,6 +84,7 @@ func BuildPVCs(
 		kube.NormalizeMetadata(&pvc.ObjectMeta)
 
 		pvcs = append(pvcs, diff.Adapt(pvc, i))
+		pvc.Spec.DataSource = dataSource
 	}
 	return pvcs
 }
@@ -103,11 +106,11 @@ func pvcResources(
 	dataSource *dataSource,
 	existingSize resource.Quantity,
 ) corev1.ResourceRequirements {
-	var reqs = crd.Spec.VolumeClaimTemplate.Resources
+	var reqs = crd.Spec.VolumeClaimTemplate.Resources.DeepCopy()
 
 	if dataSource != nil {
 		reqs.Requests[corev1.ResourceStorage] = dataSource.size
-		return reqs
+		return *reqs
 	}
 
 	if autoScale := crd.Status.SelfHealing.PVCAutoScale; autoScale != nil {
@@ -125,5 +128,5 @@ func pvcResources(
 		reqs.Requests[corev1.ResourceStorage] = existingSize
 	}
 
-	return reqs
+	return *reqs
 }

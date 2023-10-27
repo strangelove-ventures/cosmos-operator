@@ -3,7 +3,6 @@ package fullnode
 import (
 	"context"
 	"fmt"
-	"strconv"
 
 	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
 	"github.com/samber/lo"
@@ -62,7 +61,13 @@ func (control PVCControl) Reconcile(ctx context.Context, reporter kube.Reporter,
 				}
 			}
 			if !found {
-				dataSources[i] = control.findDataSource(ctx, reporter, crd, i)
+				ds := control.findDataSource(ctx, reporter, crd, i)
+				if ds == nil {
+					ds = &dataSource{
+						size: crd.Spec.VolumeClaimTemplate.Resources.Requests[corev1.ResourceStorage],
+					}
+				}
+				dataSources[i] = ds
 			}
 		}
 	}
@@ -73,15 +78,13 @@ func (control PVCControl) Reconcile(ctx context.Context, reporter kube.Reporter,
 	)
 
 	for _, pvc := range diffed.Creates() {
-		ordinal, err := strconv.ParseInt(pvc.Annotations[kube.OrdinalAnnotation], 10, 32)
-		if err != nil {
-			return true, kube.TransientError(fmt.Errorf("parse ordinal from pvc %s: %w", pvc.Name, err))
-		}
-		dataSource, ok := dataSources[int32(ordinal)]
-		if ok && dataSource != nil {
-			pvc.Spec.DataSource = dataSource.ref
-		}
-		reporter.Info("Creating pvc", "name", pvc.Name)
+		size := pvc.Spec.Resources.Requests[corev1.ResourceStorage]
+
+		reporter.Info(
+			"Creating pvc",
+			"name", pvc.Name,
+			"size", size.String(),
+		)
 		if err := ctrl.SetControllerReference(crd, pvc, control.client.Scheme()); err != nil {
 			return true, kube.TransientError(fmt.Errorf("set controller reference on pvc %q: %w", pvc.Name, err))
 		}
@@ -120,7 +123,12 @@ func (control PVCControl) Reconcile(ctx context.Context, reporter kube.Reporter,
 
 	// PVCs have many immutable fields, so only update the storage size.
 	for _, pvc := range diffed.Updates() {
-		reporter.Info("Patching pvc", "name", pvc.Name)
+		size := pvc.Spec.Resources.Requests[corev1.ResourceStorage]
+		reporter.Info(
+			"Patching pvc",
+			"name", pvc.Name,
+			"size", size.String(), // TODO remove expensive operation
+		)
 		patch := corev1.PersistentVolumeClaim{
 			ObjectMeta: pvc.ObjectMeta,
 			TypeMeta:   pvc.TypeMeta,
