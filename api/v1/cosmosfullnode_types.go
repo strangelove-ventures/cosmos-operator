@@ -385,6 +385,11 @@ type AutoDataSource struct {
 	// If no VolumeSnapshots found, controller logs error and still creates PVC.
 	// +optional
 	VolumeSnapshotSelector map[string]string `json:"volumeSnapshotSelector"`
+
+	// If true, the volume snapshot selector will make sure the PVC
+	// is restored for the same instance as the VolumeSnapshot.
+	// This is useful if the VolumeSnapshots are local to the node, e.g. for topolvm.
+	MatchInstance bool `json:"matchInstance"`
 }
 
 // RolloutStrategy is an update strategy that can be shared between several Cosmos CRDs.

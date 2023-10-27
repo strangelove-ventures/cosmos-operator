@@ -66,7 +66,7 @@ type HeightDriftMitigationSpec struct {
 type SelfHealingStatus struct {
 	// PVC auto-scaling status.
 	// +optional
-	PVCAutoScale *PVCAutoScaleStatus `json:"pvcAutoScale"`
+	PVCAutoScale map[string]*PVCAutoScaleStatus `json:"pvcAutoScaler"`
 }
 
 type PVCAutoScaleStatus struct {

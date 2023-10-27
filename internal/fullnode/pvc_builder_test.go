@@ -33,12 +33,12 @@ func TestBuildPVCs(t *testing.T) {
 			"juno-0": {},
 		}
 
-		for i, r := range BuildPVCs(&crd) {
+		for i, r := range BuildPVCs(&crd, map[int32]*dataSource{}) {
 			require.Equal(t, int64(i), r.Ordinal())
 			require.NotEmpty(t, r.Revision())
 		}
 
-		pvcs := lo.Map(BuildPVCs(&crd), func(r diff.Resource[*corev1.PersistentVolumeClaim], _ int) *corev1.PersistentVolumeClaim {
+		pvcs := lo.Map(BuildPVCs(&crd, map[int32]*dataSource{}), func(r diff.Resource[*corev1.PersistentVolumeClaim], _ int) *corev1.PersistentVolumeClaim {
 			return r.Object()
 		})
 
@@ -86,9 +86,16 @@ func TestBuildPVCs(t *testing.T) {
 				Kind: "TestKind",
 				Name: "source-name",
 			},
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("100G")},
+			},
 		}
 
-		pvcs := BuildPVCs(&crd)
+		pvcs := BuildPVCs(&crd, map[int32]*dataSource{
+			0: {
+				ref: crd.Spec.VolumeClaimTemplate.DataSource,
+			},
+		})
 		require.NotEmpty(t, pvcs)
 
 		got := pvcs[0].Object()
@@ -126,7 +133,7 @@ func TestBuildPVCs(t *testing.T) {
 			},
 		}
 
-		pvcs := BuildPVCs(&crd)
+		pvcs := BuildPVCs(&crd, map[int32]*dataSource{})
 		require.Equal(t, 2, len(pvcs))
 
 		got1, got2 := pvcs[0].Object(), pvcs[1].Object()
@@ -141,7 +148,7 @@ func TestBuildPVCs(t *testing.T) {
 		crd.Spec.Replicas = 3
 		crd.Name = strings.Repeat("Y", 300)
 
-		pvcs := BuildPVCs(&crd)
+		pvcs := BuildPVCs(&crd, map[int32]*dataSource{})
 		require.NotEmpty(t, pvcs)
 
 		for _, got := range pvcs {
@@ -163,11 +170,13 @@ func TestBuildPVCs(t *testing.T) {
 						Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(tt.SpecQuant)},
 					},
 				}
-				crd.Status.SelfHealing.PVCAutoScale = &cosmosv1.PVCAutoScaleStatus{
-					RequestedSize: resource.MustParse(tt.AutoScaleQuant),
+				crd.Status.SelfHealing.PVCAutoScale = map[string]*cosmosv1.PVCAutoScaleStatus{
+					"pvc-osmosis-0": {
+						RequestedSize: resource.MustParse(tt.AutoScaleQuant),
+					},
 				}
 
-				pvcs := BuildPVCs(&crd)
+				pvcs := BuildPVCs(&crd, map[int32]*dataSource{})
 				require.Len(t, pvcs, 1, tt)
 
 				want := corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(tt.WantQuant)}
@@ -188,11 +197,13 @@ func TestBuildPVCs(t *testing.T) {
 						Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(tt.SpecQuant)},
 					},
 				}
-				crd.Status.SelfHealing.PVCAutoScale = &cosmosv1.PVCAutoScaleStatus{
-					RequestedSize: resource.MustParse(tt.AutoScaleQuant),
+				crd.Status.SelfHealing.PVCAutoScale = map[string]*cosmosv1.PVCAutoScaleStatus{
+					"pvc-osmosis-0": {
+						RequestedSize: resource.MustParse(tt.AutoScaleQuant),
+					},
 				}
 
-				pvcs := BuildPVCs(&crd)
+				pvcs := BuildPVCs(&crd, map[int32]*dataSource{})
 				require.Len(t, pvcs, 1, tt)
 
 				want := corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(tt.WantQuant)}
@@ -200,7 +211,7 @@ func TestBuildPVCs(t *testing.T) {
 			}
 		})
 
-		t.Run("given auto scale size greater then current size", func(t *testing.T) {
+		t.Run("given auto scale size greater than current size", func(t *testing.T) {
 			for _, tt := range []struct {
 				SpecQuant, AutoScaleQuant, WantQuant string
 			}{
@@ -213,11 +224,13 @@ func TestBuildPVCs(t *testing.T) {
 						Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(tt.SpecQuant)},
 					},
 				}
-				crd.Status.SelfHealing.PVCAutoScale = &cosmosv1.PVCAutoScaleStatus{
-					RequestedSize: resource.MustParse(tt.AutoScaleQuant),
+				crd.Status.SelfHealing.PVCAutoScale = map[string]*cosmosv1.PVCAutoScaleStatus{
+					"pvc-osmosis-0": {
+						RequestedSize: resource.MustParse(tt.AutoScaleQuant),
+					},
 				}
 
-				pvcs := BuildPVCs(&crd)
+				pvcs := BuildPVCs(&crd, map[int32]*dataSource{})
 				require.Len(t, pvcs, 1, tt)
 
 				want := corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(tt.WantQuant)}
@@ -227,7 +240,7 @@ func TestBuildPVCs(t *testing.T) {
 	})
 
 	test.HasTypeLabel(t, func(crd cosmosv1.CosmosFullNode) []map[string]string {
-		pvcs := BuildPVCs(&crd)
+		pvcs := BuildPVCs(&crd, map[int32]*dataSource{})
 		labels := make([]map[string]string, 0)
 		for _, pvc := range pvcs {
 			labels = append(labels, pvc.Object().Labels)
