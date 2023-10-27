@@ -68,7 +68,7 @@ func (control PVCControl) Reconcile(ctx context.Context, reporter kube.Reporter,
 	}
 
 	var (
-		wantPVCs = BuildPVCs(crd, dataSources)
+		wantPVCs = BuildPVCs(crd, dataSources, currentPVCs)
 		diffed   = diff.New(currentPVCs, wantPVCs)
 	)
 

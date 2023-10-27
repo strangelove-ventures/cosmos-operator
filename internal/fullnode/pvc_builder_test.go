@@ -33,12 +33,17 @@ func TestBuildPVCs(t *testing.T) {
 			"juno-0": {},
 		}
 
-		for i, r := range BuildPVCs(&crd, map[int32]*dataSource{}) {
+		initial := BuildPVCs(&crd, map[int32]*dataSource{}, nil)
+		for i, r := range initial {
 			require.Equal(t, int64(i), r.Ordinal())
 			require.NotEmpty(t, r.Revision())
 		}
 
-		pvcs := lo.Map(BuildPVCs(&crd, map[int32]*dataSource{}), func(r diff.Resource[*corev1.PersistentVolumeClaim], _ int) *corev1.PersistentVolumeClaim {
+		initialPVCs := lo.Map(initial, func(r diff.Resource[*corev1.PersistentVolumeClaim], _ int) *corev1.PersistentVolumeClaim {
+			return r.Object()
+		})
+
+		pvcs := lo.Map(BuildPVCs(&crd, map[int32]*dataSource{}, initialPVCs), func(r diff.Resource[*corev1.PersistentVolumeClaim], _ int) *corev1.PersistentVolumeClaim {
 			return r.Object()
 		})
 
@@ -95,7 +100,7 @@ func TestBuildPVCs(t *testing.T) {
 			0: {
 				ref: crd.Spec.VolumeClaimTemplate.DataSource,
 			},
-		})
+		}, nil)
 		require.NotEmpty(t, pvcs)
 
 		got := pvcs[0].Object()
@@ -133,7 +138,7 @@ func TestBuildPVCs(t *testing.T) {
 			},
 		}
 
-		pvcs := BuildPVCs(&crd, map[int32]*dataSource{})
+		pvcs := BuildPVCs(&crd, map[int32]*dataSource{}, nil)
 		require.Equal(t, 2, len(pvcs))
 
 		got1, got2 := pvcs[0].Object(), pvcs[1].Object()
@@ -148,7 +153,7 @@ func TestBuildPVCs(t *testing.T) {
 		crd.Spec.Replicas = 3
 		crd.Name = strings.Repeat("Y", 300)
 
-		pvcs := BuildPVCs(&crd, map[int32]*dataSource{})
+		pvcs := BuildPVCs(&crd, map[int32]*dataSource{}, nil)
 		require.NotEmpty(t, pvcs)
 
 		for _, got := range pvcs {
@@ -176,7 +181,7 @@ func TestBuildPVCs(t *testing.T) {
 					},
 				}
 
-				pvcs := BuildPVCs(&crd, map[int32]*dataSource{})
+				pvcs := BuildPVCs(&crd, map[int32]*dataSource{}, nil)
 				require.Len(t, pvcs, 1, tt)
 
 				want := corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(tt.WantQuant)}
@@ -203,7 +208,7 @@ func TestBuildPVCs(t *testing.T) {
 					},
 				}
 
-				pvcs := BuildPVCs(&crd, map[int32]*dataSource{})
+				pvcs := BuildPVCs(&crd, map[int32]*dataSource{}, nil)
 				require.Len(t, pvcs, 1, tt)
 
 				want := corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(tt.WantQuant)}
@@ -230,7 +235,7 @@ func TestBuildPVCs(t *testing.T) {
 					},
 				}
 
-				pvcs := BuildPVCs(&crd, map[int32]*dataSource{})
+				pvcs := BuildPVCs(&crd, map[int32]*dataSource{}, nil)
 				require.Len(t, pvcs, 1, tt)
 
 				want := corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(tt.WantQuant)}
@@ -240,7 +245,7 @@ func TestBuildPVCs(t *testing.T) {
 	})
 
 	test.HasTypeLabel(t, func(crd cosmosv1.CosmosFullNode) []map[string]string {
-		pvcs := BuildPVCs(&crd, map[int32]*dataSource{})
+		pvcs := BuildPVCs(&crd, map[int32]*dataSource{}, nil)
 		labels := make([]map[string]string, 0)
 		for _, pvc := range pvcs {
 			labels = append(labels, pvc.Object().Labels)

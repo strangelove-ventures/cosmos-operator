@@ -40,7 +40,7 @@ func TestPVCControl_Reconcile(t *testing.T) {
 		crd.Name = "hub"
 		crd.Namespace = namespace
 		crd.Spec.Replicas = 1
-		existing := diff.New(nil, BuildPVCs(&crd, map[int32]*dataSource{})).Creates()[0]
+		existing := diff.New(nil, BuildPVCs(&crd, map[int32]*dataSource{}, nil)).Creates()[0]
 		existing.Status.Phase = corev1.ClaimBound
 
 		var mClient mockPVCClient
@@ -73,7 +73,7 @@ func TestPVCControl_Reconcile(t *testing.T) {
 		crd.Namespace = namespace
 		crd.Name = "hub"
 		crd.Spec.Replicas = 1
-		existing := BuildPVCs(&crd, map[int32]*dataSource{})[0].Object()
+		existing := BuildPVCs(&crd, map[int32]*dataSource{}, nil)[0].Object()
 
 		var mClient mockPVCClient
 		mClient.ObjectList = corev1.PersistentVolumeClaimList{
@@ -230,7 +230,7 @@ func TestPVCControl_Reconcile(t *testing.T) {
 		crd.Spec.Replicas = 1
 
 		var mClient mockPVCClient
-		existing := BuildPVCs(&crd, map[int32]*dataSource{})[0].Object()
+		existing := BuildPVCs(&crd, map[int32]*dataSource{}, nil)[0].Object()
 		existing.Status.Phase = corev1.ClaimBound
 		mClient.ObjectList = corev1.PersistentVolumeClaimList{
 			Items: []corev1.PersistentVolumeClaim{*existing},
@@ -266,7 +266,7 @@ func TestPVCControl_Reconcile(t *testing.T) {
 		crd.Namespace = namespace
 		crd.Spec.Replicas = 1
 
-		existing := BuildPVCs(&crd, map[int32]*dataSource{})[0].Object()
+		existing := BuildPVCs(&crd, map[int32]*dataSource{}, nil)[0].Object()
 		existing.Status.Phase = corev1.ClaimPending
 		var mClient mockPVCClient
 		mClient.ObjectList = corev1.PersistentVolumeClaimList{
