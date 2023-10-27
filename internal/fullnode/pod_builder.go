@@ -473,6 +473,9 @@ func startCommandArgs(crd *cosmosv1.CosmosFullNode) []string {
 	if format := cfg.LogFormat; format != nil {
 		args = append(args, "--log_format", *format)
 	}
+	if len(crd.Spec.ChainSpec.AdditionalStartArgs) > 0 {
+		args = append(args, crd.Spec.ChainSpec.AdditionalStartArgs...)
+	}
 	return args
 }
 

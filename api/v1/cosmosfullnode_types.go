@@ -542,6 +542,10 @@ type ChainSpec struct {
 	// If not provided, the operator will not upgrade the chain, and will use the image specified in the pod spec.
 	// +optional
 	Versions []ChainVersion `json:"versions"`
+
+	// Additional arguments to pass to the chain start command.
+	// +optional
+	AdditionalStartArgs []string `json:"additionalStartArgs"`
 }
 
 type ChainVersion struct {
