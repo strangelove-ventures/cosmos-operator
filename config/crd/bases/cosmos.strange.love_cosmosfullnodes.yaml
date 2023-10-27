@@ -45,6 +45,11 @@ spec:
               chain:
                 description: Blockchain-specific configuration.
                 properties:
+                  additionalStartArgs:
+                    description: Additional arguments to pass to the chain start command.
+                    items:
+                      type: string
+                    type: array
                   addrbookScript:
                     description: 'Specify shell (sh) script commands to properly download
                       and save the address book file. Prefer AddrbookURL if the file
