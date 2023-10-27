@@ -76,7 +76,6 @@ func BuildPVCs(
 			Resources:        pvcResources(crd, name, dataSources[i], existingSize),
 			StorageClassName: ptr(tpl.StorageClassName),
 			VolumeMode:       valOrDefault(tpl.VolumeMode, ptr(corev1.PersistentVolumeFilesystem)),
-			DataSource:       dataSource,
 		}
 
 		preserveMergeInto(pvc.Labels, tpl.Metadata.Labels)
