@@ -40,7 +40,7 @@ func TestPVCControl_Reconcile(t *testing.T) {
 		crd.Name = "hub"
 		crd.Namespace = namespace
 		crd.Spec.Replicas = 1
-		existing := diff.New(nil, BuildPVCs(&crd)).Creates()[0]
+		existing := diff.New(nil, BuildPVCs(&crd, map[int32]*dataSource{}, nil)).Creates()[0]
 		existing.Status.Phase = corev1.ClaimBound
 
 		var mClient mockPVCClient
@@ -52,7 +52,7 @@ func TestPVCControl_Reconcile(t *testing.T) {
 
 		control := testPVCControl(&mClient)
 
-		requeue, err := control.Reconcile(ctx, nopReporter, &crd)
+		requeue, err := control.Reconcile(ctx, nopReporter, &crd, &PVCStatusChanges{})
 		require.NoError(t, err)
 		require.False(t, requeue)
 
@@ -73,7 +73,7 @@ func TestPVCControl_Reconcile(t *testing.T) {
 		crd.Namespace = namespace
 		crd.Name = "hub"
 		crd.Spec.Replicas = 1
-		existing := BuildPVCs(&crd)[0].Object()
+		existing := BuildPVCs(&crd, map[int32]*dataSource{}, nil)[0].Object()
 
 		var mClient mockPVCClient
 		mClient.ObjectList = corev1.PersistentVolumeClaimList{
@@ -86,7 +86,7 @@ func TestPVCControl_Reconcile(t *testing.T) {
 
 		crd.Spec.Replicas = 4
 		control := testPVCControl(&mClient)
-		requeue, err := control.Reconcile(ctx, nopReporter, &crd)
+		requeue, err := control.Reconcile(ctx, nopReporter, &crd, &PVCStatusChanges{})
 		require.NoError(t, err)
 		require.True(t, requeue)
 
@@ -111,6 +111,7 @@ func TestPVCControl_Reconcile(t *testing.T) {
 		crd.Spec.VolumeClaimTemplate.AutoDataSource = &cosmosv1.AutoDataSource{
 			VolumeSnapshotSelector: map[string]string{"label": "vol-snapshot"},
 		}
+
 		var volCallCount int
 		control.recentVolumeSnapshot = func(ctx context.Context, lister kube.Lister, namespace string, selector map[string]string) (*snapshotv1.VolumeSnapshot, error) {
 			require.NotNil(t, ctx)
@@ -119,14 +120,18 @@ func TestPVCControl_Reconcile(t *testing.T) {
 			require.Equal(t, map[string]string{"label": "vol-snapshot"}, selector)
 			var stub snapshotv1.VolumeSnapshot
 			stub.Name = "found-snapshot"
+			stub.Status = &snapshotv1.VolumeSnapshotStatus{
+				ReadyToUse:  ptr(true),
+				RestoreSize: ptr(resource.MustParse("100Gi")),
+			}
 			volCallCount++
 			return &stub, nil
 		}
-		requeue, err := control.Reconcile(ctx, nopReporter, &crd)
+		requeue, err := control.Reconcile(ctx, nopReporter, &crd, &PVCStatusChanges{})
 		require.NoError(t, err)
 		require.True(t, requeue)
 
-		require.Equal(t, 1, volCallCount)
+		require.Equal(t, 3, volCallCount)
 		require.Equal(t, 3, mClient.CreateCount)
 
 		want := corev1.TypedLocalObjectReference{
@@ -162,7 +167,19 @@ func TestPVCControl_Reconcile(t *testing.T) {
 		control.recentVolumeSnapshot = func(ctx context.Context, lister kube.Lister, namespace string, selector map[string]string) (*snapshotv1.VolumeSnapshot, error) {
 			panic("should not be called")
 		}
-		requeue, err := control.Reconcile(ctx, nopReporter, &crd)
+
+		mClient.Object = snapshotv1.VolumeSnapshot{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "user-set-snapshot",
+				Namespace: namespace,
+			},
+			Status: &snapshotv1.VolumeSnapshotStatus{
+				ReadyToUse:  ptr(true),
+				RestoreSize: ptr(resource.MustParse("100Gi")),
+			},
+		}
+
+		requeue, err := control.Reconcile(ctx, nopReporter, &crd, &PVCStatusChanges{})
 		require.NoError(t, err)
 		require.True(t, requeue)
 
@@ -191,7 +208,7 @@ func TestPVCControl_Reconcile(t *testing.T) {
 			volCallCount++
 			return nil, errors.New("boom")
 		}
-		requeue, err := control.Reconcile(ctx, nopReporter, &crd)
+		requeue, err := control.Reconcile(ctx, nopReporter, &crd, &PVCStatusChanges{})
 		require.NoError(t, err)
 		require.True(t, requeue)
 
@@ -208,7 +225,7 @@ func TestPVCControl_Reconcile(t *testing.T) {
 		crd.Spec.Replicas = 1
 
 		var mClient mockPVCClient
-		existing := BuildPVCs(&crd)[0].Object()
+		existing := BuildPVCs(&crd, map[int32]*dataSource{}, nil)[0].Object()
 		existing.Status.Phase = corev1.ClaimBound
 		mClient.ObjectList = corev1.PersistentVolumeClaimList{
 			Items: []corev1.PersistentVolumeClaim{*existing},
@@ -216,12 +233,10 @@ func TestPVCControl_Reconcile(t *testing.T) {
 
 		// Cause a change
 		crd.Spec.VolumeClaimTemplate.VolumeMode = ptr(corev1.PersistentVolumeMode("should not be in the patch"))
-		crd.Spec.VolumeClaimTemplate.Resources = corev1.ResourceRequirements{
-			Requests: corev1.ResourceList{"memory": resource.MustParse("1Gi")},
-		}
+		crd.Spec.VolumeClaimTemplate.Resources.Requests["memory"] = resource.MustParse("1Gi")
 
 		control := testPVCControl(&mClient)
-		requeue, rerr := control.Reconcile(ctx, nopReporter, &crd)
+		requeue, rerr := control.Reconcile(ctx, nopReporter, &crd, &PVCStatusChanges{})
 		require.NoError(t, rerr)
 		require.False(t, requeue)
 
@@ -244,7 +259,7 @@ func TestPVCControl_Reconcile(t *testing.T) {
 		crd.Namespace = namespace
 		crd.Spec.Replicas = 1
 
-		existing := BuildPVCs(&crd)[0].Object()
+		existing := BuildPVCs(&crd, map[int32]*dataSource{}, nil)[0].Object()
 		existing.Status.Phase = corev1.ClaimPending
 		var mClient mockPVCClient
 		mClient.ObjectList = corev1.PersistentVolumeClaimList{
@@ -252,11 +267,10 @@ func TestPVCControl_Reconcile(t *testing.T) {
 		}
 
 		// Cause a change
-		crd.Spec.VolumeClaimTemplate.Resources = corev1.ResourceRequirements{
-			Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("1Ti")},
-		}
+		crd.Spec.VolumeClaimTemplate.Resources.Requests[corev1.ResourceStorage] = resource.MustParse("1Ti")
+
 		control := testPVCControl(&mClient)
-		requeue, rerr := control.Reconcile(ctx, nopReporter, &crd)
+		requeue, rerr := control.Reconcile(ctx, nopReporter, &crd, &PVCStatusChanges{})
 		require.NoError(t, rerr)
 		require.True(t, requeue)
 
@@ -278,7 +292,7 @@ func TestPVCControl_Reconcile(t *testing.T) {
 		}
 
 		control := testPVCControl(&mClient)
-		requeue, err := control.Reconcile(ctx, nopReporter, &crd)
+		requeue, err := control.Reconcile(ctx, nopReporter, &crd, &PVCStatusChanges{})
 		require.NoError(t, err)
 		require.False(t, requeue)
 

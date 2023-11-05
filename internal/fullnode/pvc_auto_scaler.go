@@ -3,11 +3,9 @@ package fullnode
 import (
 	"context"
 	"errors"
-	"fmt"
 	"math"
 	"time"
 
-	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,52 +43,68 @@ func NewPVCAutoScaler(client StatusSyncer) *PVCAutoScaler {
 // Returns an error if patching unsuccessful.
 func (scaler PVCAutoScaler) SignalPVCResize(ctx context.Context, crd *cosmosv1.CosmosFullNode, results []PVCDiskUsage) (bool, error) {
 	var (
-		spec         = crd.Spec.SelfHeal.PVCAutoScale
-		trigger      = int(spec.UsedSpacePercentage)
-		pvcCandidate = lo.MaxBy(results, func(a PVCDiskUsage, b PVCDiskUsage) bool { return a.PercentUsed > b.PercentUsed })
+		spec    = crd.Spec.SelfHeal.PVCAutoScale
+		trigger = int(spec.UsedSpacePercentage)
 	)
 
-	// Calc new size first to catch errors with the increase quantity
-	newSize, err := scaler.calcNextCapacity(pvcCandidate.Capacity, spec.IncreaseQuantity)
-	if err != nil {
-		return false, fmt.Errorf("increaseQuantity must be a percentage string (e.g. 10%%) or a storage quantity (e.g. 100Gi): %w", err)
-	}
+	var joinedErr error
 
-	// Prevent patching if PVC size not at threshold
-	if pvcCandidate.PercentUsed < trigger {
-		return false, nil
-	}
+	status := crd.Status.SelfHealing.PVCAutoScale
 
-	// Prevent continuous reconcile loops
-	if status := crd.Status.SelfHealing.PVCAutoScale; status != nil {
-		if status.RequestedSize.Value() == newSize.Value() {
-			return false, nil
+	patches := make(map[string]*cosmosv1.PVCAutoScaleStatus)
+
+	now := metav1.NewTime(scaler.now())
+
+	for _, pvc := range results {
+		if pvc.PercentUsed < trigger {
+			// no need to expand
+			continue
 		}
-	}
 
-	// Handle max size
-	if max := spec.MaxSize; !max.IsZero() {
-		// If already reached max size, don't patch
-		if pvcCandidate.Capacity.Cmp(max) >= 0 {
-			return false, nil
+		newSize, err := scaler.calcNextCapacity(pvc.Capacity, spec.IncreaseQuantity)
+		if err != nil {
+			joinedErr = errors.Join(joinedErr, err)
+			continue
 		}
-		// Cap new size to the max size
-		if newSize.Cmp(max) >= 0 {
-			newSize = max
-		}
-	}
 
-	// Patch object status which will signal the CosmosFullNode controller to increase PVC size.
-	var patch cosmosv1.CosmosFullNode
-	patch.TypeMeta = crd.TypeMeta
-	patch.Namespace = crd.Namespace
-	patch.Name = crd.Name
-	return true, scaler.client.SyncUpdate(ctx, client.ObjectKeyFromObject(&patch), func(status *cosmosv1.FullNodeStatus) {
-		status.SelfHealing.PVCAutoScale = &cosmosv1.PVCAutoScaleStatus{
+		if status != nil {
+			if pvcStatus, ok := status[pvc.Name]; ok && pvcStatus.RequestedSize.Value() == newSize.Value() {
+				// already requested
+				continue
+			}
+		}
+
+		if max := spec.MaxSize; !max.IsZero() {
+			if pvc.Capacity.Cmp(max) >= 0 {
+				// already at max size
+				continue
+			}
+
+			if newSize.Cmp(max) >= 0 {
+				// Cap new size to the max size
+				newSize = max
+			}
+		}
+
+		patches[pvc.Name] = &cosmosv1.PVCAutoScaleStatus{
 			RequestedSize: newSize,
-			RequestedAt:   metav1.NewTime(scaler.now()),
+			RequestedAt:   now,
 		}
-	})
+	}
+
+	if len(patches) == 0 {
+		return false, joinedErr
+	}
+
+	return true, errors.Join(joinedErr, scaler.client.SyncUpdate(ctx, client.ObjectKeyFromObject(crd), func(status *cosmosv1.FullNodeStatus) {
+		if status.SelfHealing.PVCAutoScale == nil {
+			status.SelfHealing.PVCAutoScale = patches
+			return
+		}
+		for k, v := range patches {
+			status.SelfHealing.PVCAutoScale[k] = v
+		}
+	}))
 }
 
 func (scaler PVCAutoScaler) calcNextCapacity(current resource.Quantity, increase string) (resource.Quantity, error) {

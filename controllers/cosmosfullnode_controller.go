@@ -43,15 +43,18 @@ const controllerOwnerField = ".metadata.controller"
 type CosmosFullNodeReconciler struct {
 	client.Client
 
-	cacheController  *cosmos.CacheController
-	configMapControl fullnode.ConfigMapControl
-	nodeKeyControl   fullnode.NodeKeyControl
-	peerCollector    *fullnode.PeerCollector
-	podControl       fullnode.PodControl
-	pvcControl       fullnode.PVCControl
-	recorder         record.EventRecorder
-	serviceControl   fullnode.ServiceControl
-	statusClient     *fullnode.StatusClient
+	cacheController           *cosmos.CacheController
+	configMapControl          fullnode.ConfigMapControl
+	nodeKeyControl            fullnode.NodeKeyControl
+	peerCollector             *fullnode.PeerCollector
+	podControl                fullnode.PodControl
+	pvcControl                fullnode.PVCControl
+	recorder                  record.EventRecorder
+	serviceControl            fullnode.ServiceControl
+	statusClient              *fullnode.StatusClient
+	serviceAccountControl     fullnode.ServiceAccountControl
+	clusterRoleControl        fullnode.RoleControl
+	clusterRoleBindingControl fullnode.RoleBindingControl
 }
 
 // NewFullNode returns a valid CosmosFullNode controller.
@@ -64,15 +67,18 @@ func NewFullNode(
 	return &CosmosFullNodeReconciler{
 		Client: client,
 
-		cacheController:  cacheController,
-		configMapControl: fullnode.NewConfigMapControl(client),
-		nodeKeyControl:   fullnode.NewNodeKeyControl(client),
-		peerCollector:    fullnode.NewPeerCollector(client),
-		podControl:       fullnode.NewPodControl(client, cacheController),
-		pvcControl:       fullnode.NewPVCControl(client),
-		recorder:         recorder,
-		serviceControl:   fullnode.NewServiceControl(client),
-		statusClient:     statusClient,
+		cacheController:           cacheController,
+		configMapControl:          fullnode.NewConfigMapControl(client),
+		nodeKeyControl:            fullnode.NewNodeKeyControl(client),
+		peerCollector:             fullnode.NewPeerCollector(client),
+		podControl:                fullnode.NewPodControl(client, cacheController),
+		pvcControl:                fullnode.NewPVCControl(client),
+		recorder:                  recorder,
+		serviceControl:            fullnode.NewServiceControl(client),
+		statusClient:              statusClient,
+		serviceAccountControl:     fullnode.NewServiceAccountControl(client),
+		clusterRoleControl:        fullnode.NewRoleControl(client),
+		clusterRoleBindingControl: fullnode.NewRoleBindingControl(client),
 	}
 }
 
@@ -85,7 +91,8 @@ var (
 //+kubebuilder:rbac:groups=cosmos.strange.love,resources=cosmosfullnodes/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=cosmos.strange.love,resources=cosmosfullnodes/finalizers,verbs=update
 // Generate RBAC roles to watch and update resources. IMPORTANT!!!! All resource names must be lowercase or cluster role will not work.
-//+kubebuilder:rbac:groups="",resources=pods;persistentvolumeclaims;services;configmaps,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups="",resources=pods;persistentvolumeclaims;services;serviceaccounts;configmaps,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups="rbac.authorization.k8s.io",resources=roles;rolebindings,verbs=get;list;watch;create;update;patch;delete;bind;escalate
 //+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch
 //+kubebuilder:rbac:groups="",resources=events,verbs=create;update;patch
 
@@ -111,7 +118,12 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	reporter := kube.NewEventReporter(logger, r.recorder, crd)
 
 	fullnode.ResetStatus(crd)
-	defer r.updateStatus(ctx, crd)
+
+	syncInfo := fullnode.SyncInfoStatus(ctx, crd, r.cacheController)
+
+	pvcStatusChanges := fullnode.PVCStatusChanges{}
+
+	defer r.updateStatus(ctx, crd, syncInfo, &pvcStatusChanges)
 
 	errs := &kube.ReconcileErrors{}
 
@@ -143,14 +155,32 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		errs.Append(err)
 	}
 
+	// Reconcile service accounts.
+	err = r.serviceAccountControl.Reconcile(ctx, reporter, crd)
+	if err != nil {
+		errs.Append(err)
+	}
+
+	// Reconcile cluster roles.
+	err = r.clusterRoleControl.Reconcile(ctx, reporter, crd)
+	if err != nil {
+		errs.Append(err)
+	}
+
+	// Reconcile cluster role bindings.
+	err = r.clusterRoleBindingControl.Reconcile(ctx, reporter, crd)
+	if err != nil {
+		errs.Append(err)
+	}
+
 	// Reconcile pods.
-	podRequeue, err := r.podControl.Reconcile(ctx, reporter, crd, configCksums)
+	podRequeue, err := r.podControl.Reconcile(ctx, reporter, crd, configCksums, syncInfo)
 	if err != nil {
 		errs.Append(err)
 	}
 
 	// Reconcile pvcs.
-	pvcRequeue, err := r.pvcControl.Reconcile(ctx, reporter, crd)
+	pvcRequeue, err := r.pvcControl.Reconcile(ctx, reporter, crd, &pvcStatusChanges)
 	if err != nil {
 		errs.Append(err)
 	}
@@ -193,15 +223,31 @@ func (r *CosmosFullNodeReconciler) resultWithErr(crd *cosmosv1.CosmosFullNode, e
 	return stopResult, err
 }
 
-func (r *CosmosFullNodeReconciler) updateStatus(ctx context.Context, crd *cosmosv1.CosmosFullNode) {
-	consensus := fullnode.SyncInfoStatus(ctx, crd, r.cacheController)
-
+func (r *CosmosFullNodeReconciler) updateStatus(
+	ctx context.Context,
+	crd *cosmosv1.CosmosFullNode,
+	syncInfo map[string]*cosmosv1.SyncInfoPodStatus,
+	pvcStatusChanges *fullnode.PVCStatusChanges,
+) {
 	if err := r.statusClient.SyncUpdate(ctx, client.ObjectKeyFromObject(crd), func(status *cosmosv1.FullNodeStatus) {
 		status.ObservedGeneration = crd.Status.ObservedGeneration
 		status.Phase = crd.Status.Phase
 		status.StatusMessage = crd.Status.StatusMessage
 		status.Peers = crd.Status.Peers
-		status.SyncInfo = &consensus
+		status.SyncInfo = syncInfo
+		for k, v := range syncInfo {
+			if v.Height != nil && *v.Height > 0 {
+				if status.Height == nil {
+					status.Height = make(map[string]uint64)
+				}
+				status.Height[k] = *v.Height
+			}
+		}
+		if status.SelfHealing.PVCAutoScale != nil {
+			for _, k := range pvcStatusChanges.Deleted {
+				delete(status.SelfHealing.PVCAutoScale, k)
+			}
+		}
 	}); err != nil {
 		log.FromContext(ctx).Error(err, "Failed to patch status")
 	}

@@ -10,6 +10,7 @@ import (
 	"github.com/strangelove-ventures/cosmos-operator/internal/diff"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -30,9 +31,13 @@ func NewPVCControl(client Client) PVCControl {
 	}
 }
 
+type PVCStatusChanges struct {
+	Deleted []string
+}
+
 // Reconcile is the control loop for PVCs. The bool return value, if true, indicates the controller should requeue
 // the request.
-func (control PVCControl) Reconcile(ctx context.Context, reporter kube.Reporter, crd *cosmosv1.CosmosFullNode) (bool, kube.ReconcileError) {
+func (control PVCControl) Reconcile(ctx context.Context, reporter kube.Reporter, crd *cosmosv1.CosmosFullNode, pvcStatusChanges *PVCStatusChanges) (bool, kube.ReconcileError) {
 	// Find any existing pvcs for this CRD.
 	var vols corev1.PersistentVolumeClaimList
 	if err := control.client.List(ctx, &vols,
@@ -42,35 +47,61 @@ func (control PVCControl) Reconcile(ctx context.Context, reporter kube.Reporter,
 		return false, kube.TransientError(fmt.Errorf("list existing pvcs: %w", err))
 	}
 
-	var (
-		currentPVCs = ptrSlice(vols.Items)
-		wantPVCs    = BuildPVCs(crd)
-		diffed      = diff.New(currentPVCs, wantPVCs)
-	)
+	var currentPVCs = ptrSlice(vols.Items)
 
-	var dataSource *corev1.TypedLocalObjectReference
-	if len(diffed.Creates()) > 0 {
-		dataSource = control.findDataSource(ctx, reporter, crd)
+	dataSources := make(map[int32]*dataSource)
+	if len(currentPVCs) < int(crd.Spec.Replicas) {
+		for i := int32(0); i < crd.Spec.Replicas; i++ {
+			name := pvcName(crd, i)
+			found := false
+			for _, pvc := range currentPVCs {
+				if pvc.Name == name {
+					found = true
+					break
+				}
+			}
+			if !found {
+				ds := control.findDataSource(ctx, reporter, crd, i)
+				if ds == nil {
+					ds = &dataSource{
+						size: crd.Spec.VolumeClaimTemplate.Resources.Requests[corev1.ResourceStorage],
+					}
+				}
+				dataSources[i] = ds
+			}
+		}
 	}
 
+	var (
+		wantPVCs = BuildPVCs(crd, dataSources, currentPVCs)
+		diffed   = diff.New(currentPVCs, wantPVCs)
+	)
+
 	for _, pvc := range diffed.Creates() {
-		pvc.Spec.DataSource = dataSource
-		reporter.Info("Creating pvc", "pvc", pvc.Name)
+		size := pvc.Spec.Resources.Requests[corev1.ResourceStorage]
+
+		reporter.Info(
+			"Creating pvc",
+			"name", pvc.Name,
+			"size", size.String(),
+		)
 		if err := ctrl.SetControllerReference(crd, pvc, control.client.Scheme()); err != nil {
 			return true, kube.TransientError(fmt.Errorf("set controller reference on pvc %q: %w", pvc.Name, err))
 		}
 		if err := control.client.Create(ctx, pvc); kube.IgnoreAlreadyExists(err) != nil {
 			return true, kube.TransientError(fmt.Errorf("create pvc %q: %w", pvc.Name, err))
 		}
+		pvcStatusChanges.Deleted = append(pvcStatusChanges.Deleted, pvc.Name)
 	}
 
 	var deletes int
 	if !control.shouldRetain(crd) {
 		for _, pvc := range diffed.Deletes() {
-			reporter.Info("Deleting pvc", "pvc", pvc.Name)
+			reporter.Info("Deleting pvc", "name", pvc.Name)
 			if err := control.client.Delete(ctx, pvc, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
 				return true, kube.TransientError(fmt.Errorf("delete pvc %q: %w", pvc.Name, err))
 			}
+			pvcStatusChanges.Deleted = append(pvcStatusChanges.Deleted, pvc.Name)
 		}
 		deletes = len(diffed.Deletes())
 	}
@@ -92,7 +123,12 @@ func (control PVCControl) Reconcile(ctx context.Context, reporter kube.Reporter,
 
 	// PVCs have many immutable fields, so only update the storage size.
 	for _, pvc := range diffed.Updates() {
-		reporter.Info("Patching pvc", "pvc", pvc.Name)
+		size := pvc.Spec.Resources.Requests[corev1.ResourceStorage]
+		reporter.Info(
+			"Patching pvc",
+			"name", pvc.Name,
+			"size", size.String(), // TODO remove expensive operation
+		)
 		patch := corev1.PersistentVolumeClaim{
 			ObjectMeta: pvc.ObjectMeta,
 			TypeMeta:   pvc.TypeMeta,
@@ -101,7 +137,7 @@ func (control PVCControl) Reconcile(ctx context.Context, reporter kube.Reporter,
 			},
 		}
 		if err := control.client.Patch(ctx, &patch, client.Merge); err != nil {
-			reporter.Error(err, "PVC patch failed", "pvc", pvc.Name)
+			reporter.Error(err, "PVC patch failed", "name", pvc.Name)
 			reporter.RecordError("PVCPatchFailed", err)
 			continue
 		}
@@ -117,17 +153,69 @@ func (control PVCControl) shouldRetain(crd *cosmosv1.CosmosFullNode) bool {
 	return false
 }
 
-func (control PVCControl) findDataSource(ctx context.Context, reporter kube.Reporter, crd *cosmosv1.CosmosFullNode) *corev1.TypedLocalObjectReference {
-	if ds := crd.Spec.VolumeClaimTemplate.DataSource; ds != nil {
-		return ds
+type dataSource struct {
+	ref *corev1.TypedLocalObjectReference
+
+	size resource.Quantity
+}
+
+func (control PVCControl) findDataSource(ctx context.Context, reporter kube.Reporter, crd *cosmosv1.CosmosFullNode, ordinal int32) *dataSource {
+	if override, ok := crd.Spec.InstanceOverrides[instanceName(crd, ordinal)]; ok {
+		if overrideTpl := override.VolumeClaimTemplate; overrideTpl != nil {
+			return control.findDataSourceWithPvcSpec(ctx, reporter, crd, *overrideTpl, ordinal)
+		}
 	}
-	spec := crd.Spec.VolumeClaimTemplate.AutoDataSource
+
+	return control.findDataSourceWithPvcSpec(ctx, reporter, crd, crd.Spec.VolumeClaimTemplate, ordinal)
+}
+
+func (control PVCControl) findDataSourceWithPvcSpec(
+	ctx context.Context,
+	reporter kube.Reporter,
+	crd *cosmosv1.CosmosFullNode,
+	pvcSpec cosmosv1.PersistentVolumeClaimSpec,
+	ordinal int32,
+) *dataSource {
+	if ds := pvcSpec.DataSource; ds != nil {
+		if ds.Kind == "VolumeSnapshot" && ds.APIGroup != nil && *ds.APIGroup == "snapshot.storage.k8s.io" {
+			var vs snapshotv1.VolumeSnapshot
+			if err := control.client.Get(ctx, client.ObjectKey{Namespace: crd.Namespace, Name: ds.Name}, &vs); err != nil {
+				reporter.Error(err, "Failed to get VolumeSnapshot for DataSource")
+				reporter.RecordError("DataSourceGetSnapshot", err)
+				return nil
+			}
+			return &dataSource{
+				ref:  ds,
+				size: *vs.Status.RestoreSize,
+			}
+		} else if ds.Kind == "PersistentVolumeClaim" && (ds.APIGroup == nil || *ds.APIGroup == "") {
+			var pvc corev1.PersistentVolumeClaim
+			if err := control.client.Get(ctx, client.ObjectKey{Namespace: crd.Namespace, Name: ds.Name}, &pvc); err != nil {
+				reporter.Error(err, "Failed to get PersistentVolumeClaim for DataSource")
+				reporter.RecordError("DataSourceGetPVC", err)
+				return nil
+			}
+			return &dataSource{
+				ref:  ds,
+				size: pvc.Status.Capacity["storage"],
+			}
+		} else {
+			err := fmt.Errorf("unsupported DataSource %s", ds.Kind)
+			reporter.Error(err, "Unsupported DataSource")
+			reporter.RecordError("DataSourceUnsupported", err)
+			return nil
+		}
+	}
+	spec := pvcSpec.AutoDataSource
 	if spec == nil {
 		return nil
 	}
 	selector := spec.VolumeSnapshotSelector
 	if len(selector) == 0 {
 		return nil
+	}
+	if spec.MatchInstance {
+		selector[kube.InstanceLabel] = instanceName(crd, ordinal)
 	}
 	found, err := control.recentVolumeSnapshot(ctx, control.client, crd.Namespace, selector)
 	if err != nil {
@@ -137,9 +225,12 @@ func (control PVCControl) findDataSource(ctx context.Context, reporter kube.Repo
 	}
 
 	reporter.RecordInfo("AutoDataSource", "Using recent VolumeSnapshot for PVC data source")
-	return &corev1.TypedLocalObjectReference{
-		APIGroup: ptr("snapshot.storage.k8s.io"),
-		Kind:     "VolumeSnapshot",
-		Name:     found.Name,
+	return &dataSource{
+		ref: &corev1.TypedLocalObjectReference{
+			APIGroup: ptr("snapshot.storage.k8s.io"),
+			Kind:     "VolumeSnapshot",
+			Name:     found.Name,
+		},
+		size: *found.Status.RestoreSize,
 	}
 }

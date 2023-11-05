@@ -7,7 +7,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const configChecksumAnnotation = "cosmos.strange.love/config-checksum"
+const (
+	configChecksumAnnotation = "cosmos.strange.love/config-checksum"
+)
 
 // BuildPods creates the final state of pods given the crd.
 func BuildPods(crd *cosmosv1.CosmosFullNode, cksums ConfigChecksums) ([]diff.Resource[*corev1.Pod], error) {
@@ -25,12 +27,28 @@ func BuildPods(crd *cosmosv1.CosmosFullNode, cksums ConfigChecksums) ([]diff.Res
 		if _, shouldSnapshot := candidates[pod.Name]; shouldSnapshot {
 			continue
 		}
+		if len(crd.Spec.ChainSpec.Versions) > 0 {
+			instanceHeight := uint64(0)
+			if height, ok := crd.Status.Height[pod.Name]; ok {
+				instanceHeight = height
+			}
+			var image string
+			for _, version := range crd.Spec.ChainSpec.Versions {
+				if instanceHeight < version.UpgradeHeight {
+					break
+				}
+				image = version.Image
+			}
+			if image != "" {
+				setChainContainerImage(pod, image)
+			}
+		}
 		if o, ok := overrides[pod.Name]; ok {
 			if o.DisableStrategy != nil {
 				continue
 			}
 			if o.Image != "" {
-				setMainContainerImage(pod, o.Image)
+				setChainContainerImage(pod, o.Image)
 			}
 		}
 		pod.Annotations[configChecksumAnnotation] = cksums[client.ObjectKeyFromObject(pod)]
@@ -39,11 +57,17 @@ func BuildPods(crd *cosmosv1.CosmosFullNode, cksums ConfigChecksums) ([]diff.Res
 	return pods, nil
 }
 
-func setMainContainerImage(pod *corev1.Pod, image string) {
+func setChainContainerImage(pod *corev1.Pod, image string) {
 	for i := range pod.Spec.Containers {
 		if pod.Spec.Containers[i].Name == mainContainer {
 			pod.Spec.Containers[i].Image = image
-			return
+			break
+		}
+	}
+	for i := range pod.Spec.InitContainers {
+		if pod.Spec.InitContainers[i].Name == chainInitContainer {
+			pod.Spec.InitContainers[i].Image = image
+			break
 		}
 	}
 }

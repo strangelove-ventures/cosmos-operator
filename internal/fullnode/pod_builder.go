@@ -22,8 +22,9 @@ import (
 var bufPool = sync.Pool{New: func() any { return new(bytes.Buffer) }}
 
 const (
-	healthCheckPort = healthcheck.Port
-	mainContainer   = "node"
+	healthCheckPort    = healthcheck.Port
+	mainContainer      = "node"
+	chainInitContainer = "chain-init"
 )
 
 // PodBuilder builds corev1.Pods
@@ -46,6 +47,11 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 		probes              = podReadinessProbes(crd)
 	)
 
+	versionCheckCmd := []string{"/manager", "versioncheck", "-d"}
+	if crd.Spec.ChainSpec.DatabaseBackend != nil {
+		versionCheckCmd = append(versionCheckCmd, "-b", *crd.Spec.ChainSpec.DatabaseBackend)
+	}
+
 	pod := corev1.Pod{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Pod",
@@ -57,6 +63,7 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 			Annotations: make(map[string]string),
 		},
 		Spec: corev1.PodSpec{
+			ServiceAccountName: serviceAccountName(crd),
 			SecurityContext: &corev1.PodSecurityContext{
 				RunAsUser:           ptr(int64(1025)),
 				RunAsGroup:          ptr(int64(1025)),
@@ -65,6 +72,7 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 				FSGroupChangePolicy: ptr(corev1.FSGroupChangeOnRootMismatch),
 				SeccompProfile:      &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
 			},
+			Subdomain: crd.Name,
 			Containers: []corev1.Container{
 				// Main start container.
 				{
@@ -82,27 +90,45 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 					ImagePullPolicy: tpl.ImagePullPolicy,
 					WorkingDir:      workDir,
 				},
+				// healthcheck sidecar
+				{
+					Name: "healthcheck",
+					// Available images: https://github.com/orgs/strangelove-ventures/packages?repo_name=cosmos-operator
+					// IMPORTANT: Must use v0.6.2 or later.
+					Image:   "ghcr.io/strangelove-ventures/cosmos-operator:" + version.DockerTag(),
+					Command: []string{"/manager", "healthcheck"},
+					Ports:   []corev1.ContainerPort{{ContainerPort: healthCheckPort, Protocol: corev1.ProtocolTCP}},
+					Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("5m"),
+							corev1.ResourceMemory: resource.MustParse("16Mi"),
+						},
+					},
+					ReadinessProbe:  probes[1],
+					ImagePullPolicy: tpl.ImagePullPolicy,
+				},
 			},
 		},
 	}
 
-	// Add healtcheck sidecar
-	pod.Spec.Containers = append(pod.Spec.Containers, corev1.Container{
-		Name: "healthcheck",
-		// Available images: https://github.com/orgs/strangelove-ventures/packages?repo_name=cosmos-operator
-		// IMPORTANT: Must use v0.6.2 or later.
-		Image:   "ghcr.io/strangelove-ventures/cosmos-operator:" + version.DockerTag(),
-		Command: []string{"/manager", "healthcheck"},
-		Ports:   []corev1.ContainerPort{{ContainerPort: healthCheckPort, Protocol: corev1.ProtocolTCP}},
-		Resources: corev1.ResourceRequirements{
-			Requests: corev1.ResourceList{
-				corev1.ResourceCPU:    resource.MustParse("5m"),
-				corev1.ResourceMemory: resource.MustParse("16Mi"),
+	if len(crd.Spec.ChainSpec.Versions) > 0 {
+		// version check sidecar, runs on inverval in case the instance is halting for upgrade.
+		pod.Spec.Containers = append(pod.Spec.Containers, corev1.Container{
+			Name:    "version-check-interval",
+			Image:   "ghcr.io/strangelove-ventures/cosmos-operator:" + version.DockerTag(),
+			Command: versionCheckCmd,
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("5m"),
+					corev1.ResourceMemory: resource.MustParse("16Mi"),
+				},
 			},
-		},
-		ReadinessProbe:  probes[1],
-		ImagePullPolicy: tpl.ImagePullPolicy,
-	})
+			Env:             envVars(crd),
+			ImagePullPolicy: tpl.ImagePullPolicy,
+			WorkingDir:      workDir,
+			SecurityContext: &corev1.SecurityContext{},
+		})
+	}
 
 	preserveMergeInto(pod.Labels, tpl.Metadata.Labels)
 	preserveMergeInto(pod.Annotations, tpl.Metadata.Annotations)
@@ -180,6 +206,9 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 	pod.Name = name
 	pod.Spec.InitContainers = initContainers(b.crd, name)
 
+	pod.Spec.Hostname = pod.Name
+	pod.Spec.Subdomain = b.crd.Name
+
 	pod.Spec.Volumes = []corev1.Volume{
 		{
 			Name: volChainHome,
@@ -245,6 +274,9 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 		// The healthcheck sidecar needs access to the home directory so it can read disk usage.
 		{Name: volChainHome, MountPath: ChainHomeDir(b.crd), ReadOnly: true},
 	}
+	if len(pod.Spec.Containers) > 2 {
+		pod.Spec.Containers[2].VolumeMounts = mounts
+	}
 
 	b.pod = pod
 	return b
@@ -274,6 +306,7 @@ func envVars(crd *cosmosv1.CosmosFullNode) []corev1.EnvVar {
 		{Name: "HOME", Value: workDir},
 		{Name: "CHAIN_HOME", Value: home},
 		{Name: "GENESIS_FILE", Value: path.Join(home, "config", "genesis.json")},
+		{Name: "ADDRBOOK_FILE", Value: path.Join(home, "config", "addrbook.json")},
 		{Name: "CONFIG_DIR", Value: path.Join(home, "config")},
 		{Name: "DATA_DIR", Value: path.Join(home, "data")},
 	}
@@ -283,6 +316,7 @@ func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Conta
 	tpl := crd.Spec.PodTemplate
 	binary := crd.Spec.ChainSpec.Binary
 	genesisCmd, genesisArgs := DownloadGenesisCommand(crd.Spec.ChainSpec)
+	addrbookCmd, addrbookArgs := DownloadAddrbookCommand(crd.Spec.ChainSpec)
 	env := envVars(crd)
 
 	initCmd := fmt.Sprintf("%s init %s --chain-id %s", binary, moniker, crd.Spec.ChainSpec.ChainID)
@@ -297,7 +331,7 @@ func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Conta
 			WorkingDir:      workDir,
 		},
 		{
-			Name:    "chain-init",
+			Name:    chainInitContainer,
 			Image:   tpl.Image,
 			Command: []string{"sh"},
 			Args: []string{"-c",
@@ -328,7 +362,15 @@ echo "Initializing into tmp dir for downstream processing..."
 			ImagePullPolicy: tpl.ImagePullPolicy,
 			WorkingDir:      workDir,
 		},
-
+		{
+			Name:            "addrbook-init",
+			Image:           infraToolImage,
+			Command:         []string{addrbookCmd},
+			Args:            addrbookArgs,
+			Env:             env,
+			ImagePullPolicy: tpl.ImagePullPolicy,
+			WorkingDir:      workDir,
+		},
 		{
 			Name:    "config-merge",
 			Image:   infraToolImage,
@@ -371,6 +413,32 @@ config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CON
 		})
 	}
 
+	versionCheckCmd := []string{"/manager", "versioncheck"}
+	if crd.Spec.ChainSpec.DatabaseBackend != nil {
+		versionCheckCmd = append(versionCheckCmd, "-b", *crd.Spec.ChainSpec.DatabaseBackend)
+	}
+
+	// Append version check after snapshot download, if applicable.
+	// That way the version check will be after the database is initialized.
+	// This initContainer will update the crd status with the current height for the pod,
+	// And then panic if the image version is not correct for the current height.
+	// After the status is patched, the pod will be restarted with the correct image.
+	required = append(required, corev1.Container{
+		Name:    "version-check",
+		Image:   "ghcr.io/strangelove-ventures/cosmos-operator:" + version.DockerTag(),
+		Command: versionCheckCmd,
+		Resources: corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("5m"),
+				corev1.ResourceMemory: resource.MustParse("16Mi"),
+			},
+		},
+		Env:             env,
+		ImagePullPolicy: tpl.ImagePullPolicy,
+		WorkingDir:      workDir,
+		SecurityContext: &corev1.SecurityContext{},
+	})
+
 	return required
 }
 
@@ -404,6 +472,9 @@ func startCommandArgs(crd *cosmosv1.CosmosFullNode) []string {
 	}
 	if format := cfg.LogFormat; format != nil {
 		args = append(args, "--log_format", *format)
+	}
+	if len(crd.Spec.ChainSpec.AdditionalStartArgs) > 0 {
+		args = append(args, crd.Spec.ChainSpec.AdditionalStartArgs...)
 	}
 	return args
 }

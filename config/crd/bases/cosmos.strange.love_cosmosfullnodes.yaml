@@ -45,6 +45,32 @@ spec:
               chain:
                 description: Blockchain-specific configuration.
                 properties:
+                  additionalStartArgs:
+                    description: Additional arguments to pass to the chain start command.
+                    items:
+                      type: string
+                    type: array
+                  addrbookScript:
+                    description: 'Specify shell (sh) script commands to properly download
+                      and save the address book file. Prefer AddrbookURL if the file
+                      is in a conventional format. The available shell commands are
+                      from docker image ghcr.io/strangelove-ventures/infra-toolkit,
+                      including wget and curl. Save the file to env var $ADDRBOOK_FILE.
+                      E.g. curl https://url-to-addrbook.com > $ADDRBOOK_FILE Takes
+                      precedence over AddrbookURL. Hint: Use "set -eux" in your script.
+                      Available env vars: $HOME: The home directory. $ADDRBOOK_FILE:
+                      The location of the final address book file. $CONFIG_DIR: The
+                      location of the config dir that houses the address book file.
+                      Used for extracting from archives. The archive must have a single
+                      file called "addrbook.json".'
+                    type: string
+                  addrbookURL:
+                    description: 'URL to address book file to download from the internet.
+                      The operator detects and properly handles the following file
+                      extensions: .json, .json.gz, .tar, .tar.gz, .tar.gzip, .zip
+                      Use AddrbookScript if the chain has an unconventional file format
+                      or address book location.'
+                    type: string
                   app:
                     description: App configuration applied to app.toml.
                     properties:
@@ -199,6 +225,12 @@ spec:
                           limits.
                         type: string
                     type: object
+                  databaseBackend:
+                    description: 'DatabaseBackend must match in order to detect the
+                      block height of the chain prior to starting in order to pick
+                      the correct image version. options: goleveldb, rocksdb, pebbledb
+                      Defaults to goleveldb.'
+                    type: string
                   genesisScript:
                     description: 'Specify shell (sh) script commands to properly download
                       and save the genesis file. Prefer GenesisURL if the file is
@@ -289,6 +321,32 @@ spec:
                       if the snapshot archive is unconventional or requires special
                       handling.'
                     type: string
+                  versions:
+                    description: Versions of the chain and which height they should
+                      be applied. When provided, the operator will automatically upgrade
+                      the chain as it reaches the specified heights. If not provided,
+                      the operator will not upgrade the chain, and will use the image
+                      specified in the pod spec.
+                    items:
+                      properties:
+                        height:
+                          description: The block height when this version should be
+                            applied.
+                          format: int64
+                          type: integer
+                        image:
+                          description: The docker image for this version in "repository:tag"
+                            format. E.g. busybox:latest.
+                          type: string
+                        setHaltHeight:
+                          description: Determines if the node should forcefully halt
+                            at the upgrade height.
+                          type: boolean
+                      required:
+                      - height
+                      - image
+                      type: object
+                    type: array
                 required:
                 - app
                 - binary
@@ -333,6 +391,12 @@ spec:
                             set; that field takes precedence. Configuring autoDataSource
                             may help boostrap new replicas more quickly.
                           properties:
+                            matchInstance:
+                              description: If true, the volume snapshot selector will
+                                make sure the PVC is restored from a VolumeSnapshot
+                                on the same node. This is useful if the VolumeSnapshots
+                                are local to the node, e.g. for topolvm.
+                              type: boolean
                             volumeSnapshotSelector:
                               additionalProperties:
                                 type: string
@@ -344,6 +408,8 @@ spec:
                                 no VolumeSnapshots found, controller logs error and
                                 still creates PVC.
                               type: object
+                          required:
+                          - matchInstance
                           type: object
                         dataSource:
                           description: 'Can be used to specify either: * An existing
@@ -2563,9 +2629,11 @@ spec:
                       type: object
                     type: array
                   image:
-                    description: Image is the docker reference in "repository:tag"
+                    description: 'Image is the docker reference in "repository:tag"
                       format. E.g. busybox:latest. This is for the main container
-                      running the chain process.
+                      running the chain process. Note: for granular control over which
+                      images are applied at certain block heights, use spec.chain.versions
+                      instead.'
                     minLength: 1
                     type: string
                   imagePullPolicy:
@@ -5542,8 +5610,6 @@ spec:
                       - name
                       type: object
                     type: array
-                required:
-                - image
                 type: object
               replicas:
                 description: Number of replicas to create. Individual replicas have
@@ -5761,6 +5827,12 @@ spec:
                       that field takes precedence. Configuring autoDataSource may
                       help boostrap new replicas more quickly.
                     properties:
+                      matchInstance:
+                        description: If true, the volume snapshot selector will make
+                          sure the PVC is restored from a VolumeSnapshot on the same
+                          node. This is useful if the VolumeSnapshots are local to
+                          the node, e.g. for topolvm.
+                        type: boolean
                       volumeSnapshotSelector:
                         additionalProperties:
                           type: string
@@ -5771,6 +5843,8 @@ spec:
                           namespace as the CosmosFullNode. If no VolumeSnapshots found,
                           controller logs error and still creates PVC.
                         type: object
+                    required:
+                    - matchInstance
                     type: object
                   dataSource:
                     description: 'Can be used to specify either: * An existing VolumeSnapshot
@@ -5888,6 +5962,13 @@ spec:
           status:
             description: FullNodeStatus defines the observed state of CosmosFullNode
             properties:
+              height:
+                additionalProperties:
+                  format: int64
+                  type: integer
+                description: Latest Height information. collected when node starts
+                  up and when RPC is successfully queried.
+                type: object
               observedGeneration:
                 description: The most recent generation observed by the controller.
                 format: int64
@@ -5926,62 +6007,53 @@ spec:
               selfHealing:
                 description: Status set by the SelfHealing controller.
                 properties:
-                  pvcAutoScale:
+                  pvcAutoScaler:
+                    additionalProperties:
+                      properties:
+                        requestedAt:
+                          description: The timestamp the SelfHealing controller requested
+                            a PVC increase.
+                          format: date-time
+                          type: string
+                        requestedSize:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          description: The PVC size requested by the SelfHealing controller.
+                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                          x-kubernetes-int-or-string: true
+                      required:
+                      - requestedAt
+                      - requestedSize
+                      type: object
                     description: PVC auto-scaling status.
-                    properties:
-                      requestedAt:
-                        description: The timestamp the SelfHealing controller requested
-                          a PVC increase.
-                        format: date-time
-                        type: string
-                      requestedSize:
-                        anyOf:
-                        - type: integer
-                        - type: string
-                        description: The PVC size requested by the SelfHealing controller.
-                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                        x-kubernetes-int-or-string: true
-                    required:
-                    - requestedAt
-                    - requestedSize
                     type: object
                 type: object
               status:
                 description: A generic message for the user. May contain errors.
                 type: string
-              syncInfo:
+              sync:
+                additionalProperties:
+                  properties:
+                    error:
+                      description: Error message if unable to fetch consensus state.
+                      type: string
+                    height:
+                      description: Latest height if no error encountered.
+                      format: int64
+                      type: integer
+                    inSync:
+                      description: If the pod reports itself as in sync with chain
+                        tip.
+                      type: boolean
+                    timestamp:
+                      description: When consensus information was fetched.
+                      format: date-time
+                      type: string
+                  required:
+                  - timestamp
+                  type: object
                 description: Current sync information. Collected every 60s.
-                properties:
-                  pods:
-                    description: The latest consensus state of pods.
-                    items:
-                      properties:
-                        error:
-                          description: Error message if unable to fetch consensus
-                            state.
-                          type: string
-                        height:
-                          description: Latest height if no error encountered.
-                          format: int64
-                          type: integer
-                        inSync:
-                          description: If the pod reports itself as in sync with chain
-                            tip.
-                          type: boolean
-                        pod:
-                          description: Pod's name.
-                          type: string
-                        timestamp:
-                          description: When consensus information was fetched.
-                          format: date-time
-                          type: string
-                      required:
-                      - pod
-                      - timestamp
-                      type: object
-                    type: array
-                required:
-                - pods
                 type: object
             required:
             - observedGeneration

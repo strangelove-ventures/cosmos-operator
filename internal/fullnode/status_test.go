@@ -72,24 +72,20 @@ func TestSyncInfoStatus(t *testing.T) {
 	}
 
 	wantTS := metav1.NewTime(ts)
-	want := cosmosv1.SyncInfoStatus{
-		Pods: []cosmosv1.SyncInfoPodStatus{
-			{
-				Pod:       "pod-0",
-				Timestamp: wantTS,
-				Height:    ptr(uint64(9999)),
-				InSync:    ptr(false),
-			},
-			{Pod: "pod-1",
-				Timestamp: wantTS,
-				Height:    ptr(uint64(10000)),
-				InSync:    ptr(true),
-			},
-			{
-				Pod:       "pod-2",
-				Timestamp: wantTS,
-				Error:     ptr("some error"),
-			},
+	want := map[string]*cosmosv1.SyncInfoPodStatus{
+		"pod-0": {
+			Timestamp: wantTS,
+			Height:    ptr(uint64(9999)),
+			InSync:    ptr(false),
+		},
+		"pod-1": {
+			Timestamp: wantTS,
+			Height:    ptr(uint64(10000)),
+			InSync:    ptr(true),
+		},
+		"pod-2": {
+			Timestamp: wantTS,
+			Error:     ptr("some error"),
 		},
 	}
 

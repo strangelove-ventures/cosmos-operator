@@ -26,6 +26,7 @@ import (
 	"github.com/pkg/profile"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	opcmd "github.com/strangelove-ventures/cosmos-operator/cmd"
 	"github.com/strangelove-ventures/cosmos-operator/controllers"
 	"github.com/strangelove-ventures/cosmos-operator/internal/cosmos"
 	"github.com/strangelove-ventures/cosmos-operator/internal/fullnode"
@@ -106,7 +107,8 @@ func rootCmd() *cobra.Command {
 	}
 
 	// Add subcommands here
-	root.AddCommand(healthcheckCmd())
+	root.AddCommand(opcmd.HealthCheckCmd())
+	root.AddCommand(opcmd.VersionCheckCmd(scheme))
 	root.AddCommand(&cobra.Command{
 		Short: "Print the version",
 		Use:   "version",
@@ -127,7 +129,7 @@ func startManager(cmd *cobra.Command, args []string) error {
 		}
 	}()
 
-	logger := zapLogger(logLevel, logFormat)
+	logger := opcmd.ZapLogger(logLevel, logFormat)
 	defer func() { _ = logger.Sync() }()
 	ctrl.SetLogger(zapr.NewLogger(logger))
 

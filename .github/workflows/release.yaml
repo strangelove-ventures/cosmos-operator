@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - '**'
+    branches:
+      - '**'
 
 env:
   REGISTRY: ghcr.io
@@ -42,12 +44,13 @@ jobs:
             # set latest tag for default branch
             type=raw,value=latest,enable={{is_default_branch}}
             type=ref,event=tag
+            type=ref,event=branch
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v3
         with:
           context: .
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           file: Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
@@ -57,7 +60,7 @@ jobs:
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}'
+          image-ref: '${{ fromJSON(steps.meta.outputs.json).tags[0] }}'
           format: 'table'
           exit-code: '1'
           ignore-unfixed: true

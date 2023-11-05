@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/strangelove-ventures/cosmos-operator/internal/test"
+
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -41,6 +43,7 @@ func TestBuildNodeKeySecrets(t *testing.T) {
 				"app.kubernetes.io/instance":   fmt.Sprintf("juno-%d", i),
 				"app.kubernetes.io/version":    "v1.2.3",
 				"cosmos.strange.love/network":  "mainnet",
+				"cosmos.strange.love/type":     "FullNode",
 			}
 			require.Equal(t, wantLabels, got.Labels)
 
@@ -88,5 +91,14 @@ func TestBuildNodeKeySecrets(t *testing.T) {
 		secrets, err := BuildNodeKeySecrets(nil, &crd)
 		require.NoError(t, err)
 		require.Empty(t, secrets)
+	})
+
+	test.HasTypeLabel(t, func(crd cosmosv1.CosmosFullNode) []map[string]string {
+		secrets, _ := BuildNodeKeySecrets(nil, &crd)
+		labels := make([]map[string]string, 0)
+		for _, secret := range secrets {
+			labels = append(labels, secret.Object().Labels)
+		}
+		return labels
 	})
 }

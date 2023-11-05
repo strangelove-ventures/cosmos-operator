@@ -138,17 +138,14 @@ type FullNodeStatus struct {
 
 	// Current sync information. Collected every 60s.
 	// +optional
-	SyncInfo *SyncInfoStatus `json:"syncInfo,omitempty"`
-}
+	SyncInfo map[string]*SyncInfoPodStatus `json:"sync,omitempty"`
 
-type SyncInfoStatus struct {
-	// The latest consensus state of pods.
-	Pods []SyncInfoPodStatus `json:"pods"`
+	// Latest Height information. collected when node starts up and when RPC is successfully queried.
+	// +optional
+	Height map[string]uint64 `json:"height,omitempty"`
 }
 
 type SyncInfoPodStatus struct {
-	// Pod's name.
-	Pod string `json:"pod"`
 	// When consensus information was fetched.
 	Timestamp metav1.Time `json:"timestamp"`
 	// Latest height if no error encountered.
@@ -197,7 +194,10 @@ type PodSpec struct {
 
 	// Image is the docker reference in "repository:tag" format. E.g. busybox:latest.
 	// This is for the main container running the chain process.
+	// Note: for granular control over which images are applied at certain block heights,
+	// use spec.chain.versions instead.
 	// +kubebuilder:validation:MinLength:=1
+	// +optional
 	Image string `json:"image"`
 
 	// Image pull policy.
@@ -385,6 +385,11 @@ type AutoDataSource struct {
 	// If no VolumeSnapshots found, controller logs error and still creates PVC.
 	// +optional
 	VolumeSnapshotSelector map[string]string `json:"volumeSnapshotSelector"`
+
+	// If true, the volume snapshot selector will make sure the PVC
+	// is restored from a VolumeSnapshot on the same node.
+	// This is useful if the VolumeSnapshots are local to the node, e.g. for topolvm.
+	MatchInstance bool `json:"matchInstance"`
 }
 
 // RolloutStrategy is an update strategy that can be shared between several Cosmos CRDs.
@@ -445,6 +450,27 @@ type ChainSpec struct {
 	// +optional
 	LogFormat *string `json:"logFormat"`
 
+	// URL to address book file to download from the internet.
+	// The operator detects and properly handles the following file extensions:
+	// .json, .json.gz, .tar, .tar.gz, .tar.gzip, .zip
+	// Use AddrbookScript if the chain has an unconventional file format or address book location.
+	// +optional
+	AddrbookURL *string `json:"addrbookURL"`
+
+	// Specify shell (sh) script commands to properly download and save the address book file.
+	// Prefer AddrbookURL if the file is in a conventional format.
+	// The available shell commands are from docker image ghcr.io/strangelove-ventures/infra-toolkit, including wget and curl.
+	// Save the file to env var $ADDRBOOK_FILE.
+	// E.g. curl https://url-to-addrbook.com > $ADDRBOOK_FILE
+	// Takes precedence over AddrbookURL.
+	// Hint: Use "set -eux" in your script.
+	// Available env vars:
+	// $HOME: The home directory.
+	// $ADDRBOOK_FILE: The location of the final address book file.
+	// $CONFIG_DIR: The location of the config dir that houses the address book file. Used for extracting from archives. The archive must have a single file called "addrbook.json".
+	// +optional
+	AddrbookScript *string `json:"addrbookScript"`
+
 	// URL to genesis file to download from the internet.
 	// Although this field is optional, you will almost always want to set it.
 	// If not set, uses the genesis file created from the init subcommand. (This behavior may be desirable for new chains or testing.)
@@ -503,6 +529,35 @@ type ChainSpec struct {
 	// +kubebuilder:validation:Minimum:=0
 	// +optional
 	PrivvalSleepSeconds *int32 `json:"privvalSleepSeconds"`
+
+	// DatabaseBackend must match in order to detect the block height
+	// of the chain prior to starting in order to pick the correct image version.
+	// options: goleveldb, rocksdb, pebbledb
+	// Defaults to goleveldb.
+	// +optional
+	DatabaseBackend *string `json:"databaseBackend"`
+
+	// Versions of the chain and which height they should be applied.
+	// When provided, the operator will automatically upgrade the chain as it reaches the specified heights.
+	// If not provided, the operator will not upgrade the chain, and will use the image specified in the pod spec.
+	// +optional
+	Versions []ChainVersion `json:"versions"`
+
+	// Additional arguments to pass to the chain start command.
+	// +optional
+	AdditionalStartArgs []string `json:"additionalStartArgs"`
+}
+
+type ChainVersion struct {
+	// The block height when this version should be applied.
+	UpgradeHeight uint64 `json:"height"`
+
+	// The docker image for this version in "repository:tag" format. E.g. busybox:latest.
+	Image string `json:"image"`
+
+	// Determines if the node should forcefully halt at the upgrade height.
+	// +optional
+	SetHaltHeight bool `json:"setHaltHeight,omitempty"`
 }
 
 // CometConfig configures the config.toml.

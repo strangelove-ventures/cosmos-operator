@@ -11,6 +11,7 @@ rules:
   - configmaps
   - persistentvolumeclaims
   - pods
+  - serviceaccounts
   - services
   verbs:
   - create
@@ -144,6 +145,21 @@ rules:
   - get
   - patch
   - update
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - rolebindings
+  - roles
+  verbs:
+  - bind
+  - create
+  - delete
+  - escalate
+  - get
+  - list
+  - patch
+  - update
+  - watch
 - apiGroups:
   - snapshot.storage.k8s.io
   resources:

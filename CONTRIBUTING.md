@@ -7,6 +7,10 @@ Run tests via:
 make test
 ```
 
+# Architecture
+
+For a high-level overview of the architecture, see [docs/architecture.md](./docs/architecture.md).
+
 # Release Process
 
 Prereq: Write access to the repo.
