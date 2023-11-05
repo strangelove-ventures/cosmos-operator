@@ -97,7 +97,7 @@ func TestPeerCollector_Collect(t *testing.T) {
 		var crd cosmosv1.CosmosFullNode
 		crd.Name = "dydx"
 		crd.Namespace = namespace
-		crd.Spec.Replicas = 3
+		crd.Spec.Replicas = 4
 		res, err := BuildNodeKeySecrets(nil, &crd)
 		require.NoError(t, err)
 		secret := res[0].Object()
@@ -118,6 +118,10 @@ func TestPeerCollector_Collect(t *testing.T) {
 				case "dydx-p2p-2":
 					svc.Spec.Type = corev1.ServiceTypeLoadBalancer
 					svc.Status.LoadBalancer.Ingress = []corev1.LoadBalancerIngress{{Hostname: "host.example.com"}}
+				case "dydx-p2p-3":
+					svc.Spec.Type = corev1.ServiceTypeNodePort
+					svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{Port: 26656, Name: "p2p", NodePort: 30000})
+					crd.Spec.Service.P2PExternalIP = "1.1.1.1"
 				}
 				*ref = svc
 			}
@@ -127,7 +131,7 @@ func TestPeerCollector_Collect(t *testing.T) {
 		collector := NewPeerCollector(getter)
 		peers, err := collector.Collect(ctx, &crd)
 		require.NoError(t, err)
-		require.Len(t, peers, 3)
+		require.Len(t, peers, 4)
 
 		got := peers[client.ObjectKey{Name: "dydx-0", Namespace: namespace}]
 		require.Equal(t, p2p.ID("1e23ce0b20ae2377925537cc71d1529d723bb892"), got.NodeID)
@@ -142,10 +146,15 @@ func TestPeerCollector_Collect(t *testing.T) {
 		require.Equal(t, "host.example.com:26656", got.ExternalAddress)
 		require.Equal(t, "1e23ce0b20ae2377925537cc71d1529d723bb892@host.example.com:26656", got.ExternalPeer())
 
+		got = peers[client.ObjectKey{Name: "dydx-3", Namespace: namespace}]
+		require.Equal(t, "1.1.1.1:30000", got.ExternalAddress)
+		require.Equal(t, "1e23ce0b20ae2377925537cc71d1529d723bb892@1.1.1.1:30000", got.ExternalPeer())
+
 		require.True(t, peers.HasIncompleteExternalAddress())
 		want := []string{"1e23ce0b20ae2377925537cc71d1529d723bb892@0.0.0.0:26656",
 			"1e23ce0b20ae2377925537cc71d1529d723bb892@1.2.3.4:26656",
-			"1e23ce0b20ae2377925537cc71d1529d723bb892@host.example.com:26656"}
+			"1e23ce0b20ae2377925537cc71d1529d723bb892@host.example.com:26656",
+			"1e23ce0b20ae2377925537cc71d1529d723bb892@1.1.1.1:30000"}
 		require.ElementsMatch(t, want, peers.AllExternal())
 	})
 

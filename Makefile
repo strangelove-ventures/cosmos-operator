@@ -87,7 +87,7 @@ build: generate ## Build manager binary.
 run: manifests generate ## Run a controller from your host.
 	go run . --log-level=debug
 
-PRE_IMG ?= ghcr.io/strangelove-ventures/cosmos-operator:dev$(shell git describe --always --dirty)
+PRE_IMG ?= ghcr.io/qj0r9j0vc2/cosmos-operator:dev$(shell git describe --always --dirty)
 .PHONY: docker-prerelease
 docker-prerelease: ## Build and push a prerelease docker image.
 	IMG=$(PRE_IMG) $(MAKE) docker-build docker-push
@@ -120,7 +120,9 @@ deploy-prerelease: install docker-prerelease ## Install CRDs, build docker image
 	cd config/manager && $(KUSTOMIZE) edit set image controller=$(PRE_IMG)
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
 	@#Hack to reset tag to avoid git thrashing.
-	@cd config/manager && $(KUSTOMIZE) edit set image controller=ghcr.io/strangelove-ventures/cosmos-operator:latest
+
+#	@cd config/manager && $(KUSTOMIZE) edit set image controller=ghcr.io/strangelove-ventures/cosmos-operator:latest
+	@cd config/manager && $(KUSTOMIZE) edit set image controller=ghcr.io/qj0r9j0vc2/cosmos-operator:latest
 
 .PHONY: deploy
 deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
