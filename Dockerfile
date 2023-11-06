@@ -49,7 +49,7 @@ RUN if [ "${TARGETARCH}" = "arm64" ] && [ "${BUILDARCH}" != "arm64" ]; then \
     elif [ "${TARGETARCH}" = "amd64" ] && [ "${BUILDARCH}" != "amd64" ]; then \
         export CC=x86_64-linux-musl-gcc CXX=x86_64-linux-musl-g++; \
     fi; \
-    make -j$(nproc) static_lib
+    PORTABLE=1 make -j$(nproc) static_lib
 
 WORKDIR /workspace
 # Copy the Go Modules manifests
