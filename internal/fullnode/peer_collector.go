@@ -26,15 +26,15 @@ type Peer struct {
 
 // PrivatePeer returns the full private identifier of the peer in the format <node_id>@<private_address>:<port>.
 func (peer Peer) PrivatePeer() string {
-	return string(peer.NodeID) + "@" + peer.PrivateAddress
+	return peer.NodeID + "@" + peer.PrivateAddress
 }
 
 // ExternalPeer returns the full external address of the peer in the format <node_id>@<external_address>:<port>.
 func (peer Peer) ExternalPeer() string {
 	if peer.ExternalAddress == "" {
-		return string(peer.NodeID) + "@" + net.JoinHostPort("0.0.0.0", strconv.Itoa(p2pPort))
+		return peer.NodeID + "@" + net.JoinHostPort("0.0.0.0", strconv.Itoa(p2pPort))
 	}
-	return string(peer.NodeID) + "@" + peer.ExternalAddress
+	return peer.NodeID + "@" + peer.ExternalAddress
 }
 
 // Peers maps an ObjectKey using the instance name to Peer.
@@ -74,7 +74,7 @@ func (peers Peers) HasIncompleteExternalAddress() bool {
 
 // NodeIDs returns a sorted list of all node IDs.
 func (peers Peers) NodeIDs() []string {
-	ids := lo.Map(lo.Values(peers), func(p Peer, _ int) string { return string(p.NodeID) })
+	ids := lo.Map(lo.Values(peers), func(p Peer, _ int) string { return p.NodeID })
 	sort.Strings(ids)
 	return ids
 }
