@@ -71,7 +71,7 @@ func TestBuildRBAC(t *testing.T) {
 			{
 				APIGroups: []string{"cosmos.strange.love"},
 				Resources: []string{"cosmosfullnodes/status"},
-				Verbs:     []string{"update"},
+				Verbs:     []string{"patch"},
 			},
 		}, role.Rules)
 
