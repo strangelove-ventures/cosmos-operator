@@ -162,16 +162,8 @@ func checkVersion(
 		}
 	}
 
-	if crd.Status.Height == nil {
-		crd.Status.Height = make(map[string]uint64)
-	}
-
-	crd.Status.Height[thisPod.Name] = uint64(height)
-
-	if err := kClient.Status().Update(
-		ctx, crd,
-	); err != nil {
-		return fmt.Errorf("failed to patch status: %w", err)
+	if err := patchStatusHeightIfNecessary(ctx, kClient, crd, thisPod.Name, uint64(height)); err != nil {
+		return err
 	}
 
 	var image string
@@ -188,6 +180,35 @@ func checkVersion(
 	}
 
 	fmt.Fprintf(writer, "Verified correct image for height %d: %s\n", height, image)
+
+	return nil
+}
+
+func patchStatusHeightIfNecessary(
+	ctx context.Context,
+	kClient client.Client,
+	crd *cosmosv1.CosmosFullNode,
+	instanceName string,
+	height uint64,
+) error {
+	if crd.Status.Height != nil {
+		if h, ok := crd.Status.Height[instanceName]; ok && h == height {
+			// Status is up to date already.
+			return nil
+		}
+	}
+
+	patch := crd.DeepCopy()
+	if patch.Status.Height == nil {
+		patch.Status.Height = make(map[string]uint64)
+	}
+	patch.Status.Height[instanceName] = height
+
+	if err := kClient.Status().Patch(
+		ctx, patch, client.MergeFrom(crd.DeepCopy()),
+	); err != nil {
+		return fmt.Errorf("failed to patch status: %w", err)
+	}
 
 	return nil
 }
