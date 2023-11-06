@@ -2,13 +2,12 @@ package fullnode
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
 	"sort"
 	"strconv"
 
-	cmtjson "github.com/cometbft/cometbft/libs/json"
-	"github.com/cometbft/cometbft/p2p"
 	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
@@ -18,7 +17,7 @@ import (
 
 // Peer contains information about a peer.
 type Peer struct {
-	NodeID          p2p.ID
+	NodeID          string
 	PrivateAddress  string // Only the private address my-service.namespace.svc.cluster.local:<port>
 	ExternalAddress string // Only the address <external-ip-or-hostname>:<port>. Not all peers will be external.
 
@@ -115,8 +114,8 @@ func (c PeerCollector) Collect(ctx context.Context, crd *cosmosv1.CosmosFullNode
 			return nil, kube.TransientError(fmt.Errorf("get secret %s: %w", secretName, err))
 		}
 
-		var nodeKey p2p.NodeKey
-		if err := cmtjson.Unmarshal(secret.Data[nodeKeyFile], &nodeKey); err != nil {
+		var nodeKey NodeKey
+		if err := json.Unmarshal(secret.Data[nodeKeyFile], &nodeKey); err != nil {
 			return nil, kube.UnrecoverableError(err)
 		}
 		svcName := p2pServiceName(crd, i)

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/cometbft/cometbft/p2p"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -79,7 +78,7 @@ func TestPeerCollector_Collect(t *testing.T) {
 		require.Equal(t, wantKeys, objKeys)
 
 		got := peers[client.ObjectKey{Name: "dydx-0", Namespace: namespace}]
-		require.Equal(t, p2p.ID("1e23ce0b20ae2377925537cc71d1529d723bb892"), got.NodeID)
+		require.Equal(t, "1e23ce0b20ae2377925537cc71d1529d723bb892", got.NodeID)
 		require.Equal(t, "dydx-p2p-0.strangelove.svc.cluster.local:26656", got.PrivateAddress)
 		require.Equal(t, "1e23ce0b20ae2377925537cc71d1529d723bb892@dydx-p2p-0.strangelove.svc.cluster.local:26656", got.PrivatePeer())
 		require.Empty(t, got.ExternalAddress)
@@ -130,7 +129,7 @@ func TestPeerCollector_Collect(t *testing.T) {
 		require.Len(t, peers, 3)
 
 		got := peers[client.ObjectKey{Name: "dydx-0", Namespace: namespace}]
-		require.Equal(t, p2p.ID("1e23ce0b20ae2377925537cc71d1529d723bb892"), got.NodeID)
+		require.Equal(t, "1e23ce0b20ae2377925537cc71d1529d723bb892", got.NodeID)
 		require.Empty(t, got.ExternalAddress)
 		require.Equal(t, "1e23ce0b20ae2377925537cc71d1529d723bb892@0.0.0.0:26656", got.ExternalPeer())
 
