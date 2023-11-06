@@ -1,3 +1,6 @@
+# See rocksdb/README.md for instructions to update rocksdb version
+FROM ghcr.io/strangelove-ventures/rocksdb:v7.10.2 AS rocksdb
+
 FROM golang:1.20-alpine AS builder
 
 RUN apk add --update --no-cache\
@@ -20,13 +23,8 @@ RUN apk add --update --no-cache\
     lz4-static\
     zstd-static
 
-# Install RocksDB
-WORKDIR /
-RUN git clone -b v7.10.2 --single-branch https://github.com/facebook/rocksdb.git
-
-WORKDIR /rocksdb
-
-RUN make -j$(nproc) static_lib
+# Install RocksDB headers and static library
+COPY --from=rocksdb /rocksdb /rocksdb
 
 WORKDIR /workspace
 # Copy the Go Modules manifests

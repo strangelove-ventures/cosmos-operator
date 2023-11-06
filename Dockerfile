@@ -1,3 +1,6 @@
+# See rocksdb/README.md for instructions to update rocksdb version
+FROM ghcr.io/strangelove-ventures/rocksdb:v7.10.2 AS rocksdb
+
 FROM --platform=$BUILDPLATFORM golang:1.20-alpine AS builder
 
 RUN apk add --update --no-cache\
@@ -24,12 +27,6 @@ RUN if [ "${TARGETARCH}" = "arm64" ] && [ "${BUILDARCH}" != "arm64" ]; then \
         wget -c https://musl.cc/x86_64-linux-musl-cross.tgz -O - | tar -xzvv --strip-components 1 -C /usr; \
     fi
 
-# Install RocksDB
-WORKDIR /
-RUN git clone -b v7.10.2 --single-branch https://github.com/facebook/rocksdb.git
-
-WORKDIR /rocksdb
-
 RUN set -eux;\
     if [ "${TARGETARCH}" = "arm64" ] && [ "${BUILDARCH}" != "arm64" ]; then \
         echo aarch64 > /etc/apk/arch;\
@@ -44,12 +41,8 @@ RUN set -eux;\
     zstd-static\
     --allow-untrusted
 
-RUN if [ "${TARGETARCH}" = "arm64" ] && [ "${BUILDARCH}" != "arm64" ]; then \
-        export CC=aarch64-linux-musl-gcc CXX=aarch64-linux-musl-g++;\
-    elif [ "${TARGETARCH}" = "amd64" ] && [ "${BUILDARCH}" != "amd64" ]; then \
-        export CC=x86_64-linux-musl-gcc CXX=x86_64-linux-musl-g++; \
-    fi; \
-    PORTABLE=1 make -j$(nproc) static_lib
+# Install RocksDB headers and static library
+COPY --from=rocksdb /rocksdb /rocksdb
 
 WORKDIR /workspace
 # Copy the Go Modules manifests
