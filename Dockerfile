@@ -5,20 +5,15 @@ RUN apk add --update --no-cache\
     libc-dev\
     git\
     make\
-    bash \
-    g++ \
-    linux-headers \
+    bash\
+    g++\
+    linux-headers\
     perl\
     snappy-dev\
-    snappy-static\
     zlib-dev\
-    zlib-static\
     bzip2-dev\
-    bzip2-static\
     lz4-dev\
-    lz4-static\
-    zstd-dev\
-    zstd-static
+    zstd-dev
 
 ARG TARGETARCH
 ARG BUILDARCH
@@ -34,6 +29,20 @@ WORKDIR /
 RUN git clone -b v7.10.2 --single-branch https://github.com/facebook/rocksdb.git
 
 WORKDIR /rocksdb
+
+RUN set -eux;\
+    if [ "${TARGETARCH}" = "arm64" ] && [ "${BUILDARCH}" != "arm64" ]; then \
+        echo aarch64 > /etc/apk/arch;\
+    elif [ "${TARGETARCH}" = "amd64" ] && [ "${BUILDARCH}" != "amd64" ]; then \
+        echo x86_64 > /etc/apk/arch;\
+    fi;\
+    apk add --update --no-cache\
+    snappy-static\
+    zlib-static\
+    bzip2-static\
+    lz4-static\
+    zstd-static\
+    --allow-untrusted
 
 RUN if [ "${TARGETARCH}" = "arm64" ] && [ "${BUILDARCH}" != "arm64" ]; then \
         export CC=aarch64-linux-musl-gcc CXX=aarch64-linux-musl-g++;\
@@ -65,8 +74,12 @@ RUN set -eux;\
     elif [ "${TARGETARCH}" = "amd64" ] && [ "${BUILDARCH}" != "amd64" ]; then\
         export CC=x86_64-linux-musl-gcc CXX=x86_64-linux-musl-g++;\
     fi;\
-    export GOOS=linux GOARCH=$TARGETARCH CGO_ENABLED=1 LDFLAGS='-linkmode external -extldflags "-static"';\
-    export LD_LIBRARY_PATH=/rocksdb CGO_CFLAGS="-I/rocksdb/include" CGO_LDFLAGS="-L/rocksdb -lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy -llz4 -lzstd";\
+    export  GOOS=linux \
+            GOARCH=$TARGETARCH \
+            CGO_ENABLED=1 \
+            LDFLAGS='-linkmode external -extldflags "-static"' \
+            CGO_CFLAGS="-I/rocksdb/include" \
+            CGO_LDFLAGS="-L/rocksdb -L/usr/lib -L/lib -lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy -llz4 -lzstd";\
     go build -tags 'rocksdb pebbledb' -ldflags "-X github.com/strangelove-ventures/cosmos-operator/internal/version.version=$VERSION $LDFLAGS" -a -o manager .
 
 # Build final image from scratch

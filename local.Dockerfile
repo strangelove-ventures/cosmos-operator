@@ -1,6 +1,32 @@
 FROM golang:1.20-alpine AS builder
 
-RUN apk add --update --no-cache gcc libc-dev
+RUN apk add --update --no-cache\
+    gcc\
+    libc-dev\
+    git\
+    make\
+    bash\
+    g++\
+    linux-headers\
+    perl\
+    snappy-dev\
+    zlib-dev\
+    bzip2-dev\
+    lz4-dev\
+    zstd-dev\
+    snappy-static\
+    zlib-static\
+    bzip2-static\
+    lz4-static\
+    zstd-static
+
+# Install RocksDB
+WORKDIR /
+RUN git clone -b v7.10.2 --single-branch https://github.com/facebook/rocksdb.git
+
+WORKDIR /rocksdb
+
+RUN make -j$(nproc) static_lib
 
 WORKDIR /workspace
 # Copy the Go Modules manifests
@@ -19,8 +45,11 @@ COPY internal/ internal/
 
 ARG VERSION
 
-RUN export CGO_ENABLED=1 LDFLAGS='-linkmode external -extldflags "-static"'; \
-    go build -ldflags "-X github.com/strangelove-ventures/cosmos-operator/internal/version.version=$VERSION $LDFLAGS" -a -o manager .
+RUN export  CGO_ENABLED=1 \
+            LDFLAGS='-linkmode external -extldflags "-static"' \
+            CGO_CFLAGS="-I/rocksdb/include" \
+            CGO_LDFLAGS="-L/rocksdb -L/usr/lib -L/lib -lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy -llz4 -lzstd";\
+    go build -tags 'rocksdb pebbledb' -ldflags "-X github.com/strangelove-ventures/cosmos-operator/internal/version.version=$VERSION $LDFLAGS" -a -o manager .
 
 # Build final image from scratch
 FROM scratch
