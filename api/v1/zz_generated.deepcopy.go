@@ -744,6 +744,11 @@ func (in *ServiceSpec) DeepCopyInto(out *ServiceSpec) {
 		**out = **in
 	}
 	in.P2PTemplate.DeepCopyInto(&out.P2PTemplate)
+	if in.P2PExternalIP != nil {
+		in, out := &in.P2PExternalIP, &out.P2PExternalIP
+		*out = new(string)
+		**out = **in
+	}
 	in.RPCTemplate.DeepCopyInto(&out.RPCTemplate)
 }
 

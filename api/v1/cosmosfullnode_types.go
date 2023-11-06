@@ -711,9 +711,10 @@ type ServiceSpec struct {
 
 	// Overrides for all P2P services that need external addresses.
 	// +optional
-	P2PTemplate ServiceOverridesSpec `json:"p2pTemplate"` // Developing
+	P2PTemplate ServiceOverridesSpec `json:"p2pTemplate"`
 
-	P2PExternalIP string `json:"P2PExternalsIP"`
+	// Developing
+	P2PExternalIP *string `json:"P2PExternalIP"`
 
 	// Overrides for the single RPC service.
 	// +optional
