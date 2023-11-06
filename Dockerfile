@@ -1,6 +1,24 @@
 FROM --platform=$BUILDPLATFORM golang:1.20-alpine AS builder
 
-RUN apk add --update --no-cache gcc libc-dev
+RUN apk add --update --no-cache\
+    gcc\
+    libc-dev\
+    git\
+    make\
+    bash \
+    g++ \
+    linux-headers \
+    perl\
+    snappy-dev\
+    snappy-static\
+    zlib-dev\
+    zlib-static\
+    bzip2-dev\
+    bzip2-static\
+    lz4-dev\
+    lz4-static\
+    zstd-dev\
+    zstd-static
 
 ARG TARGETARCH
 ARG BUILDARCH
@@ -13,21 +31,16 @@ RUN if [ "${TARGETARCH}" = "arm64" ] && [ "${BUILDARCH}" != "arm64" ]; then \
 
 # Install RocksDB
 WORKDIR /
-RUN echo "@testing http://nl.alpinelinux.org/alpine/edge/testing" >>/etc/apk/repositories
-
-RUN apk add --update --no-cache git make cmake g++ linux-headers build-base bash perl mercurial g++ autoconf \
-   zlib zlib-dev bzip2 bzip2-dev snappy snappy-dev lz4 lz4-dev zstd@testing zstd-dev@testing libtbb-dev@testing libtbb@testing
 RUN git clone -b v7.10.2 --single-branch https://github.com/facebook/rocksdb.git
 
 WORKDIR /rocksdb
+
 RUN if [ "${TARGETARCH}" = "arm64" ] && [ "${BUILDARCH}" != "arm64" ]; then \
         export CC=aarch64-linux-musl-gcc CXX=aarch64-linux-musl-g++;\
     elif [ "${TARGETARCH}" = "amd64" ] && [ "${BUILDARCH}" != "amd64" ]; then \
         export CC=x86_64-linux-musl-gcc CXX=x86_64-linux-musl-g++; \
     fi; \
     make -j$(nproc) static_lib
-
-RUN apk add --update --no-cache snappy-static zlib-static bzip2-static lz4-static zstd-static
 
 WORKDIR /workspace
 # Copy the Go Modules manifests
@@ -54,7 +67,7 @@ RUN set -eux;\
     fi;\
     export GOOS=linux GOARCH=$TARGETARCH CGO_ENABLED=1 LDFLAGS='-linkmode external -extldflags "-static"';\
     export LD_LIBRARY_PATH=/rocksdb CGO_CFLAGS="-I/rocksdb/include" CGO_LDFLAGS="-L/rocksdb -lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy -llz4 -lzstd";\
-    CGO_CFLAGS="-I/rocksdb/include" CGO_LDFLAGS="-L/rocksdb -lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy -llz4 -lzstd" go build -tags 'rocksdb pebbledb' -ldflags "-X github.com/strangelove-ventures/cosmos-operator/internal/version.version=$VERSION $LDFLAGS" -a -o manager .
+    go build -tags 'rocksdb pebbledb' -ldflags "-X github.com/strangelove-ventures/cosmos-operator/internal/version.version=$VERSION $LDFLAGS" -a -o manager .
 
 # Build final image from scratch
 FROM scratch
