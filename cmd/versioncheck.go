@@ -162,14 +162,15 @@ func checkVersion(
 		}
 	}
 
-	if crd.Status.Height == nil {
-		crd.Status.Height = make(map[string]uint64)
+	patch := crd.DeepCopy()
+	if patch.Status.Height == nil {
+		patch.Status.Height = make(map[string]uint64)
 	}
 
-	crd.Status.Height[thisPod.Name] = uint64(height)
+	patch.Status.Height[thisPod.Name] = uint64(height)
 
-	if err := kClient.Status().Update(
-		ctx, crd,
+	if err := kClient.Status().Patch(
+		ctx, patch, client.StrategicMergeFrom(crd.DeepCopy()),
 	); err != nil {
 		return fmt.Errorf("failed to patch status: %w", err)
 	}
