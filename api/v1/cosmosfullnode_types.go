@@ -714,6 +714,7 @@ type ServiceSpec struct {
 	P2PTemplate ServiceOverridesSpec `json:"p2pTemplate"`
 
 	// Developing
+	// +optional
 	P2PExternalIP *string `json:"P2PExternalIP"`
 
 	// Overrides for the single RPC service.

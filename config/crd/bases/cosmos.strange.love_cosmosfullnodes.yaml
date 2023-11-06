@@ -5690,7 +5690,6 @@ spec:
                   exchange.
                 properties:
                   P2PExternalIP:
-                    description: Developing
                     type: string
                   maxP2PExternalAddresses:
                     description: Max number of external p2p services to create for
@@ -5780,6 +5779,8 @@ spec:
                         - ExternalName
                         type: string
                     type: object
+                required:
+                - P2PExternalIP
                 type: object
               strategy:
                 description: How to scale pods when performing an update.
