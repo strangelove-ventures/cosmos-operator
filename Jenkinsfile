@@ -1,21 +1,14 @@
 pipeline {
     agent any
     stages {
-        stage('build') {
-            steps {
-                make manifests
-                make generate
-            }
-        }
         stage('test') {
-            steps {
-                make test
-            }
+            make test
+        }
+        stage('build') {
+            make docker-build
         }
         stage('deploy') {
-            steps {
-                make deploy
-            }
+            make deploy
         }
     }
 }
