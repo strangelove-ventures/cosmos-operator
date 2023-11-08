@@ -714,8 +714,9 @@ type ServiceSpec struct {
 	P2PTemplate ServiceOverridesSpec `json:"p2pTemplate"`
 
 	// Developing
+	// P2PNodePortExternalIP sets addresses for pod's own externalAddress combined with node port number.
 	// +optional
-	P2PExternalIP *string `json:"P2PExternalIP"`
+	P2PNodePortExternalIP *string `json:"P2PNodePortExternalIP"`
 
 	// Overrides for the single RPC service.
 	// +optional

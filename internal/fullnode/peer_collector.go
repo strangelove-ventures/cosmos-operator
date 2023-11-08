@@ -108,7 +108,7 @@ func NewPeerCollector(client Getter) *PeerCollector {
 // Collect peer information given the crd.
 func (c PeerCollector) Collect(ctx context.Context, crd *cosmosv1.CosmosFullNode) (Peers, kube.ReconcileError) {
 	peers := make(Peers)
-	crd.Spec.Service.P2PExternalIP = valOrDefault(crd.Spec.Service.P2PExternalIP, ptr(DEFAULT_P2P_EXTERNAL_IP))
+	crd.Spec.Service.P2PNodePortExternalIP = valOrDefault(crd.Spec.Service.P2PNodePortExternalIP, ptr(DEFAULT_P2P_EXTERNAL_IP))
 
 	for i := int32(0); i < crd.Spec.Replicas; i++ {
 		secretName := nodeKeySecretName(crd, i)
@@ -150,7 +150,7 @@ func (c PeerCollector) addExternalAddress(ctx context.Context, peers Peers, crd 
 	}
 
 	if svc.Spec.Type != corev1.ServiceTypeLoadBalancer &&
-		(svc.Spec.Type != corev1.ServiceTypeNodePort || crd.Spec.Service.P2PExternalIP == nil || *crd.Spec.Service.P2PExternalIP == DEFAULT_P2P_EXTERNAL_IP) {
+		(svc.Spec.Type != corev1.ServiceTypeNodePort || crd.Spec.Service.P2PNodePortExternalIP == nil || *crd.Spec.Service.P2PNodePortExternalIP == DEFAULT_P2P_EXTERNAL_IP) {
 		return nil
 	}
 
@@ -177,7 +177,7 @@ func (c PeerCollector) addExternalAddress(ctx context.Context, peers Peers, crd 
 				nodePort = i.NodePort
 			}
 		}
-		externalIP := *crd.Spec.Service.P2PExternalIP
+		externalIP := *crd.Spec.Service.P2PNodePortExternalIP
 		info.ExternalAddress = net.JoinHostPort(externalIP, strconv.Itoa(int(nodePort)))
 
 	}

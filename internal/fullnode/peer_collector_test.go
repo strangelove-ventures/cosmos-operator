@@ -121,11 +121,11 @@ func TestPeerCollector_Collect(t *testing.T) {
 				case "dydx-p2p-3":
 					svc.Spec.Type = corev1.ServiceTypeNodePort
 					svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{Port: 26656, Name: "p2p", NodePort: 30000})
-					crd.Spec.Service.P2PExternalIP = ptr("1.1.1.1")
+					crd.Spec.Service.P2PNodePortExternalIP = ptr("1.1.1.1")
 				case "dydx-p2p-4":
 					svc.Spec.Type = corev1.ServiceTypeNodePort
 					svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{Port: 26656, Name: "p2p", NodePort: 30000})
-					crd.Spec.Service.P2PExternalIP = nil
+					crd.Spec.Service.P2PNodePortExternalIP = nil
 				}
 				*ref = svc
 			}
