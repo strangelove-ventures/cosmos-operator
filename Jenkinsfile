@@ -1,21 +1,25 @@
 pipeline {
-    agent any
-    stages {
-        stage('build') {
-            steps {
-                echo 'building the application...'
-            }
-        }
-        stage('test') {
-            steps {
-                echo 'testing the application...'
-            }
-        }
-        stage('deploy') {
-            steps {
-                echo 'deploying the application...'
-            }
-        }
+  agent any
+  stages {
+    stage('verify make is installed') {
+      steps {
+        sh 'make --version'
+      }
     }
+    stage('make test') {
+      steps {
+        sh 'make test'
+      }
+    }
+    stage('make build') {
+      steps {
+        sh 'make docker-build'
+      }
+    }
+    stage('make deploy') {
+      steps {
+        sh 'make deploy'
+      }
+    }
+  }
 }
-
