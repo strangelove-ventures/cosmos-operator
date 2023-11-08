@@ -1,6 +1,10 @@
 pipeline {
   agent any
   stages {
+    environment {
+      GOROOT="/usr/local/go"
+      GOPATH="/usr/local/go/bin"
+    }
     stage('verify make is installed') {
       steps {
         sh 'make --version'
