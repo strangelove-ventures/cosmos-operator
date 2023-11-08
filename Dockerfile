@@ -73,7 +73,7 @@ RUN set -eux;\
             LDFLAGS='-linkmode external -extldflags "-static"' \
             CGO_CFLAGS="-I/rocksdb/include" \
             CGO_LDFLAGS="-L/rocksdb -L/usr/lib -L/lib -lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy -llz4 -lzstd";\
-    go build -tags 'rocksdb pebbledb' -ldflags "-X github.com/strangelove-ventures/cosmos-operator/internal/version.version=$VERSION $LDFLAGS" -a -o manager .
+    go build -tags 'rocksdb pebbledb' -ldflags "-X github.com/bharvest-devops/cosmos-operator/internal/version.version=$VERSION $LDFLAGS" -a -o manager .
 
 # Build final image from scratch
 FROM scratch
