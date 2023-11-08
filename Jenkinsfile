@@ -8,6 +8,7 @@ pipeline {
     }
     stage('make tools') {
       environment {
+        PATH="$PATH:/usr/local/go/bin"
         GOROOT="/usr/local/go"
         GOPATH="/usr/local/go/bin"
       }
@@ -17,6 +18,7 @@ pipeline {
     }
     stage('make test') {
       environment {
+        PATH="$PATH:/usr/local/go/bin"
         GOROOT="/usr/local/go"
         GOPATH="/usr/local/go/bin"
       }
@@ -26,6 +28,7 @@ pipeline {
     }
     stage('make build') {
       environment {
+        PATH="$PATH:/usr/local/go/bin"
         GOROOT="/usr/local/go"
         GOPATH="/usr/local/go/bin"
       }
@@ -35,8 +38,10 @@ pipeline {
     }
     stage('make deploy') {
       environment {
+        PATH="$PATH:/usr/local/go/bin"
         GOROOT="/usr/local/go"
         GOPATH="/usr/local/go/bin"
+        KUBECONFIG="/.kube/config"
       }
       steps {
         sh 'make deploy'
