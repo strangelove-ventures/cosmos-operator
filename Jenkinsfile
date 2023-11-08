@@ -6,6 +6,11 @@ pipeline {
         sh 'make --version'
       }
     }
+    stage('make tool') {
+      steps {
+        sh 'make tool'
+      }
+    }
     stage('make test') {
       steps {
         sh 'make test'
