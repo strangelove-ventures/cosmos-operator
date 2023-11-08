@@ -240,7 +240,7 @@ func (r *CosmosFullNodeReconciler) updateStatus(
 				if status.Height == nil {
 					status.Height = make(map[string]uint64)
 				}
-				status.Height[k] = *v.Height
+				status.Height[k] = *v.Height + 1 // we want the block that is going through consensus, not the committed one.
 			}
 		}
 		if status.SelfHealing.PVCAutoScale != nil {
