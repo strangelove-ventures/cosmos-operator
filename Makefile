@@ -123,6 +123,7 @@ deploy-prerelease: install docker-prerelease ## Install CRDs, build docker image
 	cd config/manager && $(KUSTOMIZE) edit set image controller=$(PRE_IMG)
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
 	@#Hack to reset tag to avoid git thrashing.
+	@cd config/manager && $(KUSTOMIZE) edit set image controller=ghcr.io/bharvest-devops/cosmos-operator:latest
 
 #	@cd config/manager && $(KUSTOMIZE) edit set image controller=ghcr.io/strangelove-ventures/cosmos-operator:latest
 	@cd config/manager && $(KUSTOMIZE) edit set image controller=ghcr.io/bharvest-devops/cosmos-operator:latest
