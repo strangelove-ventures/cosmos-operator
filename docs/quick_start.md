@@ -13,10 +13,10 @@ View [docker images here](https://github.com/strangelove-ventures/cosmos-operato
 
 ```sh
 # Deploy the latest release. Warning: May be a release candidate.
-make deploy IMG="ghcr.io/strangelove-ventures/cosmos-operator:$(git describe --tags --abbrev=0)"
+make deploy IMG="ghcr.io/bharvest-devops/cosmos-operator:$(git describe --tags --abbrev=0)"
 
 # Deploy a specific version
-make deploy IMG="ghcr.io/strangelove-ventures/cosmos-operator:<version you choose>"
+make deploy IMG="ghcr.io/bharvest-devops/cosmos-operator:<version you choose>"
 ```
 
 #### TODO
