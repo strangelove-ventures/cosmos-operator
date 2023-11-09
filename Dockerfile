@@ -1,7 +1,8 @@
 # See rocksdb/README.md for instructions to update rocksdb version
 FROM ghcr.io/strangelove-ventures/rocksdb:v7.10.2 AS rocksdb
 
-FROM --platform=$BUILDPLATFORM golang:1.20-alpine AS builder
+# FROM --platform=$BUILDPLATFORM golang:1.20-alpine AS builder
+FROM --platform=linux/amd64 golang:1.20-alpine AS builder
 
 RUN apk add --update --no-cache\
     gcc\
@@ -78,7 +79,7 @@ RUN set -eux;\
 # Build final image from scratch
 FROM scratch
 
-LABEL org.opencontainers.image.source=https://github.com/strangelove-ventures/cosmos-operator
+LABEL org.opencontainers.image.source=https://github.com/bharvest-devops/cosmos-operator
 
 WORKDIR /
 COPY --from=builder /workspace/manager .
