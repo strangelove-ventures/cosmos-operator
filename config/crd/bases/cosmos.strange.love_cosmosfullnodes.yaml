@@ -5689,6 +5689,10 @@ spec:
                   Additionally, multiple p2p services are created for CometBFT peer
                   exchange.
                 properties:
+                  P2PNodePortExternalIP:
+                    description: Developing P2PNodePortExternalIP sets addresses for
+                      pod's own externalAddress combined with node port number.
+                    type: string
                   maxP2PExternalAddresses:
                     description: Max number of external p2p services to create for
                       CometBFT peer exchange. The public endpoint is set as the "p2p.external_address"

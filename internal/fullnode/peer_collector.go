@@ -15,6 +15,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const DEFAULT_P2P_EXTERNAL_IP = "0.0.0.0"
+
 // Peer contains information about a peer.
 type Peer struct {
 	NodeID          string
@@ -105,6 +107,8 @@ func NewPeerCollector(client Getter) *PeerCollector {
 // Collect peer information given the crd.
 func (c PeerCollector) Collect(ctx context.Context, crd *cosmosv1.CosmosFullNode) (Peers, kube.ReconcileError) {
 	peers := make(Peers)
+	crd.Spec.Service.P2PNodePortExternalIP = valOrDefault(crd.Spec.Service.P2PNodePortExternalIP, ptr(DEFAULT_P2P_EXTERNAL_IP))
+
 	for i := int32(0); i < crd.Spec.Replicas; i++ {
 		secretName := nodeKeySecretName(crd, i)
 		var secret corev1.Secret
@@ -143,23 +147,39 @@ func (c PeerCollector) addExternalAddress(ctx context.Context, peers Peers, crd 
 	if err := c.client.Get(ctx, client.ObjectKey{Name: svcName, Namespace: crd.Namespace}, &svc); err != nil {
 		return kube.TransientError(fmt.Errorf("get server %s: %w", svcName, err))
 	}
-	if svc.Spec.Type != corev1.ServiceTypeLoadBalancer {
+
+	if svc.Spec.Type != corev1.ServiceTypeLoadBalancer &&
+		(svc.Spec.Type != corev1.ServiceTypeNodePort || crd.Spec.Service.P2PNodePortExternalIP == nil || *crd.Spec.Service.P2PNodePortExternalIP == DEFAULT_P2P_EXTERNAL_IP) {
 		return nil
 	}
+
 	objKey := c.objectKey(crd, ordinal)
 	info := peers[objKey]
 	info.hasExternalAddress = true
 	defer func() { peers[objKey] = info }()
 
-	ingress := svc.Status.LoadBalancer.Ingress
-	if len(ingress) == 0 {
-		return nil
+	if svc.Spec.Type == corev1.ServiceTypeLoadBalancer {
+		ingress := svc.Status.LoadBalancer.Ingress
+		if len(ingress) == 0 {
+			return nil
+		}
+
+		lb := ingress[0]
+		host := lo.Ternary(lb.IP != "", lb.IP, lb.Hostname)
+		if host != "" {
+			info.ExternalAddress = net.JoinHostPort(host, strconv.Itoa(p2pPort))
+		}
+	} else {
+		var nodePort int32
+		for _, i := range svc.Spec.Ports {
+			if i.Name == "p2p" {
+				nodePort = i.NodePort
+			}
+		}
+		externalIP := *crd.Spec.Service.P2PNodePortExternalIP
+		info.ExternalAddress = net.JoinHostPort(externalIP, strconv.Itoa(int(nodePort)))
+
 	}
 
-	lb := ingress[0]
-	host := lo.Ternary(lb.IP != "", lb.IP, lb.Hostname)
-	if host != "" {
-		info.ExternalAddress = net.JoinHostPort(host, strconv.Itoa(p2pPort))
-	}
 	return nil
 }

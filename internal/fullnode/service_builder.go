@@ -68,6 +68,18 @@ func BuildServices(crd *cosmosv1.CosmosFullNode) []diff.Resource[*corev1.Service
 		p2ps[i] = diff.Adapt(&svc, i)
 	}
 
+	nodePortExternalIP := DEFAULT_P2P_EXTERNAL_IP
+	if v := crd.Spec.Service.P2PNodePortExternalIP; v != nil {
+		nodePortExternalIP = *v
+	}
+
+	crd.Spec.Service = cosmosv1.ServiceSpec{
+		P2PNodePortExternalIP:   &nodePortExternalIP,
+		P2PTemplate:             crd.Spec.Service.P2PTemplate,
+		RPCTemplate:             crd.Spec.Service.RPCTemplate,
+		MaxP2PExternalAddresses: crd.Spec.Service.MaxP2PExternalAddresses,
+	}
+
 	rpc := rpcService(crd)
 
 	return append(p2ps, diff.Adapt(rpc, len(p2ps)))

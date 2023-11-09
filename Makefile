@@ -90,16 +90,19 @@ run: manifests generate ## Run a controller from your host.
 PRE_IMG ?= ghcr.io/bharvest-devops/cosmos-operator:dev$(shell git describe --always --dirty)
 .PHONY: docker-prerelease
 docker-prerelease: ## Build and push a prerelease docker image.
-	IMG=$(PRE_IMG) $(MAKE) docker-build docker-push
+	#IMG=$(PRE_IMG) $(MAKE) docker-build docker-push
+	IMG=$(PRE_IMG) $(MAKE) docker-build
 	@echo "Pushed $(PRE_IMG)"
 
 .PHONY: docker-build
 docker-build: test ## Build docker image with the manager.
+## If you run on MacOS, uncomment this under line
+## docker buildx build -t ${IMG} --build-arg VERSION=$(shell echo ${IMG} | awk -F: '{print $$2}') --build-arg TARGETARCH="amd64" --build-arg BUILDARCH="arm64"  --platform=linux/amd64,linux/arm64 --push .
 	docker build -t ${IMG} --build-arg VERSION=$(shell echo ${IMG} | awk -F: '{print $$2}') --build-arg TARGETARCH=amd64 --build-arg BUILDARCH=amd64 .
 
-.PHONY: docker-push
-docker-push: ## Push docker image with the manager.
-	docker push ${IMG}
+#.PHONY: docker-push
+#docker-push: ## Push docker image with the manager.
+#	docker push ${IMG}
 
 ##@ Deployment
 
@@ -120,6 +123,9 @@ deploy-prerelease: install docker-prerelease ## Install CRDs, build docker image
 	cd config/manager && $(KUSTOMIZE) edit set image controller=$(PRE_IMG)
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
 	@#Hack to reset tag to avoid git thrashing.
+	@cd config/manager && $(KUSTOMIZE) edit set image controller=ghcr.io/bharvest-devops/cosmos-operator:latest
+
+#	@cd config/manager && $(KUSTOMIZE) edit set image controller=ghcr.io/strangelove-ventures/cosmos-operator:latest
 	@cd config/manager && $(KUSTOMIZE) edit set image controller=ghcr.io/bharvest-devops/cosmos-operator:latest
 
 .PHONY: deploy

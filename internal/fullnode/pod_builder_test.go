@@ -251,7 +251,8 @@ func TestPodBuilder(t *testing.T) {
 
 		healthContainer := pod.Spec.Containers[1]
 		require.Equal(t, "healthcheck", healthContainer.Name)
-		require.Equal(t, "ghcr.io/strangelove-ventures/cosmos-operator:latest", healthContainer.Image)
+		//require.Equal(t, "ghcr.io/strangelove-ventures/cosmos-operator:latest", healthContainer.Image)
+		require.Equal(t, "ghcr.io/bharvest-devops/cosmos-operator:latest", healthContainer.Image)
 		require.Equal(t, []string{"/manager", "healthcheck"}, healthContainer.Command)
 		require.Empty(t, healthContainer.Args)
 		require.Empty(t, healthContainer.ImagePullPolicy)
@@ -272,7 +273,8 @@ func TestPodBuilder(t *testing.T) {
 			"ghcr.io/strangelove-ventures/infra-toolkit:v0.0.1",
 			"ghcr.io/strangelove-ventures/infra-toolkit:v0.0.1",
 			"ghcr.io/strangelove-ventures/infra-toolkit:v0.0.1",
-			"ghcr.io/strangelove-ventures/cosmos-operator:latest",
+			//"ghcr.io/strangelove-ventures/cosmos-operator:latest",
+			"ghcr.io/bharvest-devops/cosmos-operator:latest",
 		}
 		require.Equal(t, wantInitImages, lo.Map(pod.Spec.InitContainers, func(c corev1.Container, _ int) string {
 			return c.Image
