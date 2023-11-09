@@ -13,4 +13,4 @@ kind: Kustomization
 images:
 - name: controller
   newName: ghcr.io/bharvest-devops/cosmos-operator
-  newTag: latest
+  newTag: v0.21.0
