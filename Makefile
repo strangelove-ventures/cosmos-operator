@@ -1,6 +1,10 @@
 
 # Image URL to use all building/pushing image targets
+<<<<<<< HEAD
 IMG ?= bharvest-devops/cosmos-operator:latest
+=======
+IMG ?= https://ghcr.io/bharvest-devops/cosmos-operator:latest
+>>>>>>> deploy
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.24.1
 
