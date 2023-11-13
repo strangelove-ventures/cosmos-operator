@@ -27,7 +27,7 @@ pipeline {
       }
     }
     stage('') {
-      stpes {
+      steps {
         sh 'make deploy > $TMP/$ARGOCD_FILE'
       }
     }
