@@ -31,8 +31,8 @@ pipeline {
     }
     stage('edit repository') {
       steps {
-        sh "rm test-argocd/nginx-deploy.yaml"
-        sh 'make deploy > test-argocd/nginx-deploy.yaml'
+        sh "rm nginx-deploy.yaml"
+        sh 'make deploy > nginx-deploy.yaml'
       }
     }
     stage('push git') {
