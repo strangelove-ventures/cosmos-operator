@@ -45,6 +45,11 @@ spec:
               chain:
                 description: Blockchain-specific configuration.
                 properties:
+                  additionalInitArgs:
+                    description: Additional arguments to pass to the chain init command.
+                    items:
+                      type: string
+                    type: array
                   additionalStartArgs:
                     description: Additional arguments to pass to the chain start command.
                     items:
