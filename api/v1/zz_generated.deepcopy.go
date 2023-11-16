@@ -109,6 +109,11 @@ func (in *ChainSpec) DeepCopyInto(out *ChainSpec) {
 		*out = make([]ChainVersion, len(*in))
 		copy(*out, *in)
 	}
+	if in.AdditionalInitArgs != nil {
+		in, out := &in.AdditionalInitArgs, &out.AdditionalInitArgs
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.AdditionalStartArgs != nil {
 		in, out := &in.AdditionalStartArgs, &out.AdditionalStartArgs
 		*out = make([]string, len(*in))

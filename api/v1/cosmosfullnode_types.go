@@ -543,6 +543,10 @@ type ChainSpec struct {
 	// +optional
 	Versions []ChainVersion `json:"versions"`
 
+	// Additional arguments to pass to the chain init command.
+	// +optional
+	AdditionalInitArgs []string `json:"additionalInitArgs"`
+
 	// Additional arguments to pass to the chain start command.
 	// +optional
 	AdditionalStartArgs []string `json:"additionalStartArgs"`
