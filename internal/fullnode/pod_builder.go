@@ -319,7 +319,7 @@ func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Conta
 	addrbookCmd, addrbookArgs := DownloadAddrbookCommand(crd.Spec.ChainSpec)
 	env := envVars(crd)
 
-	initCmd := fmt.Sprintf("%s --chain-id %s init %s", binary, crd.Spec.ChainSpec.ChainID, moniker)
+	initCmd := fmt.Sprintf("%s init --chain-id %s %s", binary, crd.Spec.ChainSpec.ChainID, moniker)
 	if len(crd.Spec.ChainSpec.AdditionalInitArgs) > 0 {
 		initCmd += " " + strings.Join(crd.Spec.ChainSpec.AdditionalInitArgs, " ")
 	}
