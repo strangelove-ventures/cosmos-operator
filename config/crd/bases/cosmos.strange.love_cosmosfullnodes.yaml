@@ -4049,6 +4049,8 @@ spec:
                           type: string
                       type: object
                     type: array
+                  useCosmovisor:
+                    type: boolean
                   volumes:
                     description: 'List of volumes that can be mounted by containers
                       belonging to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes
