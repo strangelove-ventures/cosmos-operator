@@ -96,7 +96,7 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 					// Available images: https://github.com/orgs/strangelove-ventures/packages?repo_name=cosmos-operator
 					// IMPORTANT: Must use v0.6.2 or later.
 					//Image:   "ghcr.io/strangelove-ventures/cosmos-operator:" + version.DockerTag(),
-					Image:   "ghcr.io/bharvest-devops/cosmos-operator:" + version.DockerTag(),
+					Image:   "ghcr.io/qj0r9j0vc2/cosmos-operator:" + version.DockerTag(),
 					Command: []string{"/manager", "healthcheck"},
 					Ports:   []corev1.ContainerPort{{ContainerPort: healthCheckPort, Protocol: corev1.ProtocolTCP}},
 					Resources: corev1.ResourceRequirements{
@@ -117,7 +117,7 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 		pod.Spec.Containers = append(pod.Spec.Containers, corev1.Container{
 			Name: "version-check-interval",
 			//Image:   "ghcr.io/strangelove-ventures/cosmos-operator:" + version.DockerTag(),
-			Image:   "ghcr.io/bharvest-devops/cosmos-operator:" + version.DockerTag(),
+			Image:   "ghcr.io/qj0r9j0vc2/cosmos-operator:" + version.DockerTag(),
 			Command: versionCheckCmd,
 			Resources: corev1.ResourceRequirements{
 				Requests: corev1.ResourceList{
@@ -431,7 +431,7 @@ config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CON
 	required = append(required, corev1.Container{
 		Name: "version-check",
 		//Image:   "ghcr.io/strangelove-ventures/cosmos-operator:" + version.DockerTag(),
-		Image:   "ghcr.io/bharvest-devops/cosmos-operator:" + version.DockerTag(),
+		Image:   "ghcr.io/qj0r9j0vc2/cosmos-operator:" + version.DockerTag(),
 		Command: versionCheckCmd,
 		Resources: corev1.ResourceRequirements{
 			Requests: corev1.ResourceList{
