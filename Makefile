@@ -1,6 +1,6 @@
 
 # Image URL to use all building/pushing image targets
-IMG ?= ghcr.io/bharvest-devops/cosmos-operator:latest
+IMG ?= ghcr.io/qj0r9j0vc2/cosmos-operator:latest
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.24.1
 
@@ -98,8 +98,8 @@ docker-prerelease: ## Build and push a prerelease docker image.
 .PHONY: docker-build
 docker-build: test ## Build docker image with the manager.
 ## If you run on MacOS, uncomment this under line
-## docker buildx build -t ${IMG} --build-arg VERSION=$(shell echo ${IMG} | awk -F: '{print $$2}') --build-arg TARGETARCH="amd64" --build-arg BUILDARCH="arm64"  --platform=linux/amd64,linux/arm64 --push .
-	docker build -t ${IMG} --build-arg VERSION=$(shell echo ${IMG} | awk -F: '{print $$2}') --build-arg TARGETARCH=amd64 --build-arg BUILDARCH=amd64 .
+# docker buildx build -t ${IMG} --build-arg VERSION=$(shell echo ${IMG} | awk -F: '{print $$2}') --build-arg TARGETARCH="amd64" --build-arg BUILDARCH="arm64"  --platform=linux/amd64,linux/arm64 --push .
+	docker buildx build -t ${IMG} --build-arg VERSION=$(shell echo ${IMG} | awk -F: '{print $$2}') --build-arg TARGETARCH=amd64 --build-arg BUILDARCH=amd64 --platform=linux/amd64 --push .
 
 #.PHONY: docker-push
 #docker-push: ## Push docker image with the manager.

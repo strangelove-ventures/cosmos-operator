@@ -296,6 +296,9 @@ const (
 
 // ChainHomeDir is the abs filepath for the chain's home directory.
 func ChainHomeDir(crd *cosmosv1.CosmosFullNode) string {
+	if crd.Spec.PodTemplate.UseCosmovisor {
+		return workDir + "/cosmos"
+	}
 	if home := crd.Spec.ChainSpec.HomeDir; home != "" {
 		return path.Join(workDir, home)
 	}
@@ -451,6 +454,11 @@ func startCmdAndArgs(crd *cosmosv1.CosmosFullNode) (string, []string) {
 		args               = startCommandArgs(crd)
 		privvalSleep int32 = 10
 	)
+
+	if crd.Spec.PodTemplate.UseCosmovisor {
+		binary = "cosmovisor run"
+	}
+
 	if v := crd.Spec.ChainSpec.PrivvalSleepSeconds; v != nil {
 		privvalSleep = *v
 	}
