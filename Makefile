@@ -100,7 +100,7 @@ docker-build: test ## Build docker image with the manager.
 ## If you run on MacOS, uncomment this under line
 # docker buildx build -t ${IMG} --build-arg VERSION=$(shell echo ${IMG} | awk -F: '{print $$2}') --build-arg TARGETARCH="amd64" --build-arg BUILDARCH="arm64"  --platform=linux/amd64,linux/arm64 --push .
 	#docker buildx build --tag ${IMG} --build-arg VERSION=$(shell echo ${IMG} | awk -F: '{print $$2}') --build-arg TARGETARCH=amd64 --build-arg BUILDARCH=amd64 --platform=linux/amd64 --push .
-	docker build --tag ${IMG} --build-arg VERSION=$(shell echo ${IMG} | awk -F: '{print $$2}') --build-arg TARGETARCH=amd64 --build-arg BUILDARCH=amd64 --platform=linux/amd64 --push .
+	docker build --tag ${IMG} --build-arg VERSION=$(shell echo ${IMG} | awk -F: '{print $$2}') --build-arg TARGETARCH=amd64 --build-arg BUILDARCH=amd64 --platform=linux/amd64 .
 
 #.PHONY: docker-push
 #docker-push: ## Push docker image with the manager.
