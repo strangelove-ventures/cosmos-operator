@@ -1,0 +1,18 @@
+/Users/anjin-u/Documents/cosmos/cosmos-operator/bin/controller-gen rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+cd config/manager && /Users/anjin-u/Documents/cosmos/cosmos-operator/bin/kustomize edit set image controller=bharvest-devops/cosmos-operator:latest
+/Users/anjin-u/Documents/cosmos/cosmos-operator/bin/kustomize build config/default | kubectl apply -f -
+namespace/cosmos-operator-system configured
+customresourcedefinition.apiextensions.k8s.io/cosmosfullnodes.cosmos.strange.love configured
+customresourcedefinition.apiextensions.k8s.io/scheduledvolumesnapshots.cosmos.strange.love configured
+customresourcedefinition.apiextensions.k8s.io/statefuljobs.cosmos.strange.love configured
+serviceaccount/cosmos-operator-controller-manager configured
+role.rbac.authorization.k8s.io/cosmos-operator-leader-election-role configured
+clusterrole.rbac.authorization.k8s.io/cosmos-operator-manager-role configured
+clusterrole.rbac.authorization.k8s.io/cosmos-operator-metrics-reader configured
+clusterrole.rbac.authorization.k8s.io/cosmos-operator-proxy-role configured
+rolebinding.rbac.authorization.k8s.io/cosmos-operator-leader-election-rolebinding configured
+clusterrolebinding.rbac.authorization.k8s.io/cosmos-operator-manager-rolebinding configured
+clusterrolebinding.rbac.authorization.k8s.io/cosmos-operator-proxy-rolebinding configured
+configmap/cosmos-operator-manager-config configured
+service/cosmos-operator-controller-manager-metrics-service configured
+deployment.apps/cosmos-operator-controller-manager configured
