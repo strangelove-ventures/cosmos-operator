@@ -200,6 +200,9 @@ type PodSpec struct {
 	// +optional
 	Image string `json:"image"`
 
+	// +optional
+	UseCosmovisor bool `json:"useCosmovisor"`
+
 	// Image pull policy.
 	// One of Always, Never, IfNotPresent.
 	// Defaults to Always if :latest tag is specified, or IfNotPresent otherwise.

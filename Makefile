@@ -1,6 +1,6 @@
 
 # Image URL to use all building/pushing image targets
-IMG ?= bharvest-devops/cosmos-operator:latest
+IMG ?= ghcr.io/qj0r9j0vc2/cosmos-operator:latest
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.24.1
 
@@ -68,6 +68,7 @@ else
 	echo "Warning: SKIP_TEST=$(SKIP_TEST). Skipping all tests!"
 endif
 
+
 .PHONY: tools
 tools: ## Install dev tools.
 	@# The below is the preferred way to install kubebuilder per https://book.kubebuilder.io/quick-start.html#installation
@@ -97,8 +98,8 @@ docker-prerelease: ## Build and push a prerelease docker image.
 .PHONY: docker-build
 docker-build: test ## Build docker image with the manager.
 ## If you run on MacOS, uncomment this under line
-## docker buildx build -t ${IMG} --build-arg VERSION=$(shell echo ${IMG} | awk -F: '{print $$2}') --build-arg TARGETARCH="amd64" --build-arg BUILDARCH="arm64"  --platform=linux/amd64,linux/arm64 --push .
-	docker build -t ${IMG} --build-arg VERSION=$(shell echo ${IMG} | awk -F: '{print $$2}') --build-arg TARGETARCH=amd64 --build-arg BUILDARCH=amd64 .
+# docker buildx build -t ${IMG} --build-arg VERSION=$(shell echo ${IMG} | awk -F: '{print $$2}') --build-arg TARGETARCH="amd64" --build-arg BUILDARCH="arm64"  --platform=linux/amd64,linux/arm64 --push .
+	docker buildx build -t ${IMG} --build-arg VERSION=$(shell echo ${IMG} | awk -F: '{print $$2}') --build-arg TARGETARCH=amd64 --build-arg BUILDARCH=amd64 --platform=linux/amd64 --push .
 
 #.PHONY: docker-push
 #docker-push: ## Push docker image with the manager.
@@ -131,7 +132,9 @@ deploy-prerelease: install docker-prerelease ## Install CRDs, build docker image
 .PHONY: deploy
 deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
-	$(KUSTOMIZE) build config/default | kubectl apply -f -
+	#$(KUSTOMIZE) build config/default | kubectl apply -f -
+	$(KUSTOMIZE) build config/default
+
 
 .PHONY: undeploy
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
