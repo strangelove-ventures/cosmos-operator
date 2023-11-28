@@ -1,7 +1,9 @@
 package fullnode
 
 import (
+	"bytes"
 	_ "embed"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -219,11 +221,13 @@ func TestBuildConfigMaps(t *testing.T) {
 	
 	[p2p]
 	external_address = "override.example.com"
+	external-address = "override.example.com"
 	seeds = "override@seed"
 	new_field = "p2p"
 	
 	[rpc]
 	cors_allowed_origins = ["override"]
+	cors-allowed-origins = ["override"]
 	
 	[new_section]
 	test = "value"
@@ -249,6 +253,15 @@ func TestBuildConfigMaps(t *testing.T) {
 
 			_, err = toml.Decode(cm.Data["config-overlay.toml"], &got)
 			require.NoError(t, err)
+
+			var gotBuffer bytes.Buffer
+			var wantBuffer bytes.Buffer
+
+			require.NoError(t, toml.NewEncoder(&gotBuffer).Encode(got))
+			require.NoError(t, toml.NewEncoder(&wantBuffer).Encode(want))
+
+			fmt.Printf("got:\n%s\n", gotBuffer.String())
+			fmt.Printf("want:\n%s\n", wantBuffer.String())
 
 			require.Equal(t, want, got)
 		})
