@@ -405,6 +405,18 @@ config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CON
 		},
 	}
 
+	//if true {
+	//	required = append(required, corev1.Container{
+	//		Name:            "cosmovisor-init",
+	//		Image:           infraToolImage,
+	//		Command:         []string{"/bin/cosmovisor"},
+	//		Args:            []string{"init", "/bin/" + binary},
+	//		Env:             env,
+	//		ImagePullPolicy: tpl.ImagePullPolicy,
+	//		WorkingDir:      workDir,
+	//	})
+	//}
+
 	if willRestoreFromSnapshot(crd) {
 		cmd, args := DownloadSnapshotCommand(crd.Spec.ChainSpec)
 		required = append(required, corev1.Container{
@@ -456,7 +468,7 @@ func startCmdAndArgs(crd *cosmosv1.CosmosFullNode) (string, []string) {
 	)
 
 	if crd.Spec.PodTemplate.UseCosmovisor {
-		binary = "cosmovisor run"
+		binary = "/bin/sh"
 	}
 
 	if v := crd.Spec.ChainSpec.PrivvalSleepSeconds; v != nil {
@@ -475,6 +487,12 @@ func startCmdAndArgs(crd *cosmosv1.CosmosFullNode) (string, []string) {
 func startCommandArgs(crd *cosmosv1.CosmosFullNode) []string {
 	args := []string{"start", "--home", ChainHomeDir(crd)}
 	cfg := crd.Spec.ChainSpec
+
+	if crd.Spec.PodTemplate.UseCosmovisor {
+		originArgs := args
+		args = []string{"-c", "/bin/cosmovisor init /bin/" + cfg.Binary + "; " + "/bin/cosmovisor run " + strings.Join(originArgs, " ")}
+	}
+
 	if cfg.SkipInvariants {
 		args = append(args, "--x-crisis-skip-assert-invariants")
 	}
