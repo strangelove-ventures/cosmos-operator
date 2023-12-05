@@ -375,6 +375,9 @@ spec:
                       - Pod
                       - All
                       type: string
+                    externalAddress:
+                      description: Sets an individual instance's external address.
+                      type: string
                     image:
                       description: Overrides an individual instance's Image.
                       type: string
