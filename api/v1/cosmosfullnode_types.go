@@ -759,6 +759,10 @@ type InstanceOverridesSpec struct {
 	// Overrides an individual instance's Image.
 	// +optional
 	Image string `json:"image"`
+
+	// Sets an individual instance's external address.
+	// +optional
+	ExternalAddress *string `json:"externalAddress"`
 }
 
 type DisableStrategy string
