@@ -193,13 +193,13 @@ spec:
                         description: p2p maximum number of inbound peers. If unset,
                           defaults to 20.
                         format: int32
-                        minimum: 1
+                        minimum: 0
                         type: integer
                       maxOutboundPeers:
                         description: p2p maximum number of outbound peers. If unset,
                           defaults to 20.
                         format: int32
-                        minimum: 1
+                        minimum: 0
                         type: integer
                       overrides:
                         description: 'Customize config.toml. Values entered here take
