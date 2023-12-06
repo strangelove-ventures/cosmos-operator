@@ -586,13 +586,13 @@ type CometConfig struct {
 
 	// p2p maximum number of inbound peers.
 	// If unset, defaults to 20.
-	// +kubebuilder:validation:Minimum:=1
+	// +kubebuilder:validation:Minimum:=0
 	// +optional
 	MaxInboundPeers *int32 `json:"maxInboundPeers"`
 
 	// p2p maximum number of outbound peers.
 	// If unset, defaults to 20.
-	// +kubebuilder:validation:Minimum:=1
+	// +kubebuilder:validation:Minimum:=0
 	// +optional
 	MaxOutboundPeers *int32 `json:"maxOutboundPeers"`
 
