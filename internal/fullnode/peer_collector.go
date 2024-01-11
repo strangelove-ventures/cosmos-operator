@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/rdegges/go-ipify"
 	"net"
 	"sort"
 	"strconv"
@@ -148,8 +149,7 @@ func (c PeerCollector) addExternalAddress(ctx context.Context, peers Peers, crd 
 		return kube.TransientError(fmt.Errorf("get server %s: %w", svcName, err))
 	}
 
-	if svc.Spec.Type != corev1.ServiceTypeLoadBalancer &&
-		(svc.Spec.Type != corev1.ServiceTypeNodePort || crd.Spec.Service.P2PNodePortExternalIP == nil || *crd.Spec.Service.P2PNodePortExternalIP == DEFAULT_P2P_EXTERNAL_IP) {
+	if svc.Spec.Type != corev1.ServiceTypeLoadBalancer && (svc.Spec.Type != corev1.ServiceTypeNodePort || crd.Spec.Service.P2PNodePortExternalIP == nil) {
 		return nil
 	}
 
@@ -176,7 +176,15 @@ func (c PeerCollector) addExternalAddress(ctx context.Context, peers Peers, crd 
 				nodePort = i.NodePort
 			}
 		}
+
 		externalIP := *crd.Spec.Service.P2PNodePortExternalIP
+		if externalIP == DEFAULT_P2P_EXTERNAL_IP {
+			var err error
+			externalIP, err = ipify.GetIp()
+			if err != nil {
+				return nil
+			}
+		}
 		info.ExternalAddress = net.JoinHostPort(externalIP, strconv.Itoa(int(nodePort)))
 
 	}
