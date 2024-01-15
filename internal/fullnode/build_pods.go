@@ -1,8 +1,8 @@
 package fullnode
 
 import (
-	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
-	"github.com/strangelove-ventures/cosmos-operator/internal/diff"
+	cosmosv1 "github.com/bharvest-devops/cosmos-operator/api/v1"
+	"github.com/bharvest-devops/cosmos-operator/internal/diff"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )

@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
-	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
+	cosmosv1 "github.com/bharvest-devops/cosmos-operator/api/v1"
+	"github.com/bharvest-devops/cosmos-operator/internal/kube"
 	"golang.org/x/sync/errgroup"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"

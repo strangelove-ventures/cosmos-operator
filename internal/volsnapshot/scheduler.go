@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"time"
 
+	cosmosalpha "github.com/bharvest-devops/cosmos-operator/api/v1alpha1"
+	"github.com/bharvest-devops/cosmos-operator/internal/kube"
 	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
 	"github.com/robfig/cron/v3"
 	"github.com/samber/lo"
-	cosmosalpha "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
-	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 

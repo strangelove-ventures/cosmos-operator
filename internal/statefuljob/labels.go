@@ -1,8 +1,8 @@
 package statefuljob
 
 import (
-	cosmosalpha "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
-	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
+	cosmosalpha "github.com/bharvest-devops/cosmos-operator/api/v1alpha1"
+	"github.com/bharvest-devops/cosmos-operator/internal/kube"
 )
 
 func defaultLabels() map[string]string {

@@ -6,7 +6,7 @@ domain: strange.love
 layout:
 - go.kubebuilder.io/v3
 projectName: cosmos-operator
-repo: github.com/strangelove-ventures/cosmos-operator
+repo: github.com/bharvest-devops/cosmos-operator
 resources:
 - api:
     crdVersion: v1
@@ -15,7 +15,7 @@ resources:
   domain: strange.love
   group: cosmos
   kind: CosmosFullNode
-  path: github.com/strangelove-ventures/cosmos-operator/api/v1
+  path: github.com/bharvest-devops/cosmos-operator/api/v1
   version: v1
 - api:
     crdVersion: v1
@@ -24,7 +24,7 @@ resources:
   domain: strange.love
   group: cosmos
   kind: StatefulJob
-  path: github.com/strangelove-ventures/cosmos-operator/api/v1alpha1
+  path: github.com/bharvest-devops/cosmos-operator/api/v1alpha1
   version: v1alpha1
 - api:
     crdVersion: v1
@@ -33,6 +33,6 @@ resources:
   domain: strange.love
   group: cosmos
   kind: ScheduledVolumeSnapshot
-  path: github.com/strangelove-ventures/cosmos-operator/api/v1alpha1
+  path: github.com/bharvest-devops/cosmos-operator/api/v1alpha1
   version: v1alpha1
 version: "3"

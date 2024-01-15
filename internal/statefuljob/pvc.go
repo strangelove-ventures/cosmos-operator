@@ -3,8 +3,8 @@ package statefuljob
 import (
 	"fmt"
 
+	cosmosalpha "github.com/bharvest-devops/cosmos-operator/api/v1alpha1"
 	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
-	cosmosalpha "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

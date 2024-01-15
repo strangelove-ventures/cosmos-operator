@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
+	cosmosalpha "github.com/bharvest-devops/cosmos-operator/api/v1alpha1"
 	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
-	cosmosalpha "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
 	"github.com/stretchr/testify/require"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

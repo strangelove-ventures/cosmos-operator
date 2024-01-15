@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
-	"github.com/strangelove-ventures/cosmos-operator/internal/diff"
-	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
+	cosmosv1 "github.com/bharvest-devops/cosmos-operator/api/v1"
+	"github.com/bharvest-devops/cosmos-operator/internal/diff"
+	"github.com/bharvest-devops/cosmos-operator/internal/kube"
 	corev1 "k8s.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"

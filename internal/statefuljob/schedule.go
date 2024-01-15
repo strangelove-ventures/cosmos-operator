@@ -3,7 +3,7 @@ package statefuljob
 import (
 	"time"
 
-	cosmosalpha "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
+	cosmosalpha "github.com/bharvest-devops/cosmos-operator/api/v1alpha1"
 )
 
 // ReadyForSnapshot returns true if enough time has passed to create a new snapshot.

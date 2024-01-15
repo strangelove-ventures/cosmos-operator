@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
+	"github.com/bharvest-devops/cosmos-operator/internal/kube"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 

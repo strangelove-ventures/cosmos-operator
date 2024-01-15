@@ -9,7 +9,7 @@ deploys 2 replicas.
 
 ### Install the CRDs and deploy operator in your cluster
 
-View [docker images here](https://github.com/strangelove-ventures/cosmos-operator/pkgs/container/cosmos-operator).
+View [docker images here](https://github.com/bharvest-devops/cosmos-operator/pkgs/container/cosmos-operator).
 
 ```sh
 # Deploy the latest release. Warning: May be a release candidate.

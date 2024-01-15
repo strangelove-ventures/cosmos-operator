@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	cosmosalpha "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
+	cosmosalpha "github.com/bharvest-devops/cosmos-operator/api/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"

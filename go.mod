@@ -1,4 +1,4 @@
-module github.com/strangelove-ventures/cosmos-operator
+module github.com/bharvest-devops/cosmos-operator
 
 go 1.20
 

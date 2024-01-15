@@ -12,9 +12,9 @@ import (
 
 	"cosmossdk.io/log"
 	"cosmossdk.io/store/rootmulti"
+	cosmosv1 "github.com/bharvest-devops/cosmos-operator/api/v1"
 	dbm "github.com/cosmos/cosmos-db"
 	"github.com/spf13/cobra"
-	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"

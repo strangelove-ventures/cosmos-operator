@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	cosmosv1 "github.com/bharvest-devops/cosmos-operator/api/v1"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
 	"sigs.k8s.io/controller-runtime/pkg/client"

@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"testing"
 
-	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
-	"github.com/strangelove-ventures/cosmos-operator/internal/diff"
-	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
+	cosmosv1 "github.com/bharvest-devops/cosmos-operator/api/v1"
+	"github.com/bharvest-devops/cosmos-operator/internal/diff"
+	"github.com/bharvest-devops/cosmos-operator/internal/kube"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

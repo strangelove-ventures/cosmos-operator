@@ -3,8 +3,8 @@ package statefuljob
 import (
 	"testing"
 
+	cosmosalpha "github.com/bharvest-devops/cosmos-operator/api/v1alpha1"
 	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
-	cosmosalpha "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"

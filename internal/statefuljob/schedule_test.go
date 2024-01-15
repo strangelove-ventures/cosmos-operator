@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	cosmosalpha "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
+	cosmosalpha "github.com/bharvest-devops/cosmos-operator/api/v1alpha1"
 	"github.com/stretchr/testify/require"
 	batchv1 "k8s.io/api/batch/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

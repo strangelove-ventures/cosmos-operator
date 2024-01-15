@@ -3,8 +3,8 @@ package fullnode
 import (
 	"context"
 
-	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
-	"github.com/strangelove-ventures/cosmos-operator/internal/cosmos"
+	cosmosv1 "github.com/bharvest-devops/cosmos-operator/api/v1"
+	"github.com/bharvest-devops/cosmos-operator/internal/cosmos"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )

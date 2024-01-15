@@ -3,7 +3,7 @@ package statefuljob
 import (
 	"time"
 
-	cosmosalpha "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
+	cosmosalpha "github.com/bharvest-devops/cosmos-operator/api/v1alpha1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

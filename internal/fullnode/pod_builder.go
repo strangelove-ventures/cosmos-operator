@@ -8,11 +8,11 @@ import (
 	"strings"
 	"sync"
 
+	cosmosv1 "github.com/bharvest-devops/cosmos-operator/api/v1"
+	"github.com/bharvest-devops/cosmos-operator/internal/healthcheck"
+	"github.com/bharvest-devops/cosmos-operator/internal/kube"
+	"github.com/bharvest-devops/cosmos-operator/internal/version"
 	"github.com/samber/lo"
-	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
-	"github.com/strangelove-ventures/cosmos-operator/internal/healthcheck"
-	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
-	"github.com/strangelove-ventures/cosmos-operator/internal/version"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -296,6 +296,9 @@ const (
 
 // ChainHomeDir is the abs filepath for the chain's home directory.
 func ChainHomeDir(crd *cosmosv1.CosmosFullNode) string {
+	if crd.Spec.PodTemplate.UseCosmovisor {
+		return workDir + "/cosmos"
+	}
 	if home := crd.Spec.ChainSpec.HomeDir; home != "" {
 		return path.Join(workDir, home)
 	}
@@ -405,6 +408,18 @@ config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CON
 		},
 	}
 
+	//if true {
+	//	required = append(required, corev1.Container{
+	//		Name:            "cosmovisor-init",
+	//		Image:           infraToolImage,
+	//		Command:         []string{"/bin/cosmovisor"},
+	//		Args:            []string{"init", "/bin/" + binary},
+	//		Env:             env,
+	//		ImagePullPolicy: tpl.ImagePullPolicy,
+	//		WorkingDir:      workDir,
+	//	})
+	//}
+
 	if willRestoreFromSnapshot(crd) {
 		cmd, args := DownloadSnapshotCommand(crd.Spec.ChainSpec)
 		required = append(required, corev1.Container{
@@ -454,6 +469,11 @@ func startCmdAndArgs(crd *cosmosv1.CosmosFullNode) (string, []string) {
 		args               = startCommandArgs(crd)
 		privvalSleep int32 = 10
 	)
+
+	if crd.Spec.PodTemplate.UseCosmovisor {
+		binary = "/bin/sh"
+	}
+
 	if v := crd.Spec.ChainSpec.PrivvalSleepSeconds; v != nil {
 		privvalSleep = *v
 	}
@@ -470,6 +490,12 @@ func startCmdAndArgs(crd *cosmosv1.CosmosFullNode) (string, []string) {
 func startCommandArgs(crd *cosmosv1.CosmosFullNode) []string {
 	args := []string{"start", "--home", ChainHomeDir(crd)}
 	cfg := crd.Spec.ChainSpec
+
+	if crd.Spec.PodTemplate.UseCosmovisor {
+		originArgs := args
+		args = []string{"-c", "/bin/cosmovisor init /bin/" + cfg.Binary + "; " + "/bin/cosmovisor run " + strings.Join(originArgs, " ")}
+	}
+
 	if cfg.SkipInvariants {
 		args = append(args, "--x-crisis-skip-assert-invariants")
 	}

@@ -49,7 +49,7 @@ You can only increase the storage (never decrease).
 
 You must manually watch the PVC for a status of `FileSystemResizePending`. Then manually restart the pod associated with the PVC to complete resizing.
 
-The above is a workaround; there is [future work](https://github.com/strangelove-ventures/cosmos-operator/issues/37) planned to allow the Operator to handle this scenario for you.
+The above is a workaround; there is [future work](https://github.com/bharvest-devops/cosmos-operator/issues/37) planned to allow the Operator to handle this scenario for you.
 
 ## Updating Volumes
 
@@ -59,7 +59,7 @@ As mentioned in the above section, you can only update the storage size.
 
 If you need to update an immutable field like the StorageClass, the workaround is to `kubectl apply` the CRD. Then manually delete PVCs and pods. The Operator will recreate them with the new configuration.
 
-There is [future work](https://github.com/strangelove-ventures/cosmos-operator/issues/38) planned for the Operator to handle this scenario for you.
+There is [future work](https://github.com/bharvest-devops/cosmos-operator/issues/38) planned for the Operator to handle this scenario for you.
 
 ## Pod Affinity
 

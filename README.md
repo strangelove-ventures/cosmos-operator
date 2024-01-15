@@ -1,9 +1,9 @@
 # Cosmos Operator by B-Harvest
 
 [![Project Status: Initial Release](https://img.shields.io/badge/repo%20status-active-green.svg?style=flat-square)](https://www.repostatus.org/#active)
-[![GoDoc](https://img.shields.io/badge/godoc-reference-blue?style=flat-square&logo=go)](https://pkg.go.dev/github.com/strangelove-ventures/cosmos-operator)
-[![Go Report Card](https://goreportcard.com/badge/github.com/strangelove-ventures/cosmos-operator)](https://goreportcard.com/report/github.com/strangelove-ventures/cosmos-operator)
-[![License: Apache-2.0](https://img.shields.io/github/license/strangelove-ventures/cosmos-operator.svg?style=flat-square)](https://github.com/strangelove-ventures/cosmos-operator/blob/main/LICENSE)
+[![GoDoc](https://img.shields.io/badge/godoc-reference-blue?style=flat-square&logo=go)](https://pkg.go.dev/github.com/bharvest-devops/cosmos-operator)
+[![Go Report Card](https://goreportcard.com/badge/github.com/bharvest-devops/cosmos-operator)](https://goreportcard.com/report/github.com/bharvest-devops/cosmos-operator)
+[![License: Apache-2.0](https://img.shields.io/github/license/strangelove-ventures/cosmos-operator.svg?style=flat-square)](https://github.com/bharvest-devops/cosmos-operator/blob/main/LICENSE)
 [![Version](https://img.shields.io/github/tag/strangelove-ventures/cosmos-operator.svg?style=flat-square)](https://github.com/cosmos/strangelove-ventures/cosmos-operator)
 
 Cosmos Operator is a [Kubernetes Operator](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/) for blockchains built with the [Cosmos SDK](https://github.com/cosmos/cosmos-sdk). 
@@ -24,8 +24,8 @@ thus minimizing human intervention and human error.
 * Tested on Google's GKE and Bare-metal with Kubeadm. Although kubernetes is portable, we cannot guarantee or provide support for AWS, Azure, or other kubernetes providers.
 * Requires a recent version of kubernetes: v1.23+.
 * CosmosFullNode: The chain must be built from the [Cosmos SDK](https://github.com/cosmos/cosmos-sdk).
-* CosmosFullNode: Validator sentries require a remote signer such as [horcrux](https://github.com/strangelove-ventures/horcrux).
-* CosmosFullNode: The controller requires [heighliner](https://github.com/strangelove-ventures/heighliner) images. If you build your own image, you will need a shell `sh` and set the uid:gid to 1025:1025. If running as a validator sentry, you need `sleep` as well.
+* CosmosFullNode: Validator sentries require a remote signer such as [horcrux](https://github.com/bharvest-devops/horcrux).
+* CosmosFullNode: The controller requires [heighliner](https://github.com/bharvest-devops/heighliner) images. If you build your own image, you will need a shell `sh` and set the uid:gid to 1025:1025. If running as a validator sentry, you need `sleep` as well.
 * CosmosFullNode: May not work for all Cosmos chains. (Some chains diverge from common conventions.) Strangelove has yet to encounter a Cosmos chain that does not work with this operator.
 
 # CosmosFullNode CRD
@@ -91,6 +91,7 @@ Disclaimer: Strangelove has not committed to these enhancements and cannot estim
 
 # License
 
+Copyright 2024 B-Harvest Corporation. \
 Copyright 2023 Strangelove Ventures LLC.
 
 Licensed under the Apache License, Version 2.0 (the "License");

@@ -23,15 +23,15 @@ import (
 	"os"
 	"time"
 
+	opcmd "github.com/bharvest-devops/cosmos-operator/cmd"
+	"github.com/bharvest-devops/cosmos-operator/controllers"
+	"github.com/bharvest-devops/cosmos-operator/internal/cosmos"
+	"github.com/bharvest-devops/cosmos-operator/internal/fullnode"
+	"github.com/bharvest-devops/cosmos-operator/internal/version"
 	"github.com/go-logr/zapr"
 	"github.com/pkg/profile"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	opcmd "github.com/strangelove-ventures/cosmos-operator/cmd"
-	"github.com/strangelove-ventures/cosmos-operator/controllers"
-	"github.com/strangelove-ventures/cosmos-operator/internal/cosmos"
-	"github.com/strangelove-ventures/cosmos-operator/internal/fullnode"
-	"github.com/strangelove-ventures/cosmos-operator/internal/version"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -41,9 +41,9 @@ import (
 	// Add Pprof endpoints.
 	_ "net/http/pprof"
 
+	cosmosv1 "github.com/bharvest-devops/cosmos-operator/api/v1"
+	cosmosv1alpha1 "github.com/bharvest-devops/cosmos-operator/api/v1alpha1"
 	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
-	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
-	cosmosv1alpha1 "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"

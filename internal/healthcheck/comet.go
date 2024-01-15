@@ -9,8 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/bharvest-devops/cosmos-operator/internal/cosmos"
 	"github.com/go-logr/logr"
-	"github.com/strangelove-ventures/cosmos-operator/internal/cosmos"
 )
 
 // Statuser can query the Comet status endpoint.

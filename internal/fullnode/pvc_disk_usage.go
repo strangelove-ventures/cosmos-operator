@@ -7,10 +7,10 @@ import (
 	"math"
 	"time"
 
+	cosmosv1 "github.com/bharvest-devops/cosmos-operator/api/v1"
+	"github.com/bharvest-devops/cosmos-operator/internal/healthcheck"
+	"github.com/bharvest-devops/cosmos-operator/internal/kube"
 	"github.com/samber/lo"
-	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
-	"github.com/strangelove-ventures/cosmos-operator/internal/healthcheck"
-	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	"golang.org/x/sync/errgroup"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"

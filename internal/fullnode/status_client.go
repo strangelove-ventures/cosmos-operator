@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
+	cosmosv1 "github.com/bharvest-devops/cosmos-operator/api/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 

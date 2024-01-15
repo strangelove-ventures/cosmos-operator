@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
+	cosmosv1 "github.com/bharvest-devops/cosmos-operator/api/v1"
 	"github.com/samber/lo"
-	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 	corev1 "k8s.io/api/core/v1"
