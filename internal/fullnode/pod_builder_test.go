@@ -289,8 +289,8 @@ func TestPodBuilder(t *testing.T) {
 		require.Contains(t, freshCont.Args[1], `rm -rf "$HOME/.tmp/*"`)
 
 		initCont := pod.Spec.InitContainers[1]
-		require.Contains(t, initCont.Args[1], `osmosisd init osmosis-6 --chain-id osmosis-123 --home "$CHAIN_HOME"`)
-		require.Contains(t, initCont.Args[1], `osmosisd init osmosis-6 --chain-id osmosis-123 --home "$HOME/.tmp"`)
+		require.Contains(t, initCont.Args[1], `osmosisd init --chain-id osmosis-123 osmosis-6 --home "$CHAIN_HOME"`)
+		require.Contains(t, initCont.Args[1], `osmosisd init --chain-id osmosis-123 osmosis-6 --home "$HOME/.tmp"`)
 
 		mergeConfig1 := pod.Spec.InitContainers[3]
 		// The order of config-merge arguments is important. Rightmost takes precedence.

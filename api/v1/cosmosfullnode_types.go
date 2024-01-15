@@ -547,6 +547,10 @@ type ChainSpec struct {
 	// +optional
 	Versions []ChainVersion `json:"versions"`
 
+	// Additional arguments to pass to the chain init command.
+	// +optional
+	AdditionalInitArgs []string `json:"additionalInitArgs"`
+
 	// Additional arguments to pass to the chain start command.
 	// +optional
 	AdditionalStartArgs []string `json:"additionalStartArgs"`
@@ -586,13 +590,13 @@ type CometConfig struct {
 
 	// p2p maximum number of inbound peers.
 	// If unset, defaults to 20.
-	// +kubebuilder:validation:Minimum:=1
+	// +kubebuilder:validation:Minimum:=0
 	// +optional
 	MaxInboundPeers *int32 `json:"maxInboundPeers"`
 
 	// p2p maximum number of outbound peers.
 	// If unset, defaults to 20.
-	// +kubebuilder:validation:Minimum:=1
+	// +kubebuilder:validation:Minimum:=0
 	// +optional
 	MaxOutboundPeers *int32 `json:"maxOutboundPeers"`
 
@@ -764,6 +768,10 @@ type InstanceOverridesSpec struct {
 	// Overrides an individual instance's Image.
 	// +optional
 	Image string `json:"image"`
+
+	// Sets an individual instance's external address.
+	// +optional
+	ExternalAddress *string `json:"externalAddress"`
 }
 
 type DisableStrategy string

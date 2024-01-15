@@ -45,6 +45,11 @@ spec:
               chain:
                 description: Blockchain-specific configuration.
                 properties:
+                  additionalInitArgs:
+                    description: Additional arguments to pass to the chain init command.
+                    items:
+                      type: string
+                    type: array
                   additionalStartArgs:
                     description: Additional arguments to pass to the chain start command.
                     items:
@@ -188,13 +193,13 @@ spec:
                         description: p2p maximum number of inbound peers. If unset,
                           defaults to 20.
                         format: int32
-                        minimum: 1
+                        minimum: 0
                         type: integer
                       maxOutboundPeers:
                         description: p2p maximum number of outbound peers. If unset,
                           defaults to 20.
                         format: int32
-                        minimum: 1
+                        minimum: 0
                         type: integer
                       overrides:
                         description: 'Customize config.toml. Values entered here take
@@ -369,6 +374,9 @@ spec:
                       enum:
                       - Pod
                       - All
+                      type: string
+                    externalAddress:
+                      description: Sets an individual instance's external address.
                       type: string
                     image:
                       description: Overrides an individual instance's Image.
