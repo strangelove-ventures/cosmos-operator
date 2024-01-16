@@ -65,12 +65,12 @@ func BuildRoles(crd *cosmosv1.CosmosFullNode) []diff.Resource[*rbacv1.Role] {
 				Verbs:     []string{"get", "list"},
 			},
 			{
-				APIGroups: []string{"cosmos.strange.love"},
+				APIGroups: []string{"cosmos.b.harvest"},
 				Resources: []string{"cosmosfullnodes"},
 				Verbs:     []string{"get"},
 			},
 			{
-				APIGroups: []string{"cosmos.strange.love"},
+				APIGroups: []string{"cosmos.b.harvest"},
 				Resources: []string{"cosmosfullnodes/status"},
 				Verbs:     []string{"patch"},
 			},

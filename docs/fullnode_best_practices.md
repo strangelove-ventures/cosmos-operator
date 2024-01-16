@@ -6,7 +6,7 @@ If you plan to have multiple network environments in the same cluster or namespa
 
 Example:
 ```yaml
-apiVersion: cosmos.strange.love/v1
+apiVersion: cosmos.b.harvest/v1
 kind: CosmosFullNode
 metadata:
   name: cosmoshub-mainnet-fullnode

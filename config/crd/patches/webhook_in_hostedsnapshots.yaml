@@ -2,7 +2,7 @@
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  name: statefuljobs.cosmos.strange.love
+  name: statefuljobs.cosmos.b.harvest
 spec:
   conversion:
     strategy: Webhook

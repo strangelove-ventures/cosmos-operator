@@ -12,7 +12,7 @@ metadata:
   name: statefuljob-viewer-role
 rules:
 - apiGroups:
-  - cosmos.strange.love
+  - cosmos.b.harvest
   resources:
   - statefuljobs
   verbs:
@@ -20,7 +20,7 @@ rules:
   - list
   - watch
 - apiGroups:
-  - cosmos.strange.love
+  - cosmos.b.harvest
   resources:
   - statefuljobs/status
   verbs:

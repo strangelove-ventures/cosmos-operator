@@ -12,7 +12,7 @@ metadata:
   name: scheduledvolumesnapshot-viewer-role
 rules:
 - apiGroups:
-  - cosmos.strange.love
+  - cosmos.b.harvest
   resources:
   - scheduledvolumesnapshots
   verbs:
@@ -20,7 +20,7 @@ rules:
   - list
   - watch
 - apiGroups:
-  - cosmos.strange.love
+  - cosmos.b.harvest
   resources:
   - scheduledvolumesnapshots/status
   verbs:

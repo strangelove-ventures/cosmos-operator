@@ -42,8 +42,8 @@ func TestBuildNodeKeySecrets(t *testing.T) {
 				"app.kubernetes.io/name":       "juno",
 				"app.kubernetes.io/instance":   fmt.Sprintf("juno-%d", i),
 				"app.kubernetes.io/version":    "v1.2.3",
-				"cosmos.strange.love/network":  "mainnet",
-				"cosmos.strange.love/type":     "FullNode",
+				"cosmos.b.harvest/network":     "mainnet",
+				"cosmos.b.harvest/type":        "FullNode",
 			}
 			require.Equal(t, wantLabels, got.Labels)
 

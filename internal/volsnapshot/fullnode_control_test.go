@@ -83,7 +83,7 @@ func TestFullNodeControl_SignalPodDeletion(t *testing.T) {
 			var got cosmosv1.FullNodeStatus
 			update(&got)
 			want := map[string]cosmosv1.FullNodeSnapshotStatus{
-				"default.my-snapshot.v1alpha1.cosmos.strange.love": {PodCandidate: "target-pod"},
+				"default.my-snapshot.v1alpha1.cosmos.b.harvest": {PodCandidate: "target-pod"},
 			}
 			require.Equal(t, want, got.ScheduledSnapshotStatus)
 
@@ -132,18 +132,18 @@ func TestFullNodeControl_SignalPodRestoration(t *testing.T) {
 
 			var got cosmosv1.FullNodeStatus
 			got.ScheduledSnapshotStatus = map[string]cosmosv1.FullNodeSnapshotStatus{
-				"default.my-snapshot.v1alpha1.cosmos.strange.love": {PodCandidate: "target-pod"},
+				"default.my-snapshot.v1alpha1.cosmos.b.harvest": {PodCandidate: "target-pod"},
 			}
 			update(&got)
 			require.Empty(t, got.ScheduledSnapshotStatus)
 
 			got.ScheduledSnapshotStatus = map[string]cosmosv1.FullNodeSnapshotStatus{
-				"default.my-snapshot.v1alpha1.cosmos.strange.love":      {PodCandidate: "target-pod"},
-				"default.another-snapshot.v1alpha1.cosmos.strange.love": {PodCandidate: "another-pod"},
+				"default.my-snapshot.v1alpha1.cosmos.b.harvest":      {PodCandidate: "target-pod"},
+				"default.another-snapshot.v1alpha1.cosmos.b.harvest": {PodCandidate: "another-pod"},
 			}
 			update(&got)
 			want := map[string]cosmosv1.FullNodeSnapshotStatus{
-				"default.another-snapshot.v1alpha1.cosmos.strange.love": {PodCandidate: "another-pod"},
+				"default.another-snapshot.v1alpha1.cosmos.b.harvest": {PodCandidate: "another-pod"},
 			}
 			require.Equal(t, want, got.ScheduledSnapshotStatus)
 
@@ -215,7 +215,7 @@ func TestFullNodeControl_ConfirmPodRestoration(t *testing.T) {
 		var reader mockReader
 		reader.Getter = func(_ context.Context, key client.ObjectKey, obj client.Object, _ ...client.GetOption) error {
 			obj.(*cosmosv1.CosmosFullNode).Status.ScheduledSnapshotStatus = map[string]cosmosv1.FullNodeSnapshotStatus{
-				"default.snapshot.v1alpha1.cosmos.strange.love": {PodCandidate: "target-pod"},
+				"default.snapshot.v1alpha1.cosmos.b.harvest": {PodCandidate: "target-pod"},
 			}
 			return nil
 		}
