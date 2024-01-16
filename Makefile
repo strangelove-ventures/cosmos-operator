@@ -58,7 +58,7 @@ endif
 CHAIN_NAME ?= $(error Please set CHAIN_NAME)
 .PHONY: latest-snapshot
 latest-snapshot: ## Get latest snapshot from polkachu. Must set CHAIN_NAME flag or env var.
-	@curl -s https://polkachu.com/api/v1/chains/$(CHAIN_NAME)/snapshot | jq -r '.snapshot.url' | tr -d "\n"
+	@curl -k -s https://polkachu.com/api/v1/chains/$(CHAIN_NAME)/snapshot | jq -r '.snapshot.url' | tr -d "\n"
 
 .PHONY: test
 test: manifests generate ## Run unit tests.
@@ -97,9 +97,10 @@ docker-prerelease: ## Build and push a prerelease docker image.
 
 .PHONY: docker-build
 docker-build: test ## Build docker image with the manager.
-## If you run on MacOS, uncomment this under line
-# docker buildx build -t ${IMG} --build-arg VERSION=$(shell echo ${IMG} | awk -F: '{print $$2}') --build-arg TARGETARCH="amd64" --build-arg BUILDARCH="arm64"  --platform=linux/amd64,linux/arm64 --push .
-	docker build -t ${IMG} --build-arg VERSION=$(shell echo ${IMG} | awk -F: '{print $$2}') --build-arg TARGETARCH=amd64 --build-arg BUILDARCH=amd64 .
+	# for arm arch
+	docker buildx build -t ${IMG} --build-arg VERSION=$(shell echo ${IMG} | awk -F: '{print $$2}') --build-arg TARGETARCH="amd64" --build-arg BUILDARCH="arm64"  --platform=linux/amd64,linux/arm64 --push .
+	# for amd arch
+	#docker build -t ${IMG} --build-arg VERSION=$(shell echo ${IMG} | awk -F: '{print $$2}') --build-arg TARGETARCH=amd64 --build-arg BUILDARCH=amd64 .
 
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
