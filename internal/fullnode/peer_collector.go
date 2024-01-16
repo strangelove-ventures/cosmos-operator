@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/rdegges/go-ipify"
+	"github.com/go-resty/resty/v2"
 	"net"
 	"sort"
 	"strconv"
@@ -15,8 +15,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
-
-const DEFAULT_P2P_EXTERNAL_IP = "0.0.0.0"
 
 // Peer contains information about a peer.
 type Peer struct {
@@ -108,7 +106,6 @@ func NewPeerCollector(client Getter) *PeerCollector {
 // Collect peer information given the crd.
 func (c PeerCollector) Collect(ctx context.Context, crd *cosmosv1.CosmosFullNode) (Peers, kube.ReconcileError) {
 	peers := make(Peers)
-	crd.Spec.Service.P2PNodePortExternalIP = valOrDefault(crd.Spec.Service.P2PNodePortExternalIP, ptr(DEFAULT_P2P_EXTERNAL_IP))
 
 	for i := int32(0); i < crd.Spec.Replicas; i++ {
 		secretName := nodeKeySecretName(crd, i)
@@ -149,7 +146,7 @@ func (c PeerCollector) addExternalAddress(ctx context.Context, peers Peers, crd 
 		return kube.TransientError(fmt.Errorf("get server %s: %w", svcName, err))
 	}
 
-	if svc.Spec.Type != corev1.ServiceTypeLoadBalancer && (svc.Spec.Type != corev1.ServiceTypeNodePort || crd.Spec.Service.P2PNodePortExternalIP == nil) {
+	if svc.Spec.Type != corev1.ServiceTypeLoadBalancer && (svc.Spec.Type != corev1.ServiceTypeNodePort) {
 		return nil
 	}
 
@@ -177,14 +174,16 @@ func (c PeerCollector) addExternalAddress(ctx context.Context, peers Peers, crd 
 			}
 		}
 
-		externalIP := *crd.Spec.Service.P2PNodePortExternalIP
-		if externalIP == DEFAULT_P2P_EXTERNAL_IP {
-			var err error
-			externalIP, err = ipify.GetIp()
-			if err != nil {
-				return nil
-			}
+		client := resty.New()
+		resp, err := client.R().
+			EnableTrace().
+			Get("https://api.ipify.org")
+		if err != nil {
+			return err
 		}
+
+		externalIP := resp.String()
+
 		info.ExternalAddress = net.JoinHostPort(externalIP, strconv.Itoa(int(nodePort)))
 
 	}
