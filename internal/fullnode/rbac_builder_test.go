@@ -33,8 +33,8 @@ func TestBuildRBAC(t *testing.T) {
 			"app.kubernetes.io/name":       "hub",
 			"app.kubernetes.io/component":  "vc",
 			"app.kubernetes.io/version":    "v6.0.0",
-			"cosmos.strange.love/network":  "testnet",
-			"cosmos.strange.love/type":     "FullNode",
+			"cosmos.b.harvest/network":     "testnet",
+			"cosmos.b.harvest/type":        "FullNode",
 		}
 		require.Equal(t, wantLabels, sa.Labels)
 
@@ -52,8 +52,8 @@ func TestBuildRBAC(t *testing.T) {
 			"app.kubernetes.io/name":       "hub",
 			"app.kubernetes.io/component":  "vc",
 			"app.kubernetes.io/version":    "v6.0.0",
-			"cosmos.strange.love/network":  "testnet",
-			"cosmos.strange.love/type":     "FullNode",
+			"cosmos.b.harvest/network":     "testnet",
+			"cosmos.b.harvest/type":        "FullNode",
 		}
 		require.Equal(t, wantLabels, role.Labels)
 
@@ -64,12 +64,12 @@ func TestBuildRBAC(t *testing.T) {
 				Verbs:     []string{"get", "list"},
 			},
 			{
-				APIGroups: []string{"cosmos.strange.love"},
+				APIGroups: []string{"cosmos.b.harvest"},
 				Resources: []string{"cosmosfullnodes"},
 				Verbs:     []string{"get"},
 			},
 			{
-				APIGroups: []string{"cosmos.strange.love"},
+				APIGroups: []string{"cosmos.b.harvest"},
 				Resources: []string{"cosmosfullnodes/status"},
 				Verbs:     []string{"patch"},
 			},
@@ -89,8 +89,8 @@ func TestBuildRBAC(t *testing.T) {
 			"app.kubernetes.io/name":       "hub",
 			"app.kubernetes.io/component":  "vc",
 			"app.kubernetes.io/version":    "v6.0.0",
-			"cosmos.strange.love/network":  "testnet",
-			"cosmos.strange.love/type":     "FullNode",
+			"cosmos.b.harvest/network":     "testnet",
+			"cosmos.b.harvest/type":        "FullNode",
 		}
 		require.Equal(t, wantLabels, rb.Labels)
 

@@ -25,7 +25,7 @@ RUN if [ "${TARGETARCH}" = "arm64" ] && [ "${BUILDARCH}" != "arm64" ]; then \
         wget -c https://musl.cc/x86_64-linux-musl-cross.tgz -O - | tar -xzvv --strip-components 1 -C /usr; \
     fi
 
-ARG ROCKSDB_VERSION=v7.10.2
+ARG ROCKSDB_VERSION="v7.10.2"
 
 # Install RocksDB
 WORKDIR /
