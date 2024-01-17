@@ -178,11 +178,13 @@ func (c PeerCollector) addExternalAddress(ctx context.Context, peers Peers, crd 
 		resp, err := client.R().
 			EnableTrace().
 			Get("https://api.ipify.org")
+		var externalIP string
 		if err != nil {
-			return err
+			externalIP = "0.0.0.0"
+			//return err
+		} else {
+			externalIP = resp.String()
 		}
-
-		externalIP := resp.String()
 
 		info.ExternalAddress = net.JoinHostPort(externalIP, strconv.Itoa(int(nodePort)))
 
