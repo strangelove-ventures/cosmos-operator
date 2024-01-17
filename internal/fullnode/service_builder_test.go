@@ -41,8 +41,8 @@ func TestBuildServices(t *testing.T) {
 				"app.kubernetes.io/component":  "p2p",
 				"app.kubernetes.io/version":    "v6.0.0",
 				"app.kubernetes.io/instance":   fmt.Sprintf("terra-%d", i),
-				"cosmos.b.harvest/network":     "testnet",
-				"cosmos.b.harvest/type":        "FullNode",
+				"cosmos.bharvest/network":      "testnet",
+				"cosmos.bharvest/type":         "FullNode",
 			}
 			require.Equal(t, wantLabels, p2p.Labels)
 
@@ -186,8 +186,8 @@ func TestBuildServices(t *testing.T) {
 			"app.kubernetes.io/name":       "terra",
 			"app.kubernetes.io/component":  "rpc",
 			"app.kubernetes.io/version":    "v6.0.0",
-			"cosmos.b.harvest/network":     "testnet",
-			"cosmos.b.harvest/type":        "FullNode",
+			"cosmos.bharvest/network":      "testnet",
+			"cosmos.bharvest/type":         "FullNode",
 		}
 		require.Equal(t, wantLabels, rpc.Labels)
 

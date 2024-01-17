@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	configChecksumAnnotation = "cosmos.b.harvest/config-checksum"
+	configChecksumAnnotation = "cosmos.bharvest/config-checksum"
 )
 
 // BuildPods creates the final state of pods given the crd.

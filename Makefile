@@ -97,10 +97,10 @@ docker-prerelease: ## Build and push a prerelease docker image.
 
 .PHONY: docker-build
 docker-build: test ## Build docker image with the manager.
-	# for arm arch
-	docker buildx build -t ${IMG} --build-arg VERSION=$(shell echo ${IMG} | awk -F: '{print $$2}') --build-arg TARGETARCH="amd64" --build-arg BUILDARCH="arm64"  --platform=linux/amd64,linux/arm64 --push .
-	# for amd arch
-	#docker build -t ${IMG} --build-arg VERSION=$(shell echo ${IMG} | awk -F: '{print $$2}') --build-arg TARGETARCH=amd64 --build-arg BUILDARCH=amd64 .
+	# Build on ARM -> AMD
+	docker buildx build -t ${IMG} --build-arg VERSION=$(shell echo ${IMG} | awk -F: '{print $$2}') --build-arg TARGETARCH="amd64" --build-arg BUILDARCH="arm64"  --platform=linux/amd64 --push .
+	# Build on AMD -> AMD
+#	docker build -t ${IMG} --build-arg VERSION=$(shell echo ${IMG} | awk -F: '{print $$2}') --build-arg TARGETARCH=amd64 --build-arg BUILDARCH=arm64 .
 
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
@@ -133,8 +133,8 @@ deploy-prerelease: install docker-prerelease ## Install CRDs, build docker image
 .PHONY: deploy
 deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
-	#$(KUSTOMIZE) build config/default | kubectl apply -f -
-	$(KUSTOMIZE) build config/default
+	$(KUSTOMIZE) build config/default | kubectl apply -f -
+	#$(KUSTOMIZE) build config/default
 
 
 .PHONY: undeploy

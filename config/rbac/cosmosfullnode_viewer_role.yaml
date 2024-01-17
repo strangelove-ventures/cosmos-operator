@@ -5,7 +5,7 @@ metadata:
   name: cosmosfullnode-viewer-role
 rules:
 - apiGroups:
-  - cosmos.b.harvest
+  - cosmos.bharvest
   resources:
   - cosmosfullnodes
   verbs:
@@ -13,7 +13,7 @@ rules:
   - list
   - watch
 - apiGroups:
-  - cosmos.b.harvest
+  - cosmos.bharvest
   resources:
   - cosmosfullnodes/status
   verbs:

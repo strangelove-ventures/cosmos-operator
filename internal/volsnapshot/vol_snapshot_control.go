@@ -18,7 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const cosmosSourceLabel = "cosmos.b.harvest/source"
+const cosmosSourceLabel = "cosmos.bharvest/source"
 
 // Client is a subset of client.Client.
 type Client interface {

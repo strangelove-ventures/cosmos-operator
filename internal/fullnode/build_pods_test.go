@@ -45,7 +45,7 @@ func TestBuildPods(t *testing.T) {
 		for i, r := range pods {
 			require.Equal(t, int64(i), r.Ordinal(), i)
 			require.NotEmpty(t, r.Revision(), i)
-			require.Equal(t, strconv.Itoa(i), r.Object().Annotations["cosmos.b.harvest/config-checksum"])
+			require.Equal(t, strconv.Itoa(i), r.Object().Annotations["cosmos.bharvest/config-checksum"])
 		}
 
 		want := lo.Map([]int{0, 1, 2, 3, 4}, func(_ int, i int) string {

@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	networkLabel = "cosmos.b.harvest/network"
-	typeLabel    = "cosmos.b.harvest/type"
+	networkLabel = "cosmos.bharvest/network"
+	typeLabel    = "cosmos.bharvest/type"
 )
 
 // kv is a list of extra kv pairs to add to the labels. Must be even.

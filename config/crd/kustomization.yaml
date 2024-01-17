@@ -2,9 +2,9 @@
 # since it depends on service name and namespace that are out of this kustomize package.
 # It should be run by config/default
 resources:
-- bases/cosmos.b.harvest_cosmosfullnodes.yaml
-- bases/cosmos.b.harvest_statefuljobs.yaml
-- bases/cosmos.b.harvest_scheduledvolumesnapshots.yaml
+- bases/cosmos.bharvest_cosmosfullnodes.yaml
+- bases/cosmos.bharvest_statefuljobs.yaml
+- bases/cosmos.bharvest_scheduledvolumesnapshots.yaml
 #+kubebuilder:scaffold:crdkustomizeresource
 
 patches:

@@ -1,7 +1,7 @@
 ####
 # This is a full example with all options. Typically, use cosmos_v1_cosmosfullnode.yaml as a starting place.
 ###
-apiVersion: cosmos.b.harvest/v1
+apiVersion: cosmos.bharvest/v1
 kind: CosmosFullNode
 metadata:
   # Name should be the chain name and network environment.

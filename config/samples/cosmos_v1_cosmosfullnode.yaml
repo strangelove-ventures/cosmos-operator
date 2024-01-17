@@ -1,5 +1,5 @@
 # Optimized for GKE
-apiVersion: cosmos.b.harvest/v1
+apiVersion: cosmos.bharvest/v1
 kind: CosmosFullNode
 metadata:
   # Name should be the chain name and network environment.

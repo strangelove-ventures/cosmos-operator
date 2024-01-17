@@ -5,9 +5,9 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.9.0
   creationTimestamp: null
-  name: statefuljobs.cosmos.b.harvest
+  name: statefuljobs.cosmos.bharvest
 spec:
-  group: cosmos.b.harvest
+  group: cosmos.bharvest
   names:
     kind: StatefulJob
     listKind: StatefulJobList

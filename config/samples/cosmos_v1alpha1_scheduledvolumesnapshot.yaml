@@ -1,4 +1,4 @@
-apiVersion: cosmos.b.harvest/v1alpha1
+apiVersion: cosmos.bharvest/v1alpha1
 kind: ScheduledVolumeSnapshot
 metadata:
   name: scheduledvolumesnapshot-sample

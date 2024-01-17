@@ -61,8 +61,8 @@ func TestBuildConfigMaps(t *testing.T) {
 			"app.kubernetes.io/name":       "agoric",
 			"app.kubernetes.io/instance":   "agoric-0",
 			"app.kubernetes.io/version":    "v6.0.0",
-			"cosmos.b.harvest/network":     "testnet",
-			"cosmos.b.harvest/type":        "FullNode",
+			"cosmos.bharvest/network":      "testnet",
+			"cosmos.bharvest/type":         "FullNode",
 		}
 		require.Empty(t, cm.Annotations)
 

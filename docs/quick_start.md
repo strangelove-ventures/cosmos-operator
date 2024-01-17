@@ -51,7 +51,7 @@ Using the information from the previous steps, create a yaml file using the belo
 Then `kubectl apply -f` the yaml file.
 
 ```yaml
-apiVersion: cosmos.b.harvest/v1
+apiVersion: cosmos.bharvest/v1
 kind: CosmosFullNode
 metadata:
   name: cosmoshub

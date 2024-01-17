@@ -12,7 +12,7 @@ metadata:
   name: statefuljob-editor-role
 rules:
 - apiGroups:
-  - cosmos.b.harvest
+  - cosmos.bharvest
   resources:
   - statefuljobs
   verbs:
@@ -24,7 +24,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - cosmos.b.harvest
+  - cosmos.bharvest
   resources:
   - statefuljobs/status
   verbs:

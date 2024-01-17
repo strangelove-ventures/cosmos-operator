@@ -77,9 +77,9 @@ func NewStatefulJob(client client.Client, recorder record.EventRecorder, missing
 
 var requeueStatefulJob = ctrl.Result{RequeueAfter: 60 * time.Second}
 
-//+kubebuilder:rbac:groups=cosmos.b.harvest,resources=statefuljobs,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=cosmos.b.harvest,resources=statefuljobs/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=cosmos.b.harvest,resources=statefuljobs/finalizers,verbs=update
+//+kubebuilder:rbac:groups=cosmos.bharvest,resources=statefuljobs,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=cosmos.bharvest,resources=statefuljobs/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=cosmos.bharvest,resources=statefuljobs/finalizers,verbs=update
 //+kubebuilder:rbac:groups=snapshot.storage.k8s.io,resources=volumesnapshots,verbs=get;list;watch
 //+kubebuilder:rbac:groups="",resources=persistentvolumeclaims,verbs=get;list;watch;create;delete
 //+kubebuilder:rbac:groups="batch",resources=jobs,verbs=get;list;watch;create

@@ -5,9 +5,9 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.9.0
   creationTimestamp: null
-  name: scheduledvolumesnapshots.cosmos.b.harvest
+  name: scheduledvolumesnapshots.cosmos.bharvest
 spec:
-  group: cosmos.b.harvest
+  group: cosmos.bharvest
   names:
     kind: ScheduledVolumeSnapshot
     listKind: ScheduledVolumeSnapshotList
