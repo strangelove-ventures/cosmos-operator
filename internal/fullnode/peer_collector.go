@@ -106,7 +106,6 @@ func NewPeerCollector(client Getter) *PeerCollector {
 // Collect peer information given the crd.
 func (c PeerCollector) Collect(ctx context.Context, crd *cosmosv1.CosmosFullNode) (Peers, kube.ReconcileError) {
 	peers := make(Peers)
-
 	for i := int32(0); i < crd.Spec.Replicas; i++ {
 		secretName := nodeKeySecretName(crd, i)
 		var secret corev1.Secret

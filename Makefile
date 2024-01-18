@@ -58,7 +58,7 @@ endif
 CHAIN_NAME ?= $(error Please set CHAIN_NAME)
 .PHONY: latest-snapshot
 latest-snapshot: ## Get latest snapshot from polkachu. Must set CHAIN_NAME flag or env var.
-	@curl -k -s https://polkachu.com/api/v1/chains/$(CHAIN_NAME)/snapshot | jq -r '.snapshot.url' | tr -d "\n"
+	@curl -s https://polkachu.com/api/v1/chains/$(CHAIN_NAME)/snapshot | jq -r '.snapshot.url' | tr -d "\n"
 
 .PHONY: test
 test: manifests generate ## Run unit tests.
