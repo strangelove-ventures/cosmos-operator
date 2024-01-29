@@ -180,9 +180,36 @@ func podReadinessProbes(crd *cosmosv1.CosmosFullNode) []*corev1.Probe {
 // Build assigns the CosmosFullNode crd as the owner and returns a fully constructed pod.
 func (b PodBuilder) Build() (*corev1.Pod, error) {
 	pod := b.pod.DeepCopy()
+
+	if len(b.crd.Spec.ChainSpec.Versions) > 0 {
+		instanceHeight := uint64(0)
+		if height, ok := b.crd.Status.Height[pod.Name]; ok {
+			instanceHeight = height
+		}
+		var image string
+		for _, version := range b.crd.Spec.ChainSpec.Versions {
+			if instanceHeight < version.UpgradeHeight {
+				break
+			}
+			image = version.Image
+		}
+		if image != "" {
+			setChainContainerImage(pod, image)
+		}
+	}
+	if o, ok := b.crd.Spec.InstanceOverrides[pod.Name]; ok {
+		if o.DisableStrategy != nil {
+			return nil, nil
+		}
+		if o.Image != "" {
+			setChainContainerImage(pod, o.Image)
+		}
+	}
+
 	if err := kube.ApplyStrategicMergePatch(pod, podPatch(b.crd)); err != nil {
 		return nil, err
 	}
+
 	kube.NormalizeMetadata(&pod.ObjectMeta)
 	return pod, nil
 }
