@@ -20,6 +20,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	cosmosv1 "github.com/bharvest-devops/cosmos-operator/api/v1"
@@ -196,6 +197,7 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	// Check final state and requeue if necessary.
 	if peers.HasIncompleteExternalAddress() {
+		reporter.Info("==================== CUSTOM: " + strings.Join(peers.AllExternal(), ","))
 		reporter.Info("Requeueing due to incomplete p2p external addresses")
 		reporter.RecordInfo("P2PIncomplete", "Waiting for p2p service IPs or Hostnames to be ready.")
 		crd.Status.Phase = cosmosv1.FullNodePhaseP2PServices
