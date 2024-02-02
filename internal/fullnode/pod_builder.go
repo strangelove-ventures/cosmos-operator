@@ -202,7 +202,7 @@ func getCometbftDir(crd *cosmosv1.CosmosFullNode) string {
 	if crd.Spec.ChainSpec.ChainType == chainTypeCosmos || crd.Spec.ChainSpec.ChainType == chainTypeCosmovisor {
 		return ""
 	} else if crd.Spec.ChainSpec.ChainType == chainTypeNamada {
-		return crd.Spec.ChainSpec.ChainID + "cometbft"
+		return crd.Spec.ChainSpec.ChainID + "/cometbft"
 	}
 	return ""
 }
