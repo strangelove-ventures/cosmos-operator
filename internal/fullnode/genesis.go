@@ -12,6 +12,8 @@ var (
 	scriptDownloadGenesis string
 	//go:embed script/use-init-genesis.sh
 	scriptUseInitGenesis string
+	//go:embed script/download-genesis-namada.sh
+	scriptDownloadGenesisNamada string
 )
 
 // If $DATA_DIR is populated, then we assume we have the genesis file.
@@ -38,6 +40,8 @@ func DownloadGenesisCommand(cfg cosmosv1.ChainSpec) (string, []string) {
 		args = append(args, fmt.Sprintf(genesisScriptWrapper, *cfg.GenesisScript))
 	case cfg.GenesisURL != nil:
 		args = append(args, fmt.Sprintf(genesisScriptWrapper, scriptDownloadGenesis), "-s", *cfg.GenesisURL)
+	case cfg.ChainType == chainTypeNamada:
+		args = append(args, fmt.Sprintf(genesisScriptWrapper, scriptDownloadGenesisNamada), "-s", cfg.ChainID, *cfg.GenesisURL)
 	default:
 		args = append(args, fmt.Sprintf(genesisScriptWrapper, scriptUseInitGenesis))
 	}
