@@ -202,7 +202,7 @@ func getCometbftDir(crd *cosmosv1.CosmosFullNode) string {
 	if crd.Spec.ChainSpec.ChainType == chainTypeCosmos || crd.Spec.ChainSpec.ChainType == chainTypeCosmovisor {
 		return ""
 	} else if crd.Spec.ChainSpec.ChainType == chainTypeNamada {
-		return crd.Spec.ChainSpec.ChainID + "/cometbft"
+		return "/" + crd.Spec.ChainSpec.ChainID + "/cometbft"
 	}
 	return ""
 }
@@ -306,12 +306,6 @@ const (
 
 // ChainHomeDir is the abs filepath for the chain's home directory.
 func ChainHomeDir(crd *cosmosv1.CosmosFullNode) string {
-	if crd.Spec.ChainSpec.ChainType == chainTypeCosmovisor {
-		return workDir + "/cosmos"
-	}
-	if crd.Spec.ChainSpec.ChainType == chainTypeNamada {
-		return workDir + "/namada"
-	}
 	if home := crd.Spec.ChainSpec.HomeDir; home != "" {
 		return path.Join(workDir, home)
 	}
