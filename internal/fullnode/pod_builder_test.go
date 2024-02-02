@@ -291,7 +291,7 @@ func TestPodBuilder(t *testing.T) {
 		require.Contains(t, freshCont.Args[1], `rm -rf "$HOME/.tmp/*"`)
 
 		initCont := pod.Spec.InitContainers[1]
-		require.Contains(t, initCont.Args[1], `osmosisd init --chain-id osmosis-123 osmosis-6 --home "$CHAIN_HOME"`)
+		require.Contains(t, initCont.Args[1], `osmosisd init --chain-id osmosis-123 osmosis-6 --home "$COMETBFT_HOME"`)
 		require.Contains(t, initCont.Args[1], `osmosisd init --chain-id osmosis-123 osmosis-6 --home "$HOME/.tmp"`)
 
 		mergeConfig1 := pod.Spec.InitContainers[3]
@@ -322,14 +322,16 @@ func TestPodBuilder(t *testing.T) {
 		require.Equal(t, container.Env[0].Value, "/home/operator")
 		require.Equal(t, container.Env[1].Name, "CHAIN_HOME")
 		require.Equal(t, container.Env[1].Value, "/home/operator/.osmosisd")
-		require.Equal(t, container.Env[2].Name, "GENESIS_FILE")
-		require.Equal(t, container.Env[2].Value, "/home/operator/.osmosisd/config/genesis.json")
-		require.Equal(t, container.Env[3].Name, "ADDRBOOK_FILE")
-		require.Equal(t, container.Env[3].Value, "/home/operator/.osmosisd/config/addrbook.json")
-		require.Equal(t, container.Env[4].Name, "CONFIG_DIR")
-		require.Equal(t, container.Env[4].Value, "/home/operator/.osmosisd/config")
-		require.Equal(t, container.Env[5].Name, "DATA_DIR")
-		require.Equal(t, container.Env[5].Value, "/home/operator/.osmosisd/data")
+		require.Equal(t, container.Env[2].Name, "COMETBFT_HOME")
+		require.Equal(t, container.Env[2].Value, "/home/operator/.osmosisd")
+		require.Equal(t, container.Env[3].Name, "GENESIS_FILE")
+		require.Equal(t, container.Env[3].Value, "/home/operator/.osmosisd/config/genesis.json")
+		require.Equal(t, container.Env[4].Name, "ADDRBOOK_FILE")
+		require.Equal(t, container.Env[4].Value, "/home/operator/.osmosisd/config/addrbook.json")
+		require.Equal(t, container.Env[5].Name, "CONFIG_DIR")
+		require.Equal(t, container.Env[5].Value, "/home/operator/.osmosisd/config")
+		require.Equal(t, container.Env[6].Name, "DATA_DIR")
+		require.Equal(t, container.Env[6].Value, "/home/operator/.osmosisd/data")
 
 		require.NotEmpty(t, pod.Spec.InitContainers)
 
