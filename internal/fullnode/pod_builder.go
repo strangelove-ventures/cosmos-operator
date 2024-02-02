@@ -22,9 +22,11 @@ import (
 var bufPool = sync.Pool{New: func() any { return new(bytes.Buffer) }}
 
 const (
-	healthCheckPort    = healthcheck.Port
-	mainContainer      = "node"
-	chainInitContainer = "chain-init"
+	healthCheckPort     = healthcheck.Port
+	mainContainer       = "node"
+	chainInitContainer  = "chain-init"
+	chainTypeCosmovisor = "cosmovisor"
+	chainTypeNamada     = "namada"
 )
 
 // PodBuilder builds corev1.Pods
@@ -294,8 +296,11 @@ const (
 
 // ChainHomeDir is the abs filepath for the chain's home directory.
 func ChainHomeDir(crd *cosmosv1.CosmosFullNode) string {
-	if crd.Spec.PodTemplate.UseCosmovisor {
+	if crd.Spec.PodTemplate.ChainType == chainTypeCosmovisor {
 		return workDir + "/cosmos"
+	}
+	if crd.Spec.PodTemplate.ChainType == chainTypeNamada {
+		return workDir + "/namada"
 	}
 	if home := crd.Spec.ChainSpec.HomeDir; home != "" {
 		return path.Join(workDir, home)
@@ -468,8 +473,11 @@ func startCmdAndArgs(crd *cosmosv1.CosmosFullNode) (string, []string) {
 		privvalSleep int32 = 10
 	)
 
-	if crd.Spec.PodTemplate.UseCosmovisor {
+	// Determine blockchain types to operate
+	if crd.Spec.PodTemplate.ChainType == chainTypeCosmovisor {
 		binary = "/bin/sh"
+	} else if crd.Spec.PodTemplate.ChainType == chainTypeNamada {
+		binary = "/bin/namada"
 	}
 
 	if v := crd.Spec.ChainSpec.PrivvalSleepSeconds; v != nil {
@@ -489,9 +497,12 @@ func startCommandArgs(crd *cosmosv1.CosmosFullNode) []string {
 	args := []string{"start", "--home", ChainHomeDir(crd)}
 	cfg := crd.Spec.ChainSpec
 
-	if crd.Spec.PodTemplate.UseCosmovisor {
+	if crd.Spec.PodTemplate.ChainType == chainTypeCosmovisor {
 		originArgs := args
 		args = []string{"-c", "/bin/cosmovisor init /bin/" + cfg.Binary + "; " + "/bin/cosmovisor run " + strings.Join(originArgs, " ")}
+	} else if crd.Spec.PodTemplate.ChainType == chainTypeNamada {
+		args = []string{"--base-dir " + ChainHomeDir(crd) + ";" + "node " + "ledger " + "run"}
+		return args
 	}
 
 	if cfg.SkipInvariants {
