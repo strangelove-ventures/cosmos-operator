@@ -353,7 +353,7 @@ func getCosmosChainInitContainer(env []corev1.EnvVar, tpl cosmosv1.PodSpec, init
 set -eu
 if [ ! -d "$COMETBFT_HOME/data" ]; then
 	echo "Initializing chain..."
-	%s --home "COMETBFT_HOME"
+	%s --home "$COMETBFT_HOME"
 else
 	echo "Skipping chain init; already initialized."
 fi
