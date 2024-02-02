@@ -416,6 +416,7 @@ type ChainSpec struct {
 	// Describes chain type to operate
 	// If not set, defaults to "cosmos".
 	// +kubebuilder:validation:Enum:=cosmos;cosmovisor;namada
+	// +kubebuilder:default:=cosmos
 	// +optional
 	ChainType string `json:"chainType"`
 
