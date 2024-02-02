@@ -202,7 +202,7 @@ func getCometbftDir(crd *cosmosv1.CosmosFullNode) string {
 	if crd.Spec.ChainSpec.ChainType == chainTypeCosmos || crd.Spec.ChainSpec.ChainType == chainTypeCosmovisor {
 		return ""
 	} else if crd.Spec.ChainSpec.ChainType == chainTypeNamada {
-		return crd.Spec.ChainSpec.ChainID + "cometbft/config"
+		return crd.Spec.ChainSpec.ChainID + "cometbft"
 	}
 	return ""
 }
@@ -327,7 +327,7 @@ func envVars(crd *cosmosv1.CosmosFullNode) []corev1.EnvVar {
 		{Name: "GENESIS_FILE", Value: path.Join(home, getCometbftDir(crd)+"/config", "genesis.json")},
 		{Name: "ADDRBOOK_FILE", Value: path.Join(home, getCometbftDir(crd)+"/config", "addrbook.json")},
 		{Name: "CONFIG_DIR", Value: path.Join(home, getCometbftDir(crd)+"/config")},
-		{Name: "DATA_DIR", Value: path.Join(home, "data")},
+		{Name: "DATA_DIR", Value: path.Join(home, getCometbftDir(crd), "/data")},
 	}
 }
 
