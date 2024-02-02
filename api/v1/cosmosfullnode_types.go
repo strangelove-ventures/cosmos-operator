@@ -202,7 +202,7 @@ type PodSpec struct {
 	Image string `json:"image"`
 
 	// +optional
-	UseCosmovisor bool `json:"useCosmovisor"`
+	ChainType string `json:"chainType"`
 
 	// Image pull policy.
 	// One of Always, Never, IfNotPresent.
