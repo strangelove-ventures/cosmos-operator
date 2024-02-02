@@ -507,7 +507,7 @@ func startCmdAndArgs(crd *cosmosv1.CosmosFullNode) (string, []string) {
 	if crd.Spec.ChainSpec.ChainType == chainTypeCosmovisor {
 		binary = "/bin/sh"
 	} else if crd.Spec.ChainSpec.ChainType == chainTypeNamada {
-		binary = "/bin/namada"
+		binary = "/usr/local/bin/namada"
 	}
 
 	if v := crd.Spec.ChainSpec.PrivvalSleepSeconds; v != nil {
