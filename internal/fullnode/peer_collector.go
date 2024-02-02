@@ -145,7 +145,7 @@ func (c PeerCollector) addExternalAddress(ctx context.Context, peers Peers, crd 
 		return kube.TransientError(fmt.Errorf("get server %s: %w", svcName, err))
 	}
 
-	if svc.Spec.Type != corev1.ServiceTypeLoadBalancer && (svc.Spec.Type != corev1.ServiceTypeNodePort) {
+	if ((svc.Spec.Type != corev1.ServiceTypeLoadBalancer) && (svc.Spec.Type != corev1.ServiceTypeNodePort)) || svc.Spec.Type == "" {
 		return nil
 	}
 
