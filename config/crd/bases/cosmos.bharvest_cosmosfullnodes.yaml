@@ -177,6 +177,15 @@ spec:
                     description: Genesis file chain-id.
                     minLength: 1
                     type: string
+                  chainType:
+                    default: cosmos
+                    description: Describes chain type to operate If not set, defaults
+                      to "cosmos".
+                    enum:
+                    - cosmos
+                    - cosmovisor
+                    - namada
+                    type: string
                   config:
                     description: CometBFT (formerly Tendermint) configuration applied
                       to config.toml. Although optional, it's highly recommended you
@@ -4057,8 +4066,6 @@ spec:
                           type: string
                       type: object
                     type: array
-                  useCosmovisor:
-                    type: boolean
                   volumes:
                     description: 'List of volumes that can be mounted by containers
                       belonging to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes
