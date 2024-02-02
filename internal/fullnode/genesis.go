@@ -36,12 +36,12 @@ echo "Genesis $GENESIS_FILE initialized."
 func DownloadGenesisCommand(cfg cosmosv1.ChainSpec) (string, []string) {
 	args := []string{"-c"}
 	switch {
+	case cfg.ChainType == chainTypeNamada:
+		args = append(args, fmt.Sprintf(genesisScriptWrapper, scriptDownloadGenesisNamada), "-s", cfg.ChainID, *cfg.GenesisURL)
 	case cfg.GenesisScript != nil:
 		args = append(args, fmt.Sprintf(genesisScriptWrapper, *cfg.GenesisScript))
 	case cfg.GenesisURL != nil:
 		args = append(args, fmt.Sprintf(genesisScriptWrapper, scriptDownloadGenesis), "-s", *cfg.GenesisURL)
-	case cfg.ChainType == chainTypeNamada:
-		args = append(args, fmt.Sprintf(genesisScriptWrapper, scriptDownloadGenesisNamada), "-s", cfg.ChainID, *cfg.GenesisURL)
 	default:
 		args = append(args, fmt.Sprintf(genesisScriptWrapper, scriptUseInitGenesis))
 	}
