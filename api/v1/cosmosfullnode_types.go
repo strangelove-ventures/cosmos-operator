@@ -201,9 +201,6 @@ type PodSpec struct {
 	// +optional
 	Image string `json:"image"`
 
-	// +optional
-	ChainType string `json:"chainType"`
-
 	// Image pull policy.
 	// One of Always, Never, IfNotPresent.
 	// Defaults to Always if :latest tag is specified, or IfNotPresent otherwise.
@@ -415,6 +412,9 @@ type ChainSpec struct {
 	// Genesis file chain-id.
 	// +kubebuilder:validation:MinLength:=1
 	ChainID string `json:"chainID"`
+
+	// +optional
+	ChainType string `json:"chainType"`
 
 	// The network environment. Typically, mainnet, testnet, devnet, etc.
 	// +kubebuilder:validation:MinLength:=1
