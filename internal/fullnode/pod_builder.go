@@ -368,10 +368,10 @@ echo "Initializing into tmp dir for downstream processing..."
 	}
 }
 
-func getGenesisInitContainer(env []corev1.EnvVar, tpl cosmosv1.PodSpec, genesisCmd string, genesisArgs []string) corev1.Container {
+func getGenesisInitContainer(env []corev1.EnvVar, tpl cosmosv1.PodSpec, genesisCmd string, genesisArgs []string, genesisImage string) corev1.Container {
 	return corev1.Container{
 		Name:            "genesis-init",
-		Image:           infraToolImage,
+		Image:           genesisImage,
 		Command:         []string{genesisCmd},
 		Args:            genesisArgs,
 		Env:             env,
@@ -438,9 +438,11 @@ func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Conta
 			initCmd += " " + strings.Join(crd.Spec.ChainSpec.AdditionalInitArgs, " ")
 		}
 		required = append(required, getCosmosChainInitContainer(env, tpl, initCmd))
+		required = append(required, getGenesisInitContainer(env, tpl, genesisCmd, genesisArgs, infraToolImage))
+	} else if crd.Spec.ChainSpec.ChainType == chainTypeNamada {
+		required = append(required, getGenesisInitContainer(env, tpl, genesisCmd, genesisArgs, crd.Spec.PodTemplate.Image))
 	}
 
-	required = append(required, getGenesisInitContainer(env, tpl, genesisCmd, genesisArgs))
 	required = append(required, getAddrbookInitContainer(env, tpl, addrbookCmd, addrbookArgs))
 	required = append(required, getConfigMergeContainer(env, tpl))
 
