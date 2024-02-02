@@ -438,7 +438,6 @@ func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Conta
 			initCmd += " " + strings.Join(crd.Spec.ChainSpec.AdditionalInitArgs, " ")
 		}
 		required = append(required, getCosmosChainInitContainer(env, tpl, initCmd))
-	} else if crd.Spec.ChainSpec.ChainType == chainTypeNamada {
 	}
 
 	required = append(required, getGenesisInitContainer(env, tpl, genesisCmd, genesisArgs))
