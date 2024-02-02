@@ -412,6 +412,7 @@ rm -rf "$CONFIG_DIR/node_key.json"
 
 echo "Merging config..."
 set -x
+mkdir -p $CONFIG_DIR
 config-merge -f toml "$TMP_DIR/config.toml" "$OVERLAY_DIR/config-overlay.toml" > "$CONFIG_DIR/config.toml"
 config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CONFIG_DIR/app.toml"
 `,
