@@ -25,6 +25,7 @@ const (
 	healthCheckPort     = healthcheck.Port
 	mainContainer       = "node"
 	chainInitContainer  = "chain-init"
+	chainTypeCosmos     = "cosmos"
 	chainTypeCosmovisor = "cosmovisor"
 	chainTypeNamada     = "namada"
 )
@@ -197,6 +198,15 @@ const (
 	volNodeKey   = "vol-node-key"   // Secret containing the node key.
 )
 
+func getCometbftDir(crd *cosmosv1.CosmosFullNode) string {
+	if crd.Spec.ChainSpec.ChainType == chainTypeCosmos || crd.Spec.ChainSpec.ChainType == chainTypeCosmovisor {
+		return ""
+	} else if crd.Spec.ChainSpec.ChainType == chainTypeNamada {
+		return crd.Spec.ChainSpec.ChainID + "cometbft/config"
+	}
+	return ""
+}
+
 // WithOrdinal updates adds name and other metadata to the pod using "ordinal" which is the pod's
 // ordered sequence. Pods have deterministic, consistent names similar to a StatefulSet instead of generated names.
 func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
@@ -270,7 +280,7 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 
 	// At this point, guaranteed to have at least 2 containers.
 	pod.Spec.Containers[0].VolumeMounts = append(mounts, corev1.VolumeMount{
-		Name: volNodeKey, MountPath: path.Join(ChainHomeDir(b.crd), "config", nodeKeyFile), SubPath: nodeKeyFile,
+		Name: volNodeKey, MountPath: path.Join(ChainHomeDir(b.crd), getCometbftDir(b.crd)+"/config", nodeKeyFile), SubPath: nodeKeyFile,
 	})
 	pod.Spec.Containers[1].VolumeMounts = []corev1.VolumeMount{
 		// The healthcheck sidecar needs access to the home directory so it can read disk usage.
@@ -296,10 +306,10 @@ const (
 
 // ChainHomeDir is the abs filepath for the chain's home directory.
 func ChainHomeDir(crd *cosmosv1.CosmosFullNode) string {
-	if crd.Spec.PodTemplate.ChainType == chainTypeCosmovisor {
+	if crd.Spec.ChainSpec.ChainType == chainTypeCosmovisor {
 		return workDir + "/cosmos"
 	}
-	if crd.Spec.PodTemplate.ChainType == chainTypeNamada {
+	if crd.Spec.ChainSpec.ChainType == chainTypeNamada {
 		return workDir + "/namada"
 	}
 	if home := crd.Spec.ChainSpec.HomeDir; home != "" {
@@ -313,44 +323,37 @@ func envVars(crd *cosmosv1.CosmosFullNode) []corev1.EnvVar {
 	return []corev1.EnvVar{
 		{Name: "HOME", Value: workDir},
 		{Name: "CHAIN_HOME", Value: home},
-		{Name: "GENESIS_FILE", Value: path.Join(home, "config", "genesis.json")},
-		{Name: "ADDRBOOK_FILE", Value: path.Join(home, "config", "addrbook.json")},
-		{Name: "CONFIG_DIR", Value: path.Join(home, "config")},
+		{Name: "COMETBFT_HOME", Value: getCometbftDir(crd)},
+		{Name: "GENESIS_FILE", Value: path.Join(home, getCometbftDir(crd)+"/config", "genesis.json")},
+		{Name: "ADDRBOOK_FILE", Value: path.Join(home, getCometbftDir(crd)+"/config", "addrbook.json")},
+		{Name: "CONFIG_DIR", Value: path.Join(home, getCometbftDir(crd)+"/config")},
 		{Name: "DATA_DIR", Value: path.Join(home, "data")},
 	}
 }
 
-func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Container {
-	tpl := crd.Spec.PodTemplate
-	binary := crd.Spec.ChainSpec.Binary
-	genesisCmd, genesisArgs := DownloadGenesisCommand(crd.Spec.ChainSpec)
-	addrbookCmd, addrbookArgs := DownloadAddrbookCommand(crd.Spec.ChainSpec)
-	env := envVars(crd)
-
-	initCmd := fmt.Sprintf("%s init --chain-id %s %s", binary, crd.Spec.ChainSpec.ChainID, moniker)
-	if len(crd.Spec.ChainSpec.AdditionalInitArgs) > 0 {
-		initCmd += " " + strings.Join(crd.Spec.ChainSpec.AdditionalInitArgs, " ")
+func getCleanInitContainer(env []corev1.EnvVar, tpl cosmosv1.PodSpec) corev1.Container {
+	return corev1.Container{
+		Name:            "clean-init",
+		Image:           infraToolImage,
+		Command:         []string{"sh"},
+		Args:            []string{"-c", `rm -rf "$HOME/.tmp/*"`},
+		Env:             env,
+		ImagePullPolicy: tpl.ImagePullPolicy,
+		WorkingDir:      workDir,
 	}
-	required := []corev1.Container{
-		{
-			Name:            "clean-init",
-			Image:           infraToolImage,
-			Command:         []string{"sh"},
-			Args:            []string{"-c", `rm -rf "$HOME/.tmp/*"`},
-			Env:             env,
-			ImagePullPolicy: tpl.ImagePullPolicy,
-			WorkingDir:      workDir,
-		},
-		{
-			Name:    chainInitContainer,
-			Image:   tpl.Image,
-			Command: []string{"sh"},
-			Args: []string{"-c",
-				fmt.Sprintf(`
+}
+
+func getCosmosChainInitContainer(env []corev1.EnvVar, tpl cosmosv1.PodSpec, initCmd string) corev1.Container {
+	return corev1.Container{
+		Name:    chainInitContainer,
+		Image:   tpl.Image,
+		Command: []string{"sh"},
+		Args: []string{"-c",
+			fmt.Sprintf(`
 set -eu
-if [ ! -d "$CHAIN_HOME/data" ]; then
+if [ ! -d "$COMETBFT_HOME/data" ]; then
 	echo "Initializing chain..."
-	%s --home "$CHAIN_HOME"
+	%s --home "COMETBFT_HOME"
 else
 	echo "Skipping chain init; already initialized."
 fi
@@ -358,38 +361,46 @@ fi
 echo "Initializing into tmp dir for downstream processing..."
 %s --home "$HOME/.tmp"
 `, initCmd, initCmd),
-			},
-			Env:             env,
-			ImagePullPolicy: tpl.ImagePullPolicy,
-			WorkingDir:      workDir,
 		},
+		Env:             env,
+		ImagePullPolicy: tpl.ImagePullPolicy,
+		WorkingDir:      workDir,
+	}
+}
 
-		{
-			Name:            "genesis-init",
-			Image:           infraToolImage,
-			Command:         []string{genesisCmd},
-			Args:            genesisArgs,
-			Env:             env,
-			ImagePullPolicy: tpl.ImagePullPolicy,
-			WorkingDir:      workDir,
-		},
-		{
-			Name:            "addrbook-init",
-			Image:           infraToolImage,
-			Command:         []string{addrbookCmd},
-			Args:            addrbookArgs,
-			Env:             env,
-			ImagePullPolicy: tpl.ImagePullPolicy,
-			WorkingDir:      workDir,
-		},
-		{
-			Name:    "config-merge",
-			Image:   infraToolImage,
-			Command: []string{"sh"},
-			Args: []string{"-c",
-				`
+func getGenesisInitContainer(env []corev1.EnvVar, tpl cosmosv1.PodSpec, genesisCmd string, genesisArgs []string) corev1.Container {
+	return corev1.Container{
+		Name:            "genesis-init",
+		Image:           infraToolImage,
+		Command:         []string{genesisCmd},
+		Args:            genesisArgs,
+		Env:             env,
+		ImagePullPolicy: tpl.ImagePullPolicy,
+		WorkingDir:      workDir,
+	}
+}
+
+func getAddrbookInitContainer(env []corev1.EnvVar, tpl cosmosv1.PodSpec, addrbookCmd string, addrbookArgs []string) corev1.Container {
+	return corev1.Container{
+		Name:            "addrbook-init",
+		Image:           infraToolImage,
+		Command:         []string{addrbookCmd},
+		Args:            addrbookArgs,
+		Env:             env,
+		ImagePullPolicy: tpl.ImagePullPolicy,
+		WorkingDir:      workDir,
+	}
+}
+
+func getConfigMergeContainer(env []corev1.EnvVar, tpl cosmosv1.PodSpec) corev1.Container {
+	return corev1.Container{
+		Name:    "config-merge",
+		Image:   infraToolImage,
+		Command: []string{"sh"},
+		Args: []string{"-c",
+			`
 set -eu
-CONFIG_DIR="$CHAIN_HOME/config"
+CONFIG_DIR="$COMETBFT_HOME/config"
 TMP_DIR="$HOME/.tmp/config"
 OVERLAY_DIR="$HOME/.config"
 
@@ -404,12 +415,35 @@ set -x
 config-merge -f toml "$TMP_DIR/config.toml" "$OVERLAY_DIR/config-overlay.toml" > "$CONFIG_DIR/config.toml"
 config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CONFIG_DIR/app.toml"
 `,
-			},
-			Env:             env,
-			ImagePullPolicy: tpl.ImagePullPolicy,
-			WorkingDir:      workDir,
 		},
+		Env:             env,
+		ImagePullPolicy: tpl.ImagePullPolicy,
+		WorkingDir:      workDir,
 	}
+}
+
+func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Container {
+	tpl := crd.Spec.PodTemplate
+	binary := crd.Spec.ChainSpec.Binary
+	genesisCmd, genesisArgs := DownloadGenesisCommand(crd.Spec.ChainSpec)
+	addrbookCmd, addrbookArgs := DownloadAddrbookCommand(crd.Spec.ChainSpec)
+	env := envVars(crd)
+
+	required := []corev1.Container{
+		getCleanInitContainer(env, tpl),
+	}
+	if crd.Spec.ChainSpec.ChainType == chainTypeCosmos || crd.Spec.ChainSpec.ChainType == chainTypeCosmovisor {
+		initCmd := fmt.Sprintf("%s init --chain-id %s %s", binary, crd.Spec.ChainSpec.ChainID, moniker)
+		if len(crd.Spec.ChainSpec.AdditionalInitArgs) > 0 {
+			initCmd += " " + strings.Join(crd.Spec.ChainSpec.AdditionalInitArgs, " ")
+		}
+		required = append(required, getCosmosChainInitContainer(env, tpl, initCmd))
+	} else if crd.Spec.ChainSpec.ChainType == chainTypeNamada {
+	}
+
+	required = append(required, getGenesisInitContainer(env, tpl, genesisCmd, genesisArgs))
+	required = append(required, getAddrbookInitContainer(env, tpl, addrbookCmd, addrbookArgs))
+	required = append(required, getConfigMergeContainer(env, tpl))
 
 	//if true {
 	//	required = append(required, corev1.Container{
@@ -474,9 +508,9 @@ func startCmdAndArgs(crd *cosmosv1.CosmosFullNode) (string, []string) {
 	)
 
 	// Determine blockchain types to operate
-	if crd.Spec.PodTemplate.ChainType == chainTypeCosmovisor {
+	if crd.Spec.ChainSpec.ChainType == chainTypeCosmovisor {
 		binary = "/bin/sh"
-	} else if crd.Spec.PodTemplate.ChainType == chainTypeNamada {
+	} else if crd.Spec.ChainSpec.ChainType == chainTypeNamada {
 		binary = "/bin/namada"
 	}
 
@@ -497,10 +531,10 @@ func startCommandArgs(crd *cosmosv1.CosmosFullNode) []string {
 	args := []string{"start", "--home", ChainHomeDir(crd)}
 	cfg := crd.Spec.ChainSpec
 
-	if crd.Spec.PodTemplate.ChainType == chainTypeCosmovisor {
+	if crd.Spec.ChainSpec.ChainType == chainTypeCosmovisor {
 		originArgs := args
 		args = []string{"-c", "/bin/cosmovisor init /bin/" + cfg.Binary + "; " + "/bin/cosmovisor run " + strings.Join(originArgs, " ")}
-	} else if crd.Spec.PodTemplate.ChainType == chainTypeNamada {
+	} else if crd.Spec.ChainSpec.ChainType == chainTypeNamada {
 		args = []string{"--base-dir " + ChainHomeDir(crd) + ";" + "node " + "ledger " + "run"}
 		return args
 	}
