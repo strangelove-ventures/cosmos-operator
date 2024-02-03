@@ -5,7 +5,7 @@ if [ ! -d "$CHAIN_ID" ]; then
     echo "Directory $CHAIN_ID does not exist. Downloading..."
     namada --base-dir $CHAIN_HOME client utils join-network --chain-id $CHAIN_ID
     echo "$CHAIN_ID downloaded successfully."
-    ls -al $CHAIN_HOME
+    ls -al "$CHAIN_HOME/shielded-expedition.b40d8e9055/cometbft"
 else
     echo "Directory $CHAIN_ID already exists."
 fi
