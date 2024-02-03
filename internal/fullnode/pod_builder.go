@@ -505,7 +505,7 @@ func startCmdAndArgs(crd *cosmosv1.CosmosFullNode) (string, []string) {
 
 	// Determine blockchain types to operate
 	if crd.Spec.ChainSpec.ChainType == chainTypeCosmovisor {
-		binary = "/bin/sh"
+		binary = "sh"
 	} else if crd.Spec.ChainSpec.ChainType == chainTypeNamada {
 		binary = "sh"
 	}
@@ -531,7 +531,7 @@ func startCommandArgs(crd *cosmosv1.CosmosFullNode) []string {
 		originArgs := args
 		args = []string{"-c", "/bin/cosmovisor init /bin/" + cfg.Binary + "; " + "/bin/cosmovisor run " + strings.Join(originArgs, " ")}
 	} else if crd.Spec.ChainSpec.ChainType == chainTypeNamada {
-		args = []string{"-c", "namada --base-dir " + ChainHomeDir(crd) + " --chain-id " + crd.Spec.ChainSpec.ChainID + " node ledger run"}
+		args = []string{"-c", "namada --base-dir " + ChainHomeDir(crd) + " --chain-id " + crd.Spec.ChainSpec.ChainID + " node ledger run; trap : TERM INT; sleep infinity & wait"}
 		return args
 	}
 
