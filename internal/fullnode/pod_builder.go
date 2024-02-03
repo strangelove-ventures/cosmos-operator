@@ -322,6 +322,7 @@ func envVars(crd *cosmosv1.CosmosFullNode) []corev1.EnvVar {
 		{Name: "ADDRBOOK_FILE", Value: path.Join(home, getCometbftDir(crd)+"/config", "addrbook.json")},
 		{Name: "CONFIG_DIR", Value: path.Join(home, getCometbftDir(crd)+"/config")},
 		{Name: "DATA_DIR", Value: path.Join(home, getCometbftDir(crd), "/data")},
+		{Name: "CHAIN_ID", Value: crd.Spec.ChainSpec.ChainID},
 	}
 }
 
@@ -531,8 +532,7 @@ func startCommandArgs(crd *cosmosv1.CosmosFullNode) []string {
 		originArgs := args
 		args = []string{"-c", "/bin/cosmovisor init /bin/" + cfg.Binary + "; " + "/bin/cosmovisor run " + strings.Join(originArgs, " ")}
 	} else if crd.Spec.ChainSpec.ChainType == chainTypeNamada {
-		args = []string{"-c", scriptDownloadGenesisNamada, cfg.ChainID, *cfg.GenesisURL}
-		args = append(args, "namada --base-dir "+ChainHomeDir(crd)+" --chain-id "+crd.Spec.ChainSpec.ChainID+" node ledger run; trap : TERM INT; sleep infinity & wait")
+		args = append(args, scriptDownloadGenesisNamada+"; namada --base-dir "+ChainHomeDir(crd)+" --chain-id "+crd.Spec.ChainSpec.ChainID+" node ledger run; trap : TERM INT; sleep infinity & wait")
 		return args
 	}
 
