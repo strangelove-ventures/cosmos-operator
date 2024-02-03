@@ -533,6 +533,14 @@ func startCommandArgs(crd *cosmosv1.CosmosFullNode) []string {
 		args = []string{"-c", "/bin/cosmovisor init /bin/" + cfg.Binary + "; " + "/bin/cosmovisor run " + strings.Join(originArgs, " ")}
 	} else if crd.Spec.ChainSpec.ChainType == chainTypeNamada {
 		args = []string{scriptDownloadGenesisNamada + "; namada --base-dir " + ChainHomeDir(crd) + " --chain-id " + crd.Spec.ChainSpec.ChainID + " node ledger run; trap : TERM INT; sleep infinity & wait"}
+		args = []string{"if [ ! -d \"$CHAIN_HOME/$CHAIN_ID\" ]; then echo \"Directory $CHAIN_ID does not exist. Downloading...\"; " +
+			"namada --base-dir \"$CHAIN_HOME\" client utils join-network --chain-id \"$CHAIN_ID\"; " +
+			"echo \"$CHAIN_ID downloaded successfully.\"; " +
+			"ls -al \"$CHAIN_HOME/$CHAIN_ID/\"; " +
+			"else echo \"Directory $CHAIN_ID already exists.\"; " +
+			"fi ; " +
+			"namada --base-dir " + ChainHomeDir(crd) + " --chain-id " + crd.Spec.ChainSpec.ChainID + " node ledger run"}
+
 		return args
 	}
 
