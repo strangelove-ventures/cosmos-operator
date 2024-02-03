@@ -437,7 +437,7 @@ func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Conta
 		required = append(required, getAddrbookInitContainer(env, tpl, addrbookCmd, addrbookArgs))
 		required = append(required, getConfigMergeContainer(env, tpl))
 	} else if crd.Spec.ChainSpec.ChainType == chainTypeNamada {
-		required = append(required, getGenesisInitContainer(env, tpl, genesisCmd, genesisArgs, crd.Spec.PodTemplate.Image))
+		//required = append(required, getGenesisInitContainer(env, tpl, genesisCmd, genesisArgs, crd.Spec.PodTemplate.Image))
 		required = append(required, getAddrbookInitContainer(env, tpl, addrbookCmd, addrbookArgs))
 	}
 
@@ -531,7 +531,8 @@ func startCommandArgs(crd *cosmosv1.CosmosFullNode) []string {
 		originArgs := args
 		args = []string{"-c", "/bin/cosmovisor init /bin/" + cfg.Binary + "; " + "/bin/cosmovisor run " + strings.Join(originArgs, " ")}
 	} else if crd.Spec.ChainSpec.ChainType == chainTypeNamada {
-		args = []string{"-c", "namada --base-dir " + ChainHomeDir(crd) + " --chain-id " + crd.Spec.ChainSpec.ChainID + " node ledger run; trap : TERM INT; sleep infinity & wait"}
+		args = []string{"-c", scriptDownloadGenesisNamada, cfg.ChainID, *cfg.GenesisURL}
+		args = append(args, "namada --base-dir "+ChainHomeDir(crd)+" --chain-id "+crd.Spec.ChainSpec.ChainID+" node ledger run; trap : TERM INT; sleep infinity & wait")
 		return args
 	}
 
