@@ -294,7 +294,7 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 	})
 	pod.Spec.Containers[1].VolumeMounts = []corev1.VolumeMount{
 		// The healthcheck sidecar needs access to the home directory so it can read disk usage.
-		{Name: volChainHome, MountPath: ChainHomeDir(b.crd), ReadOnly: true},
+		{Name: volChainHome, MountPath: ChainHomeDir(b.crd), ReadOnly: false},
 	}
 	if len(pod.Spec.Containers) > 2 {
 		pod.Spec.Containers[2].VolumeMounts = mounts
