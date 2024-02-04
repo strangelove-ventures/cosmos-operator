@@ -307,7 +307,7 @@ const (
 // ChainHomeDir is the abs filepath for the chain's home directory.
 func ChainHomeDir(crd *cosmosv1.CosmosFullNode) string {
 	home := crd.Spec.ChainSpec.HomeDir
-	if crd.Spec.ChainSpec.ChainType == chainTypeNamada && home != "" {
+	if crd.Spec.ChainSpec.ChainType == chainTypeNamada && home == "" {
 		return workDir + "/namada"
 	}
 	if home != "" {
