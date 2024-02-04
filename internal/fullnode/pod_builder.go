@@ -545,7 +545,7 @@ func startCommandArgs(crd *cosmosv1.CosmosFullNode) []string {
 		originArgs := args
 		args = []string{"-c", "/bin/cosmovisor init /bin/" + cfg.Binary + "; " + "/bin/cosmovisor run " + strings.Join(originArgs, " ")}
 	} else if crd.Spec.ChainSpec.ChainType == chainTypeNamada {
-		args = []string{"-c", "namada --base-dir " + ChainHomeDir(crd) + " --chain-id " + crd.Spec.ChainSpec.ChainID + " node ledger run; trap : TERM INT; sleep infinity & wait"}
+		args = []string{"-c", "namada --base-dir " + ChainHomeDir(crd) + "/namada --chain-id " + crd.Spec.ChainSpec.ChainID + " node ledger run; trap : TERM INT; sleep infinity & wait"}
 		return args
 	}
 
