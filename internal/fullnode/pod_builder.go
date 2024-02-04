@@ -72,7 +72,7 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 				RunAsGroup:          ptr(int64(1025)),
 				RunAsNonRoot:        ptr(true),
 				FSGroup:             ptr(int64(1025)),
-				FSGroupChangePolicy: ptr(corev1.FSGroupChangeOnRootMismatch),
+				FSGroupChangePolicy: ptr(corev1.FSGroupChangeAlways),
 				SeccompProfile:      &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
 			},
 			Subdomain: crd.Name,
@@ -294,7 +294,7 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 	})
 	pod.Spec.Containers[1].VolumeMounts = []corev1.VolumeMount{
 		// The healthcheck sidecar needs access to the home directory so it can read disk usage.
-		{Name: volChainHome, MountPath: ChainHomeDir(b.crd), ReadOnly: false},
+		{Name: volChainHome, MountPath: ChainHomeDir(b.crd), ReadOnly: true},
 	}
 	if len(pod.Spec.Containers) > 2 {
 		pod.Spec.Containers[2].VolumeMounts = mounts
