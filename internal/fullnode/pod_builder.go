@@ -271,12 +271,14 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 		{Name: volSystemTmp, MountPath: systemTmpDir},
 	}
 
-	// Mounts for namada.
-	// If namadan ledger run, the node install masp packages under $HOME.
-	// Thus, If pod that runs namada has mounts for no $HOME, it throws "Permission denied"
-	namadaMounts := []corev1.VolumeMount{
-		{Name: volChainHome, MountPath: workDir},
-		{Name: volSystemTmp, MountPath: systemTmpDir},
+	if b.crd.Spec.ChainSpec.ChainType == chainTypeNamada {
+		// Mounts for namada.
+		// If namadan ledger run, the node install masp packages under $HOME.
+		// Thus, If pod that runs namada has mounts for no $HOME, it throws "Permission denied"
+		mounts = []corev1.VolumeMount{
+			{Name: volChainHome, MountPath: workDir},
+			{Name: volSystemTmp, MountPath: systemTmpDir},
+		}
 	}
 	// Additional mounts only needed for init containers.
 	for i := range pod.Spec.InitContainers {
@@ -287,7 +289,7 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 	}
 
 	// At this point, guaranteed to have at least 2 containers.
-	pod.Spec.Containers[0].VolumeMounts = append(namadaMounts, corev1.VolumeMount{
+	pod.Spec.Containers[0].VolumeMounts = append(mounts, corev1.VolumeMount{
 		Name: volNodeKey, MountPath: path.Join(ChainHomeDir(b.crd), getCometbftDir(b.crd)+"/config", nodeKeyFile), SubPath: nodeKeyFile,
 	})
 	pod.Spec.Containers[1].VolumeMounts = []corev1.VolumeMount{
