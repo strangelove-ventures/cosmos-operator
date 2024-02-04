@@ -308,7 +308,7 @@ const (
 func ChainHomeDir(crd *cosmosv1.CosmosFullNode) string {
 	home := crd.Spec.ChainSpec.HomeDir
 	if crd.Spec.ChainSpec.ChainType == chainTypeNamada && home != "" {
-		home = "namada"
+		return path.Join(workDir, "namada")
 	}
 	if home != "" {
 		return path.Join(workDir, home)
