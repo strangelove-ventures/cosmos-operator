@@ -267,7 +267,7 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 
 	// Mounts required by all containers.
 	mounts := []corev1.VolumeMount{
-		{Name: volChainHome, MountPath: ChainHomeDir(b.crd)},
+		{Name: volChainHome, MountPath: ChainHomeDir(b.crd)}, // 해당 부분 바꿔서 어쩌고
 		{Name: volSystemTmp, MountPath: systemTmpDir},
 	}
 	// Additional mounts only needed for init containers.
@@ -306,7 +306,11 @@ const (
 
 // ChainHomeDir is the abs filepath for the chain's home directory.
 func ChainHomeDir(crd *cosmosv1.CosmosFullNode) string {
-	if home := crd.Spec.ChainSpec.HomeDir; home != "" {
+	home := crd.Spec.ChainSpec.HomeDir
+	if crd.Spec.ChainSpec.ChainType == chainTypeNamada && home != "" {
+		home = "namada"
+	}
+	if home != "" {
 		return path.Join(workDir, home)
 	}
 	return workDir + "/cosmos"
@@ -531,7 +535,7 @@ func startCommandArgs(crd *cosmosv1.CosmosFullNode) []string {
 		originArgs := args
 		args = []string{"-c", "/bin/cosmovisor init /bin/" + cfg.Binary + "; " + "/bin/cosmovisor run " + strings.Join(originArgs, " ")}
 	} else if crd.Spec.ChainSpec.ChainType == chainTypeNamada {
-		args = []string{"-c", "namada --base-dir " + ChainHomeDir(crd) + " --chain-id " + crd.Spec.ChainSpec.ChainID + " node ledger run; trap : TERM INT; sleep infinity & wait"}
+		args = []string{"-c", "namada --base-dir " + ChainHomeDir(crd) + "/namada --chain-id " + crd.Spec.ChainSpec.ChainID + " node ledger run; trap : TERM INT; sleep infinity & wait"}
 		return args
 	}
 

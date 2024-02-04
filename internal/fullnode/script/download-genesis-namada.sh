@@ -3,7 +3,7 @@ NAMADA_NETWORK_CONFIGS_SERVER="https://github.com/anoma/namada-shielded-expediti
 
 if [ ! -d $CHAIN_HOME/$CHAIN_ID ]; then
     echo "Directory $CHAIN_ID does not exist. Downloading..."
-    namada --base-dir $CHAIN_HOME client utils join-network --chain-id "$CHAIN_ID"
+    namada --base-dir $CHAIN_HOME/namada client utils join-network --chain-id "$CHAIN_ID"
     echo "$CHAIN_ID downloaded successfully."
     ls -al "$CHAIN_HOME/$CHAIN_ID/"
 else
