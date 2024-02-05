@@ -114,7 +114,7 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 		},
 	}
 
-	if len(crd.Spec.ChainSpec.Versions) > 0 && crd.Spec.ChainSpec.ChainType != chainTypeNamada {
+	if len(crd.Spec.ChainSpec.Versions) > 0 {
 		// version check sidecar, runs on inverval in case the instance is halting for upgrade.
 		pod.Spec.Containers = append(pod.Spec.Containers, corev1.Container{
 			Name:    "version-check-interval",
