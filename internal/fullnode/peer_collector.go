@@ -149,12 +149,12 @@ func (c PeerCollector) addExternalAddress(ctx context.Context, peers Peers, crd 
 		return nil
 	}
 
-	objKey := c.objectKey(crd, ordinal)
-	info := peers[objKey]
-	info.hasExternalAddress = true
-	defer func() { peers[objKey] = info }()
-
 	if svc.Spec.Type == corev1.ServiceTypeLoadBalancer {
+		objKey := c.objectKey(crd, ordinal)
+		info := peers[objKey]
+		info.hasExternalAddress = true
+		defer func() { peers[objKey] = info }()
+
 		ingress := svc.Status.LoadBalancer.Ingress
 		if len(ingress) == 0 {
 			return nil
@@ -166,6 +166,11 @@ func (c PeerCollector) addExternalAddress(ctx context.Context, peers Peers, crd 
 			info.ExternalAddress = net.JoinHostPort(host, strconv.Itoa(p2pPort))
 		}
 	} else {
+		objKey := c.objectKey(crd, ordinal)
+		info := peers[objKey]
+		info.hasExternalAddress = true
+		defer func() { peers[objKey] = info }()
+
 		var nodePort int32
 		for _, i := range svc.Spec.Ports {
 			if i.Name == "p2p" {
