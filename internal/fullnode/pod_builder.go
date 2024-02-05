@@ -438,14 +438,13 @@ func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Conta
 	addrbookCmd, addrbookArgs := DownloadAddrbookCommand(crd.Spec.ChainSpec)
 	env := envVars(crd)
 
-	required := []corev1.Container{
-		getCleanInitContainer(env, tpl),
-	}
+	var required []corev1.Container
 	if crd.Spec.ChainSpec.ChainType == chainTypeCosmos || crd.Spec.ChainSpec.ChainType == chainTypeCosmovisor || crd.Spec.ChainSpec.ChainType == "" {
 		initCmd := fmt.Sprintf("%s init --chain-id %s %s", binary, crd.Spec.ChainSpec.ChainID, moniker)
 		if len(crd.Spec.ChainSpec.AdditionalInitArgs) > 0 {
 			initCmd += " " + strings.Join(crd.Spec.ChainSpec.AdditionalInitArgs, " ")
 		}
+		required = append(required, getCleanInitContainer(env, tpl))
 		required = append(required, getCosmosChainInitContainer(env, tpl, initCmd))
 		required = append(required, getGenesisInitContainer(env, tpl, genesisCmd, genesisArgs, infraToolImage))
 		required = append(required, getAddrbookInitContainer(env, tpl, addrbookCmd, addrbookArgs))
@@ -453,6 +452,17 @@ func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Conta
 	} else if crd.Spec.ChainSpec.ChainType == chainTypeNamada {
 		required = append(required, getGenesisInitContainer(env, tpl, genesisCmd, genesisArgs, crd.Spec.PodTemplate.Image))
 		required = append(required, getAddrbookInitContainer(env, tpl, addrbookCmd, addrbookArgs))
+	}
+	allowPrivilege := false
+	for _, c := range required {
+		c.SecurityContext = &corev1.SecurityContext{
+			RunAsUser:                ptr(int64(1025)),
+			RunAsGroup:               ptr(int64(1025)),
+			RunAsNonRoot:             ptr(true),
+			AllowPrivilegeEscalation: &allowPrivilege,
+			Privileged:               &allowPrivilege,
+			SeccompProfile:           &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
+		}
 	}
 
 	//if true {
