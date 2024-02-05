@@ -450,6 +450,7 @@ func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Conta
 		required = append(required, getAddrbookInitContainer(env, tpl, addrbookCmd, addrbookArgs))
 		required = append(required, getConfigMergeContainer(env, tpl))
 	} else if crd.Spec.ChainSpec.ChainType == chainTypeNamada {
+		required = append(required, getCleanInitContainer(env, tpl))
 		required = append(required, getGenesisInitContainer(env, tpl, genesisCmd, genesisArgs, crd.Spec.PodTemplate.Image))
 		required = append(required, getAddrbookInitContainer(env, tpl, addrbookCmd, addrbookArgs))
 		required = append(required, getConfigMergeContainer(env, tpl))
