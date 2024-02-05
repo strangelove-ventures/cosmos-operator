@@ -286,12 +286,6 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 			{Name: volTmp, MountPath: tmpDir},
 			{Name: volConfig, MountPath: tmpConfigDir},
 		}...)
-		pod.Spec.InitContainers[i].SecurityContext = &corev1.SecurityContext{
-			RunAsUser:      ptr(int64(1025)),
-			RunAsGroup:     ptr(int64(1025)),
-			RunAsNonRoot:   ptr(true),
-			SeccompProfile: &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
-		}
 	}
 
 	// At this point, guaranteed to have at least 2 containers.
@@ -427,12 +421,8 @@ rm -rf "$CONFIG_DIR/node_key.json"
 echo "Merging config..."
 set -x
 mkdir -p $CONFIG_DIR
-if [ -d $CHAIN_HOME/$CHAIN_ID ]; then
-    config-merge -f toml "$TMP_DIR/config.toml" "$OVERLAY_DIR/config-overlay.toml" > "$CHAIN_HOME/$CHAIN_ID/config.toml"
-else
-    config-merge -f toml "$TMP_DIR/config.toml" "$OVERLAY_DIR/config-overlay.toml" > "$CONFIG_DIR/config.toml"
-	config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CONFIG_DIR/app.toml"
-fi
+config-merge -f toml "$TMP_DIR/config.toml" "$OVERLAY_DIR/config-overlay.toml" > "$CONFIG_DIR/config.toml"
+config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CONFIG_DIR/app.toml"
 
 `,
 		},
@@ -467,7 +457,6 @@ func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Conta
 		required = append(required, getCosmosChainInitContainer(env, tpl, initCmd))
 		required = append(required, getGenesisInitContainer(env, tpl, genesisCmd, genesisArgs, crd.Spec.PodTemplate.Image))
 		required = append(required, getAddrbookInitContainer(env, tpl, addrbookCmd, addrbookArgs))
-		required = append(required, getConfigMergeContainer(env, tpl))
 	}
 	allowPrivilege := false
 	for _, c := range required {
