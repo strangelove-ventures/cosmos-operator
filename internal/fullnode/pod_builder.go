@@ -345,7 +345,7 @@ func getCleanInitContainer(env []corev1.EnvVar, tpl cosmosv1.PodSpec) corev1.Con
 		Name:            "clean-init",
 		Image:           infraToolImage,
 		Command:         []string{"sh"},
-		Args:            []string{"-c", `rm -rf "$HOME/.tmp/*"`},
+		Args:            []string{"-c", `if [ -d $HOME/.tmp/ ]; then rm -rf "$HOME/.tmp/*"; fi`},
 		Env:             env,
 		ImagePullPolicy: tpl.ImagePullPolicy,
 		WorkingDir:      workDir,
@@ -360,6 +360,7 @@ func getCosmosChainInitContainer(env []corev1.EnvVar, tpl cosmosv1.PodSpec, init
 		Args: []string{"-c",
 			fmt.Sprintf(`
 set -eu
+ls -al $HOME
 if [ ! -d "$COMETBFT_HOME/data" ]; then
 	echo "Initializing chain..."
 	%s --home "$COMETBFT_HOME"
