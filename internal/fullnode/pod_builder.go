@@ -452,6 +452,7 @@ func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Conta
 	} else if crd.Spec.ChainSpec.ChainType == chainTypeNamada {
 		required = append(required, getGenesisInitContainer(env, tpl, genesisCmd, genesisArgs, crd.Spec.PodTemplate.Image))
 		required = append(required, getAddrbookInitContainer(env, tpl, addrbookCmd, addrbookArgs))
+		required = append(required, getConfigMergeContainer(env, tpl))
 	}
 	allowPrivilege := false
 	for _, c := range required {
@@ -554,7 +555,7 @@ func startCommandArgs(crd *cosmosv1.CosmosFullNode) []string {
 		originArgs := args
 		args = []string{"-c", "/bin/cosmovisor init /bin/" + cfg.Binary + "; " + "/bin/cosmovisor run " + strings.Join(originArgs, " ")}
 	} else if crd.Spec.ChainSpec.ChainType == chainTypeNamada {
-		args = []string{"-c", "namada --base-dir " + ChainHomeDir(crd) + " --chain-id " + crd.Spec.ChainSpec.ChainID + " node ledger run"}
+		args = []string{"-c", "NAMADA_LOG=info; CMT_LOG_LEVEL=p2p:none,pex:error; NAMADA_CMT_STDOUT=true; namada --base-dir " + ChainHomeDir(crd) + " --chain-id " + crd.Spec.ChainSpec.ChainID + " node ledger run"}
 		return args
 	}
 
