@@ -72,7 +72,7 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 				RunAsGroup:          ptr(int64(1025)),
 				RunAsNonRoot:        ptr(true),
 				FSGroup:             ptr(int64(1025)),
-				FSGroupChangePolicy: ptr(corev1.FSGroupChangeAlways),
+				FSGroupChangePolicy: ptr(corev1.FSGroupChangeOnRootMismatch),
 				SeccompProfile:      &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
 			},
 			Subdomain: crd.Name,
@@ -545,7 +545,7 @@ func startCommandArgs(crd *cosmosv1.CosmosFullNode) []string {
 		originArgs := args
 		args = []string{"-c", "/bin/cosmovisor init /bin/" + cfg.Binary + "; " + "/bin/cosmovisor run " + strings.Join(originArgs, " ")}
 	} else if crd.Spec.ChainSpec.ChainType == chainTypeNamada {
-		args = []string{"-c", "namada --base-dir " + ChainHomeDir(crd) + " --chain-id " + crd.Spec.ChainSpec.ChainID + " node ledger run; trap : TERM INT; sleep infinity & wait"}
+		args = []string{"-c", "ls -al ; namada --base-dir " + ChainHomeDir(crd) + " --chain-id " + crd.Spec.ChainSpec.ChainID + " node ledger run; trap : TERM INT; sleep infinity & wait"}
 		return args
 	}
 
