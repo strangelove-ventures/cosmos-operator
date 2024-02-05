@@ -368,7 +368,6 @@ else
 fi
 
 echo "Initializing into tmp dir for downstream processing..."
-mkdir -p $HOME/.tmp
 %s --home "$HOME/.tmp"
 `, initCmd, initCmd),
 		},
