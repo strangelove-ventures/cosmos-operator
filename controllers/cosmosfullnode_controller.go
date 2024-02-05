@@ -146,6 +146,7 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	// Find peer information that's used downstream.
 	peers, perr := r.peerCollector.Collect(ctx, crd)
+	reporter.Debug(strings.Join(peers.AllExternal(), ", "))
 	if perr != nil {
 		peers = peers.Default()
 		errs.Append(perr)
