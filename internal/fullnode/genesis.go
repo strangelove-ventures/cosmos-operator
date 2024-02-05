@@ -37,7 +37,7 @@ func DownloadGenesisCommand(cfg cosmosv1.ChainSpec) (string, []string) {
 	args := []string{"-c"}
 	switch {
 	case cfg.ChainType == chainTypeNamada:
-		args = append(args, scriptDownloadGenesisNamada, cfg.ChainID, *cfg.GenesisURL)
+		args = append(args, scriptDownloadGenesisNamada, *cfg.GenesisURL)
 	case cfg.GenesisScript != nil:
 		args = append(args, fmt.Sprintf(genesisScriptWrapper, *cfg.GenesisScript))
 	case cfg.GenesisURL != nil:

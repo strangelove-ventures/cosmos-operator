@@ -1,4 +1,3 @@
-CHAIN_ID=$0
 NAMADA_NETWORK_CONFIGS_SERVER="https://github.com/anoma/namada-shielded-expedition/releases/download/$CHAIN_ID"
 
 if [ ! -d $CHAIN_HOME/$CHAIN_ID ]; then

@@ -336,6 +336,7 @@ func envVars(crd *cosmosv1.CosmosFullNode) []corev1.EnvVar {
 		{Name: "ADDRBOOK_FILE", Value: path.Join(home, getCometbftDir(crd)+"/config", "addrbook.json")},
 		{Name: "CONFIG_DIR", Value: path.Join(home, getCometbftDir(crd)+"/config")},
 		{Name: "DATA_DIR", Value: path.Join(home, getCometbftDir(crd), "/data")},
+		{Name: "CHAIN_ID", Value: crd.Spec.ChainSpec.ChainID},
 	}
 }
 
