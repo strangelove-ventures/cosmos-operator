@@ -457,7 +457,7 @@ func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Conta
 		required = append(required, getAddrbookInitContainer(env, tpl, addrbookCmd, addrbookArgs))
 		required = append(required, getConfigMergeContainer(env, tpl))
 	} else if crd.Spec.ChainSpec.ChainType == chainTypeNamada {
-		initCmd := fmt.Sprintf("%s --home %s init ", "cometbft", getCometbftDir(crd))
+		initCmd := fmt.Sprintf("%s init ", "cometbft")
 
 		required = append(required, getCleanInitContainer(env, tpl))
 		required = append(required, getCosmosChainInitContainer(env, tpl, initCmd))
