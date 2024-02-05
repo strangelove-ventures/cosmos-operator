@@ -144,16 +144,14 @@ func (c PeerCollector) addExternalAddress(ctx context.Context, peers Peers, crd 
 	if err := c.client.Get(ctx, client.ObjectKey{Name: svcName, Namespace: crd.Namespace}, &svc); err != nil {
 		return kube.TransientError(fmt.Errorf("get server %s: %w", svcName, err))
 	}
-
-	if ((svc.Spec.Type != corev1.ServiceTypeLoadBalancer) && (svc.Spec.Type != corev1.ServiceTypeNodePort)) || svc.Spec.Type == "" {
+	if (svc.Spec.Type != corev1.ServiceTypeLoadBalancer) && (svc.Spec.Type != corev1.ServiceTypeNodePort) {
 		return nil
 	}
-
+	objKey := c.objectKey(crd, ordinal)
+	info := peers[objKey]
+	info.hasExternalAddress = true
+	defer func() { peers[objKey] = info }()
 	if svc.Spec.Type == corev1.ServiceTypeLoadBalancer {
-		objKey := c.objectKey(crd, ordinal)
-		info := peers[objKey]
-		info.hasExternalAddress = true
-		defer func() { peers[objKey] = info }()
 
 		ingress := svc.Status.LoadBalancer.Ingress
 		if len(ingress) == 0 {
@@ -165,12 +163,7 @@ func (c PeerCollector) addExternalAddress(ctx context.Context, peers Peers, crd 
 		if host != "" {
 			info.ExternalAddress = net.JoinHostPort(host, strconv.Itoa(p2pPort))
 		}
-	} else {
-		objKey := c.objectKey(crd, ordinal)
-		info := peers[objKey]
-		info.hasExternalAddress = true
-		defer func() { peers[objKey] = info }()
-
+	} else if svc.Spec.Type == corev1.ServiceTypeNodePort {
 		var nodePort int32
 		for _, i := range svc.Spec.Ports {
 			if i.Name == "p2p" {
