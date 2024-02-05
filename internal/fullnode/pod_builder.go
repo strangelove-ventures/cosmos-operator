@@ -450,7 +450,7 @@ func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Conta
 		required = append(required, getAddrbookInitContainer(env, tpl, addrbookCmd, addrbookArgs))
 		required = append(required, getConfigMergeContainer(env, tpl))
 	} else if crd.Spec.ChainSpec.ChainType == chainTypeNamada {
-		required = append(required, getGenesisInitContainer(env, tpl, genesisCmd, genesisArgs, crd.Spec.PodTemplate.Image))
+		return append(required, getGenesisInitContainer(env, tpl, genesisCmd, genesisArgs, crd.Spec.PodTemplate.Image))
 		//required = append(required, getAddrbookInitContainer(env, tpl, addrbookCmd, addrbookArgs))
 	}
 	allowPrivilege := false
@@ -501,8 +501,7 @@ func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Conta
 	// And then panic if the image version is not correct for the current height.
 	// After the status is patched, the pod will be restarted with the correct image.
 	required = append(required, corev1.Container{
-		Name: "version-check",
-
+		Name:    "version-check",
 		Image:   "ghcr.io/bharvest-devops/cosmos-operator:" + version.DockerTag(),
 		Command: versionCheckCmd,
 		Resources: corev1.ResourceRequirements{
