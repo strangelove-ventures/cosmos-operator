@@ -196,6 +196,11 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	// Check final state and requeue if necessary.
+
+	for _, i := range peers {
+		reporter.Debug(i.ExternalAddress)
+	}
+
 	if peers.HasIncompleteExternalAddress() {
 		reporter.Info("==================== CUSTOM: " + strings.Join(peers.AllExternal(), ","))
 		reporter.Info("Requeueing due to incomplete p2p external addresses")
