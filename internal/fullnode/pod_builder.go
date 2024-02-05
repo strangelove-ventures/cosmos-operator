@@ -366,9 +366,10 @@ if [ ! -d "$COMETBFT_HOME/data" ]; then
 else
 	echo "Skipping chain init; already initialized."
 fi
-
+ls -al $HOME
 echo "Initializing into tmp dir for downstream processing..."
 %s --home "$HOME/.tmp"
+ls -al $HOME
 `, initCmd, initCmd),
 		},
 		Env:             env,
