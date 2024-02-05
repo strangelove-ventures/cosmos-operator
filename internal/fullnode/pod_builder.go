@@ -114,7 +114,7 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 		},
 	}
 
-	if len(crd.Spec.ChainSpec.Versions) > 0 {
+	if len(crd.Spec.ChainSpec.Versions) > 0 && crd.Spec.ChainSpec.ChainType != chainTypeNamada {
 		// version check sidecar, runs on inverval in case the instance is halting for upgrade.
 		pod.Spec.Containers = append(pod.Spec.Containers, corev1.Container{
 			Name:    "version-check-interval",
@@ -451,7 +451,7 @@ func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Conta
 		required = append(required, getConfigMergeContainer(env, tpl))
 	} else if crd.Spec.ChainSpec.ChainType == chainTypeNamada {
 		required = append(required, getGenesisInitContainer(env, tpl, genesisCmd, genesisArgs, crd.Spec.PodTemplate.Image))
-		required = append(required, getAddrbookInitContainer(env, tpl, addrbookCmd, addrbookArgs))
+		//required = append(required, getAddrbookInitContainer(env, tpl, addrbookCmd, addrbookArgs))
 	}
 	allowPrivilege := false
 	for _, c := range required {
