@@ -286,6 +286,12 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 			{Name: volTmp, MountPath: tmpDir},
 			{Name: volConfig, MountPath: tmpConfigDir},
 		}...)
+		pod.Spec.InitContainers[i].SecurityContext = &corev1.SecurityContext{
+			RunAsUser:      ptr(int64(1025)),
+			RunAsGroup:     ptr(int64(1025)),
+			RunAsNonRoot:   ptr(true),
+			SeccompProfile: &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
+		}
 	}
 
 	// At this point, guaranteed to have at least 2 containers.
@@ -345,7 +351,7 @@ func getCleanInitContainer(env []corev1.EnvVar, tpl cosmosv1.PodSpec) corev1.Con
 		Name:            "clean-init",
 		Image:           infraToolImage,
 		Command:         []string{"sh"},
-		Args:            []string{"-c", `ls -al $HOME; if [ -d $HOME/.tmp/ ]; then rm -rf "$HOME/.tmp/*"; fi`},
+		Args:            []string{"-c", `if [ -d $HOME/.tmp/ ]; then rm -rf "$HOME/.tmp/*"; fi`},
 		Env:             env,
 		ImagePullPolicy: tpl.ImagePullPolicy,
 		WorkingDir:      workDir,
