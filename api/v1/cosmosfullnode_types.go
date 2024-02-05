@@ -738,6 +738,7 @@ type ServiceOverridesSpec struct {
 	// Describes ingress methods for a service.
 	// If not set, defaults to "ClusterIP".
 	// +kubebuilder:validation:Enum:=ClusterIP;NodePort;LoadBalancer;ExternalName
+	// +kubebuilder:default:=ClusterIP
 	// +optional
 	Type *corev1.ServiceType `json:"type"`
 
