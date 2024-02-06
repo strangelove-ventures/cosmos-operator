@@ -4,6 +4,7 @@ import (
 	"bytes"
 	_ "embed"
 	"fmt"
+	namada_toml "github.com/bharvest-devops/namada-toml"
 	"strconv"
 	"strings"
 
@@ -34,48 +35,70 @@ func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, peers Peers) ([]diff.Resource
 	for i := int32(0); i < crd.Spec.Replicas; i++ {
 		data := make(map[string]string)
 		instance := instanceName(crd, i)
-		if err := addConfigToml(buf, data, crd, instance, peers); err != nil {
-			return nil, err
-		}
-		buf.Reset()
-		appCfg := crd.Spec.ChainSpec.App
-		if len(crd.Spec.ChainSpec.Versions) > 0 {
-			instanceHeight := uint64(0)
-			if height, ok := crd.Status.Height[instance]; ok {
-				instanceHeight = height
-			}
-			haltHeight := uint64(0)
-			for i, v := range crd.Spec.ChainSpec.Versions {
-				if v.SetHaltHeight {
-					haltHeight = v.UpgradeHeight
-				} else {
-					haltHeight = 0
-				}
-				if instanceHeight < v.UpgradeHeight {
-					break
-				}
-				if i == len(crd.Spec.ChainSpec.Versions)-1 {
-					haltHeight = 0
-				}
-			}
-			appCfg.HaltHeight = ptr(haltHeight)
-		}
-		if err := addAppToml(buf, data, appCfg); err != nil {
-			return nil, err
-		}
-		buf.Reset()
 
-		var cm corev1.ConfigMap
-		cm.Name = instanceName(crd, i)
-		cm.Namespace = crd.Namespace
-		cm.Kind = "ConfigMap"
-		cm.APIVersion = "v1"
-		cm.Labels = defaultLabels(crd,
-			kube.InstanceLabel, instanceName(crd, i),
-		)
-		cm.Data = data
-		kube.NormalizeMetadata(&cm.ObjectMeta)
-		cms[i] = diff.Adapt(&cm, i)
+		if crd.Spec.ChainSpec.ChainType != chainTypeNamada {
+			if err := addConfigToml(buf, data, crd, instance, peers); err != nil {
+				return nil, err
+			}
+			buf.Reset()
+			appCfg := crd.Spec.ChainSpec.App
+			if len(crd.Spec.ChainSpec.Versions) > 0 {
+				instanceHeight := uint64(0)
+				if height, ok := crd.Status.Height[instance]; ok {
+					instanceHeight = height
+				}
+				haltHeight := uint64(0)
+				for i, v := range crd.Spec.ChainSpec.Versions {
+					if v.SetHaltHeight {
+						haltHeight = v.UpgradeHeight
+					} else {
+						haltHeight = 0
+					}
+					if instanceHeight < v.UpgradeHeight {
+						break
+					}
+					if i == len(crd.Spec.ChainSpec.Versions)-1 {
+						haltHeight = 0
+					}
+				}
+				appCfg.HaltHeight = ptr(haltHeight)
+			}
+			if err := addAppToml(buf, data, appCfg); err != nil {
+				return nil, err
+			}
+			buf.Reset()
+
+			var cm corev1.ConfigMap
+			cm.Name = instanceName(crd, i)
+			cm.Namespace = crd.Namespace
+			cm.Kind = "ConfigMap"
+			cm.APIVersion = "v1"
+			cm.Labels = defaultLabels(crd,
+				kube.InstanceLabel, instanceName(crd, i),
+			)
+			cm.Data = data
+			kube.NormalizeMetadata(&cm.ObjectMeta)
+			cms[i] = diff.Adapt(&cm, i)
+		} else {
+			var config namada_toml.Config
+			mergedConfig, err := namada_toml.ExportMergedConfig(&config)
+			if err != nil {
+				return nil, err
+			}
+			data[configOverlayFile] = string(mergedConfig)
+
+			var cm corev1.ConfigMap
+			cm.Name = instanceName(crd, i)
+			cm.Namespace = crd.Namespace
+			cm.Kind = "ConfigMap"
+			cm.APIVersion = "v1"
+			cm.Labels = defaultLabels(crd,
+				kube.InstanceLabel, instanceName(crd, i),
+			)
+			cm.Data = data
+			kube.NormalizeMetadata(&cm.ObjectMeta)
+			cms[i] = diff.Adapt(&cm, i)
+		}
 	}
 
 	return cms, nil

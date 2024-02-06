@@ -384,10 +384,14 @@ func getNamadaChainInitContainer(env []corev1.EnvVar, tpl cosmosv1.PodSpec, init
 		Args: []string{"-c",
 			fmt.Sprintf(`
 set -eu
+if [ ! -d "$COMETBFT_HOME/data" ]; then
+	echo "Initializing chain..."
+	%s --home "$COMETBFT_HOME"
+else
+	echo "Skipping chain init; already initialized."
+fi
 echo "Initializing into tmp dir for downstream processing..."
-ls -al $HOME/.tmp
 %s --home "$HOME/.tmp"
-ls -al $HOME/.tmp
 `, initCmd),
 		},
 		Env:             env,
@@ -420,7 +424,7 @@ func getAddrbookInitContainer(env []corev1.EnvVar, tpl cosmosv1.PodSpec, addrboo
 	}
 }
 
-func getConfigMergeContainer(env []corev1.EnvVar, tpl cosmosv1.PodSpec) corev1.Container {
+func getCosmosConfigMergeContainer(env []corev1.EnvVar, tpl cosmosv1.PodSpec) corev1.Container {
 	return corev1.Container{
 		Name:    "config-merge",
 		Image:   infraToolImage,
@@ -428,7 +432,6 @@ func getConfigMergeContainer(env []corev1.EnvVar, tpl cosmosv1.PodSpec) corev1.C
 		Args: []string{"-c",
 			`
 set -eu
-CONFIG_DIR="$COMETBFT_HOME/config"
 TMP_DIR="$HOME/.tmp/config"
 OVERLAY_DIR="$HOME/.config"
 
@@ -444,6 +447,36 @@ mkdir -p $CONFIG_DIR
 config-merge -f toml "$TMP_DIR/config.toml" "$OVERLAY_DIR/config-overlay.toml" > "$CONFIG_DIR/config.toml"
 config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CONFIG_DIR/app.toml"
 
+`,
+		},
+		Env:             env,
+		ImagePullPolicy: tpl.ImagePullPolicy,
+		WorkingDir:      workDir,
+	}
+}
+
+func getNamadaConfigMergeContainer(env []corev1.EnvVar, tpl cosmosv1.PodSpec) corev1.Container {
+	return corev1.Container{
+		Name:    "config-merge",
+		Image:   infraToolImage,
+		Command: []string{"sh"},
+		Args: []string{"-c",
+			`
+set -eu
+CONFIG_DIR="$CHAIN_HOME/$CHAIN_ID/"
+TMP_DIR="$HOME/.tmp/config"
+OVERLAY_DIR="$HOME/.config"
+
+# This is a hack to prevent adding another init container.
+# Ideally, this step is not concerned with merging config, so it would live elsewhere.
+# The node key is a secret mounted into the main "node" container, so we do not need this one.
+echo "Removing node key from chain's init subcommand..."
+rm -rf "$CONFIG_DIR/node_key.json"
+
+echo "Merging config..."
+set -x
+mkdir -p $CONFIG_DIR
+config-merge -f toml "$TMP_DIR/config.toml" "$OVERLAY_DIR/config-overlay.toml" > "$CONFIG_DIR/config.toml"
 `,
 		},
 		Env:             env,
@@ -469,7 +502,7 @@ func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Conta
 		required = append(required, getCosmosChainInitContainer(env, tpl, initCmd))
 		required = append(required, getGenesisInitContainer(env, tpl, genesisCmd, genesisArgs, infraToolImage))
 		required = append(required, getAddrbookInitContainer(env, tpl, addrbookCmd, addrbookArgs))
-		required = append(required, getConfigMergeContainer(env, tpl))
+		required = append(required, getCosmosConfigMergeContainer(env, tpl))
 	} else if crd.Spec.ChainSpec.ChainType == chainTypeNamada {
 		initCmd := fmt.Sprintf("%s init ", "cometbft")
 
@@ -477,6 +510,7 @@ func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Conta
 		required = append(required, getNamadaChainInitContainer(env, tpl, initCmd))
 		required = append(required, getGenesisInitContainer(env, tpl, genesisCmd, genesisArgs, crd.Spec.PodTemplate.Image))
 		required = append(required, getAddrbookInitContainer(env, tpl, addrbookCmd, addrbookArgs))
+		required = append(required, getNamadaConfigMergeContainer(env, tpl))
 	}
 	allowPrivilege := false
 	for _, c := range required {
