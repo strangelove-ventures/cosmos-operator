@@ -385,7 +385,9 @@ func getNamadaChainInitContainer(env []corev1.EnvVar, tpl cosmosv1.PodSpec, init
 			fmt.Sprintf(`
 set -eu
 echo "Initializing into tmp dir for downstream processing..."
+ls -al $HOME/.tmp
 %s --home "$HOME/.tmp"
+ls -al $HOME/.tmp
 `, initCmd),
 		},
 		Env:             env,
