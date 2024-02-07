@@ -18,6 +18,7 @@ limitations under the License.
 package v1
 
 import (
+	blockchain_toml "github.com/bharvest-devops/blockchain-toml"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -446,6 +447,10 @@ type ChainSpec struct {
 	// App configuration applied to app.toml.
 	// +optional
 	App SDKAppConfig `json:"app"`
+
+	// Namada configuration applied to $CHAIN_ID/config.toml.
+	// +optional
+	NamadaConfig blockchain_toml.NamadaConfigFile `json:"namadaConfig"`
 
 	// One of trace|debug|info|warn|error|fatal|panic.
 	// If not set, defaults to info.
