@@ -55,6 +55,7 @@ func (in *ChainSpec) DeepCopyInto(out *ChainSpec) {
 	*out = *in
 	in.Comet.DeepCopyInto(&out.Comet)
 	in.App.DeepCopyInto(&out.App)
+	in.NamadaConfig.DeepCopyInto(&out.NamadaConfig)
 	if in.LogLevel != nil {
 		in, out := &in.LogLevel, &out.LogLevel
 		*out = new(string)

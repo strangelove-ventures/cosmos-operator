@@ -297,6 +297,388 @@ spec:
                     - fatal
                     - panic
                     type: string
+                  namadaConfig:
+                    description: Namada configuration applied to $CHAIN_ID/config.toml.
+                    properties:
+                      ledger:
+                        properties:
+                          chainID:
+                            type: string
+                          cometbft:
+                            properties:
+                              abci:
+                                type: string
+                              consensus:
+                                properties:
+                                  createEmptyBlocks:
+                                    type: boolean
+                                  createEmptyBlocksInterval:
+                                    type: string
+                                  doubleSignCheckHeight:
+                                    format: int64
+                                    type: integer
+                                  peerGossipSleepDuration:
+                                    type: string
+                                  peerQueryMaj23SleepDuration:
+                                    type: string
+                                  skipTimeoutCommit:
+                                    type: boolean
+                                  timeoutCommit:
+                                    type: string
+                                  timeoutPrecommit:
+                                    type: string
+                                  timeoutPrecommitDelta:
+                                    type: string
+                                  timeoutPrevote:
+                                    type: string
+                                  timeoutPrevoteDelta:
+                                    type: string
+                                  timeoutPropose:
+                                    type: string
+                                  timeoutProposeDelta:
+                                    type: string
+                                  walFile:
+                                    type: string
+                                required:
+                                - createEmptyBlocks
+                                - createEmptyBlocksInterval
+                                - doubleSignCheckHeight
+                                - peerGossipSleepDuration
+                                - peerQueryMaj23SleepDuration
+                                - skipTimeoutCommit
+                                - timeoutCommit
+                                - timeoutPrecommit
+                                - timeoutPrecommitDelta
+                                - timeoutPrevote
+                                - timeoutPrevoteDelta
+                                - timeoutPropose
+                                - timeoutProposeDelta
+                                - walFile
+                                type: object
+                              dbBackend:
+                                type: string
+                              dbDir:
+                                type: string
+                              fastSync:
+                                type: boolean
+                              fastsync:
+                                properties:
+                                  version:
+                                    type: string
+                                required:
+                                - version
+                                type: object
+                              filterPeers:
+                                type: boolean
+                              genesisFile:
+                                type: string
+                              instrumentation:
+                                properties:
+                                  maxOpenConnections:
+                                    type: integer
+                                  namespace:
+                                    type: string
+                                  prometheus:
+                                    type: boolean
+                                  prometheusListenAddr:
+                                    type: string
+                                required:
+                                - maxOpenConnections
+                                - namespace
+                                - prometheus
+                                - prometheusListenAddr
+                                type: object
+                              logFormat:
+                                type: string
+                              logLevel:
+                                type: string
+                              mempool:
+                                properties:
+                                  broadcast:
+                                    type: boolean
+                                  cacheSize:
+                                    type: integer
+                                  keepInvalidTxsInCache:
+                                    type: boolean
+                                  maxBatchBytes:
+                                    type: integer
+                                  maxTxBytes:
+                                    type: integer
+                                  maxTxsBytes:
+                                    type: integer
+                                  recheck:
+                                    type: boolean
+                                  size:
+                                    type: integer
+                                  walDir:
+                                    type: string
+                                required:
+                                - broadcast
+                                - cacheSize
+                                - keepInvalidTxsInCache
+                                - maxBatchBytes
+                                - maxTxBytes
+                                - maxTxsBytes
+                                - recheck
+                                - size
+                                - walDir
+                                type: object
+                              moniker:
+                                type: string
+                              nodeKeyFile:
+                                type: string
+                              p2p:
+                                properties:
+                                  addrBookFile:
+                                    type: string
+                                  addrBookStrict:
+                                    type: boolean
+                                  allowDuplicateIP:
+                                    type: boolean
+                                  dialTimeout:
+                                    type: string
+                                  externalAddress:
+                                    type: string
+                                  flushThrottleTimeout:
+                                    type: string
+                                  handshakeTimeout:
+                                    type: string
+                                  laddr:
+                                    type: string
+                                  maxNumInboundPeers:
+                                    format: int32
+                                    type: integer
+                                  maxNumOutboundPeers:
+                                    format: int32
+                                    type: integer
+                                  maxPacketMsgPayloadSize:
+                                    type: integer
+                                  persistentPeers:
+                                    type: string
+                                  persistentPeersMaxDialPeriod:
+                                    type: string
+                                  pex:
+                                    type: boolean
+                                  privatePeerIds:
+                                    type: string
+                                  recvRate:
+                                    type: integer
+                                  seedMode:
+                                    type: boolean
+                                  seeds:
+                                    type: string
+                                  sendRate:
+                                    type: integer
+                                  unconditionalPeerIds:
+                                    type: string
+                                  upnp:
+                                    type: boolean
+                                required:
+                                - addrBookFile
+                                - addrBookStrict
+                                - allowDuplicateIP
+                                - dialTimeout
+                                - externalAddress
+                                - flushThrottleTimeout
+                                - handshakeTimeout
+                                - laddr
+                                - maxNumInboundPeers
+                                - maxNumOutboundPeers
+                                - maxPacketMsgPayloadSize
+                                - persistentPeers
+                                - persistentPeersMaxDialPeriod
+                                - pex
+                                - privatePeerIds
+                                - recvRate
+                                - seedMode
+                                - seeds
+                                - sendRate
+                                - unconditionalPeerIds
+                                - upnp
+                                type: object
+                              privValidatorKeyFile:
+                                type: string
+                              privValidatorLaddr:
+                                type: string
+                              privValidatorStateFile:
+                                type: string
+                              proxyApp:
+                                type: string
+                              rpc:
+                                properties:
+                                  corsAllowedHeaders:
+                                    items:
+                                      type: string
+                                    type: array
+                                  corsAllowedMethods:
+                                    items:
+                                      type: string
+                                    type: array
+                                  corsAllowedOrigins:
+                                    items:
+                                      type: string
+                                    type: array
+                                  grpcLaddr:
+                                    type: string
+                                  grpcMaxOpenConnections:
+                                    format: int32
+                                    type: integer
+                                  laddr:
+                                    type: string
+                                  maxBodyBytes:
+                                    type: integer
+                                  maxHeaderBytes:
+                                    type: integer
+                                  maxOpenConnections:
+                                    format: int32
+                                    type: integer
+                                  maxSubscriptionClients:
+                                    format: int32
+                                    type: integer
+                                  maxSubscriptionsPerClient:
+                                    format: int32
+                                    type: integer
+                                  pprofLaddr:
+                                    type: string
+                                  timeoutBroadcastTxCommit:
+                                    type: string
+                                  tlsCertFile:
+                                    type: string
+                                  tlsKeyFile:
+                                    type: string
+                                  unsafe:
+                                    type: boolean
+                                required:
+                                - corsAllowedHeaders
+                                - corsAllowedMethods
+                                - corsAllowedOrigins
+                                - grpcLaddr
+                                - grpcMaxOpenConnections
+                                - laddr
+                                - maxBodyBytes
+                                - maxHeaderBytes
+                                - maxOpenConnections
+                                - maxSubscriptionClients
+                                - maxSubscriptionsPerClient
+                                - pprofLaddr
+                                - timeoutBroadcastTxCommit
+                                - tlsCertFile
+                                - tlsKeyFile
+                                - unsafe
+                                type: object
+                              statesync:
+                                properties:
+                                  discoveryTime:
+                                    type: string
+                                  enable:
+                                    type: boolean
+                                  rpcServers:
+                                    type: string
+                                  tempDir:
+                                    type: string
+                                  trustHash:
+                                    type: string
+                                  trustHeight:
+                                    format: int64
+                                    type: integer
+                                  trustPeriod:
+                                    type: string
+                                required:
+                                - discoveryTime
+                                - enable
+                                - rpcServers
+                                - tempDir
+                                - trustHash
+                                - trustHeight
+                                - trustPeriod
+                                type: object
+                              storage:
+                                properties:
+                                  discardAbciResponses:
+                                    type: boolean
+                                required:
+                                - discardAbciResponses
+                                type: object
+                              txIndex:
+                                properties:
+                                  indexer:
+                                    type: string
+                                required:
+                                - indexer
+                                type: object
+                            required:
+                            - abci
+                            - consensus
+                            - dbBackend
+                            - dbDir
+                            - fastSync
+                            - fastsync
+                            - filterPeers
+                            - genesisFile
+                            - instrumentation
+                            - logFormat
+                            - logLevel
+                            - mempool
+                            - moniker
+                            - nodeKeyFile
+                            - p2p
+                            - privValidatorKeyFile
+                            - privValidatorLaddr
+                            - privValidatorStateFile
+                            - proxyApp
+                            - rpc
+                            - statesync
+                            - storage
+                            - txIndex
+                            type: object
+                          ethereumBridge:
+                            properties:
+                              channelBufferSize:
+                                type: integer
+                              mode:
+                                type: string
+                              oracleRpcEndpoint:
+                                type: string
+                            required:
+                            - channelBufferSize
+                            - mode
+                            - oracleRpcEndpoint
+                            type: object
+                          genesisTime:
+                            type: string
+                          shell:
+                            properties:
+                              baseDir:
+                                type: string
+                              cometbftDir:
+                                type: string
+                              dbDir:
+                                type: string
+                              storageReadPastHeightLimit:
+                                format: int64
+                                type: integer
+                              tendermintMode:
+                                type: string
+                            required:
+                            - baseDir
+                            - cometbftDir
+                            - dbDir
+                            - storageReadPastHeightLimit
+                            - tendermintMode
+                            type: object
+                        required:
+                        - chainID
+                        - cometbft
+                        - ethereumBridge
+                        - genesisTime
+                        - shell
+                        type: object
+                      wasmDir:
+                        type: string
+                    required:
+                    - ledger
+                    - wasmDir
+                    type: object
                   network:
                     description: The network environment. Typically, mainnet, testnet,
                       devnet, etc.
@@ -362,7 +744,6 @@ spec:
                       type: object
                     type: array
                 required:
-                - app
                 - binary
                 - chainID
                 - network
@@ -5747,6 +6128,7 @@ spec:
                             type: object
                         type: object
                       type:
+                        default: ClusterIP
                         description: Describes ingress methods for a service. If not
                           set, defaults to "ClusterIP".
                         enum:
@@ -5785,6 +6167,7 @@ spec:
                             type: object
                         type: object
                       type:
+                        default: ClusterIP
                         description: Describes ingress methods for a service. If not
                           set, defaults to "ClusterIP".
                         enum:
