@@ -5,14 +5,12 @@ import (
 	_ "embed"
 	"fmt"
 	blockchain_toml "github.com/bharvest-devops/blockchain-toml"
-	"strconv"
 	"strings"
 
 	"github.com/BurntSushi/toml"
 	cosmosv1 "github.com/bharvest-devops/cosmos-operator/api/v1"
 	"github.com/bharvest-devops/cosmos-operator/internal/diff"
 	"github.com/bharvest-devops/cosmos-operator/internal/kube"
-	"github.com/peterbourgon/mergemap"
 	"github.com/samber/lo"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -36,44 +34,21 @@ func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, peers Peers) ([]diff.Resource
 		data := make(map[string]string)
 		instance := instanceName(crd, i)
 
-		if crd.Spec.ChainSpec.ChainType != chainTypeNamada {
-
-			config := blockchain_toml.CosmosConfigFile{}
-			configBytes, err := addCosmosConfigToml(&config, crd, instance)
+		if crd.Spec.ChainSpec.ChainType == chainTypeNamada {
+			config := blockchain_toml.NamadaConfigFile{}
+			configBytes, err := addNamadaConfigToml(&config, crd, instance, peers)
 			if err != nil {
 				return nil, err
 			}
 			data[configOverlayFile] = string(configBytes)
 
-			//############ legacy config.toml #############
-			//if err := addConfigToml(buf, data, crd, instance, peers); err != nil {
-			//	return nil, err
-			//}
-
-			//############ For Update height #############
-			//buf.Reset()
-			//appCfg := crd.Spec.ChainSpec.App
-			//if len(crd.Spec.ChainSpec.Versions) > 0 {
-			//	instanceHeight := uint64(0)
-			//	if height, ok := crd.Status.Height[instance]; ok {
-			//		instanceHeight = height
-			//	}
-			//	haltHeight := uint64(0)
-			//	for i, v := range crd.Spec.ChainSpec.Versions {
-			//		if v.SetHaltHeight {
-			//			haltHeight = v.UpgradeHeight
-			//		} else {
-			//			haltHeight = 0
-			//		}
-			//		if instanceHeight < v.UpgradeHeight {
-			//			break
-			//		}
-			//		if i == len(crd.Spec.ChainSpec.Versions)-1 {
-			//			haltHeight = 0
-			//		}
-			//	}
-			//	appCfg.HaltHeight = ptr(haltHeight)
-			//}
+		} else {
+			config := blockchain_toml.CosmosConfigFile{}
+			configBytes, err := addCosmosConfigToml(&config, crd, instance, peers)
+			if err != nil {
+				return nil, err
+			}
+			data[configOverlayFile] = string(configBytes)
 
 			app := blockchain_toml.CosmosAppFile{}
 			appTomlBytes, err := addCosmosAppToml(&app, crd)
@@ -81,89 +56,67 @@ func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, peers Peers) ([]diff.Resource
 				return nil, err
 			}
 			data[appOverlayFile] = string(appTomlBytes)
-
-			//############ legacy app.toml #############
-			//if err := addAppToml(buf, data, appCfg); err != nil {
-			//	return nil, err
-			//}
-			//buf.Reset()
-
-			// Underlying is common
-
-			var cm corev1.ConfigMap
-			cm.Name = instanceName(crd, i)
-			cm.Namespace = crd.Namespace
-			cm.Kind = "ConfigMap"
-			cm.APIVersion = "v1"
-			cm.Labels = defaultLabels(crd,
-				kube.InstanceLabel, instanceName(crd, i),
-			)
-			cm.Data = data
-			kube.NormalizeMetadata(&cm.ObjectMeta)
-			cms[i] = diff.Adapt(&cm, i)
-		} else {
-			mergedConfig, err := crd.Spec.ChainSpec.NamadaConfig.ExportMergeWithDefault()
-			if err != nil {
-				return nil, err
-			}
-			data[configOverlayFile] = string(mergedConfig)
-
-			var cm corev1.ConfigMap
-			cm.Name = instanceName(crd, i)
-			cm.Namespace = crd.Namespace
-			cm.Kind = "ConfigMap"
-			cm.APIVersion = "v1"
-			cm.Labels = defaultLabels(crd,
-				kube.InstanceLabel, instanceName(crd, i),
-			)
-			cm.Data = data
-			kube.NormalizeMetadata(&cm.ObjectMeta)
-			cms[i] = diff.Adapt(&cm, i)
 		}
+
+		var cm corev1.ConfigMap
+		cm.Name = instanceName(crd, i)
+		cm.Namespace = crd.Namespace
+		cm.Kind = "ConfigMap"
+		cm.APIVersion = "v1"
+		cm.Labels = defaultLabels(crd,
+			kube.InstanceLabel, instanceName(crd, i),
+		)
+		cm.Data = data
+		kube.NormalizeMetadata(&cm.ObjectMeta)
+		cms[i] = diff.Adapt(&cm, i)
 	}
 
 	return cms, nil
 }
 
-type decodedToml = map[string]any
-
-//go:embed toml/comet_default_config.toml
-var defaultCometToml []byte
-
-func defaultComet() decodedToml {
-	var data decodedToml
-	if err := toml.Unmarshal(defaultCometToml, &data); err != nil {
-		panic(err)
-	}
-	return data
+func commaDelimited(s ...string) string {
+	return strings.Join(lo.Compact(s), ",")
 }
 
-//go:embed toml/app_default_config.toml
-var defaultAppToml []byte
+func addCosmosConfigToml(config *blockchain_toml.CosmosConfigFile, crd *cosmosv1.CosmosFullNode, instance string, peers Peers) ([]byte, error) {
+	spec := crd.Spec.ChainSpec
+	comet := spec.Comet
 
-func defaultApp() decodedToml {
-	var data decodedToml
-	if err := toml.Unmarshal(defaultAppToml, &data); err != nil {
-		panic(err)
-	}
-	return data
-}
+	privatePeers := peers.Except(instance, crd.Namespace)
+	privatePeerStr := commaDelimited(privatePeers.AllPrivate()...)
+	privateIDStr := commaDelimited(privatePeers.NodeIDs()...)
+	privateIDs := commaDelimited(privateIDStr, *comet.P2P.PrivatePeerIds)
 
-func addCosmosConfigToml(config *blockchain_toml.CosmosConfigFile, crd *cosmosv1.CosmosFullNode, instance string) ([]byte, error) {
-	maxInboundPeers := *crd.Spec.ChainSpec.Comet.MaxInboundPeers
-	maxOutboundPeers := *crd.Spec.ChainSpec.Comet.MaxOutboundPeers
+	persistentPeers := commaDelimited(privatePeerStr, *comet.P2P.PersistentPeers)
+
+	unconditionalIDs := commaDelimited(privateIDStr, *comet.P2P.UnconditionalPeerIDs)
 
 	cosmosP2P := blockchain_toml.CosmosP2P{
-		Seeds:                &crd.Spec.ChainSpec.Comet.Seeds,
-		PersistentPeers:      &crd.Spec.ChainSpec.Comet.PersistentPeers,
-		PrivatePeerIds:       &crd.Spec.ChainSpec.Comet.PrivatePeerIDs,
-		UnconditionalPeerIds: &crd.Spec.ChainSpec.Comet.UnconditionalPeerIDs,
-		MaxNumInboundPeers:   &maxInboundPeers,
-		MaxNumOutboundPeers:  &maxOutboundPeers,
+		Seeds:                comet.P2P.Seeds,
+		PersistentPeers:      &persistentPeers,
+		PrivatePeerIds:       &privateIDs,
+		UnconditionalPeerIds: &unconditionalIDs,
+		MaxNumInboundPeers:   comet.P2P.MaxNumInboundPeers,
+		MaxNumOutboundPeers:  comet.P2P.MaxNumOutboundPeers,
+	}
+
+	var externalOverride bool
+	if crd.Spec.InstanceOverrides != nil {
+		if override, ok := crd.Spec.InstanceOverrides[instance]; ok && override.ExternalAddress != nil {
+			addr := *override.ExternalAddress
+			*cosmosP2P.ExternalAddress = addr
+			externalOverride = true
+		}
+	}
+
+	if !externalOverride {
+		if v := peers.Get(instance, crd.Namespace).ExternalAddress; v != "" {
+			*cosmosP2P.ExternalAddress = v
+		}
 	}
 
 	cosmosRPC := blockchain_toml.CosmosRPC{
-		CorsAllowedOrigins: &crd.Spec.ChainSpec.Comet.CorsAllowedOrigins,
+		CorsAllowedOrigins: comet.RPC.CorsAllowedOrigins,
 	}
 
 	*config = blockchain_toml.CosmosConfigFile{
@@ -172,14 +125,87 @@ func addCosmosConfigToml(config *blockchain_toml.CosmosConfigFile, crd *cosmosv1
 		RPC:     &cosmosRPC,
 	}
 
-	tomlOverrides := crd.Spec.ChainSpec.Comet.TomlOverrides
-
+	var err error
 	overrideConfig := blockchain_toml.CosmosConfigFile{}
-	if err := toml.Unmarshal([]byte(*tomlOverrides), &overrideConfig); err != nil {
+
+	P2PTomlOverrides := blockchain_toml.CosmosConfigFile{}
+	if err = toml.Unmarshal([]byte(*comet.P2P.TomlOverrides), &P2PTomlOverrides); err != nil {
+		return nil, err
+	}
+	err = overrideConfig.MergeWithConfig(&P2PTomlOverrides)
+	if err != nil {
 		return nil, err
 	}
 
-	if err := config.MergeWithConfig(&overrideConfig); err != nil {
+	RPCTomlOverrides := blockchain_toml.CosmosConfigFile{}
+	if err = toml.Unmarshal([]byte(*comet.P2P.TomlOverrides), &RPCTomlOverrides); err != nil {
+		return nil, err
+	}
+	err = overrideConfig.MergeWithConfig(&RPCTomlOverrides)
+	if err != nil {
+		return nil, err
+	}
+
+	MempoolTomlOverrides := blockchain_toml.CosmosConfigFile{}
+	if err = toml.Unmarshal([]byte(*comet.Mempool.TomlOverrides), &MempoolTomlOverrides); err != nil {
+		return nil, err
+	}
+	err = overrideConfig.MergeWithConfig(&MempoolTomlOverrides)
+	if err != nil {
+		return nil, err
+	}
+
+	ConsensusTomlOverrides := blockchain_toml.CosmosConfigFile{}
+	if err = toml.Unmarshal([]byte(*comet.Consensus.TomlOverrides), &ConsensusTomlOverrides); err != nil {
+		return nil, err
+	}
+	err = overrideConfig.MergeWithConfig(&ConsensusTomlOverrides)
+	if err != nil {
+		return nil, err
+	}
+
+	TxIndexTomlOverrides := blockchain_toml.CosmosConfigFile{}
+	if err = toml.Unmarshal([]byte(*comet.TxIndex.TomlOverrides), &TxIndexTomlOverrides); err != nil {
+		return nil, err
+	}
+	err = overrideConfig.MergeWithConfig(&TxIndexTomlOverrides)
+	if err != nil {
+		return nil, err
+	}
+
+	InstrumentationTomlOverrides := blockchain_toml.CosmosConfigFile{}
+	if err = toml.Unmarshal([]byte(*comet.Instrumentation.TomlOverrides), &InstrumentationTomlOverrides); err != nil {
+		return nil, err
+	}
+	err = overrideConfig.MergeWithConfig(&InstrumentationTomlOverrides)
+	if err != nil {
+		return nil, err
+	}
+
+	StatesyncTomlOverrides := blockchain_toml.CosmosConfigFile{}
+	if err = toml.Unmarshal([]byte(*comet.Statesync.TomlOverrides), &StatesyncTomlOverrides); err != nil {
+		return nil, err
+	}
+	err = overrideConfig.MergeWithConfig(&StatesyncTomlOverrides)
+	if err != nil {
+		return nil, err
+	}
+
+	if crd.Spec.Type == cosmosv1.Sentry {
+		privVal := fmt.Sprintf("tcp://0.0.0.0:%d", privvalPort)
+		*config.PrivValidatorLaddr = privVal
+		// Disable indexing for sentries; they should not serve queries.
+
+		*overrideConfig.TxIndex.Indexer = "null"
+	}
+	if v := spec.LogLevel; v != nil {
+		overrideConfig.LogLevel = v
+	}
+	if v := spec.LogFormat; v != nil {
+		overrideConfig.LogFormat = v
+	}
+
+	if err = config.MergeWithConfig(&overrideConfig); err != nil {
 		return nil, err
 	}
 
@@ -187,26 +213,28 @@ func addCosmosConfigToml(config *blockchain_toml.CosmosConfigFile, crd *cosmosv1
 }
 
 func addCosmosAppToml(app *blockchain_toml.CosmosAppFile, crd *cosmosv1.CosmosFullNode) ([]byte, error) {
+	spec := crd.Spec.ChainSpec
+
 	api := blockchain_toml.API{
-		EnabledUnsafeCors: &crd.Spec.ChainSpec.App.APIEnableUnsafeCORS,
+		EnabledUnsafeCors: &spec.CosmosSDK.APIEnableUnsafeCORS,
 	}
 	grpcWeb := blockchain_toml.GrpcWeb{
-		EnableUnsafeCors: &crd.Spec.ChainSpec.App.GRPCWebEnableUnsafeCORS,
+		EnableUnsafeCors: &spec.CosmosSDK.GRPCWebEnableUnsafeCORS,
 	}
-	pruningKeepRecent := fmt.Sprint(crd.Spec.ChainSpec.App.Pruning.KeepRecent)
-	pruningKeepEvery := fmt.Sprint(crd.Spec.ChainSpec.App.Pruning.KeepEvery)
+	pruningKeepRecent := fmt.Sprint(spec.CosmosSDK.Pruning.KeepRecent)
+	pruningKeepEvery := fmt.Sprint(spec.CosmosSDK.Pruning.KeepEvery)
 
 	*app = blockchain_toml.CosmosAppFile{
-		MinimumGasPrices:  &crd.Spec.ChainSpec.App.MinGasPrice,
+		MinimumGasPrices:  &spec.CosmosSDK.MinGasPrice,
 		API:               &api,
 		GrpcWeb:           &grpcWeb,
-		Pruning:           (*string)(&crd.Spec.ChainSpec.App.Pruning.Strategy),
+		Pruning:           (*string)(&spec.CosmosSDK.Pruning.Strategy),
 		PruningKeepRecent: &pruningKeepRecent,
 		PruningKeepEvery:  &pruningKeepEvery,
-		HaltHeight:        crd.Spec.ChainSpec.App.HaltHeight,
+		HaltHeight:        spec.CosmosSDK.HaltHeight,
 	}
 
-	tomlOverrides := crd.Spec.ChainSpec.App.TomlOverrides
+	tomlOverrides := spec.CosmosSDK.TomlOverrides
 	overrideConfig := blockchain_toml.CosmosAppFile{}
 
 	if err := toml.Unmarshal([]byte(*tomlOverrides), overrideConfig); err != nil {
@@ -220,151 +248,144 @@ func addCosmosAppToml(app *blockchain_toml.CosmosAppFile, crd *cosmosv1.CosmosFu
 	return app.ExportMergeWithDefault()
 }
 
-func addConfigToml(buf *bytes.Buffer, cmData map[string]string, crd *cosmosv1.CosmosFullNode, instance string, peers Peers) error {
-	var (
-		spec = crd.Spec.ChainSpec
-		base = make(decodedToml)
-	)
-
-	if crd.Spec.Type == cosmosv1.Sentry {
-		privVal := fmt.Sprintf("tcp://0.0.0.0:%d", privvalPort)
-		base["priv_validator_laddr"] = privVal
-		base["priv-validator-laddr"] = privVal
-		// Disable indexing for sentries; they should not serve queries.
-
-		txIndex := map[string]string{"indexer": "null"}
-		base["tx_index"] = txIndex
-		base["tx-index"] = txIndex
-	}
-	if v := spec.LogLevel; v != nil {
-		base["log_level"] = v
-		base["log-level"] = v
-	}
-	if v := spec.LogFormat; v != nil {
-		base["log_format"] = v
-		base["log-format"] = v
-	}
+func addNamadaConfigToml(config *blockchain_toml.NamadaConfigFile, crd *cosmosv1.CosmosFullNode, instance string, peers Peers) ([]byte, error) {
+	spec := crd.Spec.ChainSpec
+	comet := spec.Comet
 
 	privatePeers := peers.Except(instance, crd.Namespace)
 	privatePeerStr := commaDelimited(privatePeers.AllPrivate()...)
-	comet := spec.Comet
-	persistentPeers := commaDelimited(privatePeerStr, comet.PersistentPeers)
-	p2p := decodedToml{
-		"persistent_peers": persistentPeers,
-		"persistent-peers": persistentPeers,
-		"seeds":            comet.Seeds,
-	}
-
 	privateIDStr := commaDelimited(privatePeers.NodeIDs()...)
-	privateIDs := commaDelimited(privateIDStr, comet.PrivatePeerIDs)
-	if v := privateIDs; v != "" {
-		p2p["private_peer_ids"] = v
-		p2p["private-peer-ids"] = v
-	}
+	privateIDs := commaDelimited(privateIDStr, *comet.P2P.PrivatePeerIds)
 
-	unconditionalIDs := commaDelimited(privateIDStr, comet.UnconditionalPeerIDs)
-	if v := unconditionalIDs; v != "" {
-		p2p["unconditional_peer_ids"] = v
-		p2p["unconditional-peer-ids"] = v
-	}
+	persistentPeers := commaDelimited(privatePeerStr, *comet.P2P.PersistentPeers)
 
-	if v := comet.MaxInboundPeers; v != nil {
-		p2p["max_num_inbound_peers"] = comet.MaxInboundPeers
-		p2p["max-num-inbound-peers"] = comet.MaxInboundPeers
-	}
-	if v := comet.MaxOutboundPeers; v != nil {
-		p2p["max_num_outbound_peers"] = comet.MaxOutboundPeers
-		p2p["max-num-outbound-peers"] = comet.MaxOutboundPeers
+	unconditionalIDs := commaDelimited(privateIDStr, *comet.P2P.UnconditionalPeerIDs)
+
+	namadaP2P := blockchain_toml.NamadaP2P{
+		Seeds:                comet.P2P.Seeds,
+		PersistentPeers:      &persistentPeers,
+		PrivatePeerIds:       &privateIDs,
+		UnconditionalPeerIds: &unconditionalIDs,
+		MaxNumInboundPeers:   comet.P2P.MaxNumInboundPeers,
+		MaxNumOutboundPeers:  comet.P2P.MaxNumOutboundPeers,
 	}
 
 	var externalOverride bool
 	if crd.Spec.InstanceOverrides != nil {
 		if override, ok := crd.Spec.InstanceOverrides[instance]; ok && override.ExternalAddress != nil {
 			addr := *override.ExternalAddress
-			p2p["external_address"] = addr
-			p2p["external-address"] = addr
+			*namadaP2P.ExternalAddress = addr
 			externalOverride = true
 		}
 	}
 
 	if !externalOverride {
 		if v := peers.Get(instance, crd.Namespace).ExternalAddress; v != "" {
-			p2p["external_address"] = v
-			p2p["external-address"] = v
+			*namadaP2P.ExternalAddress = v
 		}
 	}
 
-	base["p2p"] = p2p
-
-	if v := comet.CorsAllowedOrigins; v != nil {
-		base["rpc"] = decodedToml{
-			"cors_allowed_origins": v,
-			"cors-allowed-origins": v,
-		}
+	namadaRPC := blockchain_toml.NamadaRPC{
+		CorsAllowedOrigins: comet.RPC.CorsAllowedOrigins,
 	}
 
-	dst := defaultComet()
-
-	mergemap.Merge(dst, base)
-
-	if overrides := comet.TomlOverrides; overrides != nil {
-		var decoded decodedToml
-		_, err := toml.Decode(*overrides, &decoded)
-		if err != nil {
-			return fmt.Errorf("invalid toml in comet overrides: %w", err)
-		}
-		mergemap.Merge(dst, decoded)
+	cometBFT := blockchain_toml.NamadaCometbft{
+		Moniker: &instance,
+		P2P:     &namadaP2P,
+		RPC:     &namadaRPC,
 	}
 
-	if err := toml.NewEncoder(buf).Encode(dst); err != nil {
-		return err
-	}
-	cmData[configOverlayFile] = buf.String()
-	return nil
-}
-
-func commaDelimited(s ...string) string {
-	return strings.Join(lo.Compact(s), ",")
-}
-
-func addAppToml(buf *bytes.Buffer, cmData map[string]string, app cosmosv1.SDKAppConfig) error {
-	base := make(decodedToml)
-	base["minimum-gas-prices"] = app.MinGasPrice
-	// Note: The name discrepancy "enable" vs. "enabled" is intentional; a known inconsistency within the app.toml.
-	base["api"] = decodedToml{"enabled-unsafe-cors": app.APIEnableUnsafeCORS}
-	base["grpc-web"] = decodedToml{"enable-unsafe-cors": app.GRPCWebEnableUnsafeCORS}
-
-	if v := app.HaltHeight; v != nil {
-		base["halt-height"] = v
+	namadaLedger := blockchain_toml.NamadaLedger{
+		Cometbft: &cometBFT,
 	}
 
-	if pruning := app.Pruning; pruning != nil {
-		intStr := func(n *uint32) string {
-			v := valOrDefault(n, ptr(uint32(0)))
-			return strconv.FormatUint(uint64(*v), 10)
-		}
-		base["pruning"] = pruning.Strategy
-		base["pruning-interval"] = intStr(pruning.Interval)
-		base["pruning-keep-every"] = intStr(pruning.KeepEvery)
-		base["pruning-keep-recent"] = intStr(pruning.KeepRecent)
-		base["min-retain-blocks"] = valOrDefault(pruning.MinRetainBlocks, ptr(uint32(0)))
+	*config = blockchain_toml.NamadaConfigFile{
+		Ledger: &namadaLedger,
 	}
 
-	dst := defaultApp()
-	mergemap.Merge(dst, base)
+	var err error
+	overrideConfig := blockchain_toml.NamadaConfigFile{}
 
-	if overrides := app.TomlOverrides; overrides != nil {
-		var decoded decodedToml
-		_, err := toml.Decode(*overrides, &decoded)
-		if err != nil {
-			return fmt.Errorf("invalid toml in app overrides: %w", err)
-		}
-		mergemap.Merge(dst, decoded)
+	P2PTomlOverrides := blockchain_toml.NamadaConfigFile{}
+	if err = toml.Unmarshal([]byte(*comet.P2P.TomlOverrides), &P2PTomlOverrides); err != nil {
+		return nil, err
+	}
+	err = overrideConfig.MergeWithConfig(&P2PTomlOverrides)
+	if err != nil {
+		return nil, err
 	}
 
-	if err := toml.NewEncoder(buf).Encode(dst); err != nil {
-		return err
+	RPCTomlOverrides := blockchain_toml.NamadaConfigFile{}
+	if err = toml.Unmarshal([]byte(*comet.P2P.TomlOverrides), &RPCTomlOverrides); err != nil {
+		return nil, err
 	}
-	cmData[appOverlayFile] = buf.String()
-	return nil
+	err = overrideConfig.MergeWithConfig(&RPCTomlOverrides)
+	if err != nil {
+		return nil, err
+	}
+
+	MempoolTomlOverrides := blockchain_toml.NamadaConfigFile{}
+	if err = toml.Unmarshal([]byte(*comet.Mempool.TomlOverrides), &MempoolTomlOverrides); err != nil {
+		return nil, err
+	}
+	err = overrideConfig.MergeWithConfig(&MempoolTomlOverrides)
+	if err != nil {
+		return nil, err
+	}
+
+	ConsensusTomlOverrides := blockchain_toml.NamadaConfigFile{}
+	if err = toml.Unmarshal([]byte(*comet.Consensus.TomlOverrides), &ConsensusTomlOverrides); err != nil {
+		return nil, err
+	}
+	err = overrideConfig.MergeWithConfig(&ConsensusTomlOverrides)
+	if err != nil {
+		return nil, err
+	}
+
+	TxIndexTomlOverrides := blockchain_toml.NamadaConfigFile{}
+	if err = toml.Unmarshal([]byte(*comet.TxIndex.TomlOverrides), &TxIndexTomlOverrides); err != nil {
+		return nil, err
+	}
+	err = overrideConfig.MergeWithConfig(&TxIndexTomlOverrides)
+	if err != nil {
+		return nil, err
+	}
+
+	InstrumentationTomlOverrides := blockchain_toml.NamadaConfigFile{}
+	if err = toml.Unmarshal([]byte(*comet.Instrumentation.TomlOverrides), &InstrumentationTomlOverrides); err != nil {
+		return nil, err
+	}
+	err = overrideConfig.MergeWithConfig(&InstrumentationTomlOverrides)
+	if err != nil {
+		return nil, err
+	}
+
+	StatesyncTomlOverrides := blockchain_toml.NamadaConfigFile{}
+	if err = toml.Unmarshal([]byte(*comet.Statesync.TomlOverrides), &StatesyncTomlOverrides); err != nil {
+		return nil, err
+	}
+	err = overrideConfig.MergeWithConfig(&StatesyncTomlOverrides)
+	if err != nil {
+		return nil, err
+	}
+
+	if crd.Spec.Type == cosmosv1.Sentry {
+		privVal := fmt.Sprintf("tcp://0.0.0.0:%d", privvalPort)
+		*config.Ledger.Cometbft.PrivValidatorLaddr = privVal
+		// Disable indexing for sentries; they should not serve queries.
+
+		*overrideConfig.Ledger.Cometbft.TxIndex.Indexer = "null"
+	}
+	if v := spec.LogLevel; v != nil {
+		overrideConfig.Ledger.Cometbft.LogLevel = v
+	}
+	if v := spec.LogFormat; v != nil {
+		overrideConfig.Ledger.Cometbft.LogFormat = v
+	}
+
+	if err = config.MergeWithConfig(&overrideConfig); err != nil {
+		return nil, err
+	}
+
+	return config.ExportMergeWithDefault()
 }

@@ -76,8 +76,210 @@ spec:
                       Use AddrbookScript if the chain has an unconventional file format
                       or address book location.'
                     type: string
-                  app:
-                    description: App configuration applied to app.toml.
+                  binary:
+                    description: Binary name which runs commands. E.g. gaiad, junod,
+                      osmosisd
+                    minLength: 1
+                    type: string
+                  chainID:
+                    description: Genesis file chain-id.
+                    minLength: 1
+                    type: string
+                  chainType:
+                    default: cosmos
+                    description: Describes chain type to operate If not set, defaults
+                      to "cosmos".
+                    enum:
+                    - cosmos
+                    - cosmovisor
+                    - namada
+                    type: string
+                  config:
+                    description: CometBFT (formerly Tendermint) configuration applied
+                      to config.toml. Although optional, it's highly recommended you
+                      configure this field.
+                    properties:
+                      consensus:
+                        description: Consensus configuration for your config.toml
+                        properties:
+                          createEmptyBlocks:
+                            description: If not set, defaults to true
+                            type: boolean
+                          createEmptyBlocksInterval:
+                            description: If not set, defaults to 0s
+                            type: string
+                          doubleSignCheckHeight:
+                            description: If not set, defaults to 0
+                            format: int64
+                            type: integer
+                          peerGossipSleepDuration:
+                            description: If not set, defaults to 100ms
+                            type: string
+                          skipTimeoutCommit:
+                            description: If not set, defaults to false
+                            type: boolean
+                          tomlOverrides:
+                            type: string
+                        type: object
+                      instrumentation:
+                        description: Instrumentation configuration for your config.toml
+                        properties:
+                          prometheus:
+                            description: Whether you open prometheus service. If not
+                              set, defaults to true
+                            type: boolean
+                          prometheusListenAddr:
+                            description: Where you want to open prometheus. If not
+                              set, defaults to "26660"
+                            type: string
+                          tomlOverrides:
+                            type: string
+                        type: object
+                      mempool:
+                        description: Mempool configuration for your config.toml
+                        properties:
+                          tomlOverrides:
+                            description: You can override [Mempool] configs at config.toml
+                              overwrite this field.
+                            type: string
+                        type: object
+                      p2p:
+                        description: P2P configuration for your config.toml
+                        properties:
+                          externalAddress:
+                            description: ExternalAddress using P2P connection. If
+                              not set, defaults to "tcp://0.0.0.0:26656" also other
+                              peer cannot find to you using PEX.
+                            type: string
+                          laddr:
+                            description: Listening address for P2P cononection. If
+                              not set, defaults to "tcp://127.0.0.1:26656"
+                            type: string
+                          maxNumInboundPeers:
+                            description: It could be different depending on what chain
+                              you run. Cosmos - 20, Namada - 40
+                            format: int32
+                            minimum: 0
+                            type: integer
+                          maxNumOutboundPeers:
+                            description: It could be different depending on what chain
+                              you run. Cosmos - 20, Namada - 10
+                            format: int32
+                            minimum: 0
+                            type: integer
+                          persistentPeers:
+                            description: PersistentPeer address list for your P2P
+                              connection. Comma delimited list of p2p nodes in <ID>@<IP>:<PORT>
+                              format to keep persistent p2p connections.
+                            minLength: 1
+                            type: string
+                          pex:
+                            description: Whether peers can be exchanged. If not set,
+                              defaults to true
+                            type: boolean
+                          privatePeerIds:
+                            description: For sentry node. Comma delimited list of
+                              node/peer IDs to keep private (will not be gossiped
+                              to other peers) If not set, defaults to ""
+                            type: string
+                          seedMode:
+                            description: 'Whether you''ll run seed node. WARNING:
+                              If you run seed node, the node will disconnect with
+                              other peers after transfer your peers. If not set, defaults
+                              to false'
+                            type: boolean
+                          seeds:
+                            description: Seeds for P2P. Comma delimited list of p2p
+                              seed nodes in <ID>@<IP>:<PORT> format.
+                            minLength: 1
+                            type: string
+                          tomlOverrides:
+                            description: You can override [RPC] configs at config.toml
+                              overwrite this field.
+                            type: string
+                          unconditionalPeerIDs:
+                            description: Comma delimited list of node/peer IDs, to
+                              which a connection will be (re)established ignoring
+                              any existing limits.
+                            type: string
+                        type: object
+                      rpc:
+                        description: RPC configuration for your config.toml
+                        properties:
+                          corsAllowedMethods:
+                            description: If not set, defaults to "["HEAD", "GET",
+                              "POST"]"
+                            items:
+                              type: string
+                            type: array
+                          corsAllowedOrigins:
+                            description: rpc list of origins a cross-domain request
+                              can be executed from. Default value '[]' disables cors
+                              support. Use '["*"]' to allow any origin.
+                            items:
+                              type: string
+                            type: array
+                          laddr:
+                            description: Listening address for RPC. If not set, defaults
+                              to "tcp://0.0.0.0:26657"
+                            type: string
+                          timeoutBroadcastTxCommit:
+                            description: timeout for broadcast_tx_commit If not set,
+                              defaults to "10000ms"(also "10s")
+                            type: string
+                        type: object
+                      statesync:
+                        description: Statesync configuration for your config.toml
+                        properties:
+                          discoveryTime:
+                            description: If not set, defaults to "15000ms"("15s")
+                            type: string
+                          enable:
+                            description: which you enable stateSync If not set, defaults
+                              to false
+                            type: boolean
+                          rpcServers:
+                            type: string
+                          tempDir:
+                            type: string
+                          tomlOverrides:
+                            type: string
+                          trustHash:
+                            type: string
+                          trustHeight:
+                            format: int64
+                            type: integer
+                          trustPeriod:
+                            description: If not set, defaults to "168h0m0s"
+                            type: string
+                        type: object
+                      storage:
+                        description: Storage configuration for your config.toml
+                        properties:
+                          discardAbciResponses:
+                            description: "Set to true to discard ABCI responses from
+                              the state store, which can save a considerable amount
+                              of disk space. Set to false to ensure ABCI responses
+                              are persisted. ABCI responses are required for /block_results
+                              RPC queries, and to reindex events in the command-line
+                              tool. \n If not set, defaults to false"
+                            type: boolean
+                        type: object
+                      txIndex:
+                        description: TxIndex configuration for your config.toml
+                        properties:
+                          indexer:
+                            description: It could be different depending on what chain
+                              you run. cosmos - "kv", namada - "null"
+                            type: string
+                          tomlOverrides:
+                            type: string
+                        required:
+                        - tomlOverrides
+                        type: object
+                    type: object
+                  cosmos:
+                    description: CosmosSDK configuration applied to app.toml.
                     properties:
                       apiEnableUnsafeCORS:
                         description: Defines if CORS should be enabled for the API
@@ -168,77 +370,6 @@ spec:
                     required:
                     - minGasPrice
                     type: object
-                  binary:
-                    description: Binary name which runs commands. E.g. gaiad, junod,
-                      osmosisd
-                    minLength: 1
-                    type: string
-                  chainID:
-                    description: Genesis file chain-id.
-                    minLength: 1
-                    type: string
-                  chainType:
-                    default: cosmos
-                    description: Describes chain type to operate If not set, defaults
-                      to "cosmos".
-                    enum:
-                    - cosmos
-                    - cosmovisor
-                    - namada
-                    type: string
-                  config:
-                    description: CometBFT (formerly Tendermint) configuration applied
-                      to config.toml. Although optional, it's highly recommended you
-                      configure this field.
-                    properties:
-                      corsAllowedOrigins:
-                        description: rpc list of origins a cross-domain request can
-                          be executed from. Default value '[]' disables cors support.
-                          Use '["*"]' to allow any origin.
-                        items:
-                          type: string
-                        type: array
-                      maxInboundPeers:
-                        description: p2p maximum number of inbound peers. If unset,
-                          defaults to 20.
-                        format: int32
-                        minimum: 0
-                        type: integer
-                      maxOutboundPeers:
-                        description: p2p maximum number of outbound peers. If unset,
-                          defaults to 20.
-                        format: int32
-                        minimum: 0
-                        type: integer
-                      overrides:
-                        description: 'Customize config.toml. Values entered here take
-                          precedence over all other configuration. Must be valid toml.
-                          Important: all keys must be "snake_case" which differs from
-                          app.toml. WARNING: Overriding may clobber some values that
-                          the operator sets such as persistent_peers, private_peer_ids,
-                          and unconditional_peer_ids. Use the dedicated fields for
-                          these values which will merge values.'
-                        type: string
-                      peers:
-                        description: Comma delimited list of p2p nodes in <ID>@<IP>:<PORT>
-                          format to keep persistent p2p connections.
-                        minLength: 1
-                        type: string
-                      privatePeerIDs:
-                        description: Comma delimited list of node/peer IDs to keep
-                          private (will not be gossiped to other peers)
-                        type: string
-                      seeds:
-                        description: Comma delimited list of p2p seed nodes in <ID>@<IP>:<PORT>
-                          format.
-                        minLength: 1
-                        type: string
-                      unconditionalPeerIDs:
-                        description: Comma delimited list of node/peer IDs, to which
-                          a connection will be (re)established ignoring any existing
-                          limits.
-                        type: string
-                    type: object
                   databaseBackend:
                     description: 'DatabaseBackend must match in order to detect the
                       block height of the chain prior to starting in order to pick
@@ -297,340 +428,11 @@ spec:
                     - fatal
                     - panic
                     type: string
-                  namadaConfig:
+                  namada:
                     description: Namada configuration applied to $CHAIN_ID/config.toml.
                     properties:
                       ledger:
                         properties:
-                          chainID:
-                            type: string
-                          cometbft:
-                            properties:
-                              abci:
-                                type: string
-                              consensus:
-                                properties:
-                                  createEmptyBlocks:
-                                    type: boolean
-                                  createEmptyBlocksInterval:
-                                    type: string
-                                  doubleSignCheckHeight:
-                                    format: int64
-                                    type: integer
-                                  peerGossipSleepDuration:
-                                    type: string
-                                  peerQueryMaj23SleepDuration:
-                                    type: string
-                                  skipTimeoutCommit:
-                                    type: boolean
-                                  timeoutCommit:
-                                    type: string
-                                  timeoutPrecommit:
-                                    type: string
-                                  timeoutPrecommitDelta:
-                                    type: string
-                                  timeoutPrevote:
-                                    type: string
-                                  timeoutPrevoteDelta:
-                                    type: string
-                                  timeoutPropose:
-                                    type: string
-                                  timeoutProposeDelta:
-                                    type: string
-                                  walFile:
-                                    type: string
-                                required:
-                                - createEmptyBlocks
-                                - createEmptyBlocksInterval
-                                - doubleSignCheckHeight
-                                - peerGossipSleepDuration
-                                - peerQueryMaj23SleepDuration
-                                - skipTimeoutCommit
-                                - timeoutCommit
-                                - timeoutPrecommit
-                                - timeoutPrecommitDelta
-                                - timeoutPrevote
-                                - timeoutPrevoteDelta
-                                - timeoutPropose
-                                - timeoutProposeDelta
-                                - walFile
-                                type: object
-                              dbBackend:
-                                type: string
-                              dbDir:
-                                type: string
-                              fastSync:
-                                type: boolean
-                              fastsync:
-                                properties:
-                                  version:
-                                    type: string
-                                required:
-                                - version
-                                type: object
-                              filterPeers:
-                                type: boolean
-                              genesisFile:
-                                type: string
-                              instrumentation:
-                                properties:
-                                  maxOpenConnections:
-                                    type: integer
-                                  namespace:
-                                    type: string
-                                  prometheus:
-                                    type: boolean
-                                  prometheusListenAddr:
-                                    type: string
-                                required:
-                                - maxOpenConnections
-                                - namespace
-                                - prometheus
-                                - prometheusListenAddr
-                                type: object
-                              logFormat:
-                                type: string
-                              logLevel:
-                                type: string
-                              mempool:
-                                properties:
-                                  broadcast:
-                                    type: boolean
-                                  cacheSize:
-                                    type: integer
-                                  keepInvalidTxsInCache:
-                                    type: boolean
-                                  maxBatchBytes:
-                                    type: integer
-                                  maxTxBytes:
-                                    type: integer
-                                  maxTxsBytes:
-                                    type: integer
-                                  recheck:
-                                    type: boolean
-                                  size:
-                                    type: integer
-                                  walDir:
-                                    type: string
-                                required:
-                                - broadcast
-                                - cacheSize
-                                - keepInvalidTxsInCache
-                                - maxBatchBytes
-                                - maxTxBytes
-                                - maxTxsBytes
-                                - recheck
-                                - size
-                                - walDir
-                                type: object
-                              moniker:
-                                type: string
-                              nodeKeyFile:
-                                type: string
-                              p2p:
-                                properties:
-                                  addrBookFile:
-                                    type: string
-                                  addrBookStrict:
-                                    type: boolean
-                                  allowDuplicateIP:
-                                    type: boolean
-                                  dialTimeout:
-                                    type: string
-                                  externalAddress:
-                                    type: string
-                                  flushThrottleTimeout:
-                                    type: string
-                                  handshakeTimeout:
-                                    type: string
-                                  laddr:
-                                    type: string
-                                  maxNumInboundPeers:
-                                    format: int32
-                                    type: integer
-                                  maxNumOutboundPeers:
-                                    format: int32
-                                    type: integer
-                                  maxPacketMsgPayloadSize:
-                                    type: integer
-                                  persistentPeers:
-                                    type: string
-                                  persistentPeersMaxDialPeriod:
-                                    type: string
-                                  pex:
-                                    type: boolean
-                                  privatePeerIds:
-                                    type: string
-                                  recvRate:
-                                    type: integer
-                                  seedMode:
-                                    type: boolean
-                                  seeds:
-                                    type: string
-                                  sendRate:
-                                    type: integer
-                                  unconditionalPeerIds:
-                                    type: string
-                                  upnp:
-                                    type: boolean
-                                required:
-                                - addrBookFile
-                                - addrBookStrict
-                                - allowDuplicateIP
-                                - dialTimeout
-                                - externalAddress
-                                - flushThrottleTimeout
-                                - handshakeTimeout
-                                - laddr
-                                - maxNumInboundPeers
-                                - maxNumOutboundPeers
-                                - maxPacketMsgPayloadSize
-                                - persistentPeers
-                                - persistentPeersMaxDialPeriod
-                                - pex
-                                - privatePeerIds
-                                - recvRate
-                                - seedMode
-                                - seeds
-                                - sendRate
-                                - unconditionalPeerIds
-                                - upnp
-                                type: object
-                              privValidatorKeyFile:
-                                type: string
-                              privValidatorLaddr:
-                                type: string
-                              privValidatorStateFile:
-                                type: string
-                              proxyApp:
-                                type: string
-                              rpc:
-                                properties:
-                                  corsAllowedHeaders:
-                                    items:
-                                      type: string
-                                    type: array
-                                  corsAllowedMethods:
-                                    items:
-                                      type: string
-                                    type: array
-                                  corsAllowedOrigins:
-                                    items:
-                                      type: string
-                                    type: array
-                                  grpcLaddr:
-                                    type: string
-                                  grpcMaxOpenConnections:
-                                    format: int32
-                                    type: integer
-                                  laddr:
-                                    type: string
-                                  maxBodyBytes:
-                                    type: integer
-                                  maxHeaderBytes:
-                                    type: integer
-                                  maxOpenConnections:
-                                    format: int32
-                                    type: integer
-                                  maxSubscriptionClients:
-                                    format: int32
-                                    type: integer
-                                  maxSubscriptionsPerClient:
-                                    format: int32
-                                    type: integer
-                                  pprofLaddr:
-                                    type: string
-                                  timeoutBroadcastTxCommit:
-                                    type: string
-                                  tlsCertFile:
-                                    type: string
-                                  tlsKeyFile:
-                                    type: string
-                                  unsafe:
-                                    type: boolean
-                                required:
-                                - corsAllowedHeaders
-                                - corsAllowedMethods
-                                - corsAllowedOrigins
-                                - grpcLaddr
-                                - grpcMaxOpenConnections
-                                - laddr
-                                - maxBodyBytes
-                                - maxHeaderBytes
-                                - maxOpenConnections
-                                - maxSubscriptionClients
-                                - maxSubscriptionsPerClient
-                                - pprofLaddr
-                                - timeoutBroadcastTxCommit
-                                - tlsCertFile
-                                - tlsKeyFile
-                                - unsafe
-                                type: object
-                              statesync:
-                                properties:
-                                  discoveryTime:
-                                    type: string
-                                  enable:
-                                    type: boolean
-                                  rpcServers:
-                                    type: string
-                                  tempDir:
-                                    type: string
-                                  trustHash:
-                                    type: string
-                                  trustHeight:
-                                    format: int64
-                                    type: integer
-                                  trustPeriod:
-                                    type: string
-                                required:
-                                - discoveryTime
-                                - enable
-                                - rpcServers
-                                - tempDir
-                                - trustHash
-                                - trustHeight
-                                - trustPeriod
-                                type: object
-                              storage:
-                                properties:
-                                  discardAbciResponses:
-                                    type: boolean
-                                required:
-                                - discardAbciResponses
-                                type: object
-                              txIndex:
-                                properties:
-                                  indexer:
-                                    type: string
-                                required:
-                                - indexer
-                                type: object
-                            required:
-                            - abci
-                            - consensus
-                            - dbBackend
-                            - dbDir
-                            - fastSync
-                            - fastsync
-                            - filterPeers
-                            - genesisFile
-                            - instrumentation
-                            - logFormat
-                            - logLevel
-                            - mempool
-                            - moniker
-                            - nodeKeyFile
-                            - p2p
-                            - privValidatorKeyFile
-                            - privValidatorLaddr
-                            - privValidatorStateFile
-                            - proxyApp
-                            - rpc
-                            - statesync
-                            - storage
-                            - txIndex
-                            type: object
                           ethereumBridge:
                             properties:
                               channelBufferSize:
@@ -644,40 +446,36 @@ spec:
                             - mode
                             - oracleRpcEndpoint
                             type: object
-                          genesisTime:
-                            type: string
                           shell:
                             properties:
                               baseDir:
-                                type: string
-                              cometbftDir:
+                                description: baseDir
                                 type: string
                               dbDir:
+                                description: 'DB dir for namada ledger. WARNING: This
+                                  configuration is not same on cometBFT. If not set,
+                                  defaults to "db"'
                                 type: string
                               storageReadPastHeightLimit:
+                                description: When set, will limit the how many block
+                                  heights in the past can the storage be queried for
+                                  reading values.
                                 format: int64
                                 type: integer
                               tendermintMode:
+                                description: tendermint_mode specifies if tendermint
+                                  is started as validator, fullnode or seednode If
+                                  not set, defaults to "full"
                                 type: string
-                            required:
-                            - baseDir
-                            - cometbftDir
-                            - dbDir
-                            - storageReadPastHeightLimit
-                            - tendermintMode
                             type: object
                         required:
-                        - chainID
-                        - cometbft
                         - ethereumBridge
-                        - genesisTime
                         - shell
                         type: object
                       wasmDir:
+                        description: namada use wasm. you can specify dir for wasm.
+                          If not set, defaults to "wasm"
                         type: string
-                    required:
-                    - ledger
-                    - wasmDir
                     type: object
                   network:
                     description: The network environment. Typically, mainnet, testnet,

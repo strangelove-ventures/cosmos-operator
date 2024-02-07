@@ -102,9 +102,16 @@ func TestBuildConfigMaps(t *testing.T) {
 		crd.Name = "osmosis"
 		crd.Spec.ChainSpec.Network = "mainnet"
 		crd.Spec.Replicas = 1
+
+		persistentPeers := "peer1@1.2.2.2:789,peer2@2.2.2.2:789,peer3@3.2.2.2:789"
+		seeds := "seed1@1.1.1.1:456,seed2@1.1.1.1:456"
+
+		cosmosP2P := cosmosv1.P2P{
+			PersistentPeers: &persistentPeers,
+			Seeds:           &seeds,
+		}
 		crd.Spec.ChainSpec.Comet = cosmosv1.CometConfig{
-			PersistentPeers: "peer1@1.2.2.2:789,peer2@2.2.2.2:789,peer3@3.2.2.2:789",
-			Seeds:           "seed1@1.1.1.1:456,seed2@1.1.1.1:456",
+			P2P: &cosmosP2P,
 		}
 
 		t.Run("happy path", func(t *testing.T) {
@@ -112,9 +119,10 @@ func TestBuildConfigMaps(t *testing.T) {
 			custom.Spec.Replicas = 1
 			custom.Spec.ChainSpec.LogLevel = ptr("debug")
 			custom.Spec.ChainSpec.LogFormat = ptr("json")
-			custom.Spec.ChainSpec.Comet.CorsAllowedOrigins = []string{"*"}
-			custom.Spec.ChainSpec.Comet.MaxInboundPeers = ptr(int32(5))
-			custom.Spec.ChainSpec.Comet.MaxOutboundPeers = ptr(int32(15))
+			corsAllowedOrigins := []string{"*"}
+			custom.Spec.ChainSpec.Comet.RPC.CorsAllowedOrigins = &corsAllowedOrigins
+			custom.Spec.ChainSpec.Comet.P2P.MaxNumInboundPeers = ptr(int32(5))
+			custom.Spec.ChainSpec.Comet.P2P.MaxNumOutboundPeers = ptr(int32(15))
 
 			peers := Peers{
 				client.ObjectKey{Namespace: namespace, Name: "osmosis-0"}: {NodeID: "should not see me", PrivateAddress: "should not see me"},
@@ -162,8 +170,11 @@ func TestBuildConfigMaps(t *testing.T) {
 		t.Run("with peers", func(t *testing.T) {
 			peerCRD := crd.DeepCopy()
 			peerCRD.Spec.Replicas = 3
-			peerCRD.Spec.ChainSpec.Comet.UnconditionalPeerIDs = "unconditional1,unconditional2"
-			peerCRD.Spec.ChainSpec.Comet.PrivatePeerIDs = "private1,private2"
+
+			privatePeerIds := "private1,private2"
+			unconditoinalPeerIDs := "unconditional1,unconditional2"
+			peerCRD.Spec.ChainSpec.Comet.P2P.UnconditionalPeerIDs = &unconditoinalPeerIDs
+			peerCRD.Spec.ChainSpec.Comet.P2P.PrivatePeerIds = &privatePeerIds
 			peers := Peers{
 				client.ObjectKey{Namespace: namespace, Name: "osmosis-0"}: {NodeID: "0", PrivateAddress: "0.local:26656"},
 				client.ObjectKey{Namespace: namespace, Name: "osmosis-1"}: {NodeID: "1", PrivateAddress: "1.local:26656"},
@@ -214,7 +225,9 @@ func TestBuildConfigMaps(t *testing.T) {
 		t.Run("overrides", func(t *testing.T) {
 			overrides := crd.DeepCopy()
 			overrides.Namespace = namespace
-			overrides.Spec.ChainSpec.Comet.CorsAllowedOrigins = []string{"should not see me"}
+
+			corsAllowedOrigins := []string{"should not see me"}
+			overrides.Spec.ChainSpec.Comet.RPC.CorsAllowedOrigins = &corsAllowedOrigins
 			overrides.Spec.ChainSpec.Comet.TomlOverrides = ptr(`
 	log_format = "json"
 	new_base = "new base value"

@@ -18,7 +18,6 @@ limitations under the License.
 package v1
 
 import (
-	blockchain_toml "github.com/bharvest-devops/blockchain-toml"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -444,13 +443,13 @@ type ChainSpec struct {
 	// +optional
 	Comet CometConfig `json:"config"`
 
-	// App configuration applied to app.toml.
+	// CosmosSDK configuration applied to app.toml.
 	// +optional
-	App SDKAppConfig `json:"app"`
+	CosmosSDK SDKAppConfig `json:"cosmos"`
 
 	// Namada configuration applied to $CHAIN_ID/config.toml.
 	// +optional
-	NamadaConfig blockchain_toml.NamadaConfigFile `json:"namadaConfig"`
+	Namada NamadaConfig `json:"namada"`
 
 	// One of trace|debug|info|warn|error|fatal|panic.
 	// If not set, defaults to info.
@@ -580,50 +579,38 @@ type ChainVersion struct {
 
 // CometConfig configures the config.toml.
 type CometConfig struct {
-	// Comma delimited list of p2p nodes in <ID>@<IP>:<PORT> format to keep persistent p2p connections.
-	// +kubebuilder:validation:MinLength:=1
-	// +optional
-	PersistentPeers string `json:"peers"`
 
-	// Comma delimited list of p2p seed nodes in <ID>@<IP>:<PORT> format.
-	// +kubebuilder:validation:MinLength:=1
+	// RPC configuration for your config.toml
 	// +optional
-	Seeds string `json:"seeds"`
+	RPC *RPC `json:"rpc" toml:"rpc"`
 
-	// Comma delimited list of node/peer IDs to keep private (will not be gossiped to other peers)
+	// P2P configuration for your config.toml
 	// +optional
-	PrivatePeerIDs string `json:"privatePeerIDs"`
+	P2P *P2P `json:"p2p" toml:"p2p"`
 
-	// Comma delimited list of node/peer IDs, to which a connection will be (re)established ignoring any existing limits.
+	// Mempool configuration for your config.toml
 	// +optional
-	UnconditionalPeerIDs string `json:"unconditionalPeerIDs"`
+	Mempool *Mempool `json:"mempool" toml:"mempool"`
 
-	// p2p maximum number of inbound peers.
-	// If unset, defaults to 20.
-	// +kubebuilder:validation:Minimum:=0
+	// Consensus configuration for your config.toml
 	// +optional
-	MaxInboundPeers *int32 `json:"maxInboundPeers"`
+	Consensus *Consensus `json:"consensus" toml:"consensus"`
 
-	// p2p maximum number of outbound peers.
-	// If unset, defaults to 20.
-	// +kubebuilder:validation:Minimum:=0
+	// Storage configuration for your config.toml
 	// +optional
-	MaxOutboundPeers *int32 `json:"maxOutboundPeers"`
+	Storage *Storage `json:"storage" toml:"storage"`
 
-	// rpc list of origins a cross-domain request can be executed from.
-	// Default value '[]' disables cors support.
-	// Use '["*"]' to allow any origin.
+	// TxIndex configuration for your config.toml
 	// +optional
-	CorsAllowedOrigins []string `json:"corsAllowedOrigins"`
+	TxIndex *TxIndex `json:"txIndex" toml:"tx_index"`
 
-	// Customize config.toml.
-	// Values entered here take precedence over all other configuration.
-	// Must be valid toml.
-	// Important: all keys must be "snake_case" which differs from app.toml.
-	// WARNING: Overriding may clobber some values that the operator sets such as persistent_peers, private_peer_ids,
-	// and unconditional_peer_ids. Use the dedicated fields for these values which will merge values.
+	// Instrumentation configuration for your config.toml
 	// +optional
-	TomlOverrides *string `json:"overrides"`
+	Instrumentation *Instrumentation `json:"instrumentation" toml:"instrumentation"`
+
+	// Statesync configuration for your config.toml
+	// +optional
+	Statesync *Statesync `json:"statesync" toml:"statesync"`
 }
 
 // SDKAppConfig configures the cosmos sdk application app.toml.
@@ -808,4 +795,231 @@ type CosmosFullNodeList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []CosmosFullNode `json:"items"`
+}
+
+type NamadaConfig struct {
+
+	// namada use wasm. you can specify dir for wasm.
+	// If not set, defaults to "wasm"
+	// +optional
+	WasmDir *string `json:"wasmDir" toml:"wasm_dir"`
+
+	// +optional
+	Ledger *NamadaLedger `json:"ledger" toml:"ledger"`
+}
+
+type NamadaLedger struct {
+	Shell          *NamadaShell          `json:"shell" toml:"shell"`
+	EthereumBridge *NamadaEthereumBridge `json:"ethereumBridge" toml:"ethereum_bridge"`
+}
+
+type NamadaShell struct {
+	// baseDir
+	// +optional
+	BaseDir *string `json:"baseDir" toml:"base_dir"`
+
+	// When set, will limit the how many block heights in the past can the
+	// storage be queried for reading values.
+	// +optional
+	StorageReadPastHeightLimit *uint64 `json:"storageReadPastHeightLimit" toml:"storage_read_past_height_limit"`
+
+	// DB dir for namada ledger.
+	// WARNING: This configuration is not same on cometBFT.
+	// If not set, defaults to "db"
+	// +optional
+	DbDir *string `json:"dbDir" toml:"db_dir"`
+
+	// tendermint_mode specifies if tendermint is started as validator, fullnode or seednode
+	// If not set, defaults to "full"
+	// +optional
+	TendermintMode *string `json:"tendermintMode" toml:"tendermint_mode"`
+}
+
+type RPC struct {
+	// Listening address for RPC.
+	// If not set, defaults to "tcp://0.0.0.0:26657"
+	// +optional
+	Laddr *string `json:"laddr" toml:"laddr"`
+
+	// rpc list of origins a cross-domain request can be executed from.
+	// Default value '[]' disables cors support.
+	// Use '["*"]' to allow any origin.
+	// +optional
+	CorsAllowedOrigins *[]string `json:"corsAllowedOrigins" toml:"cors_allowed_origins"`
+
+	// If not set, defaults to "["HEAD", "GET", "POST"]"
+	// +optional
+	CorsAllowedMethods *[]string `json:"corsAllowedMethods" toml:"cors_allowed_methods"`
+
+	// timeout for broadcast_tx_commit
+	// If not set, defaults to "10000ms"(also "10s")
+	// +optional
+	TimeoutBroadcastTxCommit *string `json:"timeoutBroadcastTxCommit" toml:"timeout_broadcast_tx_commit"`
+}
+
+type P2P struct {
+	// Listening address for P2P cononection.
+	// If not set, defaults to "tcp://127.0.0.1:26656"
+	// +optional
+	Laddr *string `json:"laddr" toml:"laddr"`
+
+	// ExternalAddress using P2P connection.
+	// If not set, defaults to "tcp://0.0.0.0:26656" also other peer cannot find to you using PEX.
+	// +optional
+	ExternalAddress *string `json:"externalAddress" toml:"external_address"`
+
+	// Seeds for P2P.
+	// Comma delimited list of p2p seed nodes in <ID>@<IP>:<PORT> format.
+	// +kubebuilder:validation:MinLength:=1
+	// +optional
+	Seeds *string `json:"seeds" toml:"seeds"`
+
+	// PersistentPeer address list for your P2P connection.
+	// Comma delimited list of p2p nodes in <ID>@<IP>:<PORT> format to keep persistent p2p connections.
+	// +kubebuilder:validation:MinLength:=1
+	// +optional
+	PersistentPeers *string `json:"persistentPeers" toml:"persistent_peers"`
+
+	// It could be different depending on what chain you run.
+	// Cosmos - 20, Namada - 40
+	// +kubebuilder:validation:Minimum:=0
+	// +optional
+	MaxNumInboundPeers *int32 `json:"maxNumInboundPeers" toml:"max_num_inbound_peers"`
+
+	// It could be different depending on what chain you run.
+	// Cosmos - 20, Namada - 10
+	// +kubebuilder:validation:Minimum:=0
+	// +optional
+	MaxNumOutboundPeers *int32 `json:"maxNumOutboundPeers" toml:"max_num_outbound_peers"`
+
+	// Whether peers can be exchanged.
+	// If not set, defaults to true
+	// +optional
+	Pex *bool `json:"pex" toml:"pex"`
+
+	// Whether you'll run seed node.
+	// WARNING: If you run seed node, the node will disconnect with other peers after transfer your peers.
+	// If not set, defaults to false
+	// +optional
+	SeedMode *bool `json:"seedMode" toml:"seed_mode"`
+
+	// For sentry node.
+	// Comma delimited list of node/peer IDs to keep private (will not be gossiped to other peers)
+	// If not set, defaults to ""
+	// +optional
+	PrivatePeerIds *string `json:"privatePeerIds" toml:"private_peer_ids"`
+
+	// Comma delimited list of node/peer IDs, to which a connection will be (re)established ignoring any existing limits.
+	// +optional
+	UnconditionalPeerIDs *string `json:"unconditionalPeerIDs"`
+
+	// You can override [RPC] configs at config.toml overwrite this field.
+	// +optional
+	TomlOverrides *string `json:"tomlOverrides"`
+}
+
+type Mempool struct {
+	// You can override [Mempool] configs at config.toml overwrite this field.
+	// +optional
+	TomlOverrides *string `json:"tomlOverrides"`
+}
+
+type Consensus struct {
+
+	// If not set, defaults to 0
+	// +optional
+	DoubleSignCheckHeight *uint64 `json:"doubleSignCheckHeight" toml:"double_sign_check_height"`
+
+	// If not set, defaults to false
+	// +optional
+	SkipTimeoutCommit *bool `json:"skipTimeoutCommit" toml:"skip_timeout_commit"`
+
+	// If not set, defaults to true
+	// +optional
+	CreateEmptyBlocks *bool `json:"createEmptyBlocks" toml:"create_empty_blocks"`
+
+	// If not set, defaults to 0s
+	// +optional
+	CreateEmptyBlocksInterval *string `json:"createEmptyBlocksInterval" toml:"create_empty_blocks_interval"`
+
+	// If not set, defaults to 100ms
+	// +optional
+	PeerGossipSleepDuration *string `json:"peerGossipSleepDuration" toml:"peer_gossip_sleep_duration"`
+
+	// +optional
+	TomlOverrides *string `json:"tomlOverrides"`
+}
+
+type Storage struct {
+
+	// Set to true to discard ABCI responses from the state store, which can save a
+	// considerable amount of disk space. Set to false to ensure ABCI responses are
+	// persisted. ABCI responses are required for /block_results RPC queries, and to
+	// reindex events in the command-line tool.
+	//
+	// If not set, defaults to false
+	// +optional
+	DiscardAbciResponses *bool `json:"discardAbciResponses" toml:"discard_abci_responses"`
+}
+
+type TxIndex struct {
+
+	// It could be different depending on what chain you run.
+	// cosmos - "kv", namada - "null"
+	// +optional
+	Indexer *string `json:"indexer" toml:"indexer"`
+
+	TomlOverrides *string `json:"tomlOverrides"`
+}
+
+type Instrumentation struct {
+
+	// Whether you open prometheus service.
+	// If not set, defaults to true
+	// +optional
+	Prometheus *bool `json:"prometheus" toml:"prometheus"`
+
+	// Where you want to open prometheus.
+	// If not set, defaults to "26660"
+	// +optional
+	PrometheusListenAddr *string `json:"prometheusListenAddr" toml:"prometheus_listen_addr"`
+
+	// +optional
+	TomlOverrides *string `json:"tomlOverrides"`
+}
+
+type Statesync struct {
+	// which you enable stateSync
+	// If not set, defaults to false
+	// +optional
+	Enable *bool `json:"enable" toml:"enable"`
+
+	// +optional
+	RPCServers *string `json:"rpcServers" toml:"rpc_servers"`
+
+	// +optional
+	TrustHeight *uint64 `json:"trustHeight" toml:"trust_height"`
+
+	// +optional
+	TrustHash *string `json:"trustHash" toml:"trust_hash"`
+
+	// If not set, defaults to "168h0m0s"
+	// +optional
+	TrustPeriod *string `json:"trustPeriod" toml:"trust_period"`
+
+	// If not set, defaults to "15000ms"("15s")
+	// +optional
+	DiscoveryTime *string `json:"discoveryTime" toml:"discovery_time"`
+
+	// +optional
+	TempDir *string `json:"tempDir" toml:"temp_dir"`
+
+	// +optional
+	TomlOverrides *string `json:"tomlOverrides"`
+}
+
+type NamadaEthereumBridge struct {
+	Mode              *string `json:"mode" toml:"mode"`
+	OracleRPCEndpoint *string `json:"oracleRpcEndpoint" toml:"oracle_rpc_endpoint"`
+	ChannelBufferSize *int    `json:"channelBufferSize" toml:"channel_buffer_size"`
 }
