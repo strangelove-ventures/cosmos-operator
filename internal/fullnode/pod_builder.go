@@ -202,7 +202,7 @@ func getCometbftDir(crd *cosmosv1.CosmosFullNode) string {
 	if crd.Spec.ChainSpec.ChainType == chainTypeCosmos || crd.Spec.ChainSpec.ChainType == chainTypeCosmovisor {
 		return ""
 	} else if crd.Spec.ChainSpec.ChainType == chainTypeNamada {
-		return "/" + crd.Spec.ChainSpec.ChainID + "/cometbft"
+		return "/" + crd.Spec.ChainSpec.ChainID
 	}
 	return ""
 }
@@ -334,9 +334,10 @@ func envVars(crd *cosmosv1.CosmosFullNode) []corev1.EnvVar {
 		{Name: "COMETBFT_HOME", Value: home + getCometbftDir(crd)},
 		{Name: "GENESIS_FILE", Value: path.Join(home, getCometbftDir(crd)+"/config", "genesis.json")},
 		{Name: "ADDRBOOK_FILE", Value: path.Join(home, getCometbftDir(crd)+"/config", "addrbook.json")},
-		{Name: "CONFIG_DIR", Value: path.Join(home, getCometbftDir(crd)+"/config")},
+		{Name: "CONFIG_DIR", Value: path.Join(home, getCometbftDir(crd))},
 		{Name: "DATA_DIR", Value: path.Join(home, getCometbftDir(crd), "/data")},
 		{Name: "CHAIN_ID", Value: crd.Spec.ChainSpec.ChainID},
+		{Name: "CHAIN_TYPE", Value: crd.Spec.ChainSpec.ChainType},
 	}
 }
 
@@ -424,7 +425,7 @@ func getAddrbookInitContainer(env []corev1.EnvVar, tpl cosmosv1.PodSpec, addrboo
 	}
 }
 
-func getCosmosConfigMergeContainer(env []corev1.EnvVar, tpl cosmosv1.PodSpec) corev1.Container {
+func getConfigMergeContainer(env []corev1.EnvVar, tpl cosmosv1.PodSpec) corev1.Container {
 	return corev1.Container{
 		Name:    "config-merge",
 		Image:   infraToolImage,
@@ -445,38 +446,10 @@ echo "Merging config..."
 set -x
 mkdir -p $CONFIG_DIR
 config-merge -f toml "$TMP_DIR/config.toml" "$OVERLAY_DIR/config-overlay.toml" > "$CONFIG_DIR/config.toml"
-config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CONFIG_DIR/app.toml"
+if [ "$CHAIN_TYPE" = "` + chainTypeCosmos + `" ] || [ "$CHAIN_TYPE" = "` + chainTypeCosmovisor + `" ]; then
+	config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CONFIG_DIR/app.toml"
+fi
 
-`,
-		},
-		Env:             env,
-		ImagePullPolicy: tpl.ImagePullPolicy,
-		WorkingDir:      workDir,
-	}
-}
-
-func getNamadaConfigMergeContainer(env []corev1.EnvVar, tpl cosmosv1.PodSpec) corev1.Container {
-	return corev1.Container{
-		Name:    "config-merge",
-		Image:   infraToolImage,
-		Command: []string{"sh"},
-		Args: []string{"-c",
-			`
-set -eu
-CONFIG_DIR="$CHAIN_HOME/$CHAIN_ID/"
-TMP_DIR="$HOME/.tmp/config"
-OVERLAY_DIR="$HOME/.config"
-
-# This is a hack to prevent adding another init container.
-# Ideally, this step is not concerned with merging config, so it would live elsewhere.
-# The node key is a secret mounted into the main "node" container, so we do not need this one.
-echo "Removing node key from chain's init subcommand..."
-rm -rf "$CONFIG_DIR/node_key.json"
-
-echo "Merging config..."
-set -x
-mkdir -p $CONFIG_DIR
-config-merge -f toml "$TMP_DIR/config.toml" "$OVERLAY_DIR/config-overlay.toml" > "$CONFIG_DIR/config.toml"
 `,
 		},
 		Env:             env,
@@ -502,7 +475,7 @@ func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Conta
 		required = append(required, getCosmosChainInitContainer(env, tpl, initCmd))
 		required = append(required, getGenesisInitContainer(env, tpl, genesisCmd, genesisArgs, infraToolImage))
 		required = append(required, getAddrbookInitContainer(env, tpl, addrbookCmd, addrbookArgs))
-		required = append(required, getCosmosConfigMergeContainer(env, tpl))
+		required = append(required, getConfigMergeContainer(env, tpl))
 	} else if crd.Spec.ChainSpec.ChainType == chainTypeNamada {
 		initCmd := fmt.Sprintf("%s init ", "cometbft")
 
@@ -510,7 +483,7 @@ func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Conta
 		required = append(required, getNamadaChainInitContainer(env, tpl, initCmd))
 		required = append(required, getGenesisInitContainer(env, tpl, genesisCmd, genesisArgs, crd.Spec.PodTemplate.Image))
 		required = append(required, getAddrbookInitContainer(env, tpl, addrbookCmd, addrbookArgs))
-		required = append(required, getNamadaConfigMergeContainer(env, tpl))
+		required = append(required, getConfigMergeContainer(env, tpl))
 	}
 	allowPrivilege := false
 	for _, c := range required {
