@@ -367,15 +367,6 @@ func addCosmosAppToml(app *blockchain_toml.CosmosAppFile, crd *cosmosv1.CosmosFu
 		app.HaltHeight = cosmosSDK.HaltHeight
 	}
 
-	tomlOverrides := cosmosSDK.TomlOverrides
-	overrideConfig := getEmptyCosmosApp()
-
-	if tomlOverrides != nil {
-		if err := toml.Unmarshal([]byte(*tomlOverrides), &overrideConfig); err != nil {
-			return nil, err
-		}
-	}
-
 	if cosmosSDK.TomlOverrides != nil {
 		if err = app.MergeWithDefault(); err != nil {
 			return nil, err
