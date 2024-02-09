@@ -30,7 +30,7 @@ func BuildPVCs(crd *cosmosalpha.StatefulJob, vs *snapshotv1.VolumeSnapshot) ([]*
 				Kind:     vs.Kind,
 				Name:     vs.Name,
 			},
-			Resources: corev1.ResourceRequirements{
+			Resources: corev1.VolumeResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceStorage: storage},
 			},
 		},
