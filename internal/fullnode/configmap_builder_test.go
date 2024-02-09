@@ -43,6 +43,11 @@ func TestBuildConfigMaps(t *testing.T) {
 		crd.Spec.PodTemplate.Image = "agoric:v6.0.0"
 		crd.Spec.ChainSpec.Network = "testnet"
 
+		cometConfig := cosmosv1.CometConfig{}
+		crd.Spec.ChainSpec.Comet = &cometConfig
+		cosmosAppConfig := cosmosv1.SDKAppConfig{}
+		crd.Spec.ChainSpec.CosmosSDK = &cosmosAppConfig
+
 		cms, err := BuildConfigMaps(&crd, nil)
 		require.NoError(t, err)
 		require.Equal(t, 3, len(cms))
@@ -87,6 +92,11 @@ func TestBuildConfigMaps(t *testing.T) {
 		crd.Name = strings.Repeat("chain", 300)
 		crd.Spec.ChainSpec.Network = strings.Repeat("network", 300)
 
+		cometConfig := cosmosv1.CometConfig{}
+		crd.Spec.ChainSpec.Comet = &cometConfig
+		cosmosAppConfig := cosmosv1.SDKAppConfig{}
+		crd.Spec.ChainSpec.CosmosSDK = &cosmosAppConfig
+
 		cms, err := BuildConfigMaps(&crd, nil)
 		require.NoError(t, err)
 		require.NotEmpty(t, cms)
@@ -110,9 +120,13 @@ func TestBuildConfigMaps(t *testing.T) {
 			PersistentPeers: &persistentPeers,
 			Seeds:           &seeds,
 		}
-		crd.Spec.ChainSpec.Comet = cosmosv1.CometConfig{
+		cometConfig := cosmosv1.CometConfig{
 			P2P: &cosmosP2P,
 		}
+		crd.Spec.ChainSpec.Comet = &cometConfig
+
+		cosmosAppConfig := cosmosv1.SDKAppConfig{}
+		crd.Spec.ChainSpec.CosmosSDK = &cosmosAppConfig
 
 		t.Run("happy path", func(t *testing.T) {
 			custom := crd.DeepCopy()
@@ -330,9 +344,12 @@ func TestBuildConfigMaps(t *testing.T) {
 	t.Run("app-overlay.toml", func(t *testing.T) {
 		crd := defaultCRD()
 		crd.Spec.Replicas = 3
-		crd.Spec.ChainSpec.CosmosSDK = cosmosv1.SDKAppConfig{
+		cometConfig := cosmosv1.CometConfig{}
+		crd.Spec.ChainSpec.Comet = &cometConfig
+		appConfig := cosmosv1.SDKAppConfig{
 			MinGasPrice: "0.123token",
 		}
+		crd.Spec.ChainSpec.CosmosSDK = &appConfig
 
 		t.Run("happy path", func(t *testing.T) {
 			custom := crd.DeepCopy()
@@ -453,6 +470,11 @@ func TestBuildConfigMaps(t *testing.T) {
 	})
 
 	test.HasTypeLabel(t, func(crd cosmosv1.CosmosFullNode) []map[string]string {
+		cometConfig := cosmosv1.CometConfig{}
+		crd.Spec.ChainSpec.Comet = &cometConfig
+		cosmosAppConfig := cosmosv1.SDKAppConfig{}
+		crd.Spec.ChainSpec.CosmosSDK = &cosmosAppConfig
+
 		cms, _ := BuildConfigMaps(&crd, nil)
 		labels := make([]map[string]string, 0)
 		for _, cm := range cms {

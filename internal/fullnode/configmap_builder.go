@@ -20,7 +20,7 @@ const (
 	appOverlayFile    = "app-overlay.toml"
 )
 
-func getEmptyComet() blockchain_toml.CosmosConfigFile {
+func getEmptyCosmosConfig() blockchain_toml.CosmosConfigFile {
 	configRPC := blockchain_toml.CosmosRPC{}
 	configP2P := blockchain_toml.CosmosP2P{}
 	configMempool := blockchain_toml.CosmosMempool{}
@@ -77,6 +77,9 @@ func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, peers Peers) ([]diff.Resource
 		instance := instanceName(crd, i)
 
 		if crd.Spec.ChainSpec.ChainType == chainTypeNamada {
+			if crd.Spec.ChainSpec.Comet != nil {
+
+			}
 			config := blockchain_toml.NamadaConfigFile{}
 			configBytes, err := addNamadaConfigToml(&config, crd, instance, peers)
 			if err != nil {
@@ -86,7 +89,7 @@ func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, peers Peers) ([]diff.Resource
 
 		} else {
 
-			config := getEmptyComet()
+			config := getEmptyCosmosConfig()
 			configBytes, err := addCosmosConfigToml(&config, crd, instance, peers)
 			if err != nil {
 				return nil, err

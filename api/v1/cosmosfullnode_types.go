@@ -417,8 +417,6 @@ type ChainSpec struct {
 	// Describes chain type to operate
 	// If not set, defaults to "cosmos".
 	// +kubebuilder:validation:Enum:=cosmos;cosmovisor;namada
-	// +kubebuilder:default:=cosmos
-	// +optional
 	ChainType string `json:"chainType"`
 
 	// The network environment. Typically, mainnet, testnet, devnet, etc.
@@ -442,15 +440,15 @@ type ChainSpec struct {
 	// CometBFT (formerly Tendermint) configuration applied to config.toml.
 	// Although optional, it's highly recommended you configure this field.
 	// +optional
-	Comet CometConfig `json:"config"`
+	Comet *CometConfig `json:"config"`
 
 	// CosmosSDK configuration applied to app.toml.
 	// +optional
-	CosmosSDK SDKAppConfig `json:"cosmos"`
+	CosmosSDK *SDKAppConfig `json:"cosmos"`
 
 	// Namada configuration applied to $CHAIN_ID/config.toml.
 	// +optional
-	Namada NamadaConfig `json:"namada"`
+	Namada *NamadaConfig `json:"namada"`
 
 	// One of trace|debug|info|warn|error|fatal|panic.
 	// If not set, defaults to info.
