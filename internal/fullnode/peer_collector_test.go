@@ -105,7 +105,7 @@ func TestPeerCollector_Collect(t *testing.T) {
 
 		c := resty.New()
 		resp, err := c.R().
-			Get("https://ident.me")
+			Get("https://ipv4.icanhazip.com")
 
 		externalIP := resp.String()
 

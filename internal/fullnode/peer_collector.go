@@ -176,7 +176,7 @@ func (c PeerCollector) addExternalAddress(ctx context.Context, peers Peers, crd 
 
 		c := resty.New()
 		resp, err := c.R().
-			Get("https://ident.me")
+			Get("https://ipv4.icanhazip.com")
 		var externalIP string
 		if err != nil || resp.IsError() {
 			externalIP = "0.0.0.0"
