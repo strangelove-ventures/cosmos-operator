@@ -449,7 +449,7 @@ func TestPodBuilder(t *testing.T) {
 		require.Equal(t, []string{"gaiad"}, c.Command)
 		require.Equal(t, []string{"start", "--home", defaultHome}, c.Args)
 
-		cmdCrd.Spec.ChainSpec.SkipInvariants = true
+		cmdCrd.Spec.ChainSpec.CosmosSDK.SkipInvariants = true
 		pod, err = NewPodBuilder(&cmdCrd).WithOrdinal(1).Build()
 		require.NoError(t, err)
 		c = pod.Spec.Containers[0]

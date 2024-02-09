@@ -506,10 +506,6 @@ type ChainSpec struct {
 	// +optional
 	GenesisScript *string `json:"genesisScript"`
 
-	// Skip x/crisis invariants check on startup.
-	// +optional
-	SkipInvariants bool `json:"skipInvariants"`
-
 	// If configured as a Sentry, invokes sleep command with this value before running chain start command.
 	// Currently, requires the privval laddr to be available immediately without any retry.
 	// This workaround gives time for the connection to be made to a remote signer.
@@ -595,6 +591,9 @@ type CometConfig struct {
 
 // SDKAppConfig configures the cosmos sdk application app.toml.
 type SDKAppConfig struct {
+	// Skip x/crisis invariants check on startup.
+	// +optional
+	SkipInvariants bool `json:"skipInvariants"`
 
 	// URL for a snapshot archive to download from the internet.
 	// Unarchiving the snapshot populates the data directory.

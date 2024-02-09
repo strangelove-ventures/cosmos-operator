@@ -371,6 +371,9 @@ spec:
                         required:
                         - strategy
                         type: object
+                      skipInvariants:
+                        description: Skip x/crisis invariants check on startup.
+                        type: boolean
                       snapshotScript:
                         description: 'Specify shell (sh) script commands to properly
                           download and process a snapshot archive. Prefer SnapshotURL
@@ -517,9 +520,6 @@ spec:
                     format: int32
                     minimum: 0
                     type: integer
-                  skipInvariants:
-                    description: Skip x/crisis invariants check on startup.
-                    type: boolean
                   versions:
                     description: Versions of the chain and which height they should
                       be applied. When provided, the operator will automatically upgrade

@@ -585,7 +585,7 @@ func startCommandArgs(crd *cosmosv1.CosmosFullNode) []string {
 		return args
 	}
 
-	if cfg.SkipInvariants {
+	if cfg.CosmosSDK.SkipInvariants {
 		args = append(args, "--x-crisis-skip-assert-invariants")
 	}
 	if lvl := cfg.LogLevel; lvl != nil {
