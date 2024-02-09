@@ -20,6 +20,48 @@ const (
 	appOverlayFile    = "app-overlay.toml"
 )
 
+func getEmptyComet() blockchain_toml.CosmosConfigFile {
+	configRPC := blockchain_toml.CosmosRPC{}
+	configP2P := blockchain_toml.CosmosP2P{}
+	configMempool := blockchain_toml.CosmosMempool{}
+	configStatesync := blockchain_toml.CosmosStatesync{}
+	configBlocksync := blockchain_toml.CosmosBlocksync{}
+	configConsensus := blockchain_toml.CosmosConsensus{}
+	configStorage := blockchain_toml.CosmosStorage{}
+	configTxIndex := blockchain_toml.CosmosTxIndex{}
+	configInstrumentation := blockchain_toml.CosmosInstrumentation{}
+
+	return blockchain_toml.CosmosConfigFile{
+		RPC:             configRPC,
+		P2P:             configP2P,
+		Mempool:         configMempool,
+		Statesync:       configStatesync,
+		Blocksync:       configBlocksync,
+		Consensus:       configConsensus,
+		Storage:         configStorage,
+		TxIndex:         configTxIndex,
+		Instrumentation: configInstrumentation,
+	}
+}
+
+func getEmptyCosmosApp() blockchain_toml.CosmosAppFile {
+	appTelementry := blockchain_toml.Telemetry{}
+	appAPI := blockchain_toml.API{}
+	appRosetta := blockchain_toml.Rosetta{}
+	appGrpc := blockchain_toml.Grpc{}
+	appGrpcWeb := blockchain_toml.GrpcWeb{}
+	appStatesync := blockchain_toml.StateSync{}
+
+	return blockchain_toml.CosmosAppFile{
+		Telemetry: appTelementry,
+		API:       appAPI,
+		Rosetta:   appRosetta,
+		Grpc:      appGrpc,
+		GrpcWeb:   appGrpcWeb,
+		StateSync: appStatesync,
+	}
+}
+
 // BuildConfigMaps creates a ConfigMap with configuration to be mounted as files into containers.
 // Currently, the config.toml (for Comet) and app.toml (for the Cosmos SDK).
 func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, peers Peers) ([]diff.Resource[*corev1.ConfigMap], error) {
@@ -43,14 +85,15 @@ func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, peers Peers) ([]diff.Resource
 			data[configOverlayFile] = string(configBytes)
 
 		} else {
-			config := blockchain_toml.CosmosConfigFile{}
+
+			config := getEmptyComet()
 			configBytes, err := addCosmosConfigToml(&config, crd, instance, peers)
 			if err != nil {
 				return nil, err
 			}
 			data[configOverlayFile] = string(configBytes)
 
-			app := blockchain_toml.CosmosAppFile{}
+			app := getEmptyCosmosApp()
 			appTomlBytes, err := addCosmosAppToml(&app, crd)
 			if err != nil {
 				return nil, err
@@ -74,177 +117,271 @@ func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, peers Peers) ([]diff.Resource
 	return cms, nil
 }
 
-func commaDelimited(s ...string) string {
-	return strings.Join(lo.Compact(s), ",")
+func commaDelimited(str ...*string) string {
+	var compactList []string
+	for _, s := range str {
+		if s != nil {
+			compactList = append(compactList, *s)
+		}
+	}
+	return strings.Join(lo.Compact(compactList), ",")
+}
+
+func stringListToStringPointerList(str []string) []*string {
+	var strPtrList []*string
+	for _, p := range str {
+		t := p
+		strPtrList = append(strPtrList, &t)
+	}
+	return strPtrList
 }
 
 func addCosmosConfigToml(config *blockchain_toml.CosmosConfigFile, crd *cosmosv1.CosmosFullNode, instance string, peers Peers) ([]byte, error) {
+	var err error
+
 	spec := crd.Spec.ChainSpec
 	comet := spec.Comet
 
-	privatePeers := peers.Except(instance, crd.Namespace)
-	privatePeerStr := commaDelimited(privatePeers.AllPrivate()...)
-	privateIDStr := commaDelimited(privatePeers.NodeIDs()...)
-	privateIDs := commaDelimited(privateIDStr, *comet.P2P.PrivatePeerIds)
+	//config.Moniker = &instance
 
-	persistentPeers := commaDelimited(privatePeerStr, *comet.P2P.PersistentPeers)
+	if comet.RPC != nil {
+		cosmosRPC := comet.RPC.ToCosmosRPC()
 
-	unconditionalIDs := commaDelimited(privateIDStr, *comet.P2P.UnconditionalPeerIDs)
+		if comet.RPC.TomlOverrides != nil {
+			RPCTomlOverrides := blockchain_toml.CosmosConfigFile{}
+			if err = toml.Unmarshal([]byte(*comet.P2P.TomlOverrides), &RPCTomlOverrides); err != nil {
+				return nil, err
+			}
+			err = config.MergeWithConfig(RPCTomlOverrides)
+			if err != nil {
+				return nil, err
+			}
+		}
 
-	cosmosP2P := blockchain_toml.CosmosP2P{
-		Seeds:                comet.P2P.Seeds,
-		PersistentPeers:      &persistentPeers,
-		PrivatePeerIds:       &privateIDs,
-		UnconditionalPeerIds: &unconditionalIDs,
-		MaxNumInboundPeers:   comet.P2P.MaxNumInboundPeers,
-		MaxNumOutboundPeers:  comet.P2P.MaxNumOutboundPeers,
+		config.RPC = cosmosRPC
+	}
+
+	if comet.P2P != nil {
+		cosmosP2P := comet.P2P.ToCosmosP2P()
+
+		if comet.P2P.TomlOverrides != nil {
+			P2PTomlOverrides := blockchain_toml.CosmosConfigFile{}
+			if err = toml.Unmarshal([]byte(*comet.P2P.TomlOverrides), &P2PTomlOverrides); err != nil {
+				return nil, err
+			}
+			err = config.MergeWithConfig(P2PTomlOverrides)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		// Prepare private peers for nodes in cluster
+		privatePeers := peers.Except(instance, crd.Namespace)
+		privatePeerStr := commaDelimited(stringListToStringPointerList(privatePeers.AllPrivate())...)
+		privateIDStr := commaDelimited(stringListToStringPointerList(privatePeers.NodeIDs())...)
+
+		var privateIDs, persistentPeers, unconditionalIDs string
+
+		if cosmosP2P.PrivatePeerIds != nil {
+			privateIDs = commaDelimited(&privateIDStr, cosmosP2P.PrivatePeerIds)
+			cosmosP2P.PrivatePeerIds = &privateIDs
+		}
+		if cosmosP2P.PersistentPeers != nil {
+			persistentPeers = commaDelimited(&privatePeerStr, cosmosP2P.PersistentPeers)
+			cosmosP2P.PersistentPeers = &persistentPeers
+		}
+		if cosmosP2P.UnconditionalPeerIds != nil {
+			unconditionalIDs = commaDelimited(&privateIDStr, cosmosP2P.UnconditionalPeerIds)
+			cosmosP2P.UnconditionalPeerIds = &unconditionalIDs
+		}
+
+		config.P2P = cosmosP2P
 	}
 
 	var externalOverride bool
 	if crd.Spec.InstanceOverrides != nil {
 		if override, ok := crd.Spec.InstanceOverrides[instance]; ok && override.ExternalAddress != nil {
-			addr := *override.ExternalAddress
-			*cosmosP2P.ExternalAddress = addr
+			config.P2P.ExternalAddress = override.ExternalAddress
 			externalOverride = true
 		}
 	}
 
 	if !externalOverride {
 		if v := peers.Get(instance, crd.Namespace).ExternalAddress; v != "" {
-			*cosmosP2P.ExternalAddress = v
+			config.P2P.ExternalAddress = &v
 		}
 	}
 
-	cosmosRPC := blockchain_toml.CosmosRPC{
-		CorsAllowedOrigins: comet.RPC.CorsAllowedOrigins,
+	if comet.Mempool != nil {
+		if comet.Mempool.TomlOverrides != nil {
+			mempoolTomlOverrides := blockchain_toml.CosmosConfigFile{}
+			if err = toml.Unmarshal([]byte(*comet.Mempool.TomlOverrides), &mempoolTomlOverrides); err != nil {
+				return nil, err
+			}
+			err = config.MergeWithConfig(mempoolTomlOverrides)
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
 
-	*config = blockchain_toml.CosmosConfigFile{
-		Moniker: &instance,
-		P2P:     &cosmosP2P,
-		RPC:     &cosmosRPC,
+	if comet.Consensus != nil {
+		cosmosConsensus := comet.Consensus.ToCosmosConsensus()
+
+		if comet.Consensus.TomlOverrides != nil {
+			consensusTomlOverrides := blockchain_toml.CosmosConfigFile{}
+			if err = toml.Unmarshal([]byte(*comet.Consensus.TomlOverrides), &consensusTomlOverrides); err != nil {
+				return nil, err
+			}
+			err = config.MergeWithConfig(consensusTomlOverrides)
+			if err != nil {
+				return nil, err
+			}
+		}
+		config.Consensus = cosmosConsensus
 	}
 
-	var err error
-	overrideConfig := blockchain_toml.CosmosConfigFile{}
-
-	P2PTomlOverrides := blockchain_toml.CosmosConfigFile{}
-	if err = toml.Unmarshal([]byte(*comet.P2P.TomlOverrides), &P2PTomlOverrides); err != nil {
-		return nil, err
-	}
-	err = overrideConfig.MergeWithConfig(&P2PTomlOverrides)
-	if err != nil {
-		return nil, err
+	if comet.Storage != nil {
+		cosmosStorage := comet.Storage.ToCosmosStorage()
+		config.Storage = cosmosStorage
 	}
 
-	RPCTomlOverrides := blockchain_toml.CosmosConfigFile{}
-	if err = toml.Unmarshal([]byte(*comet.P2P.TomlOverrides), &RPCTomlOverrides); err != nil {
-		return nil, err
-	}
-	err = overrideConfig.MergeWithConfig(&RPCTomlOverrides)
-	if err != nil {
-		return nil, err
+	if comet.TxIndex != nil {
+		cosmosTxIndex := comet.TxIndex.ToCosmosTxIndex()
+
+		if comet.TxIndex.TomlOverrides != nil {
+			txIndexTomlOverrides := blockchain_toml.CosmosConfigFile{}
+			if err = toml.Unmarshal([]byte(*comet.TxIndex.TomlOverrides), &txIndexTomlOverrides); err != nil {
+				return nil, err
+			}
+			err = config.MergeWithConfig(txIndexTomlOverrides)
+			if err != nil {
+				return nil, err
+			}
+		}
+		config.TxIndex = cosmosTxIndex
 	}
 
-	MempoolTomlOverrides := blockchain_toml.CosmosConfigFile{}
-	if err = toml.Unmarshal([]byte(*comet.Mempool.TomlOverrides), &MempoolTomlOverrides); err != nil {
-		return nil, err
-	}
-	err = overrideConfig.MergeWithConfig(&MempoolTomlOverrides)
-	if err != nil {
-		return nil, err
+	if comet.Instrumentation != nil {
+		cosmosInstrumentation := comet.Instrumentation.ToCosmosInstrumentation()
+
+		if comet.Instrumentation.TomlOverrides != nil {
+			instrumentationTomlOverrides := blockchain_toml.CosmosConfigFile{}
+			if err = toml.Unmarshal([]byte(*comet.Instrumentation.TomlOverrides), &instrumentationTomlOverrides); err != nil {
+				return nil, err
+			}
+			err = config.MergeWithConfig(instrumentationTomlOverrides)
+			if err != nil {
+				return nil, err
+			}
+		}
+		config.Instrumentation = cosmosInstrumentation
 	}
 
-	ConsensusTomlOverrides := blockchain_toml.CosmosConfigFile{}
-	if err = toml.Unmarshal([]byte(*comet.Consensus.TomlOverrides), &ConsensusTomlOverrides); err != nil {
-		return nil, err
-	}
-	err = overrideConfig.MergeWithConfig(&ConsensusTomlOverrides)
-	if err != nil {
-		return nil, err
-	}
+	if comet.Statesync != nil {
+		cosmosStatesync := comet.Statesync.ToCosmosStatesync()
 
-	TxIndexTomlOverrides := blockchain_toml.CosmosConfigFile{}
-	if err = toml.Unmarshal([]byte(*comet.TxIndex.TomlOverrides), &TxIndexTomlOverrides); err != nil {
-		return nil, err
-	}
-	err = overrideConfig.MergeWithConfig(&TxIndexTomlOverrides)
-	if err != nil {
-		return nil, err
-	}
-
-	InstrumentationTomlOverrides := blockchain_toml.CosmosConfigFile{}
-	if err = toml.Unmarshal([]byte(*comet.Instrumentation.TomlOverrides), &InstrumentationTomlOverrides); err != nil {
-		return nil, err
-	}
-	err = overrideConfig.MergeWithConfig(&InstrumentationTomlOverrides)
-	if err != nil {
-		return nil, err
-	}
-
-	StatesyncTomlOverrides := blockchain_toml.CosmosConfigFile{}
-	if err = toml.Unmarshal([]byte(*comet.Statesync.TomlOverrides), &StatesyncTomlOverrides); err != nil {
-		return nil, err
-	}
-	err = overrideConfig.MergeWithConfig(&StatesyncTomlOverrides)
-	if err != nil {
-		return nil, err
+		if comet.Statesync.TomlOverrides != nil {
+			statesyncTomlOverrides := blockchain_toml.CosmosConfigFile{}
+			if err = toml.Unmarshal([]byte(*comet.Statesync.TomlOverrides), &statesyncTomlOverrides); err != nil {
+				return nil, err
+			}
+			err = config.MergeWithConfig(statesyncTomlOverrides)
+			if err != nil {
+				return nil, err
+			}
+		}
+		config.Statesync = cosmosStatesync
 	}
 
 	if crd.Spec.Type == cosmosv1.Sentry {
 		privVal := fmt.Sprintf("tcp://0.0.0.0:%d", privvalPort)
-		*config.PrivValidatorLaddr = privVal
+		config.PrivValidatorLaddr = &privVal
 		// Disable indexing for sentries; they should not serve queries.
-
-		*overrideConfig.TxIndex.Indexer = "null"
+		txIndexer := "null"
+		config.TxIndex.Indexer = &txIndexer
 	}
 	if v := spec.LogLevel; v != nil {
-		overrideConfig.LogLevel = v
+		config.LogLevel = v
 	}
 	if v := spec.LogFormat; v != nil {
-		overrideConfig.LogFormat = v
+		config.LogFormat = v
 	}
 
-	if err = config.MergeWithConfig(&overrideConfig); err != nil {
-		return nil, err
+	if spec.Comet.TomlOverrides != nil {
+		if err = config.MergeWithDefault(); err != nil {
+			return nil, err
+		}
+		return config.ExportMergeWithTomlOverrides([]byte(*spec.Comet.TomlOverrides))
 	}
-
 	return config.ExportMergeWithDefault()
 }
 
 func addCosmosAppToml(app *blockchain_toml.CosmosAppFile, crd *cosmosv1.CosmosFullNode) ([]byte, error) {
-	spec := crd.Spec.ChainSpec
+	var (
+		err       error
+		cosmosSDK = crd.Spec.ChainSpec.CosmosSDK
+	)
 
-	api := blockchain_toml.API{
-		EnabledUnsafeCors: &spec.CosmosSDK.APIEnableUnsafeCORS,
-	}
-	grpcWeb := blockchain_toml.GrpcWeb{
-		EnableUnsafeCors: &spec.CosmosSDK.GRPCWebEnableUnsafeCORS,
-	}
-	pruningKeepRecent := fmt.Sprint(spec.CosmosSDK.Pruning.KeepRecent)
-	pruningKeepEvery := fmt.Sprint(spec.CosmosSDK.Pruning.KeepEvery)
+	app.MinimumGasPrices = &cosmosSDK.MinGasPrice
 
-	*app = blockchain_toml.CosmosAppFile{
-		MinimumGasPrices:  &spec.CosmosSDK.MinGasPrice,
-		API:               &api,
-		GrpcWeb:           &grpcWeb,
-		Pruning:           (*string)(&spec.CosmosSDK.Pruning.Strategy),
-		PruningKeepRecent: &pruningKeepRecent,
-		PruningKeepEvery:  &pruningKeepEvery,
-		HaltHeight:        spec.CosmosSDK.HaltHeight,
+	if &cosmosSDK.APIEnableUnsafeCORS != nil {
+		app.API.EnabledUnsafeCors = &cosmosSDK.APIEnableUnsafeCORS
 	}
 
-	tomlOverrides := spec.CosmosSDK.TomlOverrides
-	overrideConfig := blockchain_toml.CosmosAppFile{}
-
-	if err := toml.Unmarshal([]byte(*tomlOverrides), overrideConfig); err != nil {
-		return nil, err
+	if &cosmosSDK.GRPCWebEnableUnsafeCORS != nil {
+		app.API.EnabledUnsafeCors = &cosmosSDK.GRPCWebEnableUnsafeCORS
 	}
 
-	if err := app.MergeWithConfig(&overrideConfig); err != nil {
-		return nil, err
+	var pruningStrategy, pruningInterval, pruningKeepRecent, pruningKeepEvery string
+	var pruningMinRetainBlocks int
+
+	if cosmosSDK.Pruning != nil {
+		if cosmosSDK.Pruning.Strategy != "" {
+			pruningStrategy = (string)(cosmosSDK.Pruning.Strategy)
+			app.Pruning = &pruningStrategy
+		}
+
+		if cosmosSDK.Pruning.Interval != nil {
+			pruningInterval = fmt.Sprint(*cosmosSDK.Pruning.Interval)
+			app.PruningInterval = &pruningInterval
+		}
+
+		if cosmosSDK.Pruning.KeepRecent != nil {
+			pruningKeepRecent = fmt.Sprint(*cosmosSDK.Pruning.KeepRecent)
+			app.PruningKeepRecent = &pruningKeepRecent
+		}
+
+		if cosmosSDK.Pruning.KeepEvery != nil {
+			pruningKeepEvery = fmt.Sprint(*cosmosSDK.Pruning.KeepEvery)
+			app.PruningKeepEvery = &pruningKeepEvery
+		}
+
+		if cosmosSDK.Pruning.MinRetainBlocks != nil {
+			pruningMinRetainBlocks = int(*cosmosSDK.Pruning.MinRetainBlocks)
+			app.MinRetainBlocks = &pruningMinRetainBlocks
+		}
 	}
 
+	if cosmosSDK.HaltHeight != nil {
+		app.HaltHeight = cosmosSDK.HaltHeight
+	}
+
+	tomlOverrides := cosmosSDK.TomlOverrides
+	overrideConfig := getEmptyCosmosApp()
+
+	if tomlOverrides != nil {
+		if err := toml.Unmarshal([]byte(*tomlOverrides), &overrideConfig); err != nil {
+			return nil, err
+		}
+	}
+
+	if cosmosSDK.TomlOverrides != nil {
+		if err = app.MergeWithDefault(); err != nil {
+			return nil, err
+		}
+		return app.ExportMergeWithTomlOverrides([]byte(*cosmosSDK.TomlOverrides))
+	}
 	return app.ExportMergeWithDefault()
 }
 
@@ -253,13 +390,13 @@ func addNamadaConfigToml(config *blockchain_toml.NamadaConfigFile, crd *cosmosv1
 	comet := spec.Comet
 
 	privatePeers := peers.Except(instance, crd.Namespace)
-	privatePeerStr := commaDelimited(privatePeers.AllPrivate()...)
-	privateIDStr := commaDelimited(privatePeers.NodeIDs()...)
-	privateIDs := commaDelimited(privateIDStr, *comet.P2P.PrivatePeerIds)
+	privatePeerStr := commaDelimited(stringListToStringPointerList(privatePeers.AllPrivate())...)
+	privateIDStr := commaDelimited(stringListToStringPointerList(privatePeers.NodeIDs())...)
+	privateIDs := commaDelimited(&privateIDStr, comet.P2P.PrivatePeerIds)
 
-	persistentPeers := commaDelimited(privatePeerStr, *comet.P2P.PersistentPeers)
+	persistentPeers := commaDelimited(&privatePeerStr, comet.P2P.PersistentPeers)
 
-	unconditionalIDs := commaDelimited(privateIDStr, *comet.P2P.UnconditionalPeerIDs)
+	unconditionalIDs := commaDelimited(&privateIDStr, comet.P2P.UnconditionalPeerIDs)
 
 	namadaP2P := blockchain_toml.NamadaP2P{
 		Seeds:                comet.P2P.Seeds,
@@ -387,5 +524,11 @@ func addNamadaConfigToml(config *blockchain_toml.NamadaConfigFile, crd *cosmosv1
 		return nil, err
 	}
 
+	if spec.Comet.TomlOverrides != nil {
+		if err = config.MergeWithDefault(); err != nil {
+			return nil, err
+		}
+		return config.ExportMergeWithTomlOverrides([]byte(*spec.Comet.TomlOverrides))
+	}
 	return config.ExportMergeWithDefault()
 }
