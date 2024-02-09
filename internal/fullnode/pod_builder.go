@@ -331,10 +331,9 @@ func envVars(crd *cosmosv1.CosmosFullNode) []corev1.EnvVar {
 	return []corev1.EnvVar{
 		{Name: "HOME", Value: workDir},
 		{Name: "CHAIN_HOME", Value: home},
-		{Name: "COMETBFT_HOME", Value: home + getCometbftDir(crd)},
 		{Name: "GENESIS_FILE", Value: path.Join(home, getCometbftDir(crd)+"/config", "genesis.json")},
 		{Name: "ADDRBOOK_FILE", Value: path.Join(home, getCometbftDir(crd)+"/config", "addrbook.json")},
-		{Name: "CONFIG_DIR", Value: path.Join(home, getCometbftDir(crd))},
+		{Name: "CONFIG_DIR", Value: path.Join(home, "/config")},
 		{Name: "DATA_DIR", Value: path.Join(home, getCometbftDir(crd), "/data")},
 		{Name: "CHAIN_ID", Value: crd.Spec.ChainSpec.ChainID},
 		{Name: "CHAIN_TYPE", Value: crd.Spec.ChainSpec.ChainType},
@@ -361,9 +360,9 @@ func getCosmosChainInitContainer(env []corev1.EnvVar, tpl cosmosv1.PodSpec, init
 		Args: []string{"-c",
 			fmt.Sprintf(`
 set -eu
-if [ ! -d "$COMETBFT_HOME/data" ]; then
+if [ ! -d "$DATA_DIR" ]; then
 	echo "Initializing chain..."
-	%s --home "$COMETBFT_HOME"
+	%s --home "$CHAIN_HOME"
 else
 	echo "Skipping chain init; already initialized."
 fi
@@ -385,12 +384,6 @@ func getNamadaChainInitContainer(env []corev1.EnvVar, tpl cosmosv1.PodSpec, init
 		Args: []string{"-c",
 			fmt.Sprintf(`
 set -eu
-if [ ! -d "$COMETBFT_HOME/data" ]; then
-	echo "Initializing chain..."
-	%s --home "$COMETBFT_HOME"
-else
-	echo "Skipping chain init; already initialized."
-fi
 echo "Initializing into tmp dir for downstream processing..."
 %s --home "$HOME/.tmp"
 `, initCmd),
@@ -445,9 +438,11 @@ rm -rf "$CONFIG_DIR/node_key.json"
 echo "Merging config..."
 set -x
 mkdir -p $CONFIG_DIR
-config-merge -f toml "$TMP_DIR/config.toml" "$OVERLAY_DIR/config-overlay.toml" > "$CONFIG_DIR/config.toml"
 if [ "$CHAIN_TYPE" = "` + chainTypeCosmos + `" ] || [ "$CHAIN_TYPE" = "` + chainTypeCosmovisor + `" ]; then
+	config-merge -f toml "$TMP_DIR/config.toml" "$OVERLAY_DIR/config-overlay.toml" > "$CONFIG_DIR/config.toml"
 	config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CONFIG_DIR/app.toml"
+elif [ "$CHAIN_TYPE" = "` + chainTypeNamada + `"]; then
+	config-merge -f toml "$TMP_DIR/config.toml" "$OVERLAY_DIR/config-overlay.toml" > "$CHAIN_HOME/$CHAIN_ID/config.toml"
 fi
 
 `,
