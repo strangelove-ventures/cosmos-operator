@@ -231,10 +231,7 @@ func (m *mockSubResourceClient[T]) Update(ctx context.Context, obj client.Object
 		body = updateOptions.SubResourceBody
 	}
 
-	if &updateOptions != nil {
-		return m.client.Update(ctx, body, &updateOptions.UpdateOptions)
-	}
-	return m.client.Update(ctx, body)
+	return m.client.Update(ctx, body, &updateOptions.UpdateOptions)
 }
 
 func (m *mockSubResourceClient[T]) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.SubResourcePatchOption) error {
