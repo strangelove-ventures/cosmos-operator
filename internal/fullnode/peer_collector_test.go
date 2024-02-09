@@ -105,8 +105,8 @@ func TestPeerCollector_Collect(t *testing.T) {
 
 		c := resty.New()
 		resp, err := c.R().
-			EnableTrace().
-			Get("https://api.ipify.org")
+			Get("https://ident.me")
+
 		externalIP := resp.String()
 
 		getter := mockGetter(func(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
