@@ -18,6 +18,7 @@ limitations under the License.
 package v1
 
 import (
+	blockchain_toml "github.com/bharvest-devops/blockchain-toml"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -339,7 +340,7 @@ type PersistentVolumeClaimSpec struct {
 	// Updating the storage size is allowed but the StorageClass must support file system resizing.
 	// Only increasing storage is permitted.
 	// This field is required.
-	Resources corev1.ResourceRequirements `json:"resources"`
+	Resources corev1.VolumeResourceRequirements `json:"resources"`
 
 	// accessModes contain the desired access modes the volume should have.
 	// More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1
@@ -611,6 +612,9 @@ type CometConfig struct {
 	// Statesync configuration for your config.toml
 	// +optional
 	Statesync *Statesync `json:"statesync" toml:"statesync"`
+
+	// +optional
+	TomlOverrides *string `json:"tomlOverrides"`
 }
 
 // SDKAppConfig configures the cosmos sdk application app.toml.
@@ -655,6 +659,7 @@ type Pruning struct {
 	// nothing: all historic states will be saved, nothing will be deleted (i.e. archiving node).
 	// everything: all saved states will be deleted, storing only the current state; pruning at 10 block intervals.
 	// custom: allow pruning options to be manually specified through Interval, KeepEvery, KeepRecent.
+	// +kubebuilder:default:=default
 	// +kubebuilder:validation:Enum:=default;nothing;everything;custom
 	Strategy PruningStrategy `json:"strategy"`
 
@@ -855,6 +860,18 @@ type RPC struct {
 	// If not set, defaults to "10000ms"(also "10s")
 	// +optional
 	TimeoutBroadcastTxCommit *string `json:"timeoutBroadcastTxCommit" toml:"timeout_broadcast_tx_commit"`
+
+	// +optional
+	TomlOverrides *string `json:"tomlOverrides"`
+}
+
+func (r *RPC) ToCosmosRPC() blockchain_toml.CosmosRPC {
+	return blockchain_toml.CosmosRPC{
+		Laddr:                    r.Laddr,
+		CorsAllowedOrigins:       r.CorsAllowedOrigins,
+		CorsAllowedMethods:       r.CorsAllowedMethods,
+		TimeoutBroadcastTxCommit: r.TimeoutBroadcastTxCommit,
+	}
 }
 
 type P2P struct {
@@ -918,6 +935,21 @@ type P2P struct {
 	TomlOverrides *string `json:"tomlOverrides"`
 }
 
+func (p *P2P) ToCosmosP2P() blockchain_toml.CosmosP2P {
+	return blockchain_toml.CosmosP2P{
+		Laddr:                p.Laddr,
+		ExternalAddress:      p.ExternalAddress,
+		Seeds:                p.Seeds,
+		PersistentPeers:      p.PersistentPeers,
+		MaxNumInboundPeers:   p.MaxNumInboundPeers,
+		MaxNumOutboundPeers:  p.MaxNumOutboundPeers,
+		Pex:                  p.Pex,
+		SeedMode:             p.SeedMode,
+		PrivatePeerIds:       p.PrivatePeerIds,
+		UnconditionalPeerIds: p.UnconditionalPeerIDs,
+	}
+}
+
 type Mempool struct {
 	// You can override [Mempool] configs at config.toml overwrite this field.
 	// +optional
@@ -950,6 +982,16 @@ type Consensus struct {
 	TomlOverrides *string `json:"tomlOverrides"`
 }
 
+func (c *Consensus) ToCosmosConsensus() blockchain_toml.CosmosConsensus {
+	return blockchain_toml.CosmosConsensus{
+		DoubleSignCheckHeight:     c.DoubleSignCheckHeight,
+		SkipTimeoutCommit:         c.SkipTimeoutCommit,
+		CreateEmptyBlocks:         c.CreateEmptyBlocks,
+		CreateEmptyBlocksInterval: c.CreateEmptyBlocksInterval,
+		PeerGossipSleepDuration:   c.PeerGossipSleepDuration,
+	}
+}
+
 type Storage struct {
 
 	// Set to true to discard ABCI responses from the state store, which can save a
@@ -962,6 +1004,12 @@ type Storage struct {
 	DiscardAbciResponses *bool `json:"discardAbciResponses" toml:"discard_abci_responses"`
 }
 
+func (s *Storage) ToCosmosStorage() blockchain_toml.CosmosStorage {
+	return blockchain_toml.CosmosStorage{
+		DiscardAbciResponses: s.DiscardAbciResponses,
+	}
+}
+
 type TxIndex struct {
 
 	// It could be different depending on what chain you run.
@@ -970,6 +1018,12 @@ type TxIndex struct {
 	Indexer *string `json:"indexer" toml:"indexer"`
 
 	TomlOverrides *string `json:"tomlOverrides"`
+}
+
+func (t *TxIndex) ToCosmosTxIndex() blockchain_toml.CosmosTxIndex {
+	return blockchain_toml.CosmosTxIndex{
+		Indexer: t.Indexer,
+	}
 }
 
 type Instrumentation struct {
@@ -986,6 +1040,13 @@ type Instrumentation struct {
 
 	// +optional
 	TomlOverrides *string `json:"tomlOverrides"`
+}
+
+func (i *Instrumentation) ToCosmosInstrumentation() blockchain_toml.CosmosInstrumentation {
+	return blockchain_toml.CosmosInstrumentation{
+		Prometheus:           i.Prometheus,
+		PrometheusListenAddr: i.PrometheusListenAddr,
+	}
 }
 
 type Statesync struct {
@@ -1016,6 +1077,18 @@ type Statesync struct {
 
 	// +optional
 	TomlOverrides *string `json:"tomlOverrides"`
+}
+
+func (s *Statesync) ToCosmosStatesync() blockchain_toml.CosmosStatesync {
+	return blockchain_toml.CosmosStatesync{
+		Enable:        s.Enable,
+		RPCServers:    s.RPCServers,
+		TrustHeight:   s.TrustHeight,
+		TrustHash:     s.TrustHash,
+		TrustPeriod:   s.TrustPeriod,
+		DiscoveryTime: s.DiscoveryTime,
+		TempDir:       s.TempDir,
+	}
 }
 
 type NamadaEthereumBridge struct {
