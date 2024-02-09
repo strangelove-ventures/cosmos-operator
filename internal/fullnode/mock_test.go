@@ -3,6 +3,9 @@ package fullnode
 import (
 	"context"
 	"fmt"
+	v1 "k8s.io/api/policy/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sync"
 
 	cosmosv1 "github.com/bharvest-devops/cosmos-operator/api/v1"
@@ -38,6 +41,20 @@ type mockClient[T client.Object] struct {
 	LastUpdateObject T
 	UpdateCount      int
 	UpdateErr        error
+
+	mapper meta.RESTMapper
+}
+
+func (m *mockClient[T]) SubResource(subResource string) client.SubResourceClient {
+	return &mockSubResourceClient[T]{client: m, subResource: subResource}
+}
+
+func (m *mockClient[T]) GroupVersionKindFor(obj runtime.Object) (schema.GroupVersionKind, error) {
+	return schema.GroupVersionKind{}, nil
+}
+
+func (m *mockClient[T]) IsObjectNamespaced(obj runtime.Object) (bool, error) {
+	return false, nil
 }
 
 func (m *mockClient[T]) Get(ctx context.Context, key client.ObjectKey, obj client.Object, _ ...client.GetOption) error {
@@ -169,9 +186,74 @@ func (m *mockClient[T]) Scheme() *runtime.Scheme {
 }
 
 func (m *mockClient[T]) Status() client.StatusWriter {
-	return m
+	return m.SubResource("status")
 }
 
 func (m *mockClient[T]) RESTMapper() meta.RESTMapper {
-	panic("implement me")
+	return m.mapper
+}
+
+type mockSubResourceClient[T client.Object] struct {
+	client      *mockClient[T]
+	subResource string
+}
+
+func (m *mockSubResourceClient[T]) Get(ctx context.Context, obj client.Object, subResource client.Object, opts ...client.SubResourceGetOption) error {
+	panic("mockSubResourceClient does not support get")
+}
+
+func (m *mockSubResourceClient[T]) Create(ctx context.Context, obj client.Object, subResource client.Object, opts ...client.SubResourceCreateOption) error {
+	switch m.subResource {
+	case "eviction":
+		_, isEviction := subResource.(*v1.Eviction)
+		if !isEviction {
+			_, isEviction = subResource.(*v1.Eviction)
+		}
+		if !isEviction {
+			return apierrors.NewBadRequest(fmt.Sprintf("got invalid type %t, expected Eviction", subResource))
+		}
+		if _, isPod := obj.(*corev1.Pod); !isPod {
+			return apierrors.NewNotFound(schema.GroupResource{}, "")
+		}
+
+		return m.client.Delete(ctx, obj)
+	default:
+		return fmt.Errorf("fakeSubResourceWriter does not support create for %s", m.subResource)
+	}
+}
+
+func (m *mockSubResourceClient[T]) Update(ctx context.Context, obj client.Object, opts ...client.SubResourceUpdateOption) error {
+	updateOptions := client.SubResourceUpdateOptions{}
+	updateOptions.ApplyOptions(opts)
+
+	body := obj
+	if updateOptions.SubResourceBody != nil {
+		body = updateOptions.SubResourceBody
+	}
+
+	if &updateOptions != nil {
+		return m.client.Update(ctx, body, &updateOptions.UpdateOptions)
+	}
+	return m.client.Update(ctx, body)
+}
+
+func (m *mockSubResourceClient[T]) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.SubResourcePatchOption) error {
+	patchOptions := client.SubResourcePatchOptions{}
+	patchOptions.ApplyOptions(opts)
+
+	body := obj
+	if patchOptions.SubResourceBody != nil {
+		body = patchOptions.SubResourceBody
+	}
+
+	// this is necessary to identify that last call was made for status patch, through stack trace.
+	if m.subResource == "status" {
+		return m.statusPatch(ctx, body, patch, patchOptions)
+	}
+
+	return m.client.Patch(ctx, body, patch, &patchOptions.PatchOptions)
+}
+
+func (sw *mockSubResourceClient[T]) statusPatch(ctx context.Context, body client.Object, patch client.Patch, patchOptions client.SubResourcePatchOptions) error {
+	return sw.client.Patch(ctx, body, patch, &patchOptions.PatchOptions)
 }
