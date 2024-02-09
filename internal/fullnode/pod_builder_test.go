@@ -38,7 +38,7 @@ func defaultCRD() cosmosv1.CosmosFullNode {
 				},
 			},
 			VolumeClaimTemplate: cosmosv1.PersistentVolumeClaimSpec{
-				Resources: corev1.ResourceRequirements{
+				Resources: corev1.VolumeResourceRequirements{
 					Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("100Gi")},
 				},
 			},
@@ -220,6 +220,7 @@ func TestPodBuilder(t *testing.T) {
 		crd := defaultCRD()
 		const wantWrkDir = "/home/operator"
 		crd.Spec.ChainSpec.ChainID = "osmosis-123"
+		crd.Spec.ChainSpec.ChainType = chainTypeCosmos
 		crd.Spec.ChainSpec.Binary = "osmosisd"
 		crd.Spec.ChainSpec.SnapshotURL = ptr("https://example.com/snapshot.tar")
 		crd.Spec.PodTemplate.Image = "main-image:v1.2.3"
@@ -239,16 +240,18 @@ func TestPodBuilder(t *testing.T) {
 		require.Equal(t, startContainer.Env[0].Value, "/home/operator")
 		require.Equal(t, startContainer.Env[1].Name, "CHAIN_HOME")
 		require.Equal(t, startContainer.Env[1].Value, "/home/operator/cosmos")
-		require.Equal(t, startContainer.Env[2].Name, "COMETBFT_HOME")
-		require.Equal(t, startContainer.Env[2].Value, "/home/operator/cosmos")
-		require.Equal(t, startContainer.Env[3].Name, "GENESIS_FILE")
-		require.Equal(t, startContainer.Env[3].Value, "/home/operator/cosmos/config/genesis.json")
-		require.Equal(t, startContainer.Env[4].Name, "ADDRBOOK_FILE")
-		require.Equal(t, startContainer.Env[4].Value, "/home/operator/cosmos/config/addrbook.json")
-		require.Equal(t, startContainer.Env[5].Name, "CONFIG_DIR")
-		require.Equal(t, startContainer.Env[5].Value, "/home/operator/cosmos/config")
-		require.Equal(t, startContainer.Env[6].Name, "DATA_DIR")
-		require.Equal(t, startContainer.Env[6].Value, "/home/operator/cosmos/data")
+		require.Equal(t, startContainer.Env[2].Name, "GENESIS_FILE")
+		require.Equal(t, startContainer.Env[2].Value, "/home/operator/cosmos/config/genesis.json")
+		require.Equal(t, startContainer.Env[3].Name, "ADDRBOOK_FILE")
+		require.Equal(t, startContainer.Env[3].Value, "/home/operator/cosmos/config/addrbook.json")
+		require.Equal(t, startContainer.Env[4].Name, "CONFIG_DIR")
+		require.Equal(t, startContainer.Env[4].Value, "/home/operator/cosmos/config")
+		require.Equal(t, startContainer.Env[5].Name, "DATA_DIR")
+		require.Equal(t, startContainer.Env[5].Value, "/home/operator/cosmos/data")
+		require.Equal(t, startContainer.Env[6].Name, "CHAIN_ID")
+		require.Equal(t, startContainer.Env[6].Value, crd.Spec.ChainSpec.ChainID)
+		require.Equal(t, startContainer.Env[7].Name, "CHAIN_TYPE")
+		require.Equal(t, startContainer.Env[7].Value, crd.Spec.ChainSpec.ChainType)
 		require.Equal(t, envVars(&crd), startContainer.Env)
 
 		healthContainer := pod.Spec.Containers[1]
@@ -291,7 +294,7 @@ func TestPodBuilder(t *testing.T) {
 		require.Contains(t, freshCont.Args[1], `rm -rf "$HOME/.tmp/*"`)
 
 		initCont := pod.Spec.InitContainers[1]
-		require.Contains(t, initCont.Args[1], `osmosisd init --chain-id osmosis-123 osmosis-6 --home "$COMETBFT_HOME"`)
+		require.Contains(t, initCont.Args[1], `osmosisd init --chain-id osmosis-123 osmosis-6 --home "$CHAIN_HOME"`)
 		require.Contains(t, initCont.Args[1], `osmosisd init --chain-id osmosis-123 osmosis-6 --home "$HOME/.tmp"`)
 
 		mergeConfig1 := pod.Spec.InitContainers[3]
@@ -322,16 +325,18 @@ func TestPodBuilder(t *testing.T) {
 		require.Equal(t, container.Env[0].Value, "/home/operator")
 		require.Equal(t, container.Env[1].Name, "CHAIN_HOME")
 		require.Equal(t, container.Env[1].Value, "/home/operator/.osmosisd")
-		require.Equal(t, container.Env[2].Name, "COMETBFT_HOME")
-		require.Equal(t, container.Env[2].Value, "/home/operator/.osmosisd")
-		require.Equal(t, container.Env[3].Name, "GENESIS_FILE")
-		require.Equal(t, container.Env[3].Value, "/home/operator/.osmosisd/config/genesis.json")
-		require.Equal(t, container.Env[4].Name, "ADDRBOOK_FILE")
-		require.Equal(t, container.Env[4].Value, "/home/operator/.osmosisd/config/addrbook.json")
-		require.Equal(t, container.Env[5].Name, "CONFIG_DIR")
-		require.Equal(t, container.Env[5].Value, "/home/operator/.osmosisd/config")
-		require.Equal(t, container.Env[6].Name, "DATA_DIR")
-		require.Equal(t, container.Env[6].Value, "/home/operator/.osmosisd/data")
+		require.Equal(t, container.Env[2].Name, "GENESIS_FILE")
+		require.Equal(t, container.Env[2].Value, "/home/operator/.osmosisd/config/genesis.json")
+		require.Equal(t, container.Env[3].Name, "ADDRBOOK_FILE")
+		require.Equal(t, container.Env[3].Value, "/home/operator/.osmosisd/config/addrbook.json")
+		require.Equal(t, container.Env[4].Name, "CONFIG_DIR")
+		require.Equal(t, container.Env[4].Value, "/home/operator/.osmosisd/config")
+		require.Equal(t, container.Env[5].Name, "DATA_DIR")
+		require.Equal(t, container.Env[5].Value, "/home/operator/.osmosisd/data")
+		require.Equal(t, container.Env[6].Name, "CHAIN_ID")
+		require.Equal(t, container.Env[6].Value, crd.Spec.ChainSpec.ChainID)
+		require.Equal(t, container.Env[7].Name, "CHAIN_TYPE")
+		require.Equal(t, container.Env[7].Value, crd.Spec.ChainSpec.ChainType)
 
 		require.NotEmpty(t, pod.Spec.InitContainers)
 
