@@ -20,6 +20,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"strings"
 	"time"
 
@@ -36,7 +37,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 const controllerOwnerField = ".metadata.controller"
@@ -321,16 +321,16 @@ func (r *CosmosFullNodeReconciler) SetupWithManager(ctx context.Context, mgr ctr
 	cbuilder := ctrl.NewControllerManagedBy(mgr).For(&cosmosv1.CosmosFullNode{})
 
 	// Watch for delete events for certain resources.
-	for _, kind := range []*source.Kind{
-		{Type: &corev1.Pod{}},
-		{Type: &corev1.PersistentVolumeClaim{}},
-		{Type: &corev1.ConfigMap{}},
-		{Type: &corev1.Service{}},
-		{Type: &corev1.Secret{}},
+	for _, object := range []client.Object{
+		&corev1.Pod{},
+		&corev1.PersistentVolumeClaim{},
+		&corev1.ConfigMap{},
+		&corev1.Service{},
+		&corev1.Secret{},
 	} {
 		cbuilder.Watches(
-			kind,
-			&handler.EnqueueRequestForOwner{OwnerType: &cosmosv1.CosmosFullNode{}, IsController: true},
+			object,
+			handler.EnqueueRequestForOwner(r.Scheme(), &meta.DefaultRESTMapper{}, &cosmosv1.CosmosFullNode{}),
 			builder.WithPredicates(&predicate.Funcs{
 				DeleteFunc: func(_ event.DeleteEvent) bool { return true },
 			}),
