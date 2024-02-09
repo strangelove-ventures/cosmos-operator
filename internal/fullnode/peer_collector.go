@@ -151,6 +151,9 @@ func (c PeerCollector) addExternalAddress(ctx context.Context, peers Peers, crd 
 	info := peers[objKey]
 	info.hasExternalAddress = true
 	defer func() { peers[objKey] = info }()
+
+	// Note: The externalIP defaults to spec.InstanceOverrides[instance].ExternalAddress.
+	// but If not set, it'll be set according below.
 	if svc.Spec.Type == corev1.ServiceTypeLoadBalancer {
 
 		ingress := svc.Status.LoadBalancer.Ingress
@@ -171,14 +174,12 @@ func (c PeerCollector) addExternalAddress(ctx context.Context, peers Peers, crd 
 			}
 		}
 
-		client := resty.New()
-		resp, err := client.R().
-			EnableTrace().
-			Get("https://api.ipify.org")
+		c := resty.New()
+		resp, err := c.R().
+			Get("https://ident.me")
 		var externalIP string
-		if err != nil {
+		if err != nil || resp.IsError() {
 			externalIP = "0.0.0.0"
-			//return err
 		} else {
 			externalIP = resp.String()
 		}
