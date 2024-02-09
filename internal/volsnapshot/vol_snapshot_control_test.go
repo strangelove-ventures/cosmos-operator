@@ -101,6 +101,8 @@ func TestVolumeSnapshotControl_FindCandidate(t *testing.T) {
 
 		var fullnodeCRD cosmosv1.CosmosFullNode
 		fullnodeCRD.Name = fullNodeName
+		appConfig := cosmosv1.SDKAppConfig{}
+		fullnodeCRD.Spec.ChainSpec.CosmosSDK = &appConfig
 		// Purposefully using PodBuilder to cross-test any breaking changes in PodBuilder which affects
 		// finding the PVC name.
 		candidate, err := fullnode.NewPodBuilder(&fullnodeCRD).WithOrdinal(1).Build()
@@ -133,6 +135,8 @@ func TestVolumeSnapshotControl_FindCandidate(t *testing.T) {
 
 		var fullnodeCRD cosmosv1.CosmosFullNode
 		fullnodeCRD.Name = fullNodeName
+		appConfig := cosmosv1.SDKAppConfig{}
+		fullnodeCRD.Spec.ChainSpec.CosmosSDK = &appConfig
 		// Purposefully using PodBuilder to cross-test any breaking changes in PodBuilder which affects
 		// finding the PVC name.
 		candidate, err := fullnode.NewPodBuilder(&fullnodeCRD).WithOrdinal(1).Build()
@@ -171,6 +175,8 @@ func TestVolumeSnapshotControl_FindCandidate(t *testing.T) {
 
 		var fullnodeCRD cosmosv1.CosmosFullNode
 		fullnodeCRD.Name = fullNodeName
+		appConfig := cosmosv1.SDKAppConfig{}
+		fullnodeCRD.Spec.ChainSpec.CosmosSDK = &appConfig
 		// Purposefully using PodBuilder to cross-test any breaking changes in PodBuilder which affects
 		// finding the PVC name.
 		candidate, err := fullnode.NewPodBuilder(&fullnodeCRD).WithOrdinal(1).Build()

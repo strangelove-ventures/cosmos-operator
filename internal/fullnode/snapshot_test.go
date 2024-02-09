@@ -19,7 +19,9 @@ fi`
 	)
 	t.Run("snapshot url", func(t *testing.T) {
 		var cfg cosmosv1.ChainSpec
-		cfg.SnapshotURL = ptr(testURL)
+		appConfig := cosmosv1.SDKAppConfig{}
+		cfg.CosmosSDK = &appConfig
+		cfg.CosmosSDK.SnapshotURL = ptr(testURL)
 
 		cmd, args := DownloadSnapshotCommand(cfg)
 		require.Equal(t, "sh", cmd)
@@ -38,8 +40,10 @@ fi`
 
 	t.Run("snapshot script", func(t *testing.T) {
 		var cfg cosmosv1.ChainSpec
-		cfg.SnapshotURL = ptr(testURL) // Asserts SnapshotScript takes precedence.
-		cfg.SnapshotScript = ptr("echo hello")
+		appConfig := cosmosv1.SDKAppConfig{}
+		cfg.CosmosSDK = &appConfig
+		cfg.CosmosSDK.SnapshotURL = ptr(testURL) // Asserts SnapshotScript takes precedence.
+		cfg.CosmosSDK.SnapshotScript = ptr("echo hello")
 
 		_, args := DownloadSnapshotCommand(cfg)
 		require.Len(t, args, 2)

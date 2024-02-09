@@ -35,6 +35,8 @@ func TestCollectDiskUsage(t *testing.T) {
 	var crd cosmosv1.CosmosFullNode
 	crd.Name = "cosmoshub"
 	crd.Namespace = namespace
+	appConfig := cosmosv1.SDKAppConfig{}
+	crd.Spec.ChainSpec.CosmosSDK = &appConfig
 
 	builder := NewPodBuilder(&crd)
 	validPods := lo.Map(lo.Range(3), func(_ int, index int) corev1.Pod {

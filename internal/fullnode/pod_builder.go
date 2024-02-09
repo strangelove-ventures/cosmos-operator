@@ -601,7 +601,7 @@ func startCommandArgs(crd *cosmosv1.CosmosFullNode) []string {
 }
 
 func willRestoreFromSnapshot(crd *cosmosv1.CosmosFullNode) bool {
-	return crd.Spec.ChainSpec.SnapshotURL != nil || crd.Spec.ChainSpec.SnapshotScript != nil
+	return crd.Spec.ChainSpec.CosmosSDK.SnapshotURL != nil || crd.Spec.ChainSpec.CosmosSDK.SnapshotScript != nil
 }
 
 func podPatch(crd *cosmosv1.CosmosFullNode) *corev1.Pod {

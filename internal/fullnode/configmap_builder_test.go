@@ -43,11 +43,6 @@ func TestBuildConfigMaps(t *testing.T) {
 		crd.Spec.PodTemplate.Image = "agoric:v6.0.0"
 		crd.Spec.ChainSpec.Network = "testnet"
 
-		cometConfig := cosmosv1.CometConfig{}
-		crd.Spec.ChainSpec.Comet = &cometConfig
-		cosmosAppConfig := cosmosv1.SDKAppConfig{}
-		crd.Spec.ChainSpec.CosmosSDK = &cosmosAppConfig
-
 		cms, err := BuildConfigMaps(&crd, nil)
 		require.NoError(t, err)
 		require.Equal(t, 3, len(cms))
@@ -91,11 +86,6 @@ func TestBuildConfigMaps(t *testing.T) {
 		crd.Spec.Replicas = 3
 		crd.Name = strings.Repeat("chain", 300)
 		crd.Spec.ChainSpec.Network = strings.Repeat("network", 300)
-
-		cometConfig := cosmosv1.CometConfig{}
-		crd.Spec.ChainSpec.Comet = &cometConfig
-		cosmosAppConfig := cosmosv1.SDKAppConfig{}
-		crd.Spec.ChainSpec.CosmosSDK = &cosmosAppConfig
 
 		cms, err := BuildConfigMaps(&crd, nil)
 		require.NoError(t, err)
@@ -344,8 +334,6 @@ func TestBuildConfigMaps(t *testing.T) {
 	t.Run("app-overlay.toml", func(t *testing.T) {
 		crd := defaultCRD()
 		crd.Spec.Replicas = 3
-		cometConfig := cosmosv1.CometConfig{}
-		crd.Spec.ChainSpec.Comet = &cometConfig
 		appConfig := cosmosv1.SDKAppConfig{
 			MinGasPrice: "0.123token",
 		}

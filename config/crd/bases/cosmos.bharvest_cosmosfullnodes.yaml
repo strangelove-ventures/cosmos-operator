@@ -86,7 +86,6 @@ spec:
                     minLength: 1
                     type: string
                   chainType:
-                    default: cosmos
                     description: Describes chain type to operate If not set, defaults
                       to "cosmos".
                     enum:
@@ -372,6 +371,26 @@ spec:
                         required:
                         - strategy
                         type: object
+                      snapshotScript:
+                        description: 'Specify shell (sh) script commands to properly
+                          download and process a snapshot archive. Prefer SnapshotURL
+                          if possible. The available shell commands are from docker
+                          image ghcr.io/strangelove-ventures/infra-toolkit, including
+                          wget and curl. Save the file to env var $GENESIS_FILE. Takes
+                          precedence over SnapshotURL. Hint: Use "set -eux" in your
+                          script. Available env vars: $HOME: The user''s home directory.
+                          $CHAIN_HOME: The home directory for the chain, aka: --home
+                          flag $DATA_DIR: The directory for the database files.'
+                        type: string
+                      snapshotURL:
+                        description: 'URL for a snapshot archive to download from
+                          the internet. Unarchiving the snapshot populates the data
+                          directory. Although this field is optional, you will almost
+                          always want to set it. The operator detects and properly
+                          handles the following file extensions: .tar, .tar.gz, .tar.gzip,
+                          .tar.lz4 Use SnapshotScript if the snapshot archive is unconventional
+                          or requires special handling.'
+                        type: string
                     required:
                     - minGasPrice
                     type: object
@@ -501,25 +520,6 @@ spec:
                   skipInvariants:
                     description: Skip x/crisis invariants check on startup.
                     type: boolean
-                  snapshotScript:
-                    description: 'Specify shell (sh) script commands to properly download
-                      and process a snapshot archive. Prefer SnapshotURL if possible.
-                      The available shell commands are from docker image ghcr.io/strangelove-ventures/infra-toolkit,
-                      including wget and curl. Save the file to env var $GENESIS_FILE.
-                      Takes precedence over SnapshotURL. Hint: Use "set -eux" in your
-                      script. Available env vars: $HOME: The user''s home directory.
-                      $CHAIN_HOME: The home directory for the chain, aka: --home flag
-                      $DATA_DIR: The directory for the database files.'
-                    type: string
-                  snapshotURL:
-                    description: 'URL for a snapshot archive to download from the
-                      internet. Unarchiving the snapshot populates the data directory.
-                      Although this field is optional, you will almost always want
-                      to set it. The operator detects and properly handles the following
-                      file extensions: .tar, .tar.gz, .tar.gzip, .tar.lz4 Use SnapshotScript
-                      if the snapshot archive is unconventional or requires special
-                      handling.'
-                    type: string
                   versions:
                     description: Versions of the chain and which height they should
                       be applied. When provided, the operator will automatically upgrade
@@ -549,6 +549,7 @@ spec:
                 required:
                 - binary
                 - chainID
+                - chainType
                 - network
                 type: object
               instanceOverrides:

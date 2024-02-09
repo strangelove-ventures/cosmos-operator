@@ -68,6 +68,8 @@ func TestPodControl_Reconcile(t *testing.T) {
 		crd.Name = "hub"
 		crd.Namespace = namespace
 		crd.Spec.Replicas = 1
+		appConfig := cosmosv1.SDKAppConfig{}
+		crd.Spec.ChainSpec.CosmosSDK = &appConfig
 
 		pods, err := BuildPods(&crd, nil)
 		require.NoError(t, err)
@@ -209,6 +211,8 @@ func TestPodControl_Reconcile(t *testing.T) {
 		crd.Spec.RolloutStrategy = cosmosv1.RolloutStrategy{
 			MaxUnavailable: ptr(intstr.FromInt(2)),
 		}
+		cometConfig := cosmosv1.CometConfig{}
+		appConfig := cosmosv1.SDKAppConfig{}
 		crd.Spec.ChainSpec = cosmosv1.ChainSpec{
 			Versions: []cosmosv1.ChainVersion{
 				{
@@ -219,6 +223,8 @@ func TestPodControl_Reconcile(t *testing.T) {
 					Image:         "new-image",
 				},
 			},
+			Comet:     &cometConfig,
+			CosmosSDK: &appConfig,
 		}
 		crd.Status.Height = make(map[string]uint64)
 
@@ -401,6 +407,8 @@ func TestPodControl_Reconcile(t *testing.T) {
 		crd.Spec.RolloutStrategy = cosmosv1.RolloutStrategy{
 			MaxUnavailable: ptr(intstr.FromInt(2)),
 		}
+		cometConfig := cosmosv1.CometConfig{}
+		appConfig := cosmosv1.SDKAppConfig{}
 		crd.Spec.ChainSpec = cosmosv1.ChainSpec{
 			Versions: []cosmosv1.ChainVersion{
 				{
@@ -412,6 +420,8 @@ func TestPodControl_Reconcile(t *testing.T) {
 					SetHaltHeight: true,
 				},
 			},
+			Comet:     &cometConfig,
+			CosmosSDK: &appConfig,
 		}
 		crd.Status.Height = make(map[string]uint64)
 

@@ -510,28 +510,6 @@ type ChainSpec struct {
 	// +optional
 	SkipInvariants bool `json:"skipInvariants"`
 
-	// URL for a snapshot archive to download from the internet.
-	// Unarchiving the snapshot populates the data directory.
-	// Although this field is optional, you will almost always want to set it.
-	// The operator detects and properly handles the following file extensions:
-	// .tar, .tar.gz, .tar.gzip, .tar.lz4
-	// Use SnapshotScript if the snapshot archive is unconventional or requires special handling.
-	// +optional
-	SnapshotURL *string `json:"snapshotURL"`
-
-	// Specify shell (sh) script commands to properly download and process a snapshot archive.
-	// Prefer SnapshotURL if possible.
-	// The available shell commands are from docker image ghcr.io/strangelove-ventures/infra-toolkit, including wget and curl.
-	// Save the file to env var $GENESIS_FILE.
-	// Takes precedence over SnapshotURL.
-	// Hint: Use "set -eux" in your script.
-	// Available env vars:
-	// $HOME: The user's home directory.
-	// $CHAIN_HOME: The home directory for the chain, aka: --home flag
-	// $DATA_DIR: The directory for the database files.
-	// +optional
-	SnapshotScript *string `json:"snapshotScript"`
-
 	// If configured as a Sentry, invokes sleep command with this value before running chain start command.
 	// Currently, requires the privval laddr to be available immediately without any retry.
 	// This workaround gives time for the connection to be made to a remote signer.
@@ -617,6 +595,29 @@ type CometConfig struct {
 
 // SDKAppConfig configures the cosmos sdk application app.toml.
 type SDKAppConfig struct {
+
+	// URL for a snapshot archive to download from the internet.
+	// Unarchiving the snapshot populates the data directory.
+	// Although this field is optional, you will almost always want to set it.
+	// The operator detects and properly handles the following file extensions:
+	// .tar, .tar.gz, .tar.gzip, .tar.lz4
+	// Use SnapshotScript if the snapshot archive is unconventional or requires special handling.
+	// +optional
+	SnapshotURL *string `json:"snapshotURL"`
+
+	// Specify shell (sh) script commands to properly download and process a snapshot archive.
+	// Prefer SnapshotURL if possible.
+	// The available shell commands are from docker image ghcr.io/strangelove-ventures/infra-toolkit, including wget and curl.
+	// Save the file to env var $GENESIS_FILE.
+	// Takes precedence over SnapshotURL.
+	// Hint: Use "set -eux" in your script.
+	// Available env vars:
+	// $HOME: The user's home directory.
+	// $CHAIN_HOME: The home directory for the chain, aka: --home flag
+	// $DATA_DIR: The directory for the database files.
+	// +optional
+	SnapshotScript *string `json:"snapshotScript"`
+
 	// The minimum gas prices a validator is willing to accept for processing a
 	// transaction. A transaction's fees must meet the minimum of any denomination
 	// specified in this config (e.g. 0.25token1;0.0001token2).

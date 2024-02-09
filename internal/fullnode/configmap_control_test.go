@@ -34,10 +34,6 @@ func TestConfigMapControl_Reconcile(t *testing.T) {
 		crd.Name = "stargaze"
 		crd.Namespace = namespace
 		crd.Spec.ChainSpec.Network = "testnet"
-		cometConfig := cosmosv1.CometConfig{}
-		crd.Spec.ChainSpec.Comet = &cometConfig
-		cosmosAppConfig := cosmosv1.SDKAppConfig{}
-		crd.Spec.ChainSpec.CosmosSDK = &cosmosAppConfig
 
 		cksums, err := control.Reconcile(ctx, nopReporter, &crd, nil)
 		require.NoError(t, err)

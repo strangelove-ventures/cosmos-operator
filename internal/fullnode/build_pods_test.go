@@ -32,6 +32,8 @@ func TestBuildPods(t *testing.T) {
 				InstanceOverrides: nil,
 			},
 		}
+		appConfig := cosmosv1.SDKAppConfig{}
+		crd.Spec.ChainSpec.CosmosSDK = &appConfig
 
 		cksums := make(ConfigChecksums)
 		for i := 0; i < int(crd.Spec.Replicas); i++ {
@@ -65,6 +67,9 @@ func TestBuildPods(t *testing.T) {
 			overrideImage = "some_image:custom"
 			overridePod   = "agoric-5"
 		)
+
+		cometConfig := cosmosv1.CometConfig{}
+		appConfig := cosmosv1.SDKAppConfig{}
 		crd := &cosmosv1.CosmosFullNode{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "agoric",
@@ -73,6 +78,10 @@ func TestBuildPods(t *testing.T) {
 				Replicas: 6,
 				PodTemplate: cosmosv1.PodSpec{
 					Image: image,
+				},
+				ChainSpec: cosmosv1.ChainSpec{
+					Comet:     &cometConfig,
+					CosmosSDK: &appConfig,
 				},
 				InstanceOverrides: map[string]cosmosv1.InstanceOverridesSpec{
 					"agoric-2":  {DisableStrategy: ptr(cosmosv1.DisablePod)},
@@ -102,12 +111,18 @@ func TestBuildPods(t *testing.T) {
 	})
 
 	t.Run("scheduled volume snapshot pod candidate", func(t *testing.T) {
+		cometConfig := cosmosv1.CometConfig{}
+		appConfig := cosmosv1.SDKAppConfig{}
 		crd := &cosmosv1.CosmosFullNode{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "agoric",
 			},
 			Spec: cosmosv1.FullNodeSpec{
 				Replicas: 6,
+				ChainSpec: cosmosv1.ChainSpec{
+					Comet:     &cometConfig,
+					CosmosSDK: &appConfig,
+				},
 			},
 			Status: cosmosv1.FullNodeStatus{
 				ScheduledSnapshotStatus: map[string]cosmosv1.FullNodeSnapshotStatus{

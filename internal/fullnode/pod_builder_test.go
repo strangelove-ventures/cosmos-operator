@@ -16,6 +16,8 @@ import (
 )
 
 func defaultCRD() cosmosv1.CosmosFullNode {
+	cometConfig := cosmosv1.CometConfig{}
+	appConfig := cosmosv1.SDKAppConfig{}
 	return cosmosv1.CosmosFullNode{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "osmosis",
@@ -23,7 +25,11 @@ func defaultCRD() cosmosv1.CosmosFullNode {
 			ResourceVersion: "_resource_version_",
 		},
 		Spec: cosmosv1.FullNodeSpec{
-			ChainSpec: cosmosv1.ChainSpec{Network: "mainnet"},
+			ChainSpec: cosmosv1.ChainSpec{
+				Network:   "mainnet",
+				CosmosSDK: &appConfig,
+				Comet:     &cometConfig,
+			},
 			PodTemplate: cosmosv1.PodSpec{
 				Image: "busybox:v1.2.3",
 				Resources: corev1.ResourceRequirements{
@@ -222,7 +228,7 @@ func TestPodBuilder(t *testing.T) {
 		crd.Spec.ChainSpec.ChainID = "osmosis-123"
 		crd.Spec.ChainSpec.ChainType = chainTypeCosmos
 		crd.Spec.ChainSpec.Binary = "osmosisd"
-		crd.Spec.ChainSpec.SnapshotURL = ptr("https://example.com/snapshot.tar")
+		crd.Spec.ChainSpec.CosmosSDK.SnapshotURL = ptr("https://example.com/snapshot.tar")
 		crd.Spec.PodTemplate.Image = "main-image:v1.2.3"
 		builder := NewPodBuilder(&crd)
 		pod, err := builder.WithOrdinal(6).Build()
@@ -635,6 +641,10 @@ gaiad start --home /home/operator/cosmos`
 	})
 
 	test.HasTypeLabel(t, func(crd cosmosv1.CosmosFullNode) []map[string]string {
+		cometConfig := cosmosv1.CometConfig{}
+		appConfig := cosmosv1.SDKAppConfig{}
+		crd.Spec.ChainSpec.Comet = &cometConfig
+		crd.Spec.ChainSpec.CosmosSDK = &appConfig
 		builder := NewPodBuilder(&crd)
 		pod, _ := builder.WithOrdinal(5).Build()
 		return []map[string]string{pod.Labels}
@@ -651,6 +661,8 @@ func TestChainHomeDir(t *testing.T) {
 
 func TestPVCName(t *testing.T) {
 	crd := defaultCRD()
+	appConfig := cosmosv1.SDKAppConfig{}
+	crd.Spec.ChainSpec.CosmosSDK = &appConfig
 	builder := NewPodBuilder(&crd)
 	pod, err := builder.WithOrdinal(5).Build()
 	require.NoError(t, err)

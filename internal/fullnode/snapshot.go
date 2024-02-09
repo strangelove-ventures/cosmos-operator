@@ -29,10 +29,10 @@ echo "$DATA_DIR initialized."
 func DownloadSnapshotCommand(cfg cosmosv1.ChainSpec) (string, []string) {
 	args := []string{"-c"}
 	switch {
-	case cfg.SnapshotScript != nil:
-		args = append(args, fmt.Sprintf(snapshotScriptWrapper, *cfg.SnapshotScript))
-	case cfg.SnapshotURL != nil:
-		args = append(args, fmt.Sprintf(snapshotScriptWrapper, scriptDownloadSnapshot), "-s", *cfg.SnapshotURL)
+	case cfg.CosmosSDK.SnapshotScript != nil:
+		args = append(args, fmt.Sprintf(snapshotScriptWrapper, *cfg.CosmosSDK.SnapshotScript))
+	case cfg.CosmosSDK.SnapshotURL != nil:
+		args = append(args, fmt.Sprintf(snapshotScriptWrapper, scriptDownloadSnapshot), "-s", *cfg.CosmosSDK.SnapshotURL)
 	default:
 		panic(errors.New("attempted to restore from a snapshot but snapshots are not configured"))
 	}
