@@ -25,7 +25,42 @@ func (t *threadUnsafeClient) Update(ctx context.Context, obj client.Object, opts
 	return nil
 }
 
-func (t *threadUnsafeClient) Status() client.StatusWriter { return t }
+func (t *threadUnsafeClient) Status() client.StatusWriter {
+	return t.SubResource("status")
+}
+
+type threadUnsafeSubResourceClient struct {
+	client     *threadUnsafeClient
+	subResouce string
+}
+
+func (t *threadUnsafeSubResourceClient) Get(ctx context.Context, obj client.Object, subResource client.Object, opts ...client.SubResourceGetOption) error {
+	panic("threadUnsafeSubResourceClient does not support get")
+}
+
+func (t *threadUnsafeSubResourceClient) Create(ctx context.Context, obj client.Object, subResource client.Object, opts ...client.SubResourceCreateOption) error {
+	panic("threadUnsafeSubResourceClient does not support create")
+}
+
+func (t *threadUnsafeSubResourceClient) Update(ctx context.Context, obj client.Object, opts ...client.SubResourceUpdateOption) error {
+	updateOptions := client.SubResourceUpdateOptions{}
+	updateOptions.ApplyOptions(opts)
+
+	body := obj
+	if updateOptions.SubResourceBody != nil {
+		body = updateOptions.SubResourceBody
+	}
+
+	return t.client.Update(ctx, body, &updateOptions)
+}
+
+func (t *threadUnsafeSubResourceClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.SubResourcePatchOption) error {
+	panic("threadUnsafeSubResourceClient does not support patch")
+}
+
+func (t *threadUnsafeClient) SubResource(subResource string) client.SubResourceClient {
+	return &threadUnsafeSubResourceClient{client: t, subResouce: subResource}
+}
 
 func TestStatusClient_SyncUpdate(t *testing.T) {
 	type mClient = mockClient[*cosmosv1.CosmosFullNode]
