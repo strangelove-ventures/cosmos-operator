@@ -104,7 +104,7 @@ func pvcResources(
 	name string,
 	dataSource *dataSource,
 	existingSize resource.Quantity,
-) corev1.ResourceRequirements {
+) corev1.VolumeResourceRequirements {
 	var reqs = crd.Spec.VolumeClaimTemplate.Resources.DeepCopy()
 
 	if dataSource != nil {
