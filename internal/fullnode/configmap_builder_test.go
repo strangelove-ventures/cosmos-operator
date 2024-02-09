@@ -323,7 +323,7 @@ func TestBuildConfigMaps(t *testing.T) {
 			_, err := BuildConfigMaps(malformed, nil)
 
 			require.Error(t, err)
-			require.Contains(t, err.Error(), "invalid_toml")
+			require.Contains(t, err.Error(), "toml task failed")
 		})
 	})
 
@@ -448,7 +448,7 @@ func TestBuildConfigMaps(t *testing.T) {
 			_, err := BuildConfigMaps(malformed, nil)
 
 			require.Error(t, err)
-			require.Contains(t, err.Error(), "invalid_toml")
+			require.Contains(t, err.Error(), "toml task failed")
 		})
 	})
 
