@@ -20,7 +20,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"k8s.io/apimachinery/pkg/api/meta"
 	"strings"
 	"time"
 
@@ -330,7 +329,7 @@ func (r *CosmosFullNodeReconciler) SetupWithManager(ctx context.Context, mgr ctr
 	} {
 		cbuilder.Watches(
 			object,
-			handler.EnqueueRequestForOwner(r.Scheme(), &meta.DefaultRESTMapper{}, &cosmosv1.CosmosFullNode{}),
+			handler.EnqueueRequestForOwner(r.Scheme(), r.Client.RESTMapper(), &cosmosv1.CosmosFullNode{}),
 			builder.WithPredicates(&predicate.Funcs{
 				DeleteFunc: func(_ event.DeleteEvent) bool { return true },
 			}),
