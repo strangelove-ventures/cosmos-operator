@@ -2,7 +2,7 @@
 FROM ghcr.io/strangelove-ventures/rocksdb:v7.10.2 AS rocksdb
 
 # FROM --platform=$BUILDPLATFORM golang:1.20-alpine AS builder
-FROM --platform=linux/amd64 golang:1.20-alpine AS builder
+FROM --platform=linux/amd64 golang:1.21.6-alpine AS builder
 
 RUN apk add --update --no-cache\
     gcc\
