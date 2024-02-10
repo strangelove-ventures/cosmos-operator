@@ -390,6 +390,9 @@ func addNamadaConfigToml(config *blockchain_toml.NamadaConfigFile, crd *cosmosv1
 	//	RPC := comet.RPC.to
 	//
 	//}
+
+	//comet.RPC
+	namadaRPC := blockchain_toml.NamadaRPC{}
 	privatePeers := peers.Except(instance, crd.Namespace)
 	privatePeerStr := commaDelimited(stringListToStringPointerList(privatePeers.AllPrivate())...)
 	privateIDStr := commaDelimited(stringListToStringPointerList(privatePeers.NodeIDs())...)
@@ -423,9 +426,9 @@ func addNamadaConfigToml(config *blockchain_toml.NamadaConfigFile, crd *cosmosv1
 		}
 	}
 
-	namadaRPC := blockchain_toml.NamadaRPC{
-		CorsAllowedOrigins: comet.RPC.CorsAllowedOrigins,
-	}
+	//namadaRPC := blockchain_toml.NamadaRPC{
+	//	CorsAllowedOrigins: comet.RPC.CorsAllowedOrigins,
+	//}
 
 	cometBFT := blockchain_toml.NamadaCometbft{
 		Moniker: &instance,

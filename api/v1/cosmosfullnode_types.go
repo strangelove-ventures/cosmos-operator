@@ -340,7 +340,7 @@ type PersistentVolumeClaimSpec struct {
 	// Updating the storage size is allowed but the StorageClass must support file system resizing.
 	// Only increasing storage is permitted.
 	// This field is required.
-	Resources corev1.VolumeResourceRequirements `json:"resources"`
+	Resources corev1.ResourceRequirements `json:"resources"`
 
 	// accessModes contain the desired access modes the volume should have.
 	// More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1
