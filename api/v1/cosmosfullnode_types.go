@@ -742,6 +742,7 @@ type ServiceOverridesSpec struct {
 	// See: https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/#caveats-and-limitations-when-preserving-source-ips
 	// If not set, defaults to "Cluster".
 	// +kubebuilder:validation:Enum:=Cluster;Local
+	// +kubebuilder:default:=Cluster
 	// +optional
 	ExternalTrafficPolicy *corev1.ServiceExternalTrafficPolicyType `json:"externalTrafficPolicy"`
 }

@@ -380,9 +380,16 @@ func addCosmosAppToml(app *blockchain_toml.CosmosAppFile, crd *cosmosv1.CosmosFu
 }
 
 func addNamadaConfigToml(config *blockchain_toml.NamadaConfigFile, crd *cosmosv1.CosmosFullNode, instance string, peers Peers) ([]byte, error) {
+	var err error
+
 	spec := crd.Spec.ChainSpec
 	comet := spec.Comet
 
+	//config.Ledger
+	//if comet.RPC != nil {
+	//	RPC := comet.RPC.to
+	//
+	//}
 	privatePeers := peers.Except(instance, crd.Namespace)
 	privatePeerStr := commaDelimited(stringListToStringPointerList(privatePeers.AllPrivate())...)
 	privateIDStr := commaDelimited(stringListToStringPointerList(privatePeers.NodeIDs())...)
@@ -405,14 +412,14 @@ func addNamadaConfigToml(config *blockchain_toml.NamadaConfigFile, crd *cosmosv1
 	if crd.Spec.InstanceOverrides != nil {
 		if override, ok := crd.Spec.InstanceOverrides[instance]; ok && override.ExternalAddress != nil {
 			addr := *override.ExternalAddress
-			*namadaP2P.ExternalAddress = addr
+			namadaP2P.ExternalAddress = &addr
 			externalOverride = true
 		}
 	}
 
 	if !externalOverride {
 		if v := peers.Get(instance, crd.Namespace).ExternalAddress; v != "" {
-			*namadaP2P.ExternalAddress = v
+			namadaP2P.ExternalAddress = &v
 		}
 	}
 
@@ -434,7 +441,6 @@ func addNamadaConfigToml(config *blockchain_toml.NamadaConfigFile, crd *cosmosv1
 		Ledger: &namadaLedger,
 	}
 
-	var err error
 	overrideConfig := blockchain_toml.NamadaConfigFile{}
 
 	P2PTomlOverrides := blockchain_toml.NamadaConfigFile{}
