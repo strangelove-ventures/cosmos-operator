@@ -60,7 +60,6 @@ func (pc PodControl) Reconcile(
 		return false, kube.TransientError(fmt.Errorf("list existing pods: %w", err))
 	}
 	wantPods, err := BuildPods(crd, cksums)
-	reporter.Info("DEBUGGING pods: " + wantPods[0].Object().Annotations["cosmos.bharvest/config-checksum"])
 	if err != nil {
 		return false, kube.UnrecoverableError(fmt.Errorf("build pods: %w", err))
 	}

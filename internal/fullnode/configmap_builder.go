@@ -202,18 +202,14 @@ func addCosmosConfigToml(config *blockchain_toml.CosmosConfigFile, crd *cosmosv1
 
 		var privateIDs, persistentPeers, unconditionalIDs string
 
-		if cosmosP2P.PrivatePeerIds != nil {
-			privateIDs = commaDelimited(&privateIDStr, cosmosP2P.PrivatePeerIds)
-			cosmosP2P.PrivatePeerIds = &privateIDs
-		}
-		if cosmosP2P.PersistentPeers != nil {
-			persistentPeers = commaDelimited(&privatePeerStr, cosmosP2P.PersistentPeers)
-			cosmosP2P.PersistentPeers = &persistentPeers
-		}
-		if cosmosP2P.UnconditionalPeerIds != nil {
-			unconditionalIDs = commaDelimited(&privateIDStr, cosmosP2P.UnconditionalPeerIds)
-			cosmosP2P.UnconditionalPeerIds = &unconditionalIDs
-		}
+		privateIDs = commaDelimited(&privateIDStr, cosmosP2P.PrivatePeerIds)
+		cosmosP2P.PrivatePeerIds = &privateIDs
+
+		persistentPeers = commaDelimited(&privatePeerStr, cosmosP2P.PersistentPeers)
+		cosmosP2P.PersistentPeers = &persistentPeers
+
+		unconditionalIDs = commaDelimited(&privateIDStr, cosmosP2P.UnconditionalPeerIds)
+		cosmosP2P.UnconditionalPeerIds = &unconditionalIDs
 
 		config.P2P = cosmosP2P
 	}

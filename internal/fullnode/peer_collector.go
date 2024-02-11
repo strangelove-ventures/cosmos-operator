@@ -168,6 +168,14 @@ func (c PeerCollector) addExternalAddress(ctx context.Context, peers Peers, crd 
 			info.ExternalAddress = net.JoinHostPort(host, strconv.Itoa(p2pPort))
 		}
 	} else if svc.Spec.Type == corev1.ServiceTypeNodePort {
+		resp, err := resty.New().R().
+			Get("https://ipv4.icanhazip.com")
+		var externalIP string
+		if err != nil || resp.IsError() {
+			return err
+		} else {
+			externalIP = resp.String()
+		}
 
 		objKey := c.objectKey(crd, ordinal)
 		info := peers[objKey]
@@ -179,16 +187,6 @@ func (c PeerCollector) addExternalAddress(ctx context.Context, peers Peers, crd 
 			if i.Name == "p2p" {
 				nodePort = i.NodePort
 			}
-		}
-
-		c := resty.New()
-		resp, err := c.R().
-			Get("https://ipv4.icanhazip.com")
-		var externalIP string
-		if err != nil || resp.IsError() {
-			externalIP = "0.0.0.0"
-		} else {
-			externalIP = resp.String()
 		}
 
 		info.ExternalAddress = net.JoinHostPort(externalIP, strconv.Itoa(int(nodePort)))
