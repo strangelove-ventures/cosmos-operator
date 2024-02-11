@@ -219,6 +219,7 @@ spec:
                               type: string
                             type: array
                           laddr:
+                            default: tcp://0.0.0.0:26657
                             description: Listening address for RPC. If not set, defaults
                               to "tcp://0.0.0.0:26657"
                             type: string
@@ -277,8 +278,6 @@ spec:
                             type: string
                           tomlOverrides:
                             type: string
-                        required:
-                        - tomlOverrides
                         type: object
                     type: object
                   cosmos:

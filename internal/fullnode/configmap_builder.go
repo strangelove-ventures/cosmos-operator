@@ -62,6 +62,26 @@ func getEmptyCosmosApp() blockchain_toml.CosmosAppFile {
 	}
 }
 
+func getEmptyNamadaConfig() blockchain_toml.NamadaConfigFile {
+	return blockchain_toml.NamadaConfigFile{
+		Ledger: blockchain_toml.NamadaLedger{
+			Shell: blockchain_toml.NamadaShell{},
+			Cometbft: blockchain_toml.NamadaCometbft{
+				RPC:             blockchain_toml.NamadaRPC{},
+				P2P:             blockchain_toml.NamadaP2P{},
+				Mempool:         blockchain_toml.NamadaMempool{},
+				Consensus:       blockchain_toml.NamadaConsensus{},
+				Storage:         blockchain_toml.NamadaStorage{},
+				TxIndex:         blockchain_toml.NamadaTxIndex{},
+				Instrumentation: blockchain_toml.NamadaInstrumentation{},
+				Statesync:       blockchain_toml.NamadaStatesync{},
+				Fastsync:        blockchain_toml.NamadaFastsync{},
+			},
+			EthereumBridge: blockchain_toml.NamadaEthereumBridge{},
+		},
+	}
+}
+
 // BuildConfigMaps creates a ConfigMap with configuration to be mounted as files into containers.
 // Currently, the config.toml (for Comet) and app.toml (for the Cosmos SDK).
 func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, peers Peers) ([]diff.Resource[*corev1.ConfigMap], error) {
@@ -77,10 +97,7 @@ func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, peers Peers) ([]diff.Resource
 		instance := instanceName(crd, i)
 
 		if crd.Spec.ChainSpec.ChainType == chainTypeNamada {
-			if crd.Spec.ChainSpec.Comet != nil {
-
-			}
-			config := blockchain_toml.NamadaConfigFile{}
+			config := getEmptyNamadaConfig()
 			configBytes, err := addNamadaConfigToml(&config, crd, instance, peers)
 			if err != nil {
 				return nil, err
@@ -385,11 +402,10 @@ func addNamadaConfigToml(config *blockchain_toml.NamadaConfigFile, crd *cosmosv1
 	spec := crd.Spec.ChainSpec
 	comet := spec.Comet
 
-	//config.Ledger
-	//if comet.RPC != nil {
-	//	RPC := comet.RPC.to
-	//
-	//}
+	if comet.RPC != nil {
+		//cosmosRPC := comet.RPC.ToCosmosRPC()
+
+	}
 
 	//comet.RPC
 	namadaRPC := blockchain_toml.NamadaRPC{}
@@ -432,16 +448,16 @@ func addNamadaConfigToml(config *blockchain_toml.NamadaConfigFile, crd *cosmosv1
 
 	cometBFT := blockchain_toml.NamadaCometbft{
 		Moniker: &instance,
-		P2P:     &namadaP2P,
-		RPC:     &namadaRPC,
+		P2P:     namadaP2P,
+		RPC:     namadaRPC,
 	}
 
 	namadaLedger := blockchain_toml.NamadaLedger{
-		Cometbft: &cometBFT,
+		Cometbft: cometBFT,
 	}
 
 	*config = blockchain_toml.NamadaConfigFile{
-		Ledger: &namadaLedger,
+		Ledger: namadaLedger,
 	}
 
 	overrideConfig := blockchain_toml.NamadaConfigFile{}

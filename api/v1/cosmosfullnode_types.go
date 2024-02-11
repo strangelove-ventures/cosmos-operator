@@ -842,6 +842,7 @@ type NamadaShell struct {
 type RPC struct {
 	// Listening address for RPC.
 	// If not set, defaults to "tcp://0.0.0.0:26657"
+	// +kubebuilder:default:="tcp://0.0.0.0:26657"
 	// +optional
 	Laddr *string `json:"laddr" toml:"laddr"`
 
@@ -1016,6 +1017,7 @@ type TxIndex struct {
 	// +optional
 	Indexer *string `json:"indexer" toml:"indexer"`
 
+	// +optional
 	TomlOverrides *string `json:"tomlOverrides"`
 }
 
