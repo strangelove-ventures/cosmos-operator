@@ -157,12 +157,20 @@ func stringListToStringPointerList(str []string) []*string {
 }
 
 func addCosmosConfigToml(config *blockchain_toml.CosmosConfigFile, crd *cosmosv1.CosmosFullNode, instance string, peers Peers) ([]byte, error) {
-	var err error
+	var (
+		cosmosConfigFile blockchain_toml.CosmosConfigFile
+		err              error
+	)
 
 	spec := crd.Spec.ChainSpec
 	comet := spec.Comet
 
-	cosmosConfigFile := comet.ToCosmosConfig()
+	if comet != nil {
+		cosmosConfigFile = comet.ToCosmosConfig()
+	} else {
+		cosmosConfigFile = *config
+	}
+
 	config = &cosmosConfigFile
 
 	// Prepare private peers for nodes in cluster
@@ -284,15 +292,19 @@ func addCosmosAppToml(app *blockchain_toml.CosmosAppFile, crd *cosmosv1.CosmosFu
 }
 
 func addNamadaConfigToml(config *blockchain_toml.NamadaConfigFile, crd *cosmosv1.CosmosFullNode, instance string, peers Peers) ([]byte, error) {
-	var err error
+	var (
+		namadaCometBFT blockchain_toml.NamadaCometbft
+		err            error
+	)
 
 	spec := crd.Spec.ChainSpec
 	comet := spec.Comet
-
-	namadaCometBFT := comet.ToNamadaComet()
+	if comet != nil {
+		namadaCometBFT = comet.ToNamadaComet()
+	} else {
+		namadaCometBFT = config.Ledger.Cometbft
+	}
 	config.Ledger.Cometbft = namadaCometBFT
-
-	namadaComet := config.Ledger.Cometbft
 
 	// Prepare private peers for nodes in cluster
 	privatePeers := peers.Except(instance, crd.Namespace)
@@ -301,47 +313,47 @@ func addNamadaConfigToml(config *blockchain_toml.NamadaConfigFile, crd *cosmosv1
 
 	var privateIDs, persistentPeers, unconditionalIDs string
 
-	privateIDs = commaDelimited(&privateIDStr, namadaComet.P2P.PrivatePeerIds)
-	namadaComet.P2P.PrivatePeerIds = &privateIDs
+	privateIDs = commaDelimited(&privateIDStr, config.Ledger.Cometbft.P2P.PrivatePeerIds)
+	config.Ledger.Cometbft.P2P.PrivatePeerIds = &privateIDs
 
-	persistentPeers = commaDelimited(&privatePeerStr, namadaComet.P2P.PersistentPeers)
-	namadaComet.P2P.PersistentPeers = &persistentPeers
+	persistentPeers = commaDelimited(&privatePeerStr, config.Ledger.Cometbft.P2P.PersistentPeers)
+	config.Ledger.Cometbft.P2P.PersistentPeers = &persistentPeers
 
-	unconditionalIDs = commaDelimited(&privateIDStr, namadaComet.P2P.UnconditionalPeerIds)
-	namadaComet.P2P.UnconditionalPeerIds = &unconditionalIDs
+	unconditionalIDs = commaDelimited(&privateIDStr, config.Ledger.Cometbft.P2P.UnconditionalPeerIds)
+	config.Ledger.Cometbft.P2P.UnconditionalPeerIds = &unconditionalIDs
 
 	upnpOption := true
-	if namadaComet.P2P.Upnp == nil {
+	if config.Ledger.Cometbft.P2P.Upnp == nil {
 		// You must set upnpOption true, If you want to connect through k8s service.
-		namadaComet.P2P.Upnp = &upnpOption
+		config.Ledger.Cometbft.P2P.Upnp = &upnpOption
 	}
 
 	var externalOverride bool
 	if crd.Spec.InstanceOverrides != nil {
 		if override, ok := crd.Spec.InstanceOverrides[instance]; ok && override.ExternalAddress != nil {
-			namadaComet.P2P.ExternalAddress = override.ExternalAddress
+			config.Ledger.Cometbft.P2P.ExternalAddress = override.ExternalAddress
 			externalOverride = true
 		}
 	}
 
 	if !externalOverride {
 		if v := peers.Get(instance, crd.Namespace).ExternalAddress; v != "" {
-			namadaComet.P2P.ExternalAddress = &v
+			config.Ledger.Cometbft.P2P.ExternalAddress = &v
 		}
 	}
 
 	if crd.Spec.Type == cosmosv1.Sentry {
 		privVal := fmt.Sprintf("tcp://0.0.0.0:%d", privvalPort)
-		namadaComet.PrivValidatorLaddr = &privVal
+		config.Ledger.Cometbft.PrivValidatorLaddr = &privVal
 		// Disable indexing for sentries; they should not serve queries.
 		txIndexer := "null"
-		namadaComet.TxIndex.Indexer = &txIndexer
+		config.Ledger.Cometbft.TxIndex.Indexer = &txIndexer
 	}
 	if v := spec.LogLevel; v != nil {
-		namadaComet.LogLevel = v
+		config.Ledger.Cometbft.LogLevel = v
 	}
 	if v := spec.LogFormat; v != nil {
-		namadaComet.LogFormat = v
+		config.Ledger.Cometbft.LogFormat = v
 	}
 
 	// Prepare for namada specified config
