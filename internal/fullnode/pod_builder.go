@@ -221,6 +221,19 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 	pod.Spec.Hostname = pod.Name
 	pod.Spec.Subdomain = b.crd.Name
 
+	var volConfigItems []corev1.KeyToPath
+	if b.crd.Spec.ChainSpec.ChainType == chainTypeNamada {
+		volConfigItems = []corev1.KeyToPath{
+			{Key: configOverlayFile, Path: configOverlayFile},
+			{Key: appOverlayFile, Path: appOverlayFile},
+		}
+	} else {
+		volConfigItems = []corev1.KeyToPath{
+			{Key: configOverlayFile, Path: configOverlayFile},
+			{Key: appOverlayFile, Path: appOverlayFile},
+		}
+	}
+
 	pod.Spec.Volumes = []corev1.Volume{
 		{
 			Name: volChainHome,
@@ -232,6 +245,15 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 			Name: volTmp,
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+		{
+			Name: volConfig,
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{Name: instanceName(b.crd, ordinal)},
+					Items:                volConfigItems,
+				},
 			},
 		},
 		{
@@ -251,23 +273,6 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 				},
 			},
 		},
-	}
-	if b.crd.Spec.ChainSpec.ChainType == chainTypeNamada {
-
-	} else {
-		pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{
-			Name: volConfig,
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{Name: instanceName(b.crd, ordinal)},
-					Items: []corev1.KeyToPath{
-						{Key: configOverlayFile, Path: configOverlayFile},
-						{Key: appOverlayFile, Path: appOverlayFile},
-					},
-				},
-			},
-		},
-		)
 	}
 
 	// Mounts required by all containers.
