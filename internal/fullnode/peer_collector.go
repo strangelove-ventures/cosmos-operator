@@ -169,7 +169,7 @@ func (c PeerCollector) addExternalAddress(ctx context.Context, peers Peers, crd 
 		}
 	} else if svc.Spec.Type == corev1.ServiceTypeNodePort {
 		resp, err := resty.New().R().
-			Get("https://ipv4.icanhazip.com")
+			Get("http://ipv4.icanhazip.com")
 		var externalIP string
 		if err != nil || resp.IsError() {
 			return err
