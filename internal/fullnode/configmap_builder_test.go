@@ -130,11 +130,8 @@ func TestBuildConfigMaps(t *testing.T) {
 			}
 			custom.Spec.ChainSpec.Comet.RPC = &RPC
 
-			P2P := cosmosv1.P2P{
-				MaxNumInboundPeers:  ptr(int32(5)),
-				MaxNumOutboundPeers: ptr(int32(15)),
-			}
-			custom.Spec.ChainSpec.Comet.P2P = &P2P
+			crd.Spec.ChainSpec.Comet.P2P.MaxNumInboundPeers = ptr(int32(5))
+			crd.Spec.ChainSpec.Comet.P2P.MaxNumOutboundPeers = ptr(int32(15))
 
 			peers := Peers{
 				client.ObjectKey{Namespace: namespace, Name: "osmosis-0"}: {NodeID: "should not see me", PrivateAddress: "should not see me"},
@@ -311,10 +308,19 @@ func TestBuildConfigMaps(t *testing.T) {
 			_, err = toml.Decode(cms[0].Object().Data["config-overlay.toml"], &decoded)
 			require.NoError(t, err)
 			require.Equal(t, "1.1.1.1:26657", *decoded.P2P.ExternalAddress)
+			decoded = cosmosv1.CometConfig{}
 
 			_, err = toml.Decode(cms[1].Object().Data["config-overlay.toml"], &decoded)
 			require.NoError(t, err)
 			require.Equal(t, "2.2.2.2:26657", *decoded.P2P.ExternalAddress)
+
+			empty := ""
+			tmpP2P := cosmosv1.P2P{
+				ExternalAddress: &empty,
+			}
+			decoded = cosmosv1.CometConfig{
+				P2P: &tmpP2P,
+			}
 
 			_, err = toml.Decode(cms[2].Object().Data["config-overlay.toml"], &decoded)
 			require.NoError(t, err)

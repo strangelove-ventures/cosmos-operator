@@ -11,5 +11,6 @@ enabled-unsafe-cors = false
 [grpc]
 
 [grpc-web]
+enable-unsafe-cors = false
 
 [state-sync]
