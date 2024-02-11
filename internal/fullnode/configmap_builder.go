@@ -160,7 +160,6 @@ func stringListToStringPointerList(str []string) []*string {
 func addCosmosConfigToml(config *blockchain_toml.CosmosConfigFile, crd *cosmosv1.CosmosFullNode, instance string, peers Peers) ([]byte, error) {
 	var (
 		cosmosConfigFile blockchain_toml.CosmosConfigFile
-		err              error
 	)
 
 	spec := crd.Spec.ChainSpec
@@ -225,9 +224,6 @@ func addCosmosConfigToml(config *blockchain_toml.CosmosConfigFile, crd *cosmosv1
 	}
 
 	if spec.Comet != nil && spec.Comet.TomlOverrides != nil {
-		if err = config.MergeWithDefault(); err != nil {
-			return nil, err
-		}
 		return config.ExportMergeWithTomlOverrides([]byte(*spec.Comet.TomlOverrides))
 	}
 	return toml.Marshal(config)
@@ -235,19 +231,12 @@ func addCosmosConfigToml(config *blockchain_toml.CosmosConfigFile, crd *cosmosv1
 
 func addCosmosAppToml(app *blockchain_toml.CosmosAppFile, crd *cosmosv1.CosmosFullNode) ([]byte, error) {
 	var (
-		err       error
 		cosmosSDK = crd.Spec.ChainSpec.CosmosSDK
 	)
 
 	app.MinimumGasPrices = &cosmosSDK.MinGasPrice
-
-	if &cosmosSDK.APIEnableUnsafeCORS != nil {
-		app.API.EnabledUnsafeCors = &cosmosSDK.APIEnableUnsafeCORS
-	}
-
-	if &cosmosSDK.GRPCWebEnableUnsafeCORS != nil {
-		app.API.EnabledUnsafeCors = &cosmosSDK.GRPCWebEnableUnsafeCORS
-	}
+	app.API.EnabledUnsafeCors = &cosmosSDK.APIEnableUnsafeCORS
+	app.GrpcWeb.EnableUnsafeCorsnter = &cosmosSDK.GRPCWebEnableUnsafeCORS
 
 	var pruningStrategy, pruningInterval, pruningKeepRecent, pruningKeepEvery string
 	var pruningMinRetainBlocks int
@@ -284,9 +273,6 @@ func addCosmosAppToml(app *blockchain_toml.CosmosAppFile, crd *cosmosv1.CosmosFu
 	}
 
 	if cosmosSDK.TomlOverrides != nil {
-		if err = app.MergeWithDefault(); err != nil {
-			return nil, err
-		}
 		return app.ExportMergeWithTomlOverrides([]byte(*cosmosSDK.TomlOverrides))
 	}
 	return toml.Marshal(app)
@@ -370,9 +356,6 @@ func addNamadaConfigToml(config *blockchain_toml.NamadaConfigFile, crd *cosmosv1
 	config.Ledger.Shell.BaseDir = ChainHomeDir(crd) + getCometbftDir(crd)
 
 	if spec.Comet != nil && spec.Comet.TomlOverrides != nil {
-		if err = config.MergeWithDefault(); err != nil {
-			return nil, err
-		}
 		return config.ExportMergeWithTomlOverrides([]byte(*spec.Comet.TomlOverrides))
 	}
 	return toml.Marshal(config)
