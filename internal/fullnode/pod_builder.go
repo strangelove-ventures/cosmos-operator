@@ -225,7 +225,6 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 	if b.crd.Spec.ChainSpec.ChainType == chainTypeNamada {
 		volConfigItems = []corev1.KeyToPath{
 			{Key: configOverlayFile, Path: configOverlayFile},
-			{Key: appOverlayFile, Path: appOverlayFile},
 		}
 	} else {
 		volConfigItems = []corev1.KeyToPath{
