@@ -236,7 +236,7 @@ func addCosmosAppToml(app *blockchain_toml.CosmosAppFile, crd *cosmosv1.CosmosFu
 
 	app.MinimumGasPrices = &cosmosSDK.MinGasPrice
 	app.API.EnabledUnsafeCors = &cosmosSDK.APIEnableUnsafeCORS
-	app.GrpcWeb.EnableUnsafeCorsnter = &cosmosSDK.GRPCWebEnableUnsafeCORS
+	app.GrpcWeb.EnableUnsafeCors = &cosmosSDK.GRPCWebEnableUnsafeCORS
 
 	var pruningStrategy, pruningInterval, pruningKeepRecent, pruningKeepEvery string
 	var pruningMinRetainBlocks int
