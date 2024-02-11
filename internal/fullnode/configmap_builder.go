@@ -365,6 +365,9 @@ func addNamadaConfigToml(config *blockchain_toml.NamadaConfigFile, crd *cosmosv1
 		}
 	}
 
+	config.Ledger.ChainID = crd.Spec.ChainSpec.ChainID
+	config.Ledger.Shell.BaseDir = ChainHomeDir(crd) + getCometbftDir(crd)
+
 	if spec.Comet != nil && spec.Comet.TomlOverrides != nil {
 		if err = config.MergeWithDefault(); err != nil {
 			return nil, err

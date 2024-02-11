@@ -939,6 +939,7 @@ func (c *NamadaConfig) ToNamadaConfig() blockchain_toml.NamadaConfigFile {
 	config := blockchain_toml.NamadaConfigFile{
 		WasmDir: c.WasmDir,
 		Ledger: blockchain_toml.NamadaLedger{
+			ChainID:        "",
 			Cometbft:       blockchain_toml.NamadaCometbft{},
 			Shell:          blockchain_toml.NamadaShell{},
 			EthereumBridge: blockchain_toml.NamadaEthereumBridge{},
@@ -947,8 +948,14 @@ func (c *NamadaConfig) ToNamadaConfig() blockchain_toml.NamadaConfigFile {
 
 	ledgerShell := c.Ledger.Shell
 	if c.Ledger.Shell != nil {
+		var baseDir string
+		if ledgerShell.BaseDir != nil {
+			baseDir = *ledgerShell.BaseDir
+		} else {
+			baseDir = ""
+		}
 		config.Ledger.Shell = blockchain_toml.NamadaShell{
-			BaseDir:                    ledgerShell.BaseDir,
+			BaseDir:                    baseDir,
 			StorageReadPastHeightLimit: ledgerShell.StorageReadPastHeightLimit,
 			DbDir:                      ledgerShell.DbDir,
 			TendermintMode:             ledgerShell.TendermintMode,
