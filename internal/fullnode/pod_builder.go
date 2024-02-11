@@ -464,7 +464,7 @@ mkdir -p $CONFIG_DIR
 if [ "$CHAIN_TYPE" = "` + chainTypeCosmos + `" ] || [ "$CHAIN_TYPE" = "` + chainTypeCosmovisor + `" ]; then
 	config-merge -f toml "$TMP_DIR/config.toml" "$OVERLAY_DIR/config-overlay.toml" > "$CONFIG_DIR/config.toml"
 	config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CONFIG_DIR/app.toml"
-elif [ "$CHAIN_TYPE" = "` + chainTypeNamada + `"]; then
+elif [ "$CHAIN_TYPE" = "` + chainTypeNamada + `" ]; then
 	config-merge -f toml "$TMP_DIR/config.toml" "$OVERLAY_DIR/config-overlay.toml" > "$CHAIN_HOME/$CHAIN_ID/config.toml"
 fi
 
