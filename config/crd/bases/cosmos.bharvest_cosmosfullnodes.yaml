@@ -117,8 +117,6 @@ spec:
                           skipTimeoutCommit:
                             description: If not set, defaults to false
                             type: boolean
-                          tomlOverrides:
-                            type: string
                         type: object
                       instrumentation:
                         description: Instrumentation configuration for your config.toml
@@ -130,16 +128,6 @@ spec:
                           prometheusListenAddr:
                             description: Where you want to open prometheus. If not
                               set, defaults to "26660"
-                            type: string
-                          tomlOverrides:
-                            type: string
-                        type: object
-                      mempool:
-                        description: Mempool configuration for your config.toml
-                        properties:
-                          tomlOverrides:
-                            description: You can override [Mempool] configs at config.toml
-                              overwrite this field.
                             type: string
                         type: object
                       p2p:
@@ -192,10 +180,6 @@ spec:
                               seed nodes in <ID>@<IP>:<PORT> format.
                             minLength: 1
                             type: string
-                          tomlOverrides:
-                            description: You can override [RPC] configs at config.toml
-                              overwrite this field.
-                            type: string
                           unconditionalPeerIDs:
                             description: Comma delimited list of node/peer IDs, to
                               which a connection will be (re)established ignoring
@@ -227,8 +211,6 @@ spec:
                             description: timeout for broadcast_tx_commit If not set,
                               defaults to "10000ms"(also "10s")
                             type: string
-                          tomlOverrides:
-                            type: string
                         type: object
                       statesync:
                         description: Statesync configuration for your config.toml
@@ -243,8 +225,6 @@ spec:
                           rpcServers:
                             type: string
                           tempDir:
-                            type: string
-                          tomlOverrides:
                             type: string
                           trustHash:
                             type: string
@@ -275,8 +255,6 @@ spec:
                           indexer:
                             description: It could be different depending on what chain
                               you run. cosmos - "kv", namada - "null"
-                            type: string
-                          tomlOverrides:
                             type: string
                         type: object
                     type: object

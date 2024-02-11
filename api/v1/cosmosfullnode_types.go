@@ -648,6 +648,70 @@ func (c *CometConfig) ToCosmosConfig() blockchain_toml.CosmosConfigFile {
 	return config
 }
 
+func (c *CometConfig) ToNamadaComet() blockchain_toml.NamadaCometbft {
+	cometbft := blockchain_toml.NamadaCometbft{}
+	if c.RPC != nil {
+		cometbft.RPC = blockchain_toml.NamadaRPC{
+			Laddr:                    c.RPC.Laddr,
+			CorsAllowedOrigins:       c.RPC.CorsAllowedOrigins,
+			CorsAllowedMethods:       c.RPC.CorsAllowedMethods,
+			TimeoutBroadcastTxCommit: c.RPC.TimeoutBroadcastTxCommit,
+		}
+	}
+	if c.P2P != nil {
+		cometbft.P2P = blockchain_toml.NamadaP2P{
+			Laddr:                c.P2P.Laddr,
+			ExternalAddress:      c.P2P.ExternalAddress,
+			Seeds:                c.P2P.Seeds,
+			PersistentPeers:      c.P2P.PersistentPeers,
+			MaxNumInboundPeers:   c.P2P.MaxNumInboundPeers,
+			MaxNumOutboundPeers:  c.P2P.MaxNumOutboundPeers,
+			Pex:                  c.P2P.Pex,
+			SeedMode:             c.P2P.SeedMode,
+			PrivatePeerIds:       c.P2P.PrivatePeerIds,
+			UnconditionalPeerIds: c.P2P.UnconditionalPeerIDs,
+		}
+	}
+	if c.Consensus != nil {
+		cometbft.Consensus = blockchain_toml.NamadaConsensus{
+			DoubleSignCheckHeight:     c.Consensus.DoubleSignCheckHeight,
+			SkipTimeoutCommit:         c.Consensus.SkipTimeoutCommit,
+			CreateEmptyBlocks:         c.Consensus.CreateEmptyBlocks,
+			CreateEmptyBlocksInterval: c.Consensus.CreateEmptyBlocksInterval,
+			PeerGossipSleepDuration:   c.Consensus.PeerGossipSleepDuration,
+		}
+	}
+	if c.Storage != nil {
+		cometbft.Storage = blockchain_toml.NamadaStorage{
+			DiscardAbciResponses: c.Storage.DiscardAbciResponses,
+		}
+	}
+	if c.TxIndex != nil {
+		cometbft.TxIndex = blockchain_toml.NamadaTxIndex{
+			Indexer: c.TxIndex.Indexer,
+		}
+	}
+	if c.Instrumentation != nil {
+		cometbft.Instrumentation = blockchain_toml.NamadaInstrumentation{
+			Prometheus:           c.Instrumentation.Prometheus,
+			PrometheusListenAddr: c.Instrumentation.PrometheusListenAddr,
+		}
+	}
+	if c.Statesync != nil {
+		cometbft.Statesync = blockchain_toml.NamadaStatesync{
+			Enable:        c.Statesync.Enable,
+			RPCServers:    c.Statesync.RPCServers,
+			TrustHeight:   c.Statesync.TrustHeight,
+			TrustHash:     c.Statesync.TrustHash,
+			TrustPeriod:   c.Statesync.TrustPeriod,
+			DiscoveryTime: c.Statesync.DiscoveryTime,
+			TempDir:       c.Statesync.TempDir,
+		}
+	}
+
+	return cometbft
+}
+
 // SDKAppConfig configures the cosmos sdk application app.toml.
 type SDKAppConfig struct {
 	// Skip x/crisis invariants check on startup.
@@ -871,6 +935,37 @@ type NamadaConfig struct {
 	Ledger *NamadaLedger `json:"ledger" toml:"ledger"`
 }
 
+func (c *NamadaConfig) ToNamadaConfig() blockchain_toml.NamadaConfigFile {
+	config := blockchain_toml.NamadaConfigFile{
+		WasmDir: c.WasmDir,
+		Ledger: blockchain_toml.NamadaLedger{
+			Cometbft:       blockchain_toml.NamadaCometbft{},
+			Shell:          blockchain_toml.NamadaShell{},
+			EthereumBridge: blockchain_toml.NamadaEthereumBridge{},
+		},
+	}
+
+	ledgerShell := c.Ledger.Shell
+	if c.Ledger.Shell != nil {
+		config.Ledger.Shell = blockchain_toml.NamadaShell{
+			BaseDir:                    ledgerShell.BaseDir,
+			StorageReadPastHeightLimit: ledgerShell.StorageReadPastHeightLimit,
+			DbDir:                      ledgerShell.DbDir,
+			TendermintMode:             ledgerShell.TendermintMode,
+		}
+	}
+
+	ledgerEth := c.Ledger.EthereumBridge
+	if c.Ledger.EthereumBridge != nil {
+		config.Ledger.EthereumBridge = blockchain_toml.NamadaEthereumBridge{
+			Mode:              ledgerEth.Mode,
+			OracleRPCEndpoint: ledgerEth.OracleRPCEndpoint,
+			ChannelBufferSize: ledgerEth.ChannelBufferSize,
+		}
+	}
+	return config
+}
+
 type NamadaLedger struct {
 	Shell          *NamadaShell          `json:"shell" toml:"shell"`
 	EthereumBridge *NamadaEthereumBridge `json:"ethereumBridge" toml:"ethereum_bridge"`
@@ -896,6 +991,12 @@ type NamadaShell struct {
 	// If not set, defaults to "full"
 	// +optional
 	TendermintMode *string `json:"tendermintMode" toml:"tendermint_mode"`
+}
+
+type NamadaEthereumBridge struct {
+	Mode              *string `json:"mode" toml:"mode"`
+	OracleRPCEndpoint *string `json:"oracleRpcEndpoint" toml:"oracle_rpc_endpoint"`
+	ChannelBufferSize *int    `json:"channelBufferSize" toml:"channel_buffer_size"`
 }
 
 type RPC struct {
@@ -1093,10 +1194,4 @@ type Statesync struct {
 
 	// +optional
 	TempDir *string `json:"tempDir" toml:"temp_dir"`
-}
-
-type NamadaEthereumBridge struct {
-	Mode              *string `json:"mode" toml:"mode"`
-	OracleRPCEndpoint *string `json:"oracleRpcEndpoint" toml:"oracle_rpc_endpoint"`
-	ChannelBufferSize *int    `json:"channelBufferSize" toml:"channel_buffer_size"`
 }

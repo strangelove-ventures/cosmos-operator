@@ -7,7 +7,6 @@ import (
 	blockchain_toml "github.com/bharvest-devops/blockchain-toml"
 	"strings"
 
-	"github.com/BurntSushi/toml"
 	cosmosv1 "github.com/bharvest-devops/cosmos-operator/api/v1"
 	"github.com/bharvest-devops/cosmos-operator/internal/diff"
 	"github.com/bharvest-devops/cosmos-operator/internal/kube"
@@ -99,6 +98,7 @@ func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, peers Peers) ([]diff.Resource
 		if crd.Spec.ChainSpec.ChainType == chainTypeNamada {
 			config := getEmptyNamadaConfig()
 			configBytes, err := addNamadaConfigToml(&config, crd, instance, peers)
+			// You should remove moniker at configBytes
 			if err != nil {
 				return nil, err
 			}
@@ -162,61 +162,29 @@ func addCosmosConfigToml(config *blockchain_toml.CosmosConfigFile, crd *cosmosv1
 	spec := crd.Spec.ChainSpec
 	comet := spec.Comet
 
-	//config.Moniker = &instance
+	cosmosConfigFile := comet.ToCosmosConfig()
+	config = &cosmosConfigFile
 
-	if comet.RPC != nil {
-		cosmosRPC := comet.RPC.ToCosmosRPC()
+	// Prepare private peers for nodes in cluster
+	privatePeers := peers.Except(instance, crd.Namespace)
+	privatePeerStr := commaDelimited(stringListToStringPointerList(privatePeers.AllPrivate())...)
+	privateIDStr := commaDelimited(stringListToStringPointerList(privatePeers.NodeIDs())...)
 
-		if comet.RPC.TomlOverrides != nil {
-			RPCTomlOverrides := blockchain_toml.CosmosConfigFile{}
-			if err = toml.Unmarshal([]byte(*comet.RPC.TomlOverrides), &RPCTomlOverrides); err != nil {
-				return nil, err
-			}
-			err = config.MergeWithConfig(RPCTomlOverrides)
-			if err != nil {
-				return nil, err
-			}
-		}
+	var privateIDs, persistentPeers, unconditionalIDs string
 
-		config.RPC = cosmosRPC
-	}
+	privateIDs = commaDelimited(&privateIDStr, config.P2P.PrivatePeerIds)
+	config.P2P.PrivatePeerIds = &privateIDs
 
-	if comet.P2P != nil {
-		cosmosP2P := comet.P2P.ToCosmosP2P()
+	persistentPeers = commaDelimited(&privatePeerStr, config.P2P.PersistentPeers)
+	config.P2P.PersistentPeers = &persistentPeers
 
-		if comet.P2P.TomlOverrides != nil {
-			P2PTomlOverrides := blockchain_toml.CosmosConfigFile{}
-			if err = toml.Unmarshal([]byte(*comet.P2P.TomlOverrides), &P2PTomlOverrides); err != nil {
-				return nil, err
-			}
-			err = config.MergeWithConfig(P2PTomlOverrides)
-			if err != nil {
-				return nil, err
-			}
-		}
+	unconditionalIDs = commaDelimited(&privateIDStr, config.P2P.UnconditionalPeerIds)
+	config.P2P.UnconditionalPeerIds = &unconditionalIDs
 
-		// Prepare private peers for nodes in cluster
-		privatePeers := peers.Except(instance, crd.Namespace)
-		privatePeerStr := commaDelimited(stringListToStringPointerList(privatePeers.AllPrivate())...)
-		privateIDStr := commaDelimited(stringListToStringPointerList(privatePeers.NodeIDs())...)
-
-		var privateIDs, persistentPeers, unconditionalIDs string
-
-		privateIDs = commaDelimited(&privateIDStr, cosmosP2P.PrivatePeerIds)
-		cosmosP2P.PrivatePeerIds = &privateIDs
-
-		persistentPeers = commaDelimited(&privatePeerStr, cosmosP2P.PersistentPeers)
-		cosmosP2P.PersistentPeers = &persistentPeers
-
-		unconditionalIDs = commaDelimited(&privateIDStr, cosmosP2P.UnconditionalPeerIds)
-		cosmosP2P.UnconditionalPeerIds = &unconditionalIDs
-
-		config.P2P = cosmosP2P
-		upnpOption := true
-		if config.P2P.Upnp == nil {
-			// You must set upnpOption true, If you want to connect through k8s service.
-			config.P2P.Upnp = &upnpOption
-		}
+	upnpOption := true
+	if config.P2P.Upnp == nil {
+		// You must set upnpOption true, If you want to connect through k8s service.
+		config.P2P.Upnp = &upnpOption
 	}
 
 	var externalOverride bool
@@ -231,88 +199,6 @@ func addCosmosConfigToml(config *blockchain_toml.CosmosConfigFile, crd *cosmosv1
 		if v := peers.Get(instance, crd.Namespace).ExternalAddress; v != "" {
 			config.P2P.ExternalAddress = &v
 		}
-	}
-
-	if comet.Mempool != nil {
-		if comet.Mempool.TomlOverrides != nil {
-			mempoolTomlOverrides := blockchain_toml.CosmosConfigFile{}
-			if err = toml.Unmarshal([]byte(*comet.Mempool.TomlOverrides), &mempoolTomlOverrides); err != nil {
-				return nil, err
-			}
-			err = config.MergeWithConfig(mempoolTomlOverrides)
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	if comet.Consensus != nil {
-		cosmosConsensus := comet.Consensus.ToCosmosConsensus()
-
-		if comet.Consensus.TomlOverrides != nil {
-			consensusTomlOverrides := blockchain_toml.CosmosConfigFile{}
-			if err = toml.Unmarshal([]byte(*comet.Consensus.TomlOverrides), &consensusTomlOverrides); err != nil {
-				return nil, err
-			}
-			err = config.MergeWithConfig(consensusTomlOverrides)
-			if err != nil {
-				return nil, err
-			}
-		}
-		config.Consensus = cosmosConsensus
-	}
-
-	if comet.Storage != nil {
-		cosmosStorage := comet.Storage.ToCosmosStorage()
-		config.Storage = cosmosStorage
-	}
-
-	if comet.TxIndex != nil {
-		cosmosTxIndex := comet.TxIndex.ToCosmosTxIndex()
-
-		if comet.TxIndex.TomlOverrides != nil {
-			txIndexTomlOverrides := blockchain_toml.CosmosConfigFile{}
-			if err = toml.Unmarshal([]byte(*comet.TxIndex.TomlOverrides), &txIndexTomlOverrides); err != nil {
-				return nil, err
-			}
-			err = config.MergeWithConfig(txIndexTomlOverrides)
-			if err != nil {
-				return nil, err
-			}
-		}
-		config.TxIndex = cosmosTxIndex
-	}
-
-	if comet.Instrumentation != nil {
-		cosmosInstrumentation := comet.Instrumentation.ToCosmosInstrumentation()
-
-		if comet.Instrumentation.TomlOverrides != nil {
-			instrumentationTomlOverrides := blockchain_toml.CosmosConfigFile{}
-			if err = toml.Unmarshal([]byte(*comet.Instrumentation.TomlOverrides), &instrumentationTomlOverrides); err != nil {
-				return nil, err
-			}
-			err = config.MergeWithConfig(instrumentationTomlOverrides)
-			if err != nil {
-				return nil, err
-			}
-		}
-		config.Instrumentation = cosmosInstrumentation
-	}
-
-	if comet.Statesync != nil {
-		cosmosStatesync := comet.Statesync.ToCosmosStatesync()
-
-		if comet.Statesync.TomlOverrides != nil {
-			statesyncTomlOverrides := blockchain_toml.CosmosConfigFile{}
-			if err = toml.Unmarshal([]byte(*comet.Statesync.TomlOverrides), &statesyncTomlOverrides); err != nil {
-				return nil, err
-			}
-			err = config.MergeWithConfig(statesyncTomlOverrides)
-			if err != nil {
-				return nil, err
-			}
-		}
-		config.Statesync = cosmosStatesync
 	}
 
 	if crd.Spec.Type == cosmosv1.Sentry {
@@ -403,144 +289,65 @@ func addNamadaConfigToml(config *blockchain_toml.NamadaConfigFile, crd *cosmosv1
 	spec := crd.Spec.ChainSpec
 	comet := spec.Comet
 
-	if comet.RPC != nil {
-		//cosmosRPC := comet.RPC.ToCosmosRPC()
+	namadaCometBFT := comet.ToNamadaComet()
+	config.Ledger.Cometbft = namadaCometBFT
 
-	}
+	namadaComet := config.Ledger.Cometbft
 
-	//comet.RPC
-	namadaRPC := blockchain_toml.NamadaRPC{}
+	// Prepare private peers for nodes in cluster
 	privatePeers := peers.Except(instance, crd.Namespace)
 	privatePeerStr := commaDelimited(stringListToStringPointerList(privatePeers.AllPrivate())...)
 	privateIDStr := commaDelimited(stringListToStringPointerList(privatePeers.NodeIDs())...)
-	privateIDs := commaDelimited(&privateIDStr, comet.P2P.PrivatePeerIds)
 
-	persistentPeers := commaDelimited(&privatePeerStr, comet.P2P.PersistentPeers)
+	var privateIDs, persistentPeers, unconditionalIDs string
 
-	unconditionalIDs := commaDelimited(&privateIDStr, comet.P2P.UnconditionalPeerIDs)
+	privateIDs = commaDelimited(&privateIDStr, namadaComet.P2P.PrivatePeerIds)
+	namadaComet.P2P.PrivatePeerIds = &privateIDs
 
-	namadaP2P := blockchain_toml.NamadaP2P{
-		Seeds:                comet.P2P.Seeds,
-		PersistentPeers:      &persistentPeers,
-		PrivatePeerIds:       &privateIDs,
-		UnconditionalPeerIds: &unconditionalIDs,
-		MaxNumInboundPeers:   comet.P2P.MaxNumInboundPeers,
-		MaxNumOutboundPeers:  comet.P2P.MaxNumOutboundPeers,
+	persistentPeers = commaDelimited(&privatePeerStr, namadaComet.P2P.PersistentPeers)
+	namadaComet.P2P.PersistentPeers = &persistentPeers
+
+	unconditionalIDs = commaDelimited(&privateIDStr, namadaComet.P2P.UnconditionalPeerIds)
+	namadaComet.P2P.UnconditionalPeerIds = &unconditionalIDs
+
+	upnpOption := true
+	if namadaComet.P2P.Upnp == nil {
+		// You must set upnpOption true, If you want to connect through k8s service.
+		namadaComet.P2P.Upnp = &upnpOption
 	}
 
 	var externalOverride bool
 	if crd.Spec.InstanceOverrides != nil {
 		if override, ok := crd.Spec.InstanceOverrides[instance]; ok && override.ExternalAddress != nil {
-			addr := *override.ExternalAddress
-			namadaP2P.ExternalAddress = &addr
+			namadaComet.P2P.ExternalAddress = override.ExternalAddress
 			externalOverride = true
 		}
 	}
 
 	if !externalOverride {
 		if v := peers.Get(instance, crd.Namespace).ExternalAddress; v != "" {
-			namadaP2P.ExternalAddress = &v
+			namadaComet.P2P.ExternalAddress = &v
 		}
-	}
-
-	//namadaRPC := blockchain_toml.NamadaRPC{
-	//	CorsAllowedOrigins: comet.RPC.CorsAllowedOrigins,
-	//}
-
-	cometBFT := blockchain_toml.NamadaCometbft{
-		Moniker: &instance,
-		P2P:     namadaP2P,
-		RPC:     namadaRPC,
-	}
-
-	namadaLedger := blockchain_toml.NamadaLedger{
-		Cometbft: cometBFT,
-	}
-
-	*config = blockchain_toml.NamadaConfigFile{
-		Ledger: namadaLedger,
-	}
-
-	overrideConfig := blockchain_toml.NamadaConfigFile{}
-
-	P2PTomlOverrides := blockchain_toml.NamadaConfigFile{}
-	if err = toml.Unmarshal([]byte(*comet.P2P.TomlOverrides), &P2PTomlOverrides); err != nil {
-		return nil, err
-	}
-	err = overrideConfig.MergeWithConfig(&P2PTomlOverrides)
-	if err != nil {
-		return nil, err
-	}
-
-	RPCTomlOverrides := blockchain_toml.NamadaConfigFile{}
-	if err = toml.Unmarshal([]byte(*comet.P2P.TomlOverrides), &RPCTomlOverrides); err != nil {
-		return nil, err
-	}
-	err = overrideConfig.MergeWithConfig(&RPCTomlOverrides)
-	if err != nil {
-		return nil, err
-	}
-
-	MempoolTomlOverrides := blockchain_toml.NamadaConfigFile{}
-	if err = toml.Unmarshal([]byte(*comet.Mempool.TomlOverrides), &MempoolTomlOverrides); err != nil {
-		return nil, err
-	}
-	err = overrideConfig.MergeWithConfig(&MempoolTomlOverrides)
-	if err != nil {
-		return nil, err
-	}
-
-	ConsensusTomlOverrides := blockchain_toml.NamadaConfigFile{}
-	if err = toml.Unmarshal([]byte(*comet.Consensus.TomlOverrides), &ConsensusTomlOverrides); err != nil {
-		return nil, err
-	}
-	err = overrideConfig.MergeWithConfig(&ConsensusTomlOverrides)
-	if err != nil {
-		return nil, err
-	}
-
-	TxIndexTomlOverrides := blockchain_toml.NamadaConfigFile{}
-	if err = toml.Unmarshal([]byte(*comet.TxIndex.TomlOverrides), &TxIndexTomlOverrides); err != nil {
-		return nil, err
-	}
-	err = overrideConfig.MergeWithConfig(&TxIndexTomlOverrides)
-	if err != nil {
-		return nil, err
-	}
-
-	InstrumentationTomlOverrides := blockchain_toml.NamadaConfigFile{}
-	if err = toml.Unmarshal([]byte(*comet.Instrumentation.TomlOverrides), &InstrumentationTomlOverrides); err != nil {
-		return nil, err
-	}
-	err = overrideConfig.MergeWithConfig(&InstrumentationTomlOverrides)
-	if err != nil {
-		return nil, err
-	}
-
-	StatesyncTomlOverrides := blockchain_toml.NamadaConfigFile{}
-	if err = toml.Unmarshal([]byte(*comet.Statesync.TomlOverrides), &StatesyncTomlOverrides); err != nil {
-		return nil, err
-	}
-	err = overrideConfig.MergeWithConfig(&StatesyncTomlOverrides)
-	if err != nil {
-		return nil, err
 	}
 
 	if crd.Spec.Type == cosmosv1.Sentry {
 		privVal := fmt.Sprintf("tcp://0.0.0.0:%d", privvalPort)
-		*config.Ledger.Cometbft.PrivValidatorLaddr = privVal
+		namadaComet.PrivValidatorLaddr = &privVal
 		// Disable indexing for sentries; they should not serve queries.
-
-		*overrideConfig.Ledger.Cometbft.TxIndex.Indexer = "null"
+		txIndexer := "null"
+		namadaComet.TxIndex.Indexer = &txIndexer
 	}
 	if v := spec.LogLevel; v != nil {
-		overrideConfig.Ledger.Cometbft.LogLevel = v
+		namadaComet.LogLevel = v
 	}
 	if v := spec.LogFormat; v != nil {
-		overrideConfig.Ledger.Cometbft.LogFormat = v
+		namadaComet.LogFormat = v
 	}
 
-	if err = config.MergeWithConfig(&overrideConfig); err != nil {
+	// Prepare for namada specified config
+	namadaConfig := crd.Spec.ChainSpec.Namada.ToNamadaConfig()
+	err = config.MergeWithConfig(&namadaConfig)
+	if err != nil {
 		return nil, err
 	}
 
