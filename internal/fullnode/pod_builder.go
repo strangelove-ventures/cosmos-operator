@@ -337,7 +337,7 @@ func ChainHomeDir(crd *cosmosv1.CosmosFullNode) string {
 
 func envVars(crd *cosmosv1.CosmosFullNode) []corev1.EnvVar {
 	home := ChainHomeDir(crd)
-	return []corev1.EnvVar{
+	envs := []corev1.EnvVar{
 		{Name: "HOME", Value: workDir},
 		{Name: "CHAIN_HOME", Value: home},
 		{Name: "GENESIS_FILE", Value: path.Join(home, getCometbftDir(crd)+"/config", "genesis.json")},
@@ -347,6 +347,20 @@ func envVars(crd *cosmosv1.CosmosFullNode) []corev1.EnvVar {
 		{Name: "CHAIN_ID", Value: crd.Spec.ChainSpec.ChainID},
 		{Name: "CHAIN_TYPE", Value: crd.Spec.ChainSpec.ChainType},
 	}
+	if len(crd.Spec.PodTemplate.Envs) != 0 {
+		for _, env := range crd.Spec.PodTemplate.Envs {
+			for k, v := range env {
+				envs = append(envs, corev1.EnvVar{
+					Name:  k,
+					Value: v,
+				},
+				)
+			}
+		}
+
+	}
+
+	return envs
 }
 
 func getCleanInitContainer(env []corev1.EnvVar, tpl cosmosv1.PodSpec) corev1.Container {

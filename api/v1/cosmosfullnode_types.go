@@ -194,6 +194,9 @@ type PodSpec struct {
 	// +optional
 	Metadata Metadata `json:"metadata"`
 
+	// +optional
+	Envs []map[string]string `json:"envs"`
+
 	// Image is the docker reference in "repository:tag" format. E.g. busybox:latest.
 	// This is for the main container running the chain process.
 	// Note: for granular control over which images are applied at certain block heights,
