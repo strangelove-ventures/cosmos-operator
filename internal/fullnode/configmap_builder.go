@@ -223,7 +223,7 @@ func addCosmosConfigToml(config *blockchain_toml.CosmosConfigFile, crd *cosmosv1
 		config.LogFormat = v
 	}
 
-	if spec.Comet.TomlOverrides != nil {
+	if spec.Comet != nil && spec.Comet.TomlOverrides != nil {
 		if err = config.MergeWithDefault(); err != nil {
 			return nil, err
 		}
@@ -365,7 +365,7 @@ func addNamadaConfigToml(config *blockchain_toml.NamadaConfigFile, crd *cosmosv1
 		}
 	}
 
-	if spec.Comet.TomlOverrides != nil {
+	if spec.Comet != nil && spec.Comet.TomlOverrides != nil {
 		if err = config.MergeWithDefault(); err != nil {
 			return nil, err
 		}
