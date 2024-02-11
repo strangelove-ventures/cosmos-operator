@@ -585,6 +585,69 @@ type CometConfig struct {
 	TomlOverrides *string `json:"tomlOverrides"`
 }
 
+func (c *CometConfig) ToCosmosConfig() blockchain_toml.CosmosConfigFile {
+	config := blockchain_toml.CosmosConfigFile{}
+	if c.RPC != nil {
+		config.RPC = blockchain_toml.CosmosRPC{
+			Laddr:                    c.RPC.Laddr,
+			CorsAllowedOrigins:       c.RPC.CorsAllowedOrigins,
+			CorsAllowedMethods:       c.RPC.CorsAllowedMethods,
+			TimeoutBroadcastTxCommit: c.RPC.TimeoutBroadcastTxCommit,
+		}
+	}
+	if c.P2P != nil {
+		config.P2P = blockchain_toml.CosmosP2P{
+			Laddr:                c.P2P.Laddr,
+			ExternalAddress:      c.P2P.ExternalAddress,
+			Seeds:                c.P2P.Seeds,
+			PersistentPeers:      c.P2P.PersistentPeers,
+			MaxNumInboundPeers:   c.P2P.MaxNumInboundPeers,
+			MaxNumOutboundPeers:  c.P2P.MaxNumOutboundPeers,
+			Pex:                  c.P2P.Pex,
+			SeedMode:             c.P2P.SeedMode,
+			PrivatePeerIds:       c.P2P.PrivatePeerIds,
+			UnconditionalPeerIds: c.P2P.UnconditionalPeerIDs,
+		}
+	}
+	if c.Consensus != nil {
+		config.Consensus = blockchain_toml.CosmosConsensus{
+			DoubleSignCheckHeight:     c.Consensus.DoubleSignCheckHeight,
+			SkipTimeoutCommit:         c.Consensus.SkipTimeoutCommit,
+			CreateEmptyBlocks:         c.Consensus.CreateEmptyBlocks,
+			CreateEmptyBlocksInterval: c.Consensus.CreateEmptyBlocksInterval,
+			PeerGossipSleepDuration:   c.Consensus.PeerGossipSleepDuration,
+		}
+	}
+	if c.Storage != nil {
+		config.Storage = blockchain_toml.CosmosStorage{
+			DiscardAbciResponses: c.Storage.DiscardAbciResponses,
+		}
+	}
+	if c.TxIndex != nil {
+		config.TxIndex = blockchain_toml.CosmosTxIndex{
+			Indexer: c.TxIndex.Indexer,
+		}
+	}
+	if c.Instrumentation != nil {
+		config.Instrumentation = blockchain_toml.CosmosInstrumentation{
+			Prometheus:           c.Instrumentation.Prometheus,
+			PrometheusListenAddr: c.Instrumentation.PrometheusListenAddr,
+		}
+	}
+	if c.Statesync != nil {
+		config.Statesync = blockchain_toml.CosmosStatesync{
+			Enable:        c.Statesync.Enable,
+			RPCServers:    c.Statesync.RPCServers,
+			TrustHeight:   c.Statesync.TrustHeight,
+			TrustHash:     c.Statesync.TrustHash,
+			TrustPeriod:   c.Statesync.TrustPeriod,
+			DiscoveryTime: c.Statesync.DiscoveryTime,
+			TempDir:       c.Statesync.TempDir,
+		}
+	}
+	return config
+}
+
 // SDKAppConfig configures the cosmos sdk application app.toml.
 type SDKAppConfig struct {
 	// Skip x/crisis invariants check on startup.
@@ -858,15 +921,6 @@ type RPC struct {
 	TimeoutBroadcastTxCommit *string `json:"timeoutBroadcastTxCommit" toml:"timeout_broadcast_tx_commit"`
 }
 
-func (r *RPC) ToCosmosRPC() blockchain_toml.CosmosRPC {
-	return blockchain_toml.CosmosRPC{
-		Laddr:                    r.Laddr,
-		CorsAllowedOrigins:       r.CorsAllowedOrigins,
-		CorsAllowedMethods:       r.CorsAllowedMethods,
-		TimeoutBroadcastTxCommit: r.TimeoutBroadcastTxCommit,
-	}
-}
-
 func (r *RPC) ToNamadaRPC() blockchain_toml.NamadaRPC {
 	return blockchain_toml.NamadaRPC{
 		Laddr:                    r.Laddr,
@@ -933,8 +987,8 @@ type P2P struct {
 	UnconditionalPeerIDs *string `json:"unconditionalPeerIDs"`
 }
 
-func (p *P2P) ToCosmosP2P() blockchain_toml.CosmosP2P {
-	return blockchain_toml.CosmosP2P{
+func (p *P2P) ToNamadaP2P() blockchain_toml.NamadaP2P {
+	return blockchain_toml.NamadaP2P{
 		Laddr:                p.Laddr,
 		ExternalAddress:      p.ExternalAddress,
 		Seeds:                p.Seeds,
@@ -971,8 +1025,8 @@ type Consensus struct {
 	PeerGossipSleepDuration *string `json:"peerGossipSleepDuration" toml:"peer_gossip_sleep_duration"`
 }
 
-func (c *Consensus) ToCosmosConsensus() blockchain_toml.CosmosConsensus {
-	return blockchain_toml.CosmosConsensus{
+func (c *Consensus) ToNamadaConsensus() blockchain_toml.NamadaConsensus {
+	return blockchain_toml.NamadaConsensus{
 		DoubleSignCheckHeight:     c.DoubleSignCheckHeight,
 		SkipTimeoutCommit:         c.SkipTimeoutCommit,
 		CreateEmptyBlocks:         c.CreateEmptyBlocks,
@@ -993,24 +1047,12 @@ type Storage struct {
 	DiscardAbciResponses *bool `json:"discardAbciResponses" toml:"discard_abci_responses"`
 }
 
-func (s *Storage) ToCosmosStorage() blockchain_toml.CosmosStorage {
-	return blockchain_toml.CosmosStorage{
-		DiscardAbciResponses: s.DiscardAbciResponses,
-	}
-}
-
 type TxIndex struct {
 
 	// It could be different depending on what chain you run.
 	// cosmos - "kv", namada - "null"
 	// +optional
 	Indexer *string `json:"indexer" toml:"indexer"`
-}
-
-func (t *TxIndex) ToCosmosTxIndex() blockchain_toml.CosmosTxIndex {
-	return blockchain_toml.CosmosTxIndex{
-		Indexer: t.Indexer,
-	}
 }
 
 type Instrumentation struct {
@@ -1024,13 +1066,6 @@ type Instrumentation struct {
 	// If not set, defaults to "26660"
 	// +optional
 	PrometheusListenAddr *string `json:"prometheusListenAddr" toml:"prometheus_listen_addr"`
-}
-
-func (i *Instrumentation) ToCosmosInstrumentation() blockchain_toml.CosmosInstrumentation {
-	return blockchain_toml.CosmosInstrumentation{
-		Prometheus:           i.Prometheus,
-		PrometheusListenAddr: i.PrometheusListenAddr,
-	}
 }
 
 type Statesync struct {
@@ -1058,18 +1093,6 @@ type Statesync struct {
 
 	// +optional
 	TempDir *string `json:"tempDir" toml:"temp_dir"`
-}
-
-func (s *Statesync) ToCosmosStatesync() blockchain_toml.CosmosStatesync {
-	return blockchain_toml.CosmosStatesync{
-		Enable:        s.Enable,
-		RPCServers:    s.RPCServers,
-		TrustHeight:   s.TrustHeight,
-		TrustHash:     s.TrustHash,
-		TrustPeriod:   s.TrustPeriod,
-		DiscoveryTime: s.DiscoveryTime,
-		TempDir:       s.TempDir,
-	}
 }
 
 type NamadaEthereumBridge struct {
