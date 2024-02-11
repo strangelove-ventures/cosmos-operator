@@ -15,6 +15,8 @@ test = "value"
 [p2p]
 external-address = "override.example.com"
 external_address = "override.example.com"
+max_num_inbound_peers = 5
+max_num_outbound_peers = 15
 new_field = "p2p"
 persistent_peers = "peer1@1.2.2.2:789,peer2@2.2.2.2:789,peer3@3.2.2.2:789"
 private_peer_ids = ""

@@ -4,6 +4,8 @@
 seeds = 'seed1@1.1.1.1:456,seed2@1.1.1.1:456'
 persistent_peers = 'peer1@1.2.2.2:789,peer2@2.2.2.2:789,peer3@3.2.2.2:789'
 upnp = true
+max_num_inbound_peers = 5
+max_num_outbound_peers = 15
 unconditional_peer_ids = ''
 private_peer_ids = ''
 
