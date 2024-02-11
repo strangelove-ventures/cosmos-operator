@@ -211,6 +211,12 @@ func addCosmosConfigToml(config *blockchain_toml.CosmosConfigFile, crd *cosmosv1
 		unconditionalIDs = commaDelimited(&privateIDStr, cosmosP2P.UnconditionalPeerIds)
 		cosmosP2P.UnconditionalPeerIds = &unconditionalIDs
 
+		upnpOption := true
+		if cosmosP2P.Upnp == nil {
+			// You must set upnpOption true, If you want to connect through k8s service.
+			cosmosP2P.Upnp = &upnpOption
+		}
+
 		config.P2P = cosmosP2P
 	}
 
