@@ -76,9 +76,7 @@ func (cmc ConfigMapControl) Reconcile(ctx context.Context, log kube.Logger, crd 
 
 	cksums := make(ConfigChecksums)
 	for _, cm := range want {
-		log.Debug("configmap_control.go debugging: Check if cksums really changed: \nbefore", cksums[client.ObjectKeyFromObject(cm.Object())])
 		cksums[client.ObjectKeyFromObject(cm.Object())] = cm.Revision()
-		log.Debug("configmap_control.go debugging: Check if cksums really changed: \nafter", cksums[client.ObjectKeyFromObject(cm.Object())])
 	}
 	return cksums, nil
 }
