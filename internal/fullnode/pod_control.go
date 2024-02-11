@@ -60,6 +60,7 @@ func (pc PodControl) Reconcile(
 		return false, kube.TransientError(fmt.Errorf("list existing pods: %w", err))
 	}
 	wantPods, err := BuildPods(crd, cksums)
+	reporter.Info("DEBUGGING pods: " + wantPods[0].Object().Annotations["cosmos.bharvest/config-checksum"])
 	if err != nil {
 		return false, kube.UnrecoverableError(fmt.Errorf("build pods: %w", err))
 	}
@@ -101,7 +102,6 @@ func (pc PodControl) Reconcile(
 	}
 
 	diffedUpdates := diffed.Updates()
-	reporter.Info("DEBUGGING pod_control.go diffedUpdates " + diffedUpdates[0].ObjectMeta.Annotations["cosmos.bharvest/config-checksum"])
 	if len(diffedUpdates) > 0 {
 		var (
 			updatedPods      = 0
@@ -193,7 +193,6 @@ func (pc PodControl) Reconcile(
 			// All pods are updated.
 			return false, nil
 		}
-		reporter.Info("DEBUGGING pod_control.go afterUpdate, otherUpdates " + otherUpdates[0].ObjectMeta.Annotations["cosmos.bharvest/config-checksum"])
 		// Signal requeue.
 		return true, nil
 	}
