@@ -345,10 +345,12 @@ func addNamadaConfigToml(config *blockchain_toml.NamadaConfigFile, crd *cosmosv1
 	}
 
 	// Prepare for namada specified config
-	namadaConfig := crd.Spec.ChainSpec.Namada.ToNamadaConfig()
-	err = config.MergeWithConfig(&namadaConfig)
-	if err != nil {
-		return nil, err
+	if crd.Spec.ChainSpec.Namada != nil {
+		namadaConfig := crd.Spec.ChainSpec.Namada.ToNamadaConfig()
+		err = config.MergeWithConfig(&namadaConfig)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if spec.Comet.TomlOverrides != nil {
