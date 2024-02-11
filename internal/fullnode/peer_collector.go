@@ -144,43 +144,49 @@ func (c PeerCollector) addExternalAddress(ctx context.Context, peers Peers, crd 
 	if err := c.client.Get(ctx, client.ObjectKey{Name: svcName, Namespace: crd.Namespace}, &svc); err != nil {
 		return kube.TransientError(fmt.Errorf("get server %s: %w", svcName, err))
 	}
-	if (svc.Spec.Type != corev1.ServiceTypeLoadBalancer) && (svc.Spec.Type != corev1.ServiceTypeNodePort) {
-		return nil
-	}
 
 	// Note: The externalIP defaults to spec.InstanceOverrides[instance].ExternalAddress.
-	// but If not set, it'll be set according below.
-	if svc.Spec.Type == corev1.ServiceTypeLoadBalancer {
-
+	// but If not set, it'll be set according to.
+	if (svc.Spec.Type == corev1.ServiceTypeLoadBalancer) || (svc.Spec.Type == corev1.ServiceTypeNodePort) {
 		objKey := c.objectKey(crd, ordinal)
 		info := peers[objKey]
 		info.hasExternalAddress = true
 		defer func() { peers[objKey] = info }()
+		externalAddress, err := GetExternalAddress(svc)
+		if err != nil {
+			return err
+		}
+		info.ExternalAddress = externalAddress
+
+		return nil
+	}
+
+	return nil
+}
+
+func GetExternalAddress(svc corev1.Service) (string, error) {
+	if svc.Spec.Type == corev1.ServiceTypeLoadBalancer {
 
 		ingress := svc.Status.LoadBalancer.Ingress
 		if len(ingress) == 0 {
-			return nil
+			return "", nil
 		}
 
 		lb := ingress[0]
 		host := lo.Ternary(lb.IP != "", lb.IP, lb.Hostname)
 		if host != "" {
-			info.ExternalAddress = net.JoinHostPort(host, strconv.Itoa(p2pPort))
+			return net.JoinHostPort(host, strconv.Itoa(p2pPort)), nil
 		}
 	} else if svc.Spec.Type == corev1.ServiceTypeNodePort {
+
 		resp, err := resty.New().R().
 			Get("http://ipv4.icanhazip.com")
 		var externalIP string
 		if err != nil || resp.IsError() {
-			return err
+			return "", err
 		} else {
 			externalIP = resp.String()
 		}
-
-		objKey := c.objectKey(crd, ordinal)
-		info := peers[objKey]
-		info.hasExternalAddress = true
-		defer func() { peers[objKey] = info }()
 
 		var nodePort int32
 		for _, i := range svc.Spec.Ports {
@@ -189,9 +195,7 @@ func (c PeerCollector) addExternalAddress(ctx context.Context, peers Peers, crd 
 			}
 		}
 
-		info.ExternalAddress = net.JoinHostPort(externalIP, strconv.Itoa(int(nodePort)))
-
+		return net.JoinHostPort(externalIP, strconv.Itoa(int(nodePort))), nil
 	}
-
-	return nil
+	return "", fmt.Errorf("incorrect service type: %s", svc.Spec.Type)
 }
