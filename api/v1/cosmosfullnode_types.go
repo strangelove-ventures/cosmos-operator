@@ -561,10 +561,6 @@ type CometConfig struct {
 	// +optional
 	P2P *P2P `json:"p2p" toml:"p2p"`
 
-	// Mempool configuration for your config.toml
-	// +optional
-	Mempool *Mempool `json:"mempool" toml:"mempool"`
-
 	// Consensus configuration for your config.toml
 	// +optional
 	Consensus *Consensus `json:"consensus" toml:"consensus"`
@@ -860,13 +856,19 @@ type RPC struct {
 	// If not set, defaults to "10000ms"(also "10s")
 	// +optional
 	TimeoutBroadcastTxCommit *string `json:"timeoutBroadcastTxCommit" toml:"timeout_broadcast_tx_commit"`
-
-	// +optional
-	TomlOverrides *string `json:"tomlOverrides"`
 }
 
 func (r *RPC) ToCosmosRPC() blockchain_toml.CosmosRPC {
 	return blockchain_toml.CosmosRPC{
+		Laddr:                    r.Laddr,
+		CorsAllowedOrigins:       r.CorsAllowedOrigins,
+		CorsAllowedMethods:       r.CorsAllowedMethods,
+		TimeoutBroadcastTxCommit: r.TimeoutBroadcastTxCommit,
+	}
+}
+
+func (r *RPC) ToNamadaRPC() blockchain_toml.NamadaRPC {
+	return blockchain_toml.NamadaRPC{
 		Laddr:                    r.Laddr,
 		CorsAllowedOrigins:       r.CorsAllowedOrigins,
 		CorsAllowedMethods:       r.CorsAllowedMethods,
@@ -929,10 +931,6 @@ type P2P struct {
 	// Comma delimited list of node/peer IDs, to which a connection will be (re)established ignoring any existing limits.
 	// +optional
 	UnconditionalPeerIDs *string `json:"unconditionalPeerIDs"`
-
-	// You can override [RPC] configs at config.toml overwrite this field.
-	// +optional
-	TomlOverrides *string `json:"tomlOverrides"`
 }
 
 func (p *P2P) ToCosmosP2P() blockchain_toml.CosmosP2P {
@@ -948,12 +946,6 @@ func (p *P2P) ToCosmosP2P() blockchain_toml.CosmosP2P {
 		PrivatePeerIds:       p.PrivatePeerIds,
 		UnconditionalPeerIds: p.UnconditionalPeerIDs,
 	}
-}
-
-type Mempool struct {
-	// You can override [Mempool] configs at config.toml overwrite this field.
-	// +optional
-	TomlOverrides *string `json:"tomlOverrides"`
 }
 
 type Consensus struct {
@@ -977,9 +969,6 @@ type Consensus struct {
 	// If not set, defaults to 100ms
 	// +optional
 	PeerGossipSleepDuration *string `json:"peerGossipSleepDuration" toml:"peer_gossip_sleep_duration"`
-
-	// +optional
-	TomlOverrides *string `json:"tomlOverrides"`
 }
 
 func (c *Consensus) ToCosmosConsensus() blockchain_toml.CosmosConsensus {
@@ -1016,9 +1005,6 @@ type TxIndex struct {
 	// cosmos - "kv", namada - "null"
 	// +optional
 	Indexer *string `json:"indexer" toml:"indexer"`
-
-	// +optional
-	TomlOverrides *string `json:"tomlOverrides"`
 }
 
 func (t *TxIndex) ToCosmosTxIndex() blockchain_toml.CosmosTxIndex {
@@ -1038,9 +1024,6 @@ type Instrumentation struct {
 	// If not set, defaults to "26660"
 	// +optional
 	PrometheusListenAddr *string `json:"prometheusListenAddr" toml:"prometheus_listen_addr"`
-
-	// +optional
-	TomlOverrides *string `json:"tomlOverrides"`
 }
 
 func (i *Instrumentation) ToCosmosInstrumentation() blockchain_toml.CosmosInstrumentation {
@@ -1075,9 +1058,6 @@ type Statesync struct {
 
 	// +optional
 	TempDir *string `json:"tempDir" toml:"temp_dir"`
-
-	// +optional
-	TomlOverrides *string `json:"tomlOverrides"`
 }
 
 func (s *Statesync) ToCosmosStatesync() blockchain_toml.CosmosStatesync {
