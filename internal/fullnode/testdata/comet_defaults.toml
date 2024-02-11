@@ -72,7 +72,7 @@ seed_mode = false
 seeds = "seed1@1.1.1.1:456,seed2@1.1.1.1:456"
 send_rate = 5120000
 unconditional_peer_ids = ""
-upnp = false
+upnp = true
 
 [rpc]
 cors_allowed_headers = ["Origin", "Accept", "Content-Type", "X-Requested-With", "X-Server-Time"]

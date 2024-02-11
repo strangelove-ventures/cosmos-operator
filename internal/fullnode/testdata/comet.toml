@@ -69,7 +69,7 @@ seed_mode = false
 seeds = ""
 send_rate = 5120000
 unconditional_peer_ids = ""
-upnp = false
+upnp = true
 
 [rpc]
 cors_allowed_headers = ["Origin", "Accept", "Content-Type", "X-Requested-With", "X-Server-Time"]

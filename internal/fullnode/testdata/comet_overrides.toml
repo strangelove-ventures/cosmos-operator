@@ -78,7 +78,7 @@ seed_mode = false
 seeds = "override@seed"
 send_rate = 5120000
 unconditional_peer_ids = ""
-upnp = false
+upnp = true
 
 [rpc]
 cors-allowed-origins = ["override"]
