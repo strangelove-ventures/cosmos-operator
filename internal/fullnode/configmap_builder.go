@@ -169,7 +169,7 @@ func addCosmosConfigToml(config *blockchain_toml.CosmosConfigFile, crd *cosmosv1
 
 		if comet.RPC.TomlOverrides != nil {
 			RPCTomlOverrides := blockchain_toml.CosmosConfigFile{}
-			if err = toml.Unmarshal([]byte(*comet.P2P.TomlOverrides), &RPCTomlOverrides); err != nil {
+			if err = toml.Unmarshal([]byte(*comet.RPC.TomlOverrides), &RPCTomlOverrides); err != nil {
 				return nil, err
 			}
 			err = config.MergeWithConfig(RPCTomlOverrides)
