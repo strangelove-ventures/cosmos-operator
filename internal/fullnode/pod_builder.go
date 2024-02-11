@@ -399,24 +399,6 @@ echo "Initializing into tmp dir for downstream processing..."
 	}
 }
 
-func getNamadaChainInitContainer(env []corev1.EnvVar, tpl cosmosv1.PodSpec, initCmd string) corev1.Container {
-	return corev1.Container{
-		Name:    chainInitContainer,
-		Image:   tpl.Image,
-		Command: []string{"sh"},
-		Args: []string{"-c",
-			fmt.Sprintf(`
-set -eu
-echo "Initializing into tmp dir for downstream processing..."
-%s --home "$HOME/.tmp"
-`, initCmd),
-		},
-		Env:             env,
-		ImagePullPolicy: tpl.ImagePullPolicy,
-		WorkingDir:      workDir,
-	}
-}
-
 func getGenesisInitContainer(env []corev1.EnvVar, tpl cosmosv1.PodSpec, genesisCmd string, genesisArgs []string, genesisImage string) corev1.Container {
 	return corev1.Container{
 		Name:            "genesis-init",
@@ -465,7 +447,7 @@ if [ "$CHAIN_TYPE" = "` + chainTypeCosmos + `" ] || [ "$CHAIN_TYPE" = "` + chain
 	config-merge -f toml "$TMP_DIR/config.toml" "$OVERLAY_DIR/config-overlay.toml" > "$CONFIG_DIR/config.toml"
 	config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CONFIG_DIR/app.toml"
 elif [ "$CHAIN_TYPE" = "` + chainTypeNamada + `" ]; then
-	config-merge -f toml "$CHAIN_HOME/$CHAIN_ID/config.toml" "$OVERLAY_DIR/config-overlay.toml" > "$CHAIN_HOME/$CHAIN_ID/config.toml"
+	config-merge -f toml "$TMP_DIR/config.toml" "$OVERLAY_DIR/config-overlay.toml" > "$CHAIN_HOME/$CHAIN_ID/config.toml"
 fi
 
 `,
@@ -508,10 +490,7 @@ func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Conta
 			})
 		}
 	} else if crd.Spec.ChainSpec.ChainType == chainTypeNamada {
-		initCmd := fmt.Sprintf("%s init ", "cometbft")
-
 		required = append(required, getCleanInitContainer(env, tpl))
-		required = append(required, getNamadaChainInitContainer(env, tpl, initCmd))
 		required = append(required, getGenesisInitContainer(env, tpl, genesisCmd, genesisArgs, crd.Spec.PodTemplate.Image))
 		required = append(required, getAddrbookInitContainer(env, tpl, addrbookCmd, addrbookArgs))
 		required = append(required, getConfigMergeContainer(env, tpl))
