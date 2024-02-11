@@ -2901,6 +2901,12 @@ spec:
                       - name
                       type: object
                     type: array
+                  envs:
+                    items:
+                      additionalProperties:
+                        type: string
+                      type: object
+                    type: array
                   image:
                     description: 'Image is the docker reference in "repository:tag"
                       format. E.g. busybox:latest. This is for the main container

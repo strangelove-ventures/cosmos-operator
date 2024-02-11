@@ -779,6 +779,19 @@ func (in *PersistentVolumeClaimSpec) DeepCopy() *PersistentVolumeClaimSpec {
 func (in *PodSpec) DeepCopyInto(out *PodSpec) {
 	*out = *in
 	in.Metadata.DeepCopyInto(&out.Metadata)
+	if in.Envs != nil {
+		in, out := &in.Envs, &out.Envs
+		*out = make([]map[string]string, len(*in))
+		for i := range *in {
+			if (*in)[i] != nil {
+				in, out := &(*in)[i], &(*out)[i]
+				*out = make(map[string]string, len(*in))
+				for key, val := range *in {
+					(*out)[key] = val
+				}
+			}
+		}
+	}
 	if in.ImagePullSecrets != nil {
 		in, out := &in.ImagePullSecrets, &out.ImagePullSecrets
 		*out = make([]corev1.LocalObjectReference, len(*in))
