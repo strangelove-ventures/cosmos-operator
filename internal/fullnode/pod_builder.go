@@ -235,18 +235,6 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 			},
 		},
 		{
-			Name: volConfig,
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{Name: instanceName(b.crd, ordinal)},
-					Items: []corev1.KeyToPath{
-						{Key: configOverlayFile, Path: configOverlayFile},
-						{Key: appOverlayFile, Path: appOverlayFile},
-					},
-				},
-			},
-		},
-		{
 			Name: volSystemTmp,
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
@@ -263,6 +251,23 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 				},
 			},
 		},
+	}
+	if b.crd.Spec.ChainSpec.ChainType == chainTypeNamada {
+
+	} else {
+		pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{
+			Name: volConfig,
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{Name: instanceName(b.crd, ordinal)},
+					Items: []corev1.KeyToPath{
+						{Key: configOverlayFile, Path: configOverlayFile},
+						{Key: appOverlayFile, Path: appOverlayFile},
+					},
+				},
+			},
+		},
+		)
 	}
 
 	// Mounts required by all containers.
