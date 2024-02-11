@@ -59,6 +59,9 @@ func (pc PodControl) Reconcile(
 	); err != nil {
 		return false, kube.TransientError(fmt.Errorf("list existing pods: %w", err))
 	}
+	for _, i := range cksums {
+		reporter.Info("DEBUGGING pod_control.go cksums: " + i)
+	}
 	wantPods, err := BuildPods(crd, cksums)
 	if err != nil {
 		return false, kube.UnrecoverableError(fmt.Errorf("build pods: %w", err))
