@@ -471,6 +471,19 @@ func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Conta
 		required = append(required, getGenesisInitContainer(env, tpl, genesisCmd, genesisArgs, infraToolImage))
 		required = append(required, getAddrbookInitContainer(env, tpl, addrbookCmd, addrbookArgs))
 		required = append(required, getConfigMergeContainer(env, tpl))
+
+		if willRestoreFromSnapshot(crd) {
+			cmd, args := DownloadSnapshotCommand(crd.Spec.ChainSpec)
+			required = append(required, corev1.Container{
+				Name:            "snapshot-restore",
+				Image:           infraToolImage,
+				Command:         []string{cmd},
+				Args:            args,
+				Env:             env,
+				ImagePullPolicy: tpl.ImagePullPolicy,
+				WorkingDir:      workDir,
+			})
+		}
 	} else if crd.Spec.ChainSpec.ChainType == chainTypeNamada {
 		initCmd := fmt.Sprintf("%s init ", "cometbft")
 
@@ -503,19 +516,6 @@ func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Conta
 	//		WorkingDir:      workDir,
 	//	})
 	//}
-
-	if willRestoreFromSnapshot(crd) {
-		cmd, args := DownloadSnapshotCommand(crd.Spec.ChainSpec)
-		required = append(required, corev1.Container{
-			Name:            "snapshot-restore",
-			Image:           infraToolImage,
-			Command:         []string{cmd},
-			Args:            args,
-			Env:             env,
-			ImagePullPolicy: tpl.ImagePullPolicy,
-			WorkingDir:      workDir,
-		})
-	}
 
 	versionCheckCmd := []string{"/manager", "versioncheck"}
 	if crd.Spec.ChainSpec.DatabaseBackend != nil {
