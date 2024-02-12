@@ -5,7 +5,6 @@ import (
 	_ "embed"
 	"fmt"
 	blockchain_toml "github.com/bharvest-devops/blockchain-toml"
-	"github.com/pelletier/go-toml/v2"
 	"strings"
 
 	cosmosv1 "github.com/bharvest-devops/cosmos-operator/api/v1"
@@ -223,10 +222,15 @@ func addCosmosConfigToml(config *blockchain_toml.CosmosConfigFile, crd *cosmosv1
 		config.LogFormat = v
 	}
 
+	config.Moniker = &instance
 	if spec.Comet != nil && spec.Comet.TomlOverrides != nil {
+		err := config.MergeWithDefault()
+		if err != nil {
+			return nil, err
+		}
 		return config.ExportMergeWithTomlOverrides([]byte(*spec.Comet.TomlOverrides))
 	}
-	return toml.Marshal(config)
+	return config.ExportMergeWithDefault()
 }
 
 func addCosmosAppToml(app *blockchain_toml.CosmosAppFile, crd *cosmosv1.CosmosFullNode) ([]byte, error) {
@@ -273,9 +277,13 @@ func addCosmosAppToml(app *blockchain_toml.CosmosAppFile, crd *cosmosv1.CosmosFu
 	}
 
 	if cosmosSDK.TomlOverrides != nil {
+		err := app.MergeWithDefault()
+		if err != nil {
+			return nil, err
+		}
 		return app.ExportMergeWithTomlOverrides([]byte(*cosmosSDK.TomlOverrides))
 	}
-	return toml.Marshal(app)
+	return app.ExportMergeWithDefault()
 }
 
 func addNamadaConfigToml(config *blockchain_toml.NamadaConfigFile, crd *cosmosv1.CosmosFullNode, instance string, peers Peers) ([]byte, error) {
@@ -355,8 +363,13 @@ func addNamadaConfigToml(config *blockchain_toml.NamadaConfigFile, crd *cosmosv1
 	config.Ledger.ChainID = crd.Spec.ChainSpec.ChainID
 	config.Ledger.Shell.BaseDir = ChainHomeDir(crd) + getCometbftDir(crd)
 
+	config.Ledger.Cometbft.Moniker = &instance
 	if spec.Comet != nil && spec.Comet.TomlOverrides != nil {
+		err = config.MergeWithDefault()
+		if err != nil {
+			return nil, err
+		}
 		return config.ExportMergeWithTomlOverrides([]byte(*spec.Comet.TomlOverrides))
 	}
-	return toml.Marshal(config)
+	return config.ExportMergeWithDefault()
 }

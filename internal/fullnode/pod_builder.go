@@ -447,8 +447,7 @@ if [ "$CHAIN_TYPE" = "` + chainTypeCosmos + `" ] || [ "$CHAIN_TYPE" = "` + chain
 	config-merge -f toml "$TMP_DIR/config.toml" "$OVERLAY_DIR/config-overlay.toml" > "$CONFIG_DIR/config.toml"
 	config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CONFIG_DIR/app.toml"
 elif [ "$CHAIN_TYPE" = "` + chainTypeNamada + `" ]; then
-	cat $CHAIN_HOME/$CHAIN_ID/config.toml
-	config-merge -f toml "$CHAIN_HOME/$CHAIN_ID/config.toml" "$OVERLAY_DIR/config-overlay.toml" > "$CHAIN_HOME/$CHAIN_ID/config.toml"
+	cat "$OVERLAY_DIR/config-overlay.toml" > "$CHAIN_HOME/$CHAIN_ID/config.toml"
 fi
 
 `,
