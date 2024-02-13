@@ -43,6 +43,9 @@ func TestBuildConfigMaps(t *testing.T) {
 		crd.Spec.PodTemplate.Image = "agoric:v6.0.0"
 		crd.Spec.ChainSpec.Network = "testnet"
 
+		tomlOverrides := `moniker = "agoric"`
+		crd.Spec.ChainSpec.Comet.TomlOverrides = &tomlOverrides
+
 		cms, err := BuildConfigMaps(&crd, nil)
 		require.NoError(t, err)
 		require.Equal(t, 3, len(cms))
