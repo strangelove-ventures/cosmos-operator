@@ -409,7 +409,8 @@ func getNamadaChainInitContainer(env []corev1.EnvVar, tpl cosmosv1.PodSpec) core
 set -eu
 echo "Initializing into tmp dir for downstream processing..."
 mkdir -p $HOME/.tmp/config
-cp $CHAIN_HOME/$CHAIN_ID/config.toml "$HOME/.tmp/config/config.toml"
+cat $CHAIN_HOME/$CHAIN_ID/config.toml
+cp "$CHAIN_HOME/$CHAIN_ID/config.toml" "$HOME/.tmp/config/"
 `),
 		},
 		Env:             env,
