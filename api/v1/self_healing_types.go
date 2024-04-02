@@ -26,6 +26,7 @@ type SelfHealSpec struct {
 	//
 	// +optional
 	HeightDriftMitigation *HeightDriftMitigationSpec `json:"heightDriftMitigation"`
+	StuckPodMitigation    *StuckPodMitigationSpec    `json:"stuckPodMitigation"`
 }
 
 type PVCAutoScaleSpec struct {
@@ -60,6 +61,11 @@ type HeightDriftMitigationSpec struct {
 	// in-sync even though they can lag thousands of blocks behind the chain tip and cannot catch up.
 	// A "rebooted" pod /status reports itself correctly and allows it to catch up to chain tip.
 	// +kubebuilder:validation:Minimum:=1
+	Threshold uint32 `json:"threshold"`
+}
+
+type StuckPodMitigationSpec struct {
+	// If a pod is stuck in a non-running state for this duration, the pod is deleted.
 	Threshold uint32 `json:"threshold"`
 }
 

@@ -42,6 +42,7 @@ type SelfHealingReconciler struct {
 	driftDetector   fullnode.DriftDetection
 	pvcAutoScaler   *fullnode.PVCAutoScaler
 	recorder        record.EventRecorder
+	stuckDetector   *fullnode.StuckPodDetection
 }
 
 func NewSelfHealing(
@@ -85,6 +86,7 @@ func (r *SelfHealingReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	r.pvcAutoScale(ctx, reporter, crd)
 	r.mitigateHeightDrift(ctx, reporter, crd)
+	r.mitigateStuckPods(ctx, reporter, crd)
 
 	return ctrl.Result{RequeueAfter: 60 * time.Second}, nil
 }
@@ -134,6 +136,18 @@ func (r *SelfHealingReconciler) mitigateHeightDrift(ctx context.Context, reporte
 	if deleted > 0 {
 		msg := fmt.Sprintf("Height lagged behind by %d or more blocks; deleted pod(s)", crd.Spec.SelfHeal.HeightDriftMitigation.Threshold)
 		reporter.RecordInfo("HeightDriftMitigation", msg)
+	}
+}
+
+func (r *SelfHealingReconciler) mitigateStuckPods(ctx context.Context, reporter kube.Reporter, crd *cosmosv1.CosmosFullNode) {
+	if crd.Spec.SelfHeal.StuckPodMitigation == nil {
+		return
+	}
+
+	pods := r.stuckDetector.StuckPods(ctx, crd)
+
+	if pods != nil {
+		fmt.Println(pods)
 	}
 }
 
