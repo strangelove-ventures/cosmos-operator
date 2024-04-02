@@ -28,6 +28,7 @@ import (
 	"github.com/strangelove-ventures/cosmos-operator/internal/fullnode"
 	"github.com/strangelove-ventures/cosmos-operator/internal/healthcheck"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -122,17 +123,7 @@ func (r *SelfHealingReconciler) mitigateHeightDrift(ctx context.Context, reporte
 	}
 
 	pods := r.driftDetector.LaggingPods(ctx, crd)
-	var deleted int
-	for _, pod := range pods {
-		// CosmosFullNodeController will detect missing pod and re-create it.
-		if err := r.Delete(ctx, pod); kube.IgnoreNotFound(err) != nil {
-			reporter.Error(err, "Failed to delete pod", "pod", pod.Name)
-			reporter.RecordError("HeightDriftMitigationDeletePod", err)
-			continue
-		}
-		reporter.Info("Deleted pod for meeting height drift threshold", "pod", pod.Name)
-		deleted++
-	}
+	deleted := r.DeletePods(pods, "HeightDriftMitigationDeletePod", reporter, ctx)
 	if deleted > 0 {
 		msg := fmt.Sprintf("Height lagged behind by %d or more blocks; deleted pod(s)", crd.Spec.SelfHeal.HeightDriftMitigation.Threshold)
 		reporter.RecordInfo("HeightDriftMitigation", msg)
@@ -145,10 +136,25 @@ func (r *SelfHealingReconciler) mitigateStuckPods(ctx context.Context, reporter 
 	}
 
 	pods := r.stuckDetector.StuckPods(ctx, crd)
-
-	if pods != nil {
-		fmt.Println(pods)
+	deleted := r.DeletePods(pods, "StuckPodMitigationDeletePod", reporter, ctx)
+	if deleted > 0 {
+		msg := fmt.Sprintf("Stuck for %d seconds; deleted pod(s)", crd.Spec.SelfHeal.StuckPodMitigation.Threshold)
+		reporter.RecordInfo("StuckPodMitigation", msg)
 	}
+}
+
+func (r *SelfHealingReconciler) DeletePods(pods []*v1.Pod, reason string, reporter kube.Reporter, ctx context.Context) int {
+	var deleted int
+	for _, pod := range pods {
+		if err := r.Delete(ctx, pod); kube.IgnoreNotFound(err) != nil {
+			reporter.Error(err, "Failed to delete pod", "pod", pod.Name)
+			reporter.RecordError(reason, err)
+			continue
+		}
+		reporter.Info("Deleted pod for ", reason, " pod:", pod.Name)
+		deleted++
+	}
+	return deleted
 }
 
 // SetupWithManager sets up the controller with the Manager.

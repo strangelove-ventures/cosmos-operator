@@ -26,7 +26,10 @@ type SelfHealSpec struct {
 	//
 	// +optional
 	HeightDriftMitigation *HeightDriftMitigationSpec `json:"heightDriftMitigation"`
-	StuckPodMitigation    *StuckPodMitigationSpec    `json:"stuckPodMitigation"`
+	// Take action when a pod is stuck.
+	//
+	// +optional
+	StuckPodMitigation *StuckPodMitigationSpec `json:"stuckPodMitigation"`
 }
 
 type PVCAutoScaleSpec struct {
