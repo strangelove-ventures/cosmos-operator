@@ -5,23 +5,25 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type StuckPodDetection struct {
-	//available      func(pods []*corev1.Pod, minReady time.Duration, now time.Time) []*corev1.Pod
-	collector StatusCollector
-	//computeRollout func(maxUnavail *intstr.IntOrString, desired, ready int) int
+	available      func(pods []*corev1.Pod, minReady time.Duration, now time.Time) []*corev1.Pod
+	collector      StatusCollector
+	computeRollout func(maxUnavail *intstr.IntOrString, desired, ready int) int
 }
 
-func NewStuckDetection(collector StatusCollector) DriftDetection {
-	return DriftDetection{
+func NewStuckDetection(collector StatusCollector) StuckPodDetection {
+	return StuckPodDetection{
 		available:      kube.AvailablePods,
 		collector:      collector,
 		computeRollout: kube.ComputeRollout,
