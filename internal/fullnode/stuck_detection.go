@@ -35,24 +35,35 @@ func (d StuckPodDetection) StuckPods(ctx context.Context, crd *cosmosv1.CosmosFu
 
 	pods := d.collector.Collect(ctx, client.ObjectKeyFromObject(crd)).Synced().Pods()
 
-	fmt.Println(pods[0])
+	for i, pod := range pods {
 
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		panic(err.Error())
+		config, err := rest.InClusterConfig()
+		if err != nil {
+			panic(err.Error())
+		}
+
+		clientset, err := kubernetes.NewForConfig(config)
+		if err != nil {
+			panic(err.Error())
+		}
+
+		testString := getPodLogsLastLine(clientset, pod)
+		fmt.Println(testString)
+		podIsStuck := isPodStuck(testString)
+
+		//MORE TODO HERE
+		if podIsStuck {
+			pods = removeElement(pods, i)
+		}
+
 	}
-
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		panic(err.Error())
-	}
-
-	testString := getPodLogsLastLine(clientset, pods[0])
-	fmt.Println(testString)
-
-	//MORE TODO HERE
 
 	return []*corev1.Pod{}
+}
+
+
+func isPodStuck(testString string) bool {
+	return strings.Contains(inputString, "SignerListener: Connected")
 }
 
 func getPodLogsLastLine(clientset *kubernetes.Clientset, pod *corev1.Pod) string {
@@ -77,4 +88,10 @@ func getPodLogsLastLine(clientset *kubernetes.Clientset, pod *corev1.Pod) string
 		return logLines[len(logLines)-1]
 	}
 	return ""
+}
+
+}
+
+func removeElement(slice []*corev1.Pod, index int) []*corev1.Pod {
+	return append(slice[:index], slice[index+1:]...)
 }
