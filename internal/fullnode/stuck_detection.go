@@ -47,9 +47,9 @@ func (d StuckPodDetection) StuckPods(ctx context.Context, crd *cosmosv1.CosmosFu
 			panic(err.Error())
 		}
 
-		testString := getPodLogsLastLine(clientset, pod)
-		fmt.Println(testString)
-		podIsStuck := isPodStuck(testString)
+		receivedString := getPodLogsLastLine(clientset, pod)
+		fmt.Println(receivedString)
+		podIsStuck := isPodStuck(receivedString)
 
 		//MORE TODO HERE
 		if podIsStuck {
@@ -61,9 +61,8 @@ func (d StuckPodDetection) StuckPods(ctx context.Context, crd *cosmosv1.CosmosFu
 	return []*corev1.Pod{}
 }
 
-
-func isPodStuck(testString string) bool {
-	return strings.Contains(inputString, "SignerListener: Connected")
+func isPodStuck(receivedString string) bool {
+	return strings.Contains(receivedString, "SignerListener: Connected")
 }
 
 func getPodLogsLastLine(clientset *kubernetes.Clientset, pod *corev1.Pod) string {
@@ -88,8 +87,6 @@ func getPodLogsLastLine(clientset *kubernetes.Clientset, pod *corev1.Pod) string
 		return logLines[len(logLines)-1]
 	}
 	return ""
-}
-
 }
 
 func removeElement(slice []*corev1.Pod, index int) []*corev1.Pod {
