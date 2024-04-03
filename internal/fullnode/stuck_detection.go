@@ -32,11 +32,9 @@ func NewStuckDetection(collector StatusCollector) StuckPodDetection {
 
 // StuckPods returns pods that are stuck on a block height due to a cometbft issue that manifests on sentries using horcrux.
 func (d StuckPodDetection) StuckPods(ctx context.Context, crd *cosmosv1.CosmosFullNode) []*corev1.Pod {
-
 	pods := d.collector.Collect(ctx, client.ObjectKeyFromObject(crd)).Synced().Pods()
 
 	for i, pod := range pods {
-
 		config, err := rest.InClusterConfig()
 		if err != nil {
 			panic(err.Error())
@@ -55,9 +53,7 @@ func (d StuckPodDetection) StuckPods(ctx context.Context, crd *cosmosv1.CosmosFu
 		if podIsStuck {
 			pods = removeElement(pods, i)
 		}
-
 	}
-
 	return pods
 }
 
