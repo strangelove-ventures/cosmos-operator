@@ -58,7 +58,7 @@ func (d StuckPodDetection) StuckPods(ctx context.Context, crd *cosmosv1.CosmosFu
 
 	}
 
-	return []*corev1.Pod{}
+	return pods
 }
 
 func isPodStuck(receivedString string) bool {
