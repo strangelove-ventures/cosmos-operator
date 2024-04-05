@@ -63,6 +63,9 @@ func NewSelfHealing(
 	}
 }
 
+// +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch;delete
+// +kubebuilder:rbac:groups="",resources=pods/log,verbs=get
+
 // Reconcile reconciles only the self-healing spec in CosmosFullNode. If changes needed, this controller
 // updates a CosmosFullNode status subresource thus triggering another reconcile loop. The CosmosFullNode
 // uses the status object to reconcile its state.
