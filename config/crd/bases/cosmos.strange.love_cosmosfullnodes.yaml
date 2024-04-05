@@ -5689,6 +5689,17 @@ spec:
                     - increaseQuantity
                     - usedSpacePercentage
                     type: object
+                  stuckPodMitigation:
+                    description: Take action when a pod is stuck.
+                    properties:
+                      threshold:
+                        description: If a pod is stuck in a non-running state for
+                          this duration, the pod is deleted.
+                        format: int32
+                        type: integer
+                    required:
+                    - threshold
+                    type: object
                 type: object
               service:
                 description: Configure Operator created services. A singe rpc service
