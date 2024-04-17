@@ -58,7 +58,38 @@ func (d StuckPodDetection) StuckPods(ctx context.Context, crd *cosmosv1.CosmosFu
 }
 
 func isPodStuck(receivedString string) bool {
-	return strings.Contains(receivedString, "SignerListener: Connected")
+	if strings.Contains(receivedString, "SignerListener: Connected") {
+		timeInLog, err := extractTimeFromLog(receivedString)
+		if err != nil {
+			fmt.Println("Error parsing time from log:", err)
+			return true
+		}
+
+		currentTime := time.Now().UTC()
+
+		logTimeToday := time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(),
+			timeInLog.Hour(), timeInLog.Minute(), timeInLog.Second(), timeInLog.Nanosecond(), currentTime.Location())
+
+		timeDiff := currentTime.Sub(logTimeToday)
+
+		if timeDiff >= time.Minute {
+			return true
+		}
+	}
+
+	return false
+}
+
+func extractTimeFromLog(log string) (time.Time, error) {
+	parts := strings.Fields(log)
+
+	const timeLayout = "3:04PM"
+	parsedTime, err := time.Parse(timeLayout, parts[0])
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	return parsedTime, nil
 }
 
 func getPodLogsLastLine(clientset *kubernetes.Clientset, pod *corev1.Pod) string {
