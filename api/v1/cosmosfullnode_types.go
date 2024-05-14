@@ -454,6 +454,10 @@ type ChainSpec struct {
 	// +optional
 	InitScript *string `json:"initScript"`
 
+	// Specify shell (sh) script commands to start the chain
+	// +optional
+	StartScript *string `json:"startScript"`
+
 	// URL to address book file to download from the internet.
 	// The operator detects and properly handles the following file extensions:
 	// .json, .json.gz, .tar, .tar.gz, .tar.gzip, .zip
