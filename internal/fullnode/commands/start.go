@@ -1,4 +1,4 @@
-package fullnode
+package commands
 
 import (
 	"fmt"
@@ -11,11 +11,11 @@ const startScriptWrapper = `
 %s
 `
 
-func startCmdAndArgs(crd *cosmosv1.CosmosFullNode) (string, []string) {
+func StartCmdAndArgs(crd *cosmosv1.CosmosFullNode, homeDir string) (string, []string) {
 	if crd.Spec.ChainSpec.StartScript == nil {
 		var (
 			binary             = crd.Spec.ChainSpec.Binary
-			args               = startCommandArgs(crd)
+			args               = StartCommandArgs(crd, homeDir)
 			privvalSleep int32 = 10
 		)
 		if v := crd.Spec.ChainSpec.PrivvalSleepSeconds; v != nil {
@@ -36,8 +36,8 @@ func startCmdAndArgs(crd *cosmosv1.CosmosFullNode) (string, []string) {
 	}
 }
 
-func startCommandArgs(crd *cosmosv1.CosmosFullNode) []string {
-	args := []string{"start", "--home", ChainHomeDir(crd)}
+func StartCommandArgs(crd *cosmosv1.CosmosFullNode, homeDir string) []string {
+	args := []string{"start", "--home", homeDir}
 	cfg := crd.Spec.ChainSpec
 	if cfg.SkipInvariants {
 		args = append(args, "--x-crisis-skip-assert-invariants")

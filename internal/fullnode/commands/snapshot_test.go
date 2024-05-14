@@ -1,4 +1,4 @@
-package fullnode
+package commands
 
 import (
 	"testing"

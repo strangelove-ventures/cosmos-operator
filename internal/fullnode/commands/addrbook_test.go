@@ -1,4 +1,4 @@
-package fullnode
+package commands
 
 import (
 	"testing"
@@ -32,8 +32,9 @@ func TestDownloadAddrbookCommand(t *testing.T) {
 	})
 
 	t.Run("download", func(t *testing.T) {
+		addressBookUrl := "https://example.com/addrbook.json"
 		cfg := cosmosv1.ChainSpec{
-			AddrbookURL: ptr("https://example.com/addrbook.json"),
+			AddrbookURL: &addressBookUrl,
 		}
 		cmd, args := DownloadAddrbookCommand(cfg)
 		require.Equal(t, "sh", cmd)
@@ -51,10 +52,12 @@ func TestDownloadAddrbookCommand(t *testing.T) {
 	})
 
 	t.Run("custom", func(t *testing.T) {
+		addressBookUrl := "https://example.com/addrbook.json"
+		addressBookScript := "echo hi"
 		cfg := cosmosv1.ChainSpec{
 			// Keeping this to assert that custom script takes precedence.
-			AddrbookURL:    ptr("https://example.com/addrbook.json"),
-			AddrbookScript: ptr("echo hi"),
+			AddrbookURL:    &addressBookUrl,
+			AddrbookScript: &addressBookScript,
 		}
 		cmd, args := DownloadAddrbookCommand(cfg)
 		require.Equal(t, "sh", cmd)

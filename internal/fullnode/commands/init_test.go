@@ -1,4 +1,4 @@
-package fullnode
+package commands
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestStartCommand(t *testing.T) {
+func TestInitCommand(t *testing.T) {
 	t.Parallel()
 
 	t.Run("given cosmos chain", func(t *testing.T) {
