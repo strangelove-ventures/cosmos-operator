@@ -3,6 +3,7 @@ package commands
 import (
 	"testing"
 
+	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/stretchr/testify/require"
 )
@@ -34,7 +35,7 @@ func TestDownloadGenesisCommand(t *testing.T) {
 
 	t.Run("download", func(t *testing.T) {
 		cfg := cosmosv1.ChainSpec{
-			GenesisURL: ptr("https://example.com/genesis.json"),
+			GenesisURL: lo.ToPtr("https://example.com/genesis.json"),
 		}
 		cmd, args := DownloadGenesisCommand(cfg)
 		require.Equal(t, "sh", cmd)
@@ -54,8 +55,8 @@ func TestDownloadGenesisCommand(t *testing.T) {
 	t.Run("custom", func(t *testing.T) {
 		cfg := cosmosv1.ChainSpec{
 			// Keeping this to assert that custom script takes precedence.
-			GenesisURL:    ptr("https://example.com/genesis.json"),
-			GenesisScript: ptr("echo hi"),
+			GenesisURL:    lo.ToPtr("https://example.com/genesis.json"),
+			GenesisScript: lo.ToPtr("echo hi"),
 		}
 		cmd, args := DownloadGenesisCommand(cfg)
 		require.Equal(t, "sh", cmd)

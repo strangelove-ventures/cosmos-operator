@@ -3,6 +3,7 @@ package commands
 import (
 	"testing"
 
+	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/stretchr/testify/require"
 )
@@ -19,7 +20,7 @@ fi`
 	)
 	t.Run("snapshot url", func(t *testing.T) {
 		var cfg cosmosv1.ChainSpec
-		cfg.SnapshotURL = ptr(testURL)
+		cfg.SnapshotURL = lo.ToPtr(testURL)
 
 		cmd, args := DownloadSnapshotCommand(cfg)
 		require.Equal(t, "sh", cmd)
@@ -38,8 +39,8 @@ fi`
 
 	t.Run("snapshot script", func(t *testing.T) {
 		var cfg cosmosv1.ChainSpec
-		cfg.SnapshotURL = ptr(testURL) // Asserts SnapshotScript takes precedence.
-		cfg.SnapshotScript = ptr("echo hello")
+		cfg.SnapshotURL = lo.ToPtr(testURL) // Asserts SnapshotScript takes precedence.
+		cfg.SnapshotScript = lo.ToPtr("echo hello")
 
 		_, args := DownloadSnapshotCommand(cfg)
 		require.Len(t, args, 2)
