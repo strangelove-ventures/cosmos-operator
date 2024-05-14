@@ -111,7 +111,7 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 		},
 	}
 
-	if len(crd.Spec.ChainSpec.Versions) > 0 {
+	if crd.Spec.ChainSpec.InitScript == nil && len(crd.Spec.ChainSpec.Versions) > 0 {
 		// version check sidecar, runs on inverval in case the instance is halting for upgrade.
 		pod.Spec.Containers = append(pod.Spec.Containers, corev1.Container{
 			Name:    "version-check-interval",
@@ -346,12 +346,11 @@ func resolveInfraToolImage() string {
 
 func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Container {
 	tpl := crd.Spec.PodTemplate
-	binary := crd.Spec.ChainSpec.Binary
+	initCmd, initArgs := InitCommand(crd.Spec.ChainSpec, moniker)
 	genesisCmd, genesisArgs := DownloadGenesisCommand(crd.Spec.ChainSpec)
 	addrbookCmd, addrbookArgs := DownloadAddrbookCommand(crd.Spec.ChainSpec)
 	env := envVars(crd)
 
-	initCmd := fmt.Sprintf("%s init --chain-id %s %s", binary, crd.Spec.ChainSpec.ChainID, moniker)
 	if len(crd.Spec.ChainSpec.AdditionalInitArgs) > 0 {
 		initCmd += " " + strings.Join(crd.Spec.ChainSpec.AdditionalInitArgs, " ")
 	}
@@ -366,28 +365,14 @@ func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Conta
 			WorkingDir:      workDir,
 		},
 		{
-			Name:    chainInitContainer,
-			Image:   tpl.Image,
-			Command: []string{"sh"},
-			Args: []string{"-c",
-				fmt.Sprintf(`
-set -eu
-if [ ! -d "$CHAIN_HOME/data" ]; then
-	echo "Initializing chain..."
-	%s --home "$CHAIN_HOME"
-else
-	echo "Skipping chain init; already initialized."
-fi
-
-echo "Initializing into tmp dir for downstream processing..."
-%s --home "$HOME/.tmp"
-`, initCmd, initCmd),
-			},
+			Name:            chainInitContainer,
+			Image:           tpl.Image,
+			Command:         []string{initCmd},
+			Args:            initArgs,
 			Env:             env,
 			ImagePullPolicy: tpl.ImagePullPolicy,
 			WorkingDir:      workDir,
 		},
-
 		{
 			Name:            "genesis-init",
 			Image:           resolveInfraToolImage(),
@@ -406,33 +391,40 @@ echo "Initializing into tmp dir for downstream processing..."
 			ImagePullPolicy: tpl.ImagePullPolicy,
 			WorkingDir:      workDir,
 		},
-		{
-			Name:    "config-merge",
-			Image:   resolveInfraToolImage(),
-			Command: []string{"sh"},
-			Args: []string{"-c",
-				`
-set -eu
-CONFIG_DIR="$CHAIN_HOME/config"
-TMP_DIR="$HOME/.tmp/config"
-OVERLAY_DIR="$HOME/.config"
+	}
 
-# This is a hack to prevent adding another init container.
-# Ideally, this step is not concerned with merging config, so it would live elsewhere.
-# The node key is a secret mounted into the main "node" container, so we do not need this one.
-echo "Removing node key from chain's init subcommand..."
-rm -rf "$CONFIG_DIR/node_key.json"
-
-echo "Merging config..."
-set -x
-config-merge -f toml "$TMP_DIR/config.toml" "$OVERLAY_DIR/config-overlay.toml" > "$CONFIG_DIR/config.toml"
-config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CONFIG_DIR/app.toml"
-`,
+	if crd.Spec.ChainSpec.InitScript == nil {
+		mrg := []corev1.Container{
+			{
+				Name:    "config-merge",
+				Image:   resolveInfraToolImage(),
+				Command: []string{"sh"},
+				Args: []string{"-c",
+					`
+		set -eu
+		CONFIG_DIR="$CHAIN_HOME/config"
+		TMP_DIR="$HOME/.tmp/config"
+		OVERLAY_DIR="$HOME/.config"
+		
+		# This is a hack to prevent adding another init container.
+		# Ideally, this step is not concerned with merging config, so it would live elsewhere.
+		# The node key is a secret mounted into the main "node" container, so we do not need this one.
+		echo "Removing node key from chain's init subcommand..."
+		rm -rf "$CONFIG_DIR/node_key.json"
+		
+		echo "Merging config..."
+		set -x
+		config-merge -f toml "$TMP_DIR/config.toml" "$OVERLAY_DIR/config-overlay.toml" > "$CONFIG_DIR/config.toml"
+		config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CONFIG_DIR/app.toml"
+		`,
+				},
+				Env:             env,
+				ImagePullPolicy: tpl.ImagePullPolicy,
+				WorkingDir:      workDir,
 			},
-			Env:             env,
-			ImagePullPolicy: tpl.ImagePullPolicy,
-			WorkingDir:      workDir,
-		},
+		}
+
+		required = append(required, mrg[0])
 	}
 
 	if willRestoreFromSnapshot(crd) {
@@ -458,60 +450,25 @@ config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CON
 	// This initContainer will update the crd status with the current height for the pod,
 	// And then panic if the image version is not correct for the current height.
 	// After the status is patched, the pod will be restarted with the correct image.
-	required = append(required, corev1.Container{
-		Name:    "version-check",
-		Image:   "ghcr.io/strangelove-ventures/cosmos-operator:" + version.DockerTag(),
-		Command: versionCheckCmd,
-		Resources: corev1.ResourceRequirements{
-			Requests: corev1.ResourceList{
-				corev1.ResourceCPU:    resource.MustParse("5m"),
-				corev1.ResourceMemory: resource.MustParse("16Mi"),
+	if crd.Spec.ChainSpec.InitScript == nil {
+		required = append(required, corev1.Container{
+			Name:    "version-check",
+			Image:   "ghcr.io/strangelove-ventures/cosmos-operator:" + version.DockerTag(),
+			Command: versionCheckCmd,
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("5m"),
+					corev1.ResourceMemory: resource.MustParse("16Mi"),
+				},
 			},
-		},
-		Env:             env,
-		ImagePullPolicy: tpl.ImagePullPolicy,
-		WorkingDir:      workDir,
-		SecurityContext: &corev1.SecurityContext{},
-	})
+			Env:             env,
+			ImagePullPolicy: tpl.ImagePullPolicy,
+			WorkingDir:      workDir,
+			SecurityContext: &corev1.SecurityContext{},
+		})
+	}
 
 	return required
-}
-
-func startCmdAndArgs(crd *cosmosv1.CosmosFullNode) (string, []string) {
-	var (
-		binary             = crd.Spec.ChainSpec.Binary
-		args               = startCommandArgs(crd)
-		privvalSleep int32 = 10
-	)
-	if v := crd.Spec.ChainSpec.PrivvalSleepSeconds; v != nil {
-		privvalSleep = *v
-	}
-
-	if crd.Spec.Type == cosmosv1.Sentry && privvalSleep > 0 {
-		shellBody := fmt.Sprintf(`sleep %d
-%s %s`, privvalSleep, binary, strings.Join(args, " "))
-		return "sh", []string{"-c", shellBody}
-	}
-
-	return binary, args
-}
-
-func startCommandArgs(crd *cosmosv1.CosmosFullNode) []string {
-	args := []string{"start", "--home", ChainHomeDir(crd)}
-	cfg := crd.Spec.ChainSpec
-	if cfg.SkipInvariants {
-		args = append(args, "--x-crisis-skip-assert-invariants")
-	}
-	if lvl := cfg.LogLevel; lvl != nil {
-		args = append(args, "--log_level", *lvl)
-	}
-	if format := cfg.LogFormat; format != nil {
-		args = append(args, "--log_format", *format)
-	}
-	if len(crd.Spec.ChainSpec.AdditionalStartArgs) > 0 {
-		args = append(args, crd.Spec.ChainSpec.AdditionalStartArgs...)
-	}
-	return args
 }
 
 func willRestoreFromSnapshot(crd *cosmosv1.CosmosFullNode) bool {

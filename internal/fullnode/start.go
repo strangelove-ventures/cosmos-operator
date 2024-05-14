@@ -7,23 +7,33 @@ import (
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 )
 
+const startScriptWrapper = `
+%s
+`
+
 func startCmdAndArgs(crd *cosmosv1.CosmosFullNode) (string, []string) {
-	var (
-		binary             = crd.Spec.ChainSpec.Binary
-		args               = startCommandArgs(crd)
-		privvalSleep int32 = 10
-	)
-	if v := crd.Spec.ChainSpec.PrivvalSleepSeconds; v != nil {
-		privvalSleep = *v
-	}
+	if crd.Spec.ChainSpec.StartScript == nil {
+		var (
+			binary             = crd.Spec.ChainSpec.Binary
+			args               = startCommandArgs(crd)
+			privvalSleep int32 = 10
+		)
+		if v := crd.Spec.ChainSpec.PrivvalSleepSeconds; v != nil {
+			privvalSleep = *v
+		}
 
-	if crd.Spec.Type == cosmosv1.Sentry && privvalSleep > 0 {
-		shellBody := fmt.Sprintf(`sleep %d
+		if crd.Spec.Type == cosmosv1.Sentry && privvalSleep > 0 {
+			shellBody := fmt.Sprintf(`sleep %d
 %s %s`, privvalSleep, binary, strings.Join(args, " "))
-		return "sh", []string{"-c", shellBody}
-	}
+			return "sh", []string{"-c", shellBody}
+		}
 
-	return binary, args
+		return binary, args
+	} else {
+		args := []string{"-c"}
+		args = append(args, fmt.Sprintf(startScriptWrapper, *crd.Spec.ChainSpec.StartScript))
+		return "sh", args
+	}
 }
 
 func startCommandArgs(crd *cosmosv1.CosmosFullNode) []string {
