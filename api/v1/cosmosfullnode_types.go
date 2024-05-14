@@ -450,6 +450,10 @@ type ChainSpec struct {
 	// +optional
 	LogFormat *string `json:"logFormat"`
 
+	// Specify shell (sh) script commands to initialize the chain
+	// +optional
+	InitScript *string `json:"initScript"`
+
 	// URL to address book file to download from the internet.
 	// The operator detects and properly handles the following file extensions:
 	// .json, .json.gz, .tar, .tar.gz, .tar.gzip, .zip

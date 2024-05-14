@@ -283,6 +283,10 @@ spec:
                       Therefore, this option was introduced to mitigate those edge cases, so that you can specify the home directory
                       to match the chain's default home dir.
                     type: string
+                  initScript:
+                    description: Specify shell (sh) script commands to initialize
+                      the chain
+                    type: string
                   logFormat:
                     description: |-
                       One of plain or json.
