@@ -383,6 +383,15 @@ spec:
                 - chainID
                 - network
                 type: object
+              chainType:
+                description: Different kinds of chains supported by the operator 'Cosmos'
+                  configures the node using defaults for a Cosmos based chain 'Custom'
+                  configures the node with more flexible options that allow for support
+                  other chains If not set, defaults to Cosmos
+                enum:
+                - Cosmos
+                - Custom
+                type: string
               instanceOverrides:
                 additionalProperties:
                   description: InstanceOverridesSpec allows overriding an instance

@@ -112,7 +112,7 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 		},
 	}
 
-	if crd.Spec.ChainSpec.InitScript == nil && len(crd.Spec.ChainSpec.Versions) > 0 {
+	if crd.Spec.ChainType == cosmosv1.Cosmos && len(crd.Spec.ChainSpec.Versions) > 0 {
 		// version check sidecar, runs on inverval in case the instance is halting for upgrade.
 		pod.Spec.Containers = append(pod.Spec.Containers, corev1.Container{
 			Name:    "version-check-interval",
@@ -394,7 +394,7 @@ func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Conta
 		},
 	}
 
-	if crd.Spec.ChainSpec.InitScript == nil {
+	if crd.Spec.ChainType == cosmosv1.Cosmos {
 		mrg := []corev1.Container{
 			{
 				Name:    "config-merge",
@@ -451,7 +451,7 @@ func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Conta
 	// This initContainer will update the crd status with the current height for the pod,
 	// And then panic if the image version is not correct for the current height.
 	// After the status is patched, the pod will be restarted with the correct image.
-	if crd.Spec.ChainSpec.InitScript == nil {
+	if crd.Spec.ChainType == cosmosv1.Cosmos {
 		required = append(required, corev1.Container{
 			Name:    "version-check",
 			Image:   "ghcr.io/strangelove-ventures/cosmos-operator:" + version.DockerTag(),

@@ -51,6 +51,14 @@ type FullNodeSpec struct {
 	// +optional
 	Type FullNodeType `json:"type"`
 
+	// Different kinds of chains supported by the operator
+	// 'Cosmos' configures the node using defaults for a Cosmos based chain
+	// 'Custom' configures the node with more flexible options that allow for support other chains
+	// If not set, defaults to Cosmos
+	// +kubebuilder:validation:Enum:=Cosmos;Custom
+	// +optional
+	ChainType ChainType `json:"chainType"`
+
 	// Blockchain-specific configuration.
 	ChainSpec ChainSpec `json:"chain"`
 
@@ -100,6 +108,13 @@ type FullNodeType string
 const (
 	FullNode FullNodeType = "FullNode"
 	Sentry   FullNodeType = "Sentry"
+)
+
+type ChainType string
+
+const (
+	Cosmos ChainType = "Cosmos"
+	Custom ChainType = "Custom"
 )
 
 // FullNodeStatus defines the observed state of CosmosFullNode
