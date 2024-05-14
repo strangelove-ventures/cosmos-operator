@@ -3,6 +3,7 @@ package commands
 import (
 	"testing"
 
+	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/stretchr/testify/require"
 )
@@ -32,9 +33,8 @@ func TestDownloadAddrbookCommand(t *testing.T) {
 	})
 
 	t.Run("download", func(t *testing.T) {
-		addressBookUrl := "https://example.com/addrbook.json"
 		cfg := cosmosv1.ChainSpec{
-			AddrbookURL: &addressBookUrl,
+			AddrbookURL: lo.ToPtr("https://example.com/addrbook.json"),
 		}
 		cmd, args := DownloadAddrbookCommand(cfg)
 		require.Equal(t, "sh", cmd)
@@ -52,12 +52,10 @@ func TestDownloadAddrbookCommand(t *testing.T) {
 	})
 
 	t.Run("custom", func(t *testing.T) {
-		addressBookUrl := "https://example.com/addrbook.json"
-		addressBookScript := "echo hi"
 		cfg := cosmosv1.ChainSpec{
 			// Keeping this to assert that custom script takes precedence.
-			AddrbookURL:    &addressBookUrl,
-			AddrbookScript: &addressBookScript,
+			AddrbookURL:    lo.ToPtr("https://example.com/addrbook.json"),
+			AddrbookScript: lo.ToPtr("echo hi"),
 		}
 		cmd, args := DownloadAddrbookCommand(cfg)
 		require.Equal(t, "sh", cmd)
