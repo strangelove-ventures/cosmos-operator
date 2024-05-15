@@ -53,6 +53,7 @@ type CosmosFullNodeReconciler struct {
 	serviceControl            fullnode.ServiceControl
 	statusClient              *fullnode.StatusClient
 	serviceAccountControl     fullnode.ServiceAccountControl
+	pdbControl                fullnode.PodDisruptionBudgetControl
 	clusterRoleControl        fullnode.RoleControl
 	clusterRoleBindingControl fullnode.RoleBindingControl
 }
@@ -77,6 +78,7 @@ func NewFullNode(
 		serviceControl:            fullnode.NewServiceControl(client),
 		statusClient:              statusClient,
 		serviceAccountControl:     fullnode.NewServiceAccountControl(client),
+		pdbControl:                fullnode.NewPodDisruptionBudgetControl(client),
 		clusterRoleControl:        fullnode.NewRoleControl(client),
 		clusterRoleBindingControl: fullnode.NewRoleBindingControl(client),
 	}
@@ -95,6 +97,7 @@ var (
 //+kubebuilder:rbac:groups="rbac.authorization.k8s.io",resources=roles;rolebindings,verbs=get;list;watch;create;update;patch;delete;bind;escalate
 //+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch
 //+kubebuilder:rbac:groups="",resources=events,verbs=create;update;patch
+//+kubebuilder:rbac:groups="policy",resources=poddisruptionbudgets,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -157,6 +160,12 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	// Reconcile service accounts.
 	err = r.serviceAccountControl.Reconcile(ctx, reporter, crd)
+	if err != nil {
+		errs.Append(err)
+	}
+
+	// Reconile the Pod disruption budget.
+	err = r.pdbControl.Reconcile(ctx, reporter, crd)
 	if err != nil {
 		errs.Append(err)
 	}

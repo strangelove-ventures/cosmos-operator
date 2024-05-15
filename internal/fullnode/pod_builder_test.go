@@ -42,6 +42,9 @@ func defaultCRD() cosmosv1.CosmosFullNode {
 					Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("100Gi")},
 				},
 			},
+			PodDisruptionBudget: cosmosv1.PodDisruptionBudgetSpec{
+				MaxUnavailable: &intstr.IntOrString{Type: intstr.Int, IntVal: 1},
+			},
 		},
 	}
 }

@@ -81,6 +81,11 @@ type FullNodeSpec struct {
 	// +optional
 	Service ServiceSpec `json:"service"`
 
+	// Configure Operator created pod disruption budgets.
+	// This allows a k8s admin to control how many pods can be disrupted at a time.
+	// +optional
+	PodDisruptionBudget PodDisruptionBudgetSpec `json:"podDisruptionBudget"`
+
 	// Allows overriding an instance on a case-by-case basis. An instance is a pod/pvc combo with an ordinal.
 	// Key must be the name of the pod including the ordinal suffix.
 	// Example: cosmos-1
@@ -722,6 +727,15 @@ type ServiceSpec struct {
 	RPCTemplate ServiceOverridesSpec `json:"rpcTemplate"`
 }
 
+type PodDisruptionBudgetSpec struct {
+	// An eviction is allowed if at most "MaxUnavailable" pods selected by
+	// "Selector" are unavailable after the eviction, i.e. even in absence of
+	// the evicted pod. For example, one can prevent all voluntary evictions
+	// by specifying 0. This is a mutually exclusive setting with "MinAvailable".
+	// +optional
+	MaxUnavailable *intstr.IntOrString `json:"maxUnavailable,omitempty"`
+}
+
 // ServiceOverridesSpec allows some overrides for the created, single RPC service.
 type ServiceOverridesSpec struct {
 	// +optional
@@ -776,6 +790,7 @@ const (
 //+kubebuilder:subresource:status
 //+kubebuilder:printcolumn:name="Phase",type=string,JSONPath=`.status.phase`
 //+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+//+kubebuilder:subresource:scale:specpath=.spec.replicas,statuspath=.status.replicas,selectorpath=.status.selector
 
 // CosmosFullNode is the Schema for the cosmosfullnodes API
 type CosmosFullNode struct {
