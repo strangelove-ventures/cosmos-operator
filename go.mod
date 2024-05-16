@@ -6,6 +6,7 @@ require (
 	cosmossdk.io/log v1.2.1
 	cosmossdk.io/store v1.0.0-rc.0
 	github.com/BurntSushi/toml v1.3.2
+	github.com/VictoriaMetrics/operator/api v0.0.0-20230626142506-8950675e8bb1
 	github.com/cosmos/cosmos-db v1.0.0
 	github.com/go-logr/logr v1.2.4
 	github.com/go-logr/zapr v1.2.4
@@ -22,9 +23,9 @@ require (
 	golang.org/x/exp v0.0.0-20230817173708-d852ddb80c63
 	golang.org/x/sync v0.3.0
 	gopkg.in/inf.v0 v0.9.1
-	k8s.io/api v0.25.5
-	k8s.io/apimachinery v0.25.5
-	k8s.io/client-go v0.25.5
+	k8s.io/api v0.25.6
+	k8s.io/apimachinery v0.25.6
+	k8s.io/client-go v0.25.6
 	sigs.k8s.io/controller-runtime v0.13.1
 )
 
@@ -40,7 +41,12 @@ require (
 	github.com/Azure/go-autorest/logger v0.2.1 // indirect
 	github.com/Azure/go-autorest/tracing v0.6.0 // indirect
 	github.com/DataDog/zstd v1.5.5 // indirect
+	github.com/VictoriaMetrics/VictoriaMetrics v1.90.1-0.20230427110221-29e059e49c7d // indirect
+	github.com/VictoriaMetrics/fasthttp v1.2.0 // indirect
+	github.com/VictoriaMetrics/metrics v1.23.1 // indirect
+	github.com/VictoriaMetrics/metricsql v0.56.2 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
+	github.com/bmatcuk/doublestar/v4 v4.6.0 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.3.2 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/cockroachdb/errors v1.10.0 // indirect
@@ -113,6 +119,12 @@ require (
 	github.com/subosito/gotenv v1.4.2 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d // indirect
 	github.com/tidwall/btree v1.6.0 // indirect
+	github.com/valyala/bytebufferpool v1.0.0 // indirect
+	github.com/valyala/fastjson v1.6.4 // indirect
+	github.com/valyala/fastrand v1.1.0 // indirect
+	github.com/valyala/fasttemplate v1.2.2 // indirect
+	github.com/valyala/histogram v1.2.0 // indirect
+	github.com/valyala/quicktemplate v1.7.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/crypto v0.14.0 // indirect
 	golang.org/x/net v0.17.0 // indirect

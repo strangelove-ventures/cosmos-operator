@@ -13,4 +13,4 @@ kind: Kustomization
 images:
 - name: controller
   newName: ghcr.io/4406arthur/cosmos-operator
-  newTag: v0.0.3
+  newTag: v0.0.5-beta-1

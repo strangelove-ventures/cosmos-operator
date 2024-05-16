@@ -43,19 +43,20 @@ const controllerOwnerField = ".metadata.controller"
 type CosmosFullNodeReconciler struct {
 	client.Client
 
-	cacheController           *cosmos.CacheController
-	configMapControl          fullnode.ConfigMapControl
-	nodeKeyControl            fullnode.NodeKeyControl
-	peerCollector             *fullnode.PeerCollector
-	podControl                fullnode.PodControl
-	pvcControl                fullnode.PVCControl
-	recorder                  record.EventRecorder
-	serviceControl            fullnode.ServiceControl
-	statusClient              *fullnode.StatusClient
-	serviceAccountControl     fullnode.ServiceAccountControl
-	pdbControl                fullnode.PodDisruptionBudgetControl
-	clusterRoleControl        fullnode.RoleControl
-	clusterRoleBindingControl fullnode.RoleBindingControl
+	cacheController               *cosmos.CacheController
+	configMapControl              fullnode.ConfigMapControl
+	nodeKeyControl                fullnode.NodeKeyControl
+	peerCollector                 *fullnode.PeerCollector
+	podControl                    fullnode.PodControl
+	pvcControl                    fullnode.PVCControl
+	recorder                      record.EventRecorder
+	serviceControl                fullnode.ServiceControl
+	statusClient                  *fullnode.StatusClient
+	serviceAccountControl         fullnode.ServiceAccountControl
+	pdbControl                    fullnode.PodDisruptionBudgetControl
+	victoriametricsServiceControl fullnode.VictoriametricsServiceControl
+	clusterRoleControl            fullnode.RoleControl
+	clusterRoleBindingControl     fullnode.RoleBindingControl
 }
 
 // NewFullNode returns a valid CosmosFullNode controller.
@@ -68,19 +69,20 @@ func NewFullNode(
 	return &CosmosFullNodeReconciler{
 		Client: client,
 
-		cacheController:           cacheController,
-		configMapControl:          fullnode.NewConfigMapControl(client),
-		nodeKeyControl:            fullnode.NewNodeKeyControl(client),
-		peerCollector:             fullnode.NewPeerCollector(client),
-		podControl:                fullnode.NewPodControl(client, cacheController),
-		pvcControl:                fullnode.NewPVCControl(client),
-		recorder:                  recorder,
-		serviceControl:            fullnode.NewServiceControl(client),
-		statusClient:              statusClient,
-		serviceAccountControl:     fullnode.NewServiceAccountControl(client),
-		pdbControl:                fullnode.NewPodDisruptionBudgetControl(client),
-		clusterRoleControl:        fullnode.NewRoleControl(client),
-		clusterRoleBindingControl: fullnode.NewRoleBindingControl(client),
+		cacheController:               cacheController,
+		configMapControl:              fullnode.NewConfigMapControl(client),
+		nodeKeyControl:                fullnode.NewNodeKeyControl(client),
+		peerCollector:                 fullnode.NewPeerCollector(client),
+		podControl:                    fullnode.NewPodControl(client, cacheController),
+		pvcControl:                    fullnode.NewPVCControl(client),
+		recorder:                      recorder,
+		serviceControl:                fullnode.NewServiceControl(client),
+		statusClient:                  statusClient,
+		serviceAccountControl:         fullnode.NewServiceAccountControl(client),
+		pdbControl:                    fullnode.NewPodDisruptionBudgetControl(client),
+		victoriametricsServiceControl: fullnode.NewVictoriametricsServiceControl(client),
+		clusterRoleControl:            fullnode.NewRoleControl(client),
+		clusterRoleBindingControl:     fullnode.NewRoleBindingControl(client),
 	}
 }
 
@@ -98,6 +100,7 @@ var (
 //+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch
 //+kubebuilder:rbac:groups="",resources=events,verbs=create;update;patch
 //+kubebuilder:rbac:groups="policy",resources=poddisruptionbudgets,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups="operator.victoriametrics.com",resources=vmservicescrapes,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -166,6 +169,12 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	// Reconile the Pod disruption budget.
 	err = r.pdbControl.Reconcile(ctx, reporter, crd)
+	if err != nil {
+		errs.Append(err)
+	}
+
+	// Reconcile victoriametrics service scrapes.
+	err = r.victoriametricsServiceControl.Reconcile(ctx, reporter, crd)
 	if err != nil {
 		errs.Append(err)
 	}

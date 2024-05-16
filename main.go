@@ -40,6 +40,7 @@ import (
 	// Add Pprof endpoints.
 	_ "net/http/pprof"
 
+	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	cosmosv1alpha1 "github.com/strangelove-ventures/cosmos-operator/api/v1alpha1"
@@ -61,6 +62,7 @@ func init() {
 
 	utilruntime.Must(cosmosv1.AddToScheme(scheme))
 	utilruntime.Must(cosmosv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(victoriametricsv1beta1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 

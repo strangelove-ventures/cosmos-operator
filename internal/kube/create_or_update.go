@@ -15,3 +15,12 @@ func CreateOrUpdate(ctx context.Context, client client.Writer, obj client.Object
 	}
 	return err
 }
+
+// Create create the obj. If it already exists, do not update.
+func Create(ctx context.Context, client client.Writer, obj client.Object) error {
+	err := client.Create(ctx, obj)
+	if IsAlreadyExists(err) {
+		return nil
+	}
+	return err
+}

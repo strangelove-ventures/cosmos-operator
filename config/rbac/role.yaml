@@ -145,6 +145,18 @@ rules:
   - patch
   - update
 - apiGroups:
+  - operator.victoriametrics.com
+  resources:
+  - vmservicescrapes
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
   - policy
   resources:
   - poddisruptionbudgets
