@@ -310,10 +310,11 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 }
 
 const (
-	workDir        = "/home/operator"
-	tmpDir         = workDir + "/.tmp"
-	tmpConfigDir   = workDir + "/.config"
-	infraToolImage = "ghcr.io/strangelove-ventures/infra-toolkit:v0.0.1"
+	workDir          = "/home/operator"
+	tmpDir           = workDir + "/.tmp"
+	tmpConfigDir     = workDir + "/.config"
+	infraToolImage   = "ghcr.io/strangelove-ventures/infra-toolkit"
+	infraToolVersion = "v0.1.6"
 
 	// Necessary for statesync
 	systemTmpDir = "/tmp"
@@ -339,6 +340,10 @@ func envVars(crd *cosmosv1.CosmosFullNode) []corev1.EnvVar {
 	}
 }
 
+func resolveInfraToolImage() string {
+	return fmt.Sprintf("%s:%s", infraToolImage, infraToolVersion)
+}
+
 func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Container {
 	tpl := crd.Spec.PodTemplate
 	binary := crd.Spec.ChainSpec.Binary
@@ -353,7 +358,7 @@ func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Conta
 	required := []corev1.Container{
 		{
 			Name:            "clean-init",
-			Image:           infraToolImage,
+			Image:           resolveInfraToolImage(),
 			Command:         []string{"sh"},
 			Args:            []string{"-c", `rm -rf "$HOME/.tmp/*"`},
 			Env:             env,
@@ -385,7 +390,7 @@ echo "Initializing into tmp dir for downstream processing..."
 
 		{
 			Name:            "genesis-init",
-			Image:           infraToolImage,
+			Image:           resolveInfraToolImage(),
 			Command:         []string{genesisCmd},
 			Args:            genesisArgs,
 			Env:             env,
@@ -394,7 +399,7 @@ echo "Initializing into tmp dir for downstream processing..."
 		},
 		{
 			Name:            "addrbook-init",
-			Image:           infraToolImage,
+			Image:           resolveInfraToolImage(),
 			Command:         []string{addrbookCmd},
 			Args:            addrbookArgs,
 			Env:             env,
@@ -403,7 +408,7 @@ echo "Initializing into tmp dir for downstream processing..."
 		},
 		{
 			Name:    "config-merge",
-			Image:   infraToolImage,
+			Image:   resolveInfraToolImage(),
 			Command: []string{"sh"},
 			Args: []string{"-c",
 				`
@@ -434,7 +439,7 @@ config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CON
 		cmd, args := DownloadSnapshotCommand(crd.Spec.ChainSpec)
 		required = append(required, corev1.Container{
 			Name:            "snapshot-restore",
-			Image:           infraToolImage,
+			Image:           resolveInfraToolImage(),
 			Command:         []string{cmd},
 			Args:            args,
 			Env:             env,
