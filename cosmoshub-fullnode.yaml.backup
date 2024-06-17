@@ -1,0 +1,87 @@
+apiVersion: cosmos.strange.love/v1
+kind: CosmosFullNode
+metadata:
+  annotations:
+    infra.strange.love/chain: cosmoshub
+  labels:
+    app.kubernetes.io/component: cosmos-fullnode
+    app.kubernetes.io/managed-by: Kustomize
+    app.kubernetes.io/part-of: cosmoshub
+  name: cosmoshub-mainnet-fullnode
+  namespace: cosmos-fullnode-cosmoshub-mainnet
+spec:
+  chain:
+    initScript: |-
+      HOME=/home/operator/cosmos pd testnet join --external-address 127.0.0.1:26656 --moniker strangelove --archive-url "https://snapshots.penumbra.zone/testnet/pd-migrated-state-76-77.tar.gz"
+    startScript: |-
+      pd start --home /home/operator/cosmos/.penumbra/testnet_data/node0/pd
+    app:
+      apiEnableUnsafeCORS: true
+      minGasPrice: 0.0025uatom
+      pruning:
+        interval: 17
+        keepRecent: 5000
+        minRetainBlocks: 271500
+        strategy: custom
+    binary: pd
+    chainID: cosmoshub-4
+    addrbookScript: |-
+      echo "No need for address book"
+    genesisScript: |-
+      echo "No need for genesis"
+    config:
+      corsAllowedOrigins:
+      - '*'
+      peers: 54f48cac59efe884be39f887e4028b6e6b12c8e3@34.70.232.180:26656
+      seeds: 20e1000e88125698264454a884812746c2eb4807@seeds.lavenderfive.com:14956,57a5297537b9b6ef8b105c08a8ad3f6ac452c423@seeds.goldenratiostaking.net:1618,5d0fa456408f69afbf3882385d1283d90d9eb36d@cosmos-seed.panthea.eu:42656,ade4d8bc8cbe014af6ebdf3cb7b1e9ad36f412c0@seeds.polkachu.com:14956,e1b058e5cfa2b836ddaa496b10911da62dcf182e@cosmos-seed-1.allnodes.me:26656,e726816f42831689eab9378d5d577f1d06d25716@cosmos-seed-2.allnodes.me:26656
+      unconditionalPeerIDs: 54f48cac59efe884be39f887e4028b6e6b12c8e3
+    genesisURL: https://github.com/cosmos/mainnet/raw/master/genesis/genesis.cosmoshub-4.json.gz
+    network: mainnet
+    skipInvariants: true
+    versions:
+    - height: 0
+      image: ghcr.io/strangelove-ventures/heighliner/penumbra:v0.77.2
+  podTemplate:
+    containers:
+    - name: combetbft
+      command:
+      - cometbft
+      - start
+      - --home
+      - /home/operator/cosmos/.penumbra/testnet_data/node0/cometbft
+      image: ghcr.io/strangelove-ventures/heighliner/cometbft:v0.37.5
+      volumeMounts:
+      - mountPath: /home/operator/cosmos
+        name: vol-chain-home
+
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: cosmoshub-mainnet-fullnode
+          topologyKey: kubernetes.io/hostname
+    resources:
+      limits:
+        memory: 64Gi
+      requests:
+        cpu: 4m
+        memory: 10Mi
+  replicas: 1
+  selfHeal:
+    heightDriftMitigation:
+      threshold: 10
+    pvcAutoScale:
+      increaseQuantity: 10%
+      maxSize: 5Ti
+      usedSpacePercentage: 75
+  service:
+    maxP2PExternalAddresses: 3
+    p2pTemplate:
+      type: NodePort
+  type: FullNode
+  volumeClaimTemplate:
+    resources:
+      requests:
+        storage: 20Gi
+    storageClassName: topolvm-provisioner-thin-striped
