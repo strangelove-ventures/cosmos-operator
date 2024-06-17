@@ -624,6 +624,10 @@ gaiad start --home /home/operator/cosmos`
 					"new-sidecar": "new-sidecar:v3.0.0",
 				},
 			},
+			{
+				UpgradeHeight: 400,
+				Image:         "image:v4.0.0",
+			},
 		}
 
 		crd.Status.Height = map[string]uint64{
@@ -678,6 +682,23 @@ gaiad start --home /home/operator/cosmos`
 
 		require.Equal(t, "new-init", pod2.Spec.InitContainers[2].Name)
 		require.Equal(t, "new-init:v3.0.0", pod2.Spec.InitContainers[2].Image)
+
+		crd.Status.Height["osmosis-2"] = 400
+		pod2, err = builder.WithOrdinal(2).Build()
+
+		require.Equal(t, "osmosis-2", pod2.Name)
+
+		require.Equal(t, "node", pod2.Spec.Containers[0].Name)
+		require.Equal(t, "image:v4.0.0", pod2.Spec.Containers[0].Image)
+
+		require.Equal(t, "new-sidecar", pod2.Spec.Containers[1].Name)
+		require.Equal(t, "new-sidecar:latest", pod2.Spec.Containers[1].Image)
+
+		require.Equal(t, "chain-init", pod2.Spec.InitContainers[1].Name)
+		require.Equal(t, "image:v4.0.0", pod2.Spec.InitContainers[1].Image)
+
+		require.Equal(t, "new-init", pod2.Spec.InitContainers[2].Name)
+		require.Equal(t, "new-init:latest", pod2.Spec.InitContainers[2].Image)
 
 	})
 }
