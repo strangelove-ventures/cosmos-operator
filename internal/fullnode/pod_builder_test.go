@@ -685,6 +685,7 @@ gaiad start --home /home/operator/cosmos`
 
 		crd.Status.Height["osmosis-2"] = 400
 		pod2, err = builder.WithOrdinal(2).Build()
+		require.NoError(t, err)
 
 		require.Equal(t, "osmosis-2", pod2.Name)
 
@@ -699,7 +700,6 @@ gaiad start --home /home/operator/cosmos`
 
 		require.Equal(t, "new-init", pod2.Spec.InitContainers[2].Name)
 		require.Equal(t, "new-init:latest", pod2.Spec.InitContainers[2].Image)
-
 	})
 }
 
