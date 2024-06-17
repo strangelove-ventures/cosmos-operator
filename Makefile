@@ -1,6 +1,6 @@
 
 # Image URL to use all building/pushing image targets
-IMG ?= controller:latest
+IMG ?= ghcr.io/strangelove-ventures/cosmos-operator:v0.21.7
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.24.1
 
@@ -139,7 +139,7 @@ $(LOCALBIN):
 	mkdir -p $(LOCALBIN)
 
 ## Tool Binaries
-KUSTOMIZE ?= $(LOCALBIN)/kustomize
+KUSTOMIZE ?= kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
 
@@ -149,9 +149,9 @@ CONTROLLER_TOOLS_VERSION ?= v0.14.0
 
 KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
 .PHONY: kustomize
-kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary.
-$(KUSTOMIZE): $(LOCALBIN)
-	curl -s $(KUSTOMIZE_INSTALL_SCRIPT) | bash -s -- $(subst v,,$(KUSTOMIZE_VERSION)) $(LOCALBIN)
+#kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary.
+#$(KUSTOMIZE): $(LOCALBIN)
+#	curl -s $(KUSTOMIZE_INSTALL_SCRIPT) | bash -s -- $(subst v,,$(KUSTOMIZE_VERSION)) $(LOCALBIN)
 
 .PHONY: controller-gen
 controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessary.
