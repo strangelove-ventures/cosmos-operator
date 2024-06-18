@@ -352,6 +352,12 @@ spec:
                       If not provided, the operator will not upgrade the chain, and will use the image specified in the pod spec.
                     items:
                       properties:
+                        containers:
+                          additionalProperties:
+                            type: string
+                          description: Version overrides for containers of the fullnode/sentry
+                            pods.
+                          type: object
                         height:
                           description: The block height when this version should be
                             applied.
@@ -361,6 +367,12 @@ spec:
                           description: The docker image for this version in "repository:tag"
                             format. E.g. busybox:latest.
                           type: string
+                        initContainers:
+                          additionalProperties:
+                            type: string
+                          description: Version overrides for initContainers of the
+                            fullnode/sentry pods.
+                          type: object
                         setHaltHeight:
                           description: Determines if the node should forcefully halt
                             at the upgrade height.

@@ -559,6 +559,14 @@ type ChainVersion struct {
 	// The docker image for this version in "repository:tag" format. E.g. busybox:latest.
 	Image string `json:"image"`
 
+	// Version overrides for initContainers of the fullnode/sentry pods.
+	// +optional
+	InitContainers map[string]string `json:"initContainers"`
+
+	// Version overrides for containers of the fullnode/sentry pods.
+	// +optional
+	Containers map[string]string `json:"containers"`
+
 	// Determines if the node should forcefully halt at the upgrade height.
 	// +optional
 	SetHaltHeight bool `json:"setHaltHeight,omitempty"`

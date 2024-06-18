@@ -181,22 +181,28 @@ func podReadinessProbes(crd *cosmosv1.CosmosFullNode) []*corev1.Probe {
 func (b PodBuilder) Build() (*corev1.Pod, error) {
 	pod := b.pod.DeepCopy()
 
+	if err := kube.ApplyStrategicMergePatch(pod, podPatch(b.crd)); err != nil {
+		return nil, err
+	}
+
 	if len(b.crd.Spec.ChainSpec.Versions) > 0 {
 		instanceHeight := uint64(0)
 		if height, ok := b.crd.Status.Height[pod.Name]; ok {
 			instanceHeight = height
 		}
-		var image string
-		for _, version := range b.crd.Spec.ChainSpec.Versions {
-			if instanceHeight < version.UpgradeHeight {
+		var vrs *cosmosv1.ChainVersion
+		for _, v := range b.crd.Spec.ChainSpec.Versions {
+			v := v
+			if instanceHeight < v.UpgradeHeight {
 				break
 			}
-			image = version.Image
+			vrs = &v
 		}
-		if image != "" {
-			setChainContainerImage(pod, image)
+		if vrs != nil {
+			setChainContainerImages(pod, vrs)
 		}
 	}
+
 	if o, ok := b.crd.Spec.InstanceOverrides[pod.Name]; ok {
 		if o.DisableStrategy != nil {
 			return nil, nil
@@ -204,10 +210,6 @@ func (b PodBuilder) Build() (*corev1.Pod, error) {
 		if o.Image != "" {
 			setChainContainerImage(pod, o.Image)
 		}
-	}
-
-	if err := kube.ApplyStrategicMergePatch(pod, podPatch(b.crd)); err != nil {
-		return nil, err
 	}
 
 	kube.NormalizeMetadata(&pod.ObjectMeta)
