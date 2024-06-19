@@ -1,0 +1,134 @@
+# Example Penumbra Sentry configuration
+# 3 sentries, 1 per worker node
+apiVersion: cosmos.strange.love/v1
+kind: CosmosFullNode
+metadata:
+  name: penumbra-testnet-sentry
+spec:
+  type: Sentry
+  replicas: 3
+  chain:
+    chainID: penumbra-testnet-deimos-8
+    network: testnet
+    versions:
+      # Genesis version
+      - height: 0
+        image: ghcr.io/strangelove-ventures/heighliner/cometbft:v0.37.5
+        containers:
+          pd: ghcr.io/strangelove-ventures/heighliner/penumbra:v0.77.2
+      # Stage upgrades at future block heights by adding the version information here
+    config:
+      maxInboundPeers: 20
+      maxOutboundPeers: 20
+      overrides: |-
+        moniker = "strangelove"
+        fast_sync = true
+
+        [consensus]
+        timeout_commit = "5000ms"
+
+        [fastsync]
+        version = "v0"
+      seeds: 778faa70d7426d6cfc2561293d3108cea14029e5@35.225.116.144:26656,2a1c938b033750194b3b94ec94c45530af64da06@223.130.134.24:26656,d90429e1dda28210b71bdf265e004afc0f77590c@84.46.247.166:26656,65a1f42ac9be28dcd50c472a30e2532e5566559a@161.97.90.165:26656,b419b447a126a31d2396e87fb99f92a0bd66f324@84.46.247.160:26656,66eabb033f37a0d405e61c4609c8db1d78c193b6@84.46.247.17:26656,476d4ac6146807ed605d794d84f7235c982af595@78.46.84.125:42656
+    genesisScript: echo "No need for genesis"
+    addrbookScript: echo "No need for address book"
+    skipInvariants: false
+    binary: cometbft
+
+  podTemplate:
+    affinity:
+      podAntiAffinity:
+        # One sentry per node
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: penumbra-testnet-sentry
+            topologyKey: kubernetes.io/hostname
+    initContainers:
+      # Initialize the cometbft tmp configuration for the correct version, used for config overlay
+      - name: chain-init
+        command:
+          - cometbft
+          - init
+          - --home /home/operator/.tmp
+        volumeMounts:
+          - mountPath: /home/operator/.tmp
+            name: vol-tmp
+        env:
+          - name: HOME
+            value: /home/operator/cosmos
+
+        # Initialize the cometbft and pd data from a snapshot if it is not already initialized
+      - name: pd-init
+        image: ghcr.io/strangelove-ventures/heighliner/penumbra:v0.77.2
+        command:
+          - sh
+          - -c
+          - |
+            HOME=/home/operator/cosmos pd testnet join --archive-url "https://snapshots.penumbra.zone/testnet/pd-migrated-state-76-77.tar.gz" || echo "Already initialized"
+        volumeMounts:
+          - mountPath: /home/operator/cosmos
+            name: vol-chain-home
+
+        # If pd-init initialized the data, move the cometbft data to the operator expected location and
+        # move the pd data also to the root of the vol-chain-home volume so that it is included in snapshots
+      - name: pd-move
+        image: busybox:latest
+        command:
+          - sh
+          - -c
+          - |
+            HOME=/home/operator/cosmos
+            NODE0=$HOME/.penumbra/testnet_data/node0
+            mv $NODE0/cometbft/* $HOME/ || echo "Already moved cometbft data"
+            mv $NODE0/pd $HOME/ || echo "Already moved pd data"
+        volumeMounts:
+          - mountPath: /home/operator/cosmos
+            name: vol-chain-home
+    containers:
+      # pd sidecar container, communicates with cometbft "node" container
+      - name: pd
+        command:
+          - sh
+          - -c
+          - |
+            pd start --home /home/operator/cosmos/pd
+        ports:
+          # CometBFT connects to PD on port 26658
+          - containerPort: 26658
+            name: abci
+            protocol: TCP
+          - containerPort: 8080
+            name: grpc
+            protocol: TCP
+        volumeMounts:
+          - mountPath: /home/operator/cosmos
+            name: vol-chain-home
+    probes:
+      # Disable liveness and readiness probes for sentries
+      strategy: None
+    resources:
+      requests:
+        cpu: 4000m
+        memory: 10Gi
+      limits:
+        memory: 64Gi
+  selfHeal:
+    heightDriftMitigation:
+      threshold: 10
+    pvcAutoScale:
+      increaseQuantity: 10%
+      maxSize: 5Ti
+      usedSpacePercentage: 75
+  service:
+    # Create a kubernetes NodePort service for the P2P port on each sentry
+    maxP2PExternalAddresses: 3
+    p2pTemplate:
+      type: NodePort
+  volumeClaimTemplate:
+    resources:
+      requests:
+        # Initial storage size for the PVC, needs to be enough for snapshot restore
+        storage: 20Gi
+    # Storage class for the PVC, will use default storage class if not specified
+    storageClassName: topolvm-provisioner-thin-striped

@@ -436,6 +436,8 @@ type ChainSpec struct {
 	Comet CometConfig `json:"config"`
 
 	// App configuration applied to app.toml.
+	// Although optional, it's highly recommended you configure this field.
+	// +optional
 	App SDKAppConfig `json:"app"`
 
 	// One of trace|debug|info|warn|error|fatal|panic.
