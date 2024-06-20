@@ -6,7 +6,7 @@
 [![License: Apache-2.0](https://img.shields.io/github/license/strangelove-ventures/cosmos-operator.svg?style=flat-square)](https://github.com/strangelove-ventures/cosmos-operator/blob/main/LICENSE)
 [![Version](https://img.shields.io/github/tag/strangelove-ventures/cosmos-operator.svg?style=flat-square)](https://github.com/cosmos/strangelove-ventures/cosmos-operator)
 
-Cosmos Operator is a [Kubernetes Operator](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/) for blockchains built with the [Cosmos SDK](https://github.com/cosmos/cosmos-sdk). 
+Cosmos Operator is a [Kubernetes Operator](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/) primarily for blockchains built with the [Cosmos SDK](https://github.com/cosmos/cosmos-sdk). It also supports [Penumbra](https://github.com/penumbra-zone/penumbra) and other chains which use [CometBFT](https://github.com/cometbft/cometbft) for consensus. 
 
 The long-term vision of this operator is to allow you to "configure it and forget it". 
 
@@ -39,11 +39,15 @@ The CosmosFullNode controller is like a StatefulSet for running Cosmos SDK block
 A CosmosFullNode can be configured to run as an RPC node, a validator sentry, or a seed node. All configurations can
 be used as persistent peers.
 
-As of this writing, Strangelove has been running CosmosFullNode in production for many months.
+As of this writing, Strangelove has been running CosmosFullNode in production for over a year.
+
+## Samples
 
 [Minimal example yaml](./config/samples/cosmos_v1_cosmosfullnode.yaml)
 
 [Full example yaml](./config/samples/cosmos_v1_cosmosfullnode_full.yaml)
+
+[Penumbra example yaml](./config/samples/cosmos_v1_cosmosfullnode_penumbra.yaml)
 
 ### Why not a StatefulSet?
 Each pod requires different config, such as peer settings in config.toml and mounted node keys. Therefore, a blanket
@@ -75,7 +79,7 @@ See the [best practices guide for CosmosFullNode](./docs/fullnode_best_practices
 
 Disclaimer: Strangelove has not committed to these enhancements and cannot estimate when they will be completed.
 
-- [ ] Scheduled upgrades. Set a halt height and image version. The controller performs a rolling update with the new image version after the committed halt height.
+- [x] Scheduled upgrades. Set the upgrade height and image version, optionally setting halt height. The controller performs a rolling update with the new image version after the committed height.
 - [x] Support configuration suitable for validator sentries.
 - [x] Reliable, persistent peer support.
 - [x] Quicker p2p discovery using private peers.
