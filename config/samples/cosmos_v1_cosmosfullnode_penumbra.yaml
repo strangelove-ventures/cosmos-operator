@@ -16,6 +16,10 @@ spec:
         image: ghcr.io/strangelove-ventures/heighliner/cometbft:v0.37.5
         containers:
           pd: ghcr.io/strangelove-ventures/heighliner/penumbra:v0.77.2
+      - height: 734700
+        image: ghcr.io/strangelove-ventures/heighliner/cometbft:v0.37.5
+        containers:
+          pd: ghcr.io/strangelove-ventures/heighliner/penumbra:v0.78.0
       # Stage upgrades at future block heights by adding the version information here
     config:
       maxInboundPeers: 20
@@ -92,7 +96,9 @@ spec:
           - sh
           - -c
           - |
-            pd start --home /home/operator/cosmos/pd
+            export HOME=/home/operator/cosmos
+            pd migrate --home $HOME/pd --comet-home $HOME
+            pd start --home $HOME/pd
         ports:
           # CometBFT connects to PD on port 26658
           - containerPort: 26658
