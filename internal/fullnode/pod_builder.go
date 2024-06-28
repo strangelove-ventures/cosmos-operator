@@ -181,22 +181,28 @@ func podReadinessProbes(crd *cosmosv1.CosmosFullNode) []*corev1.Probe {
 func (b PodBuilder) Build() (*corev1.Pod, error) {
 	pod := b.pod.DeepCopy()
 
+	if err := kube.ApplyStrategicMergePatch(pod, podPatch(b.crd)); err != nil {
+		return nil, err
+	}
+
 	if len(b.crd.Spec.ChainSpec.Versions) > 0 {
 		instanceHeight := uint64(0)
 		if height, ok := b.crd.Status.Height[pod.Name]; ok {
 			instanceHeight = height
 		}
-		var image string
-		for _, version := range b.crd.Spec.ChainSpec.Versions {
-			if instanceHeight < version.UpgradeHeight {
+		var vrs *cosmosv1.ChainVersion
+		for _, v := range b.crd.Spec.ChainSpec.Versions {
+			v := v
+			if instanceHeight < v.UpgradeHeight {
 				break
 			}
-			image = version.Image
+			vrs = &v
 		}
-		if image != "" {
-			setChainContainerImage(pod, image)
+		if vrs != nil {
+			setChainContainerImages(pod, vrs)
 		}
 	}
+
 	if o, ok := b.crd.Spec.InstanceOverrides[pod.Name]; ok {
 		if o.DisableStrategy != nil {
 			return nil, nil
@@ -204,10 +210,6 @@ func (b PodBuilder) Build() (*corev1.Pod, error) {
 		if o.Image != "" {
 			setChainContainerImage(pod, o.Image)
 		}
-	}
-
-	if err := kube.ApplyStrategicMergePatch(pod, podPatch(b.crd)); err != nil {
-		return nil, err
 	}
 
 	kube.NormalizeMetadata(&pod.ObjectMeta)
@@ -310,10 +312,11 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 }
 
 const (
-	workDir        = "/home/operator"
-	tmpDir         = workDir + "/.tmp"
-	tmpConfigDir   = workDir + "/.config"
-	infraToolImage = "ghcr.io/strangelove-ventures/infra-toolkit:v0.0.1"
+	workDir          = "/home/operator"
+	tmpDir           = workDir + "/.tmp"
+	tmpConfigDir     = workDir + "/.config"
+	infraToolImage   = "ghcr.io/strangelove-ventures/infra-toolkit"
+	infraToolVersion = "v0.1.6"
 
 	// Necessary for statesync
 	systemTmpDir = "/tmp"
@@ -339,6 +342,10 @@ func envVars(crd *cosmosv1.CosmosFullNode) []corev1.EnvVar {
 	}
 }
 
+func resolveInfraToolImage() string {
+	return fmt.Sprintf("%s:%s", infraToolImage, infraToolVersion)
+}
+
 func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Container {
 	tpl := crd.Spec.PodTemplate
 	binary := crd.Spec.ChainSpec.Binary
@@ -353,7 +360,7 @@ func initContainers(crd *cosmosv1.CosmosFullNode, moniker string) []corev1.Conta
 	required := []corev1.Container{
 		{
 			Name:            "clean-init",
-			Image:           infraToolImage,
+			Image:           resolveInfraToolImage(),
 			Command:         []string{"sh"},
 			Args:            []string{"-c", `rm -rf "$HOME/.tmp/*"`},
 			Env:             env,
@@ -385,7 +392,7 @@ echo "Initializing into tmp dir for downstream processing..."
 
 		{
 			Name:            "genesis-init",
-			Image:           infraToolImage,
+			Image:           resolveInfraToolImage(),
 			Command:         []string{genesisCmd},
 			Args:            genesisArgs,
 			Env:             env,
@@ -394,7 +401,7 @@ echo "Initializing into tmp dir for downstream processing..."
 		},
 		{
 			Name:            "addrbook-init",
-			Image:           infraToolImage,
+			Image:           resolveInfraToolImage(),
 			Command:         []string{addrbookCmd},
 			Args:            addrbookArgs,
 			Env:             env,
@@ -403,7 +410,7 @@ echo "Initializing into tmp dir for downstream processing..."
 		},
 		{
 			Name:    "config-merge",
-			Image:   infraToolImage,
+			Image:   resolveInfraToolImage(),
 			Command: []string{"sh"},
 			Args: []string{"-c",
 				`
@@ -420,8 +427,13 @@ rm -rf "$CONFIG_DIR/node_key.json"
 
 echo "Merging config..."
 set -x
-config-merge -f toml "$TMP_DIR/config.toml" "$OVERLAY_DIR/config-overlay.toml" > "$CONFIG_DIR/config.toml"
-config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CONFIG_DIR/app.toml"
+
+if [ -f "$TMP_DIR/config.toml" ]; then
+	config-merge -f toml "$TMP_DIR/config.toml" "$OVERLAY_DIR/config-overlay.toml" > "$CONFIG_DIR/config.toml"
+fi
+if [ -f "$TMP_DIR/app.toml" ]; then
+	config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CONFIG_DIR/app.toml"
+fi
 `,
 			},
 			Env:             env,
@@ -434,7 +446,7 @@ config-merge -f toml "$TMP_DIR/app.toml" "$OVERLAY_DIR/app-overlay.toml" > "$CON
 		cmd, args := DownloadSnapshotCommand(crd.Spec.ChainSpec)
 		required = append(required, corev1.Container{
 			Name:            "snapshot-restore",
-			Image:           infraToolImage,
+			Image:           resolveInfraToolImage(),
 			Command:         []string{cmd},
 			Args:            args,
 			Env:             env,

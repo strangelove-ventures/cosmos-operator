@@ -436,6 +436,8 @@ type ChainSpec struct {
 	Comet CometConfig `json:"config"`
 
 	// App configuration applied to app.toml.
+	// Although optional, it's highly recommended you configure this field.
+	// +optional
 	App SDKAppConfig `json:"app"`
 
 	// One of trace|debug|info|warn|error|fatal|panic.
@@ -558,6 +560,14 @@ type ChainVersion struct {
 
 	// The docker image for this version in "repository:tag" format. E.g. busybox:latest.
 	Image string `json:"image"`
+
+	// Version overrides for initContainers of the fullnode/sentry pods.
+	// +optional
+	InitContainers map[string]string `json:"initContainers"`
+
+	// Version overrides for containers of the fullnode/sentry pods.
+	// +optional
+	Containers map[string]string `json:"containers"`
 
 	// Determines if the node should forcefully halt at the upgrade height.
 	// +optional
