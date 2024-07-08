@@ -3,19 +3,20 @@
 apiVersion: cosmos.strange.love/v1
 kind: CosmosFullNode
 metadata:
-  name: penumbra-testnet-sentry
+  name: penumbra-mainnet-sentry
 spec:
-  type: Sentry
+  #type: Sentry
+  type: FullNode
   replicas: 3
   chain:
-    chainID: penumbra-testnet-deimos-8
-    network: testnet
+    chainID: penumbra-1
+    network: mainnet
     versions:
       # Genesis version
       - height: 0
         image: ghcr.io/strangelove-ventures/heighliner/cometbft:v0.37.5
         containers:
-          pd: ghcr.io/strangelove-ventures/heighliner/penumbra:v0.77.2
+          pd: ghcr.io/strangelove-ventures/heighliner/penumbra:v0.79.0-alpha.5
       - height: 734700
         image: ghcr.io/strangelove-ventures/heighliner/cometbft:v0.37.5
         containers:
@@ -33,7 +34,7 @@ spec:
 
         [fastsync]
         version = "v0"
-      seeds: 778faa70d7426d6cfc2561293d3108cea14029e5@35.225.116.144:26656,2a1c938b033750194b3b94ec94c45530af64da06@223.130.134.24:26656,d90429e1dda28210b71bdf265e004afc0f77590c@84.46.247.166:26656,65a1f42ac9be28dcd50c472a30e2532e5566559a@161.97.90.165:26656,b419b447a126a31d2396e87fb99f92a0bd66f324@84.46.247.160:26656,66eabb033f37a0d405e61c4609c8db1d78c193b6@84.46.247.17:26656,476d4ac6146807ed605d794d84f7235c982af595@78.46.84.125:42656
+      seeds: "tcp://ae42647a3da1a255dec4087439b14a643d14ac07@64.23.244.20:26656,tcp://41caa4106f68977e3a5123e56f57934a2d34a1c1@95.214.52.240:26656,tcp://c108fc8978e13d47be2115565b355dad179ffacb@65.108.228.209:26656,tcp://0e0df76fd4e4cfc5b841b681c3bc2554ecfabc7b@51.210.223.72:21956,tcp://c78e2809b38341560c027dff393b33fbf3f11e1f@65.108.77.220:26656,tcp://06516a3ef6ca69085c174298864f6abad076e01d@15.204.65.192:26656,tcp://a988534ab1e4bc42aad26ea7ec7bdc7d5415a14c@172.111.52.53:32670"
     genesisScript: echo "No need for genesis"
     addrbookScript: echo "No need for address book"
     skipInvariants: false
@@ -46,15 +47,16 @@ spec:
         requiredDuringSchedulingIgnoredDuringExecution:
           - labelSelector:
               matchLabels:
-                app.kubernetes.io/name: penumbra-testnet-sentry
+                app.kubernetes.io/name: penumbra-mainnet-sentry
             topologyKey: kubernetes.io/hostname
     initContainers:
       # Initialize the cometbft tmp configuration for the correct version, used for config overlay
       - name: chain-init
         command:
-          - cometbft
-          - init
-          - --home /home/operator/.tmp
+          - sh
+          - -c
+          - |
+           /bin/cometbft init --home /home/operator/.tmp         
         volumeMounts:
           - mountPath: /home/operator/.tmp
             name: vol-tmp
@@ -64,12 +66,14 @@ spec:
 
         # Initialize the cometbft and pd data from a snapshot if it is not already initialized
       - name: pd-init
-        image: ghcr.io/strangelove-ventures/heighliner/penumbra:v0.77.2
+        image: ghcr.io/strangelove-ventures/heighliner/penumbra:v0.79.0-alpha.5
+
+#           use a trusted RPC endpoint here
         command:
           - sh
           - -c
           - |
-            HOME=/home/operator/cosmos pd testnet join --archive-url "https://snapshots.penumbra.zone/testnet/pd-migrated-state-76-77.tar.gz" || echo "Already initialized"
+            HOME=/home/operator/cosmos pd network join --moniker strangelove http://64.23.244.20:26657 || echo "Already initialized"
         volumeMounts:
           - mountPath: /home/operator/cosmos
             name: vol-chain-home
@@ -83,7 +87,7 @@ spec:
           - -c
           - |
             HOME=/home/operator/cosmos
-            NODE0=$HOME/.penumbra/testnet_data/node0
+            NODE0=$HOME/.penumbra/network_data/node0
             mv $NODE0/cometbft/* $HOME/ || echo "Already moved cometbft data"
             mv $NODE0/pd $HOME/ || echo "Already moved pd data"
         volumeMounts:
