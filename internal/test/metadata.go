@@ -16,8 +16,7 @@ func RequireValidMetadata(t *testing.T, obj client.Object) {
 		require.LessOrEqual(t, len(k), 63)
 		require.LessOrEqual(t, len(v), 63, k)
 	}
-	for k, v := range obj.GetAnnotations() {
+	for k := range obj.GetAnnotations() {
 		require.LessOrEqual(t, len(k), 63)
-		require.LessOrEqual(t, len(v), 63, k)
 	}
 }
