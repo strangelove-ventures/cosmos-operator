@@ -43,9 +43,16 @@ rules:
   resources:
   - pods
   verbs:
+  - delete
   - get
   - list
   - watch
+- apiGroups:
+  - ""
+  resources:
+  - pods/log
+  verbs:
+  - get
 - apiGroups:
   - ""
   resources:
