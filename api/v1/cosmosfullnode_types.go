@@ -670,18 +670,18 @@ type Pruning struct {
 	// Bock height interval at which pruned heights are removed from disk (ignored if pruning is not 'custom').
 	// If not set, defaults to 0.
 	// +optional
-	Interval *uint32 `json:"interval"`
+	Interval *string `json:"interval"`
 
 	// Offset heights to keep on disk after 'keep-every' (ignored if pruning is not 'custom')
 	// Often, setting this to 0 is appropriate.
 	// If not set, defaults to 0.
 	// +optional
-	KeepEvery *uint32 `json:"keepEvery"`
+	KeepEvery *string `json:"keepEvery"`
 
 	// Number of recent block heights to keep on disk (ignored if pruning is not 'custom')
 	// If not set, defaults to 0.
 	// +optional
-	KeepRecent *uint32 `json:"keepRecent"`
+	KeepRecent *string `json:"keepRecent"`
 
 	// Defines the minimum block height offset from the current
 	// block being committed, such that all blocks past this offset are pruned
@@ -700,7 +700,7 @@ type Pruning struct {
 	//
 	// If not set, defaults to 0.
 	// +optional
-	MinRetainBlocks *uint32 `json:"minRetainBlocks"`
+	MinRetainBlocks *string `json:"minRetainBlocks"`
 }
 
 // PruningStrategy control pruning.

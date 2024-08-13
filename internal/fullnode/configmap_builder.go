@@ -45,7 +45,7 @@ func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, peers Peers) ([]diff.Resource
 				instanceHeight = height
 			}
 			haltHeight := uint64(0)
-			for i, v := range crd.Spec.ChainSpec.Versions {
+			for index, v := range crd.Spec.ChainSpec.Versions {
 				if v.SetHaltHeight {
 					haltHeight = v.UpgradeHeight
 				} else {
@@ -54,13 +54,13 @@ func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, peers Peers) ([]diff.Resource
 				if instanceHeight < v.UpgradeHeight {
 					break
 				}
-				if i == len(crd.Spec.ChainSpec.Versions)-1 {
+				if index == len(crd.Spec.ChainSpec.Versions)-1 {
 					haltHeight = 0
 				}
 			}
 			appCfg.HaltHeight = ptr(haltHeight)
 		}
-		if err := addAppToml(buf, data, appCfg); err != nil {
+		if err := addAppToml(buf, data, appCfg, int(i)); err != nil {
 			return nil, err
 		}
 		buf.Reset()
@@ -212,7 +212,7 @@ func commaDelimited(s ...string) string {
 	return strings.Join(lo.Compact(s), ",")
 }
 
-func addAppToml(buf *bytes.Buffer, cmData map[string]string, app cosmosv1.SDKAppConfig) error {
+func addAppToml(buf *bytes.Buffer, cmData map[string]string, app cosmosv1.SDKAppConfig, ordinal int) error {
 	base := make(decodedToml)
 	base["minimum-gas-prices"] = app.MinGasPrice
 	// Note: The name discrepancy "enable" vs. "enabled" is intentional; a known inconsistency within the app.toml.
@@ -224,15 +224,32 @@ func addAppToml(buf *bytes.Buffer, cmData map[string]string, app cosmosv1.SDKApp
 	}
 
 	if pruning := app.Pruning; pruning != nil {
-		intStr := func(n *uint32) string {
-			v := valOrDefault(n, ptr(uint32(0)))
-			return strconv.FormatUint(uint64(*v), 10)
+		intStr := func(n *string, ordinal int) string {
+			if n == nil {
+				return "0"
+			}
+			if strings.Contains(*n, ",") {
+				slice := strings.Split(*n, ",")
+				if len(slice) <= ordinal {
+					return "0"
+				}
+				return slice[ordinal]
+			}
+			return *n
+
+			//	v := valOrDefault(n, "0")
+			//return strconv.FormatUint(uint64(*v), 10)
 		}
 		base["pruning"] = pruning.Strategy
-		base["pruning-interval"] = intStr(pruning.Interval)
-		base["pruning-keep-every"] = intStr(pruning.KeepEvery)
-		base["pruning-keep-recent"] = intStr(pruning.KeepRecent)
-		base["min-retain-blocks"] = valOrDefault(pruning.MinRetainBlocks, ptr(uint32(0)))
+		base["pruning-interval"] = intStr(pruning.Interval, ordinal)
+		base["pruning-keep-every"] = intStr(pruning.KeepEvery, ordinal)
+		base["pruning-keep-recent"] = intStr(pruning.KeepRecent, ordinal)
+		retain, err := strconv.ParseInt(intStr(pruning.MinRetainBlocks, ordinal), 10, 32)
+		if err != nil {
+			return err
+		}
+		base["min-retain-blocks"] = ptr(uint32(retain))
+		//valOrDefault(pruning.MinRetainBlocks, ptr(uint32(0)))
 	}
 
 	dst := defaultApp()

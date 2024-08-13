@@ -46,7 +46,7 @@ spec:
       # No need to set pruning in toml, set it here instead:
       pruning:
         strategy: "custom"
-        interval: 17
+        interval: 17,201
         keepEvery: 1000
         keepRecent: 5000
         minRetainBlocks: 10000

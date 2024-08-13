@@ -317,10 +317,10 @@ func TestBuildConfigMaps(t *testing.T) {
 			custom.Spec.ChainSpec.App.HaltHeight = ptr(uint64(34567))
 			custom.Spec.ChainSpec.App.Pruning = &cosmosv1.Pruning{
 				Strategy:        "custom",
-				Interval:        ptr(uint32(222)),
-				KeepEvery:       ptr(uint32(333)),
-				KeepRecent:      ptr(uint32(444)),
-				MinRetainBlocks: ptr(uint32(271500)),
+				Interval:        ptr("222,232"),
+				KeepEvery:       ptr("333"),
+				KeepRecent:      ptr("444"),
+				MinRetainBlocks: ptr("271500"),
 			}
 
 			cms, err := BuildConfigMaps(custom, nil)
