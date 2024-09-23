@@ -730,6 +730,10 @@ type ServiceSpec struct {
 	// Overrides for the single RPC service.
 	// +optional
 	RPCTemplate ServiceOverridesSpec `json:"rpcTemplate"`
+
+	// Overrides for default cluster domain name.
+	// +optional
+	ClusterDomain *string `json:"clusterDomain"`
 }
 
 // ServiceOverridesSpec allows some overrides for the created, single RPC service.
@@ -742,6 +746,11 @@ type ServiceOverridesSpec struct {
 	// +kubebuilder:validation:Enum:=ClusterIP;NodePort;LoadBalancer;ExternalName
 	// +optional
 	Type *corev1.ServiceType `json:"type"`
+
+	// Setting this to "None" makes a "headless service" (no virtual IP), which is useful when direct endpoint connections are preferred and proxying is not required.
+	// If not set, defaults to "".
+	// +optional
+	ClusterIP *string `json:"clusterIP"`
 
 	// Sets endpoint and routing behavior.
 	// See: https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/#caveats-and-limitations-when-preserving-source-ips

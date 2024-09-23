@@ -63,6 +63,7 @@ func BuildServices(crd *cosmosv1.CosmosFullNode) []diff.Resource[*corev1.Service
 			svc.Spec.ExternalTrafficPolicy = *valOrDefault(crd.Spec.Service.P2PTemplate.ExternalTrafficPolicy, ptr(corev1.ServiceExternalTrafficPolicyTypeLocal))
 		} else {
 			svc.Spec.Type = corev1.ServiceTypeClusterIP
+			svc.Spec.ClusterIP = *valOrDefault(crd.Spec.Service.P2PTemplate.ClusterIP, ptr(""))
 		}
 
 		p2ps[i] = diff.Adapt(&svc, i)
@@ -130,6 +131,9 @@ func rpcService(crd *cosmosv1.CosmosFullNode) *corev1.Service {
 	}
 	if v := rpcSpec.Type; v != nil {
 		svc.Spec.Type = *v
+	}
+	if v := rpcSpec.ClusterIP; v != nil {
+		svc.Spec.ClusterIP = *v
 	}
 
 	return &svc

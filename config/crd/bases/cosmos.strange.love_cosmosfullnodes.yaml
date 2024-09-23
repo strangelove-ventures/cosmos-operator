@@ -5674,6 +5674,9 @@ spec:
                   This allows a k8s admin to use the service in an Ingress, for example.
                   Additionally, multiple p2p services are created for CometBFT peer exchange.
                 properties:
+                  clusterDomain:
+                    description: Overrides for default cluster domain name.
+                    type: string
                   maxP2PExternalAddresses:
                     description: |-
                       Max number of external p2p services to create for CometBFT peer exchange.
@@ -5688,6 +5691,11 @@ spec:
                     description: Overrides for all P2P services that need external
                       addresses.
                     properties:
+                      clusterIP:
+                        description: |-
+                          Setting this to "None" makes a "headless service" (no virtual IP), which is useful when direct endpoint connections are preferred and proxying is not required.
+                          If not set, defaults to "".
+                        type: string
                       externalTrafficPolicy:
                         description: |-
                           Sets endpoint and routing behavior.
@@ -5729,6 +5737,11 @@ spec:
                   rpcTemplate:
                     description: Overrides for the single RPC service.
                     properties:
+                      clusterIP:
+                        description: |-
+                          Setting this to "None" makes a "headless service" (no virtual IP), which is useful when direct endpoint connections are preferred and proxying is not required.
+                          If not set, defaults to "".
+                        type: string
                       externalTrafficPolicy:
                         description: |-
                           Sets endpoint and routing behavior.
