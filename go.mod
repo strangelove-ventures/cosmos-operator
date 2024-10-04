@@ -1,6 +1,6 @@
 module github.com/strangelove-ventures/cosmos-operator
 
-go 1.21
+go 1.23.0
 
 require (
 	cosmossdk.io/log v1.2.1
