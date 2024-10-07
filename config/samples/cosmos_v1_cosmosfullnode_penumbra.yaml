@@ -3,24 +3,28 @@
 apiVersion: cosmos.strange.love/v1
 kind: CosmosFullNode
 metadata:
-  name: penumbra-testnet-sentry
+  name: penumbra-mainnet-sentry
 spec:
-  type: Sentry
+  #type: Sentry
+  type: FullNode
   replicas: 3
   chain:
-    chainID: penumbra-testnet-deimos-8
-    network: testnet
+    chainID: penumbra-1
+    network: mainnet
     versions:
-      # Genesis version
       - height: 0
-        image: ghcr.io/strangelove-ventures/heighliner/cometbft:v0.37.5
+        image: ghcr.io/strangelove-ventures/heighliner/cometbft:v0.37.9 # TODO UPDATE ME FOR STAGED UPGRADES
         containers:
-          pd: ghcr.io/strangelove-ventures/heighliner/penumbra:v0.77.2
-      - height: 734700
-        image: ghcr.io/strangelove-ventures/heighliner/cometbft:v0.37.5
+          pd: ghcr.io/strangelove-ventures/heighliner/penumbra:v0.80.0 # TODO UPDATE ME FOR STAGED UPGRADES
+      - height: 2
+        image: ghcr.io/strangelove-ventures/heighliner/cometbft:v0.37.9
         containers:
-          pd: ghcr.io/strangelove-ventures/heighliner/penumbra:v0.78.0
-      # Stage upgrades at future block heights by adding the version information here
+          pd: ghcr.io/strangelove-ventures/heighliner/penumbra:v0.79.1
+      - height: 501975
+        image: ghcr.io/strangelove-ventures/heighliner/cometbft:v0.37.9
+        containers:
+          pd: ghcr.io/strangelove-ventures/heighliner/penumbra:v0.80.0 
+      # Also apply latest image for height 0 for upgrades since they reset the Comet DB. (L16-L19)
     config:
       maxInboundPeers: 20
       maxOutboundPeers: 20
@@ -33,7 +37,12 @@ spec:
 
         [fastsync]
         version = "v0"
-      seeds: 778faa70d7426d6cfc2561293d3108cea14029e5@35.225.116.144:26656,2a1c938b033750194b3b94ec94c45530af64da06@223.130.134.24:26656,d90429e1dda28210b71bdf265e004afc0f77590c@84.46.247.166:26656,65a1f42ac9be28dcd50c472a30e2532e5566559a@161.97.90.165:26656,b419b447a126a31d2396e87fb99f92a0bd66f324@84.46.247.160:26656,66eabb033f37a0d405e61c4609c8db1d78c193b6@84.46.247.17:26656,476d4ac6146807ed605d794d84f7235c982af595@78.46.84.125:42656
+
+        [mempool]
+        max_tx_bytes = 30720
+        max_txs_bytes = 10485760
+      seeds: c28827cb96c14c905b127b92065a3fb4cd77d7f6@seeds.whispernode.com:21956,20e1000e88125698264454a884812746c2eb4807@seeds.lavenderfive.com:21956
+      peers: 7ae6236905eb6a06d9f27e22204d4c49d4e36d4f@108.21.128.181:26656,76a0f3a7dbc735bd799a8630dfe21ef932816ba3@159.89.254.147:26656,262ef06f71446d6fac6461ea421852c9d9f50006@159.203.52.181:26656,06516a3ef6ca69085c174298864f6abad076e01d@15.204.65.192:26656,9546d20499be3cf7849621faebb3f1e4b0ab0392@164.92.120.11:26656,f90a0a85b976b9bdaf05a871083e702402621fea@160.202.131.247:26656,d4a31f4c0267d668e8cb0d9b6dfa15c860d82376@160.202.131.221:26656,d236fb98aa91f9a3dca8db6403a03923bb510048@65.21.192.115:21956
     genesisScript: echo "No need for genesis"
     addrbookScript: echo "No need for address book"
     skipInvariants: false
@@ -46,51 +55,44 @@ spec:
         requiredDuringSchedulingIgnoredDuringExecution:
           - labelSelector:
               matchLabels:
-                app.kubernetes.io/name: penumbra-testnet-sentry
+                app.kubernetes.io/name: penumbra-mainnet-sentry
             topologyKey: kubernetes.io/hostname
     initContainers:
-      # Initialize the cometbft tmp configuration for the correct version, used for config overlay
       - name: chain-init
         command:
-          - cometbft
-          - init
-          - --home /home/operator/.tmp
+          - sh
+          - -c
+          - |
+            set -eu
+            if [ ! -d "$CHAIN_HOME/data" ]; then
+            	echo "Initializing chain..."
+                cometbft init --home "$CHAIN_HOME"
+            else
+            	echo "Skipping chain init; already initialized."
+            fi
+
+            echo "Initializing into tmp dir for downstream processing..."
+            cometbft init --home "$HOME/.tmp"
         volumeMounts:
           - mountPath: /home/operator/.tmp
             name: vol-tmp
-        env:
-          - name: HOME
-            value: /home/operator/cosmos
-
-        # Initialize the cometbft and pd data from a snapshot if it is not already initialized
-      - name: pd-init
-        image: ghcr.io/strangelove-ventures/heighliner/penumbra:v0.77.2
-        command:
-          - sh
-          - -c
-          - |
-            HOME=/home/operator/cosmos pd testnet join --archive-url "https://snapshots.penumbra.zone/testnet/pd-migrated-state-76-77.tar.gz" || echo "Already initialized"
-        volumeMounts:
-          - mountPath: /home/operator/cosmos
-            name: vol-chain-home
-
-        # If pd-init initialized the data, move the cometbft data to the operator expected location and
-        # move the pd data also to the root of the vol-chain-home volume so that it is included in snapshots
       - name: pd-move
-        image: busybox:latest
+        image: ghcr.io/strangelove-ventures/infra-toolkit:v0.1.7
         command:
           - sh
           - -c
           - |
-            HOME=/home/operator/cosmos
-            NODE0=$HOME/.penumbra/testnet_data/node0
-            mv $NODE0/cometbft/* $HOME/ || echo "Already moved cometbft data"
-            mv $NODE0/pd $HOME/ || echo "Already moved pd data"
+            export HOME=/home/operator/cosmos
+            NODE0=$HOME/.penumbra/network_data/node0
+            mkdir $HOME/pd || echo "Already created pd dir"
+
+            rsync -Iar --remove-source-files $NODE0/cometbft/* $HOME && rm -rf $NODE0/cometbft || echo "Already moved cometbft data"
+            rsync -Iar --remove-source-files $NODE0/pd $HOME && rm -rf $NODE0/pd || echo "Already moved pd data"
+            rsync -Iar --remove-source-files $HOME/cometbft/* $HOME && rm -rf $HOME/cometbft || echo "Already moved polkachu snapshot data"
         volumeMounts:
           - mountPath: /home/operator/cosmos
             name: vol-chain-home
     containers:
-      # pd sidecar container, communicates with cometbft "node" container
       - name: pd
         command:
           - sh
@@ -98,18 +100,19 @@ spec:
           - |
             export HOME=/home/operator/cosmos
             pd migrate --home $HOME/pd --comet-home $HOME
+
             pd start --home $HOME/pd
-        ports:
-          # CometBFT connects to PD on port 26658
-          - containerPort: 26658
-            name: abci
-            protocol: TCP
-          - containerPort: 8080
-            name: grpc
-            protocol: TCP
         volumeMounts:
           - mountPath: /home/operator/cosmos
             name: vol-chain-home
+        ports:
+          - name: abci
+            containerPort: 26658
+            protocol: TCP
+          - name: grpc
+            containerPort: 8080
+            protocol: TCP
+
     probes:
       # Disable liveness and readiness probes for sentries
       strategy: None
@@ -135,6 +138,6 @@ spec:
     resources:
       requests:
         # Initial storage size for the PVC, needs to be enough for snapshot restore
-        storage: 20Gi
+        storage: 30Gi
     # Storage class for the PVC, will use default storage class if not specified
     storageClassName: topolvm-provisioner-thin-striped
