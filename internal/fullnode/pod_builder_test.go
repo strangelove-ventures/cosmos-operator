@@ -566,7 +566,6 @@ gaiad start --home /home/operator/cosmos`
 
 		require.NotNilf(t, pod.Spec.Containers[0].ReadinessProbe, "container 0")
 		require.NotNilf(t, pod.Spec.Containers[1].ReadinessProbe, "container 1")
-
 	})
 
 	t.Run("strategic merge fields", func(t *testing.T) {
