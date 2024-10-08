@@ -1,5 +1,4 @@
-# Cosmos Operator
-
+[![Conforms to README.lint](https://img.shields.io/badge/README.lint-conforming-brightgreen)](https://github.com/strangelove-ventures/readme-dot-lint)
 [![Project Status: Initial Release](https://img.shields.io/badge/repo%20status-active-green.svg?style=flat-square)](https://www.repostatus.org/#active)
 [![GoDoc](https://img.shields.io/badge/godoc-reference-blue?style=flat-square&logo=go)](https://pkg.go.dev/github.com/strangelove-ventures/cosmos-operator)
 [![Go Report Card](https://goreportcard.com/badge/github.com/strangelove-ventures/cosmos-operator)](https://goreportcard.com/report/github.com/strangelove-ventures/cosmos-operator)
@@ -8,64 +7,82 @@
 
 Cosmos Operator is a [Kubernetes Operator](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/) primarily for blockchains built with the [Cosmos SDK](https://github.com/cosmos/cosmos-sdk). It also supports [Penumbra](https://github.com/penumbra-zone/penumbra) and other chains which use [CometBFT](https://github.com/cometbft/cometbft) for consensus. 
 
-The long-term vision of this operator is to allow you to "configure it and forget it". 
+🌌 Why use Cosmos Operator?
+=============================
 
-## Motivation
+Kubernetes ("K8") makes DevOps easier. Cosmos Operator makes Kubernetes easier for use in the Cosmos Ecosystem.
 
-Kubernetes provides a foundation for creating highly-available, scalable, fault-tolerant applications. 
-Additionally, Kubernetes provides well-known DevOps patterns and abstractions vs. 
-traditional DevOps which often requires "re-inventing the wheel".
+K8 provides a foundation for creating highly-available, scalable, fault-tolerant applications. It provides well-known DevOps patterns and abstractions (as opposed to traditional DevOps which often requires "re-inventing the wheel").
 
-Furthermore, the Operator Pattern allows us to mix infrastructure with business logic, 
+Furthermore, the [Operator Pattern][] allows us to mix infrastructure with business logic,
 thus minimizing human intervention and human error.
 
-# Disclaimers
 
-* Tested on Google's GKE and Bare-metal with Kubeadm. Although kubernetes is portable, we cannot guarantee or provide support for AWS, Azure, or other kubernetes providers.
-* Requires a recent version of kubernetes: v1.23+.
-* CosmosFullNode: The chain must be built from the [Cosmos SDK](https://github.com/cosmos/cosmos-sdk).
-* CosmosFullNode: Validator sentries require a remote signer such as [horcrux](https://github.com/strangelove-ventures/horcrux).
-* CosmosFullNode: The controller requires [heighliner](https://github.com/strangelove-ventures/heighliner) images. If you build your own image, you will need a shell `sh` and set the uid:gid to 1025:1025. If running as a validator sentry, you need `sleep` as well.
-* CosmosFullNode: May not work for all Cosmos chains. (Some chains diverge from common conventions.) Strangelove has yet to encounter a Cosmos chain that does not work with this operator.
+🌌🌌 Who benefits from Cosmos Operator?
+=============================
 
-# CosmosFullNode CRD
+People who'd like to use the [Operator Pattern][] to "configure it and forget it".
 
-Status: v1, stable
+> The [operator pattern][] aims to capture the key aim of a human operator who is managing a service or set of services. Human operators who look after specific applications and services have deep knowledge of how the system ought to behave, how to deploy it, and how to react if there are problems.
 
-CosmosFullNode is the flagship CRD. Its purpose is to deploy highly-available, fault-tolerant blockchain nodes. 
+> People who run workloads on Kubernetes often like to use automation to take care of repeatable tasks. The [operator pattern][] captures how you can write code to automate a task beyond what Kubernetes itself provides.
+
+
+🌌🌌🌌 What does Cosmos Operator do?
+=============================
+
+Cosmos Operator is a [Kubernetes Operator](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/) for blockchains built with the [Cosmos SDK](https://github.com/cosmos/cosmos-sdk). Write your own Custom Resource Definition ("CRD") as a `yaml` file and deploy with ease!
+
+
+🌌🌌🌌🌌 How do I use Cosmos Operator?
+=============================
+
+## Quick Start
+
+See the [quick start guide](./docs/quick_start.md).
+
+## CosmosFullNode CRD
+
+CosmosFullNode is the flagship CRD. Its purpose is to deploy highly-available, fault-tolerant blockchain nodes.
 
 The CosmosFullNode controller is like a StatefulSet for running Cosmos SDK blockchains.
 
-A CosmosFullNode can be configured to run as an RPC node, a validator sentry, or a seed node. All configurations can
-be used as persistent peers.
+A CosmosFullNode can be configured to run as an RPC node, a validator sentry, or a seed node. All configurations can be used as persistent peers.
 
 As of this writing, Strangelove has been running CosmosFullNode in production for over a year.
 
 ## Samples
 
-[Minimal example yaml](./config/samples/cosmos_v1_cosmosfullnode.yaml)
+- [Minimal example yaml](./config/samples/cosmos_v1_cosmosfullnode.yaml)
+- [Full example yaml](./config/samples/cosmos_v1_cosmosfullnode_full.yaml)
+- [Penumbra example yaml](./config/samples/cosmos_v1_cosmosfullnode_penumbra.yaml)
 
-[Full example yaml](./config/samples/cosmos_v1_cosmosfullnode_full.yaml)
-
-[Penumbra example yaml](./config/samples/cosmos_v1_cosmosfullnode_penumbra.yaml)
-
-### Why not a StatefulSet?
-Each pod requires different config, such as peer settings in config.toml and mounted node keys. Therefore, a blanket
-template as found in StatefulSet did not suffice.
-
-Additionally, CosmosFullNode gives you more control over individual pod and pvc pairs vs. a StatefulSet to help
-the human operator debug and recover from situations such as a corrupted PVCs.
-
-# Support CRDs
+## Support CRDs
 
 These CRDs are part of the operator and serve to support CosmosFullNodes.
 
-* [ScheduledVolumeSnapshot](./docs/scheduled_volume_snapshot.md)
-* [StatefulJob](./docs/stateful_job.md)
+- [ScheduledVolumeSnapshot](./docs/scheduled_volume_snapshot.md)
+- [StatefulJob](./docs/stateful_job.md)
 
-# Quick Start
+### Why not a StatefulSet?
 
-See the [quick start guide](./docs/quick_start.md).
+Each pod requires different config, such as peer settings in config.toml and mounted node keys. Therefore, a blanket
+template as found in StatefulSet did not suffice.
+
+Additionally, CosmosFullNode gives you more control over individual pod and pvc pairs vs. a StatefulSet to help the human operator debug and recover from situations such as a corrupted PVCs.
+
+
+🌌🌌🌌🌌🌌 Extras
+=============================
+
+# Disclaimers
+
+- Tested on Google's GKE and Bare-metal with `Kubeadm`. Although kubernetes is portable, we cannot guarantee or provide support for AWS, Azure, or other kubernetes providers.
+- Requires a recent version of kubernetes: v1.23+.
+- CosmosFullNode: The chain must be built from the [Cosmos SDK](https://github.com/cosmos/cosmos-sdk).
+- CosmosFullNode: Validator sentries require a remote signer such as [horcrux](https://github.com/strangelove-ventures/horcrux).
+- CosmosFullNode: The controller requires [heighliner](https://github.com/strangelove-ventures/heighliner) images. If you build your own image, you will need a shell `sh` and set the uid:gid to 1025:1025. If running as a validator sentry, you need `sleep` as well.
+- CosmosFullNode: May not work for all Cosmos chains. (Some chains diverge from common conventions.) Strangelove has yet to encounter a Cosmos chain that does not work with this operator.
 
 # Contributing
 
@@ -108,3 +125,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
+
+---
+
+[Operator Pattern]: https://kubernetes.io/docs/concepts/extend-kubernetes/operator/#operators-in-kubernetes
