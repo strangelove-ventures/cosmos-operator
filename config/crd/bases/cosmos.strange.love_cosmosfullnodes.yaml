@@ -3931,6 +3931,8 @@ spec:
                           None = Do not add any probes. May be necessary for Sentries using a remote signer.
                         enum:
                         - None
+                        - Reachable
+                        - InSync
                         type: string
                     type: object
                   resources:

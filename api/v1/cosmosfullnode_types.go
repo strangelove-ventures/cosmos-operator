@@ -303,14 +303,16 @@ type PodSpec struct {
 type FullNodeProbeStrategy string
 
 const (
-	FullNodeProbeStrategyNone FullNodeProbeStrategy = "None"
+	FullNodeProbeStrategyNone      FullNodeProbeStrategy = "None"
+	FullNodeProbeStrategyReachable FullNodeProbeStrategy = "Reachable"
+	FullNodeProbeStrategyInSync    FullNodeProbeStrategy = "InSync"
 )
 
 // FullNodeProbesSpec configures probes for created pods
 type FullNodeProbesSpec struct {
 	// Strategy controls the default probes added by the controller.
 	// None = Do not add any probes. May be necessary for Sentries using a remote signer.
-	// +kubebuilder:validation:Enum:=None
+	// +kubebuilder:validation:Enum:=None;Reachable;InSync
 	// +optional
 	Strategy FullNodeProbeStrategy `json:"strategy"`
 }

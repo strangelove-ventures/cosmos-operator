@@ -159,6 +159,10 @@ func podReadinessProbes(crd *cosmosv1.CosmosFullNode) []*corev1.Probe {
 		FailureThreshold:    5,
 	}
 
+	if crd.Spec.PodTemplate.Probes.Strategy == cosmosv1.FullNodeProbeStrategyReachable {
+		return []*corev1.Probe{mainProbe, nil}
+	}
+
 	sidecarProbe := &corev1.Probe{
 		ProbeHandler: corev1.ProbeHandler{
 			HTTPGet: &corev1.HTTPGetAction{

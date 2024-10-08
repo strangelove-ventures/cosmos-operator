@@ -548,6 +548,24 @@ gaiad start --home /home/operator/cosmos`
 		sidecar := pod.Spec.Containers[1]
 		require.Equal(t, "healthcheck", sidecar.Name)
 		require.Nil(t, sidecar.ReadinessProbe)
+
+		crd.Spec.PodTemplate.Probes = cosmosv1.FullNodeProbesSpec{Strategy: cosmosv1.FullNodeProbeStrategyReachable}
+
+		builder = NewPodBuilder(&crd)
+		pod, err = builder.WithOrdinal(1).Build()
+		require.NoError(t, err)
+
+		require.NotNilf(t, pod.Spec.Containers[0].ReadinessProbe, "container 0")
+		require.Nilf(t, pod.Spec.Containers[1].ReadinessProbe, "container 1")
+
+		crd.Spec.PodTemplate.Probes = cosmosv1.FullNodeProbesSpec{Strategy: cosmosv1.FullNodeProbeStrategyInSync}
+
+		builder = NewPodBuilder(&crd)
+		pod, err = builder.WithOrdinal(1).Build()
+		require.NoError(t, err)
+
+		require.NotNilf(t, pod.Spec.Containers[0].ReadinessProbe, "container 0")
+		require.NotNilf(t, pod.Spec.Containers[1].ReadinessProbe, "container 1")
 	})
 
 	t.Run("strategic merge fields", func(t *testing.T) {
