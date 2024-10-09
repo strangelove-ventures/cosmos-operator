@@ -303,14 +303,16 @@ type PodSpec struct {
 type FullNodeProbeStrategy string
 
 const (
-	FullNodeProbeStrategyNone FullNodeProbeStrategy = "None"
+	FullNodeProbeStrategyNone      FullNodeProbeStrategy = "None"
+	FullNodeProbeStrategyReachable FullNodeProbeStrategy = "Reachable"
+	FullNodeProbeStrategyInSync    FullNodeProbeStrategy = "InSync"
 )
 
 // FullNodeProbesSpec configures probes for created pods
 type FullNodeProbesSpec struct {
 	// Strategy controls the default probes added by the controller.
 	// None = Do not add any probes. May be necessary for Sentries using a remote signer.
-	// +kubebuilder:validation:Enum:=None
+	// +kubebuilder:validation:Enum:=None;Reachable;InSync
 	// +optional
 	Strategy FullNodeProbeStrategy `json:"strategy"`
 }
@@ -436,6 +438,8 @@ type ChainSpec struct {
 	Comet CometConfig `json:"config"`
 
 	// App configuration applied to app.toml.
+	// Although optional, it's highly recommended you configure this field.
+	// +optional
 	App SDKAppConfig `json:"app"`
 
 	// One of trace|debug|info|warn|error|fatal|panic.
@@ -558,6 +562,14 @@ type ChainVersion struct {
 
 	// The docker image for this version in "repository:tag" format. E.g. busybox:latest.
 	Image string `json:"image"`
+
+	// Version overrides for initContainers of the fullnode/sentry pods.
+	// +optional
+	InitContainers map[string]string `json:"initContainers"`
+
+	// Version overrides for containers of the fullnode/sentry pods.
+	// +optional
+	Containers map[string]string `json:"containers"`
 
 	// Determines if the node should forcefully halt at the upgrade height.
 	// +optional
@@ -720,6 +732,10 @@ type ServiceSpec struct {
 	// Overrides for the single RPC service.
 	// +optional
 	RPCTemplate ServiceOverridesSpec `json:"rpcTemplate"`
+
+	// Overrides for default cluster domain name.
+	// +optional
+	ClusterDomain *string `json:"clusterDomain"`
 }
 
 // ServiceOverridesSpec allows some overrides for the created, single RPC service.
@@ -732,6 +748,11 @@ type ServiceOverridesSpec struct {
 	// +kubebuilder:validation:Enum:=ClusterIP;NodePort;LoadBalancer;ExternalName
 	// +optional
 	Type *corev1.ServiceType `json:"type"`
+
+	// Setting this to "None" makes a "headless service" (no virtual IP), which is useful when direct endpoint connections are preferred and proxying is not required.
+	// If not set, defaults to "".
+	// +optional
+	ClusterIP *string `json:"clusterIP"`
 
 	// Sets endpoint and routing behavior.
 	// See: https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/#caveats-and-limitations-when-preserving-source-ips
