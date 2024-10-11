@@ -161,9 +161,22 @@ func addConfigToml(buf *bytes.Buffer, cmData map[string]string, crd *cosmosv1.Co
 		p2p["max_num_outbound_peers"] = comet.MaxOutboundPeers
 		p2p["max-num-outbound-peers"] = comet.MaxOutboundPeers
 	}
-	if v := peers.Get(instance, crd.Namespace).ExternalAddress; v != "" {
-		p2p["external_address"] = v
-		p2p["external-address"] = v
+
+	var externalOverride bool
+	if crd.Spec.InstanceOverrides != nil {
+		if override, ok := crd.Spec.InstanceOverrides[instance]; ok && override.ExternalAddress != nil {
+			addr := *override.ExternalAddress
+			p2p["external_address"] = addr
+			p2p["external-address"] = addr
+			externalOverride = true
+		}
+	}
+
+	if !externalOverride {
+		if v := peers.Get(instance, crd.Namespace).ExternalAddress; v != "" {
+			p2p["external_address"] = v
+			p2p["external-address"] = v
+		}
 	}
 
 	base["p2p"] = p2p

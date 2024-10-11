@@ -21,8 +21,14 @@ download_lz4() {
   wget -c -O - "$SNAPSHOT_URL" | lz4 -c -d | tar -x -C "$CHAIN_HOME"
 }
 
+download_zst() {                                                                                                
+    echo "Downloading and extracting zst..."                                                                      
+    wget -c -O - "$SNAPSHOT_URL" | zstd -d --stdout | tar -x -C "$CHAIN_HOME"
+}
+
 case "$SNAPSHOT_URL" in
 *.tar.lz4) download_lz4 ;;
+*.tar.zst) download_zst ;;
 *.tar.gzip) download_targz ;;
 *.tar.gz) download_targz ;;
 *.tar) download_tar ;;

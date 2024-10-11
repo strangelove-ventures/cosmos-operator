@@ -14,9 +14,8 @@ const (
 // BuildPods creates the final state of pods given the crd.
 func BuildPods(crd *cosmosv1.CosmosFullNode, cksums ConfigChecksums) ([]diff.Resource[*corev1.Pod], error) {
 	var (
-		builder   = NewPodBuilder(crd)
-		overrides = crd.Spec.InstanceOverrides
-		pods      []diff.Resource[*corev1.Pod]
+		builder = NewPodBuilder(crd)
+		pods    []diff.Resource[*corev1.Pod]
 	)
 	candidates := podCandidates(crd)
 	for i := int32(0); i < crd.Spec.Replicas; i++ {
@@ -24,37 +23,41 @@ func BuildPods(crd *cosmosv1.CosmosFullNode, cksums ConfigChecksums) ([]diff.Res
 		if err != nil {
 			return nil, err
 		}
+
+		if pod == nil {
+			continue
+		}
+
 		if _, shouldSnapshot := candidates[pod.Name]; shouldSnapshot {
 			continue
 		}
-		if len(crd.Spec.ChainSpec.Versions) > 0 {
-			instanceHeight := uint64(0)
-			if height, ok := crd.Status.Height[pod.Name]; ok {
-				instanceHeight = height
-			}
-			var image string
-			for _, version := range crd.Spec.ChainSpec.Versions {
-				if instanceHeight < version.UpgradeHeight {
-					break
-				}
-				image = version.Image
-			}
-			if image != "" {
-				setChainContainerImage(pod, image)
-			}
-		}
-		if o, ok := overrides[pod.Name]; ok {
-			if o.DisableStrategy != nil {
-				continue
-			}
-			if o.Image != "" {
-				setChainContainerImage(pod, o.Image)
-			}
-		}
+
 		pod.Annotations[configChecksumAnnotation] = cksums[client.ObjectKeyFromObject(pod)]
 		pods = append(pods, diff.Adapt(pod, i))
 	}
 	return pods, nil
+}
+
+func setChainContainerImages(pod *corev1.Pod, v *cosmosv1.ChainVersion) {
+	setChainContainerImage(pod, v.Image)
+
+	for name, image := range v.InitContainers {
+		for i := range pod.Spec.InitContainers {
+			if pod.Spec.InitContainers[i].Name == name {
+				pod.Spec.InitContainers[i].Image = image
+				break
+			}
+		}
+	}
+
+	for name, image := range v.Containers {
+		for i := range pod.Spec.Containers {
+			if pod.Spec.Containers[i].Name == name {
+				pod.Spec.Containers[i].Image = image
+				break
+			}
+		}
+	}
 }
 
 func setChainContainerImage(pod *corev1.Pod, image string) {
@@ -64,6 +67,7 @@ func setChainContainerImage(pod *corev1.Pod, image string) {
 			break
 		}
 	}
+
 	for i := range pod.Spec.InitContainers {
 		if pod.Spec.InitContainers[i].Name == chainInitContainer {
 			pod.Spec.InitContainers[i].Image = image
