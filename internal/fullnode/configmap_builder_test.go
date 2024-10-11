@@ -392,6 +392,34 @@ func TestBuildConfigMaps(t *testing.T) {
 			require.Equal(t, want, got)
 		})
 
+		t.Run("external address overrides", func(t *testing.T) {
+			overrides := crd.DeepCopy()
+
+			overrides.Spec.InstanceOverrides = make(map[string]cosmosv1.InstanceOverridesSpec)
+			overrideAddr0 := "override0.example.com:26656"
+			overrideAddr1 := "override1.example.com:26656"
+			overrides.Spec.InstanceOverrides["osmosis-0"] = cosmosv1.InstanceOverridesSpec{
+				ExternalAddress: &overrideAddr0,
+			}
+			overrides.Spec.InstanceOverrides["osmosis-1"] = cosmosv1.InstanceOverridesSpec{
+				ExternalAddress: &overrideAddr1,
+			}
+			cms, err := BuildConfigMaps(overrides, nil)
+			require.NoError(t, err)
+
+			var config map[string]any
+
+			_, err = toml.Decode(cms[0].Object().Data["config-overlay.toml"], &config)
+			require.NoError(t, err)
+			require.Equal(t, overrideAddr0, config["p2p"].(map[string]any)["external_address"])
+			require.Equal(t, overrideAddr0, config["p2p"].(map[string]any)["external-address"])
+
+			_, err = toml.Decode(cms[1].Object().Data["config-overlay.toml"], &config)
+			require.NoError(t, err)
+			require.Equal(t, overrideAddr1, config["p2p"].(map[string]any)["external_address"])
+			require.Equal(t, overrideAddr1, config["p2p"].(map[string]any)["external-address"])
+		})
+
 		t.Run("invalid toml", func(t *testing.T) {
 			malformed := crd.DeepCopy()
 			malformed.Spec.ChainSpec.App.TomlOverrides = ptr(`invalid_toml = should be invalid`)
