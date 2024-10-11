@@ -38,6 +38,28 @@ func BuildPods(crd *cosmosv1.CosmosFullNode, cksums ConfigChecksums) ([]diff.Res
 	return pods, nil
 }
 
+func setChainContainerImages(pod *corev1.Pod, v *cosmosv1.ChainVersion) {
+	setChainContainerImage(pod, v.Image)
+
+	for name, image := range v.InitContainers {
+		for i := range pod.Spec.InitContainers {
+			if pod.Spec.InitContainers[i].Name == name {
+				pod.Spec.InitContainers[i].Image = image
+				break
+			}
+		}
+	}
+
+	for name, image := range v.Containers {
+		for i := range pod.Spec.Containers {
+			if pod.Spec.Containers[i].Name == name {
+				pod.Spec.Containers[i].Image = image
+				break
+			}
+		}
+	}
+}
+
 func setChainContainerImage(pod *corev1.Pod, image string) {
 	for i := range pod.Spec.Containers {
 		if pod.Spec.Containers[i].Name == mainContainer {
@@ -45,6 +67,7 @@ func setChainContainerImage(pod *corev1.Pod, image string) {
 			break
 		}
 	}
+
 	for i := range pod.Spec.InitContainers {
 		if pod.Spec.InitContainers[i].Name == chainInitContainer {
 			pod.Spec.InitContainers[i].Image = image

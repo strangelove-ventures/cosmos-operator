@@ -105,6 +105,11 @@ func NewPeerCollector(client Getter) *PeerCollector {
 // Collect peer information given the crd.
 func (c PeerCollector) Collect(ctx context.Context, crd *cosmosv1.CosmosFullNode) (Peers, kube.ReconcileError) {
 	peers := make(Peers)
+
+	clusterDomain := "cluster.local"
+	if crd.Spec.Service.ClusterDomain != nil {
+		clusterDomain = *crd.Spec.Service.ClusterDomain
+	}
 	for i := int32(0); i < crd.Spec.Replicas; i++ {
 		secretName := nodeKeySecretName(crd, i)
 		var secret corev1.Secret
@@ -121,7 +126,7 @@ func (c PeerCollector) Collect(ctx context.Context, crd *cosmosv1.CosmosFullNode
 		svcName := p2pServiceName(crd, i)
 		peers[c.objectKey(crd, i)] = Peer{
 			NodeID:         nodeKey.ID(),
-			PrivateAddress: fmt.Sprintf("%s.%s.svc.cluster.local:%d", svcName, secret.Namespace, p2pPort),
+			PrivateAddress: fmt.Sprintf("%s.%s.svc.%s:%d", svcName, secret.Namespace, clusterDomain, p2pPort),
 		}
 		if err := c.addExternalAddress(ctx, peers, crd, i); err != nil {
 			return nil, kube.TransientError(err)
