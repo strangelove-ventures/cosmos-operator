@@ -174,7 +174,12 @@ func checkVersion(
 		image = v.Image
 	}
 
-	thisPodImage := thisPod.Spec.Containers[0].Image
+	var thisPodImage string
+	for _, c := range thisPod.Spec.Containers {
+		if c.Name == "node" {
+			thisPodImage = c.Image
+		}
+	}
 	if thisPodImage != image {
 		return fmt.Errorf("image mismatch for height %d: %s != %s", height, thisPodImage, image)
 	}

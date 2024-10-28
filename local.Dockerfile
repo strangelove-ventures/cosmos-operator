@@ -1,7 +1,7 @@
 # See rocksdb/README.md for instructions to update rocksdb version
 FROM ghcr.io/strangelove-ventures/rocksdb:v7.10.2 AS rocksdb
 
-FROM golang:1.20-alpine AS builder
+FROM golang:1.23-alpine AS builder
 
 RUN apk add --update --no-cache\
     gcc\
