@@ -8,22 +8,22 @@ echo "Downloading snapshot archive $SNAPSHOT_URL to $CHAIN_HOME..."
 
 download_tar() {
   echo "Downloading and extracting tar..."
-  wget -c -O - "$SNAPSHOT_URL" | tar -x -C "$CHAIN_HOME"
+  wget -c --progress=bar:force -O - "$SNAPSHOT_URL" | tar -x -C "$CHAIN_HOME"
 }
 
 download_targz() {
   echo "Downloading and extracting compressed tar..."
-  wget -c -O - "$SNAPSHOT_URL" | tar -xz -C "$CHAIN_HOME"
+  wget -c --progress=bar:force -O - "$SNAPSHOT_URL" | tar -xz -C "$CHAIN_HOME"
 }
 
 download_lz4() {
   echo "Downloading and extracting lz4..."
-  wget -c -O - "$SNAPSHOT_URL" | lz4 -c -d | tar -x -C "$CHAIN_HOME"
+  wget -c --progress=bar:force -O - "$SNAPSHOT_URL" | lz4 -c -d | tar -x -C "$CHAIN_HOME"
 }
 
 download_zst() {                                                                                                
-    echo "Downloading and extracting zst..."                                                                      
-    wget -c -O - "$SNAPSHOT_URL" | zstd -d --stdout | tar -x -C "$CHAIN_HOME"
+  echo "Downloading and extracting zst..."                                                                      
+  wget -c --progress=bar:force -O - "$SNAPSHOT_URL" | zstd -d --stdout | tar -x -C "$CHAIN_HOME"
 }
 
 case "$SNAPSHOT_URL" in
