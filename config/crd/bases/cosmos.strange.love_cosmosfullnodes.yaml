@@ -5783,6 +5783,12 @@ spec:
                         type: string
                     type: object
                 type: object
+              startingOrdinal:
+                description: StartingOrdinal specifies the initial ordinal number
+                  for pod naming
+                format: int32
+                minimum: 0
+                type: integer
               strategy:
                 description: How to scale pods when performing an update.
                 properties:

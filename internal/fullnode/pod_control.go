@@ -51,6 +51,7 @@ func (pc PodControl) Reconcile(
 	crd *cosmosv1.CosmosFullNode,
 	cksums ConfigChecksums,
 	syncInfo map[string]*cosmosv1.SyncInfoPodStatus,
+	startingOrdinal int32,
 ) (bool, kube.ReconcileError) {
 	var pods corev1.PodList
 	if err := pc.client.List(ctx, &pods,
@@ -60,7 +61,7 @@ func (pc PodControl) Reconcile(
 		return false, kube.TransientError(fmt.Errorf("list existing pods: %w", err))
 	}
 
-	wantPods, err := BuildPods(crd, cksums)
+	wantPods, err := BuildPods(crd, cksums, startingOrdinal)
 	if err != nil {
 		return false, kube.UnrecoverableError(fmt.Errorf("build pods: %w", err))
 	}

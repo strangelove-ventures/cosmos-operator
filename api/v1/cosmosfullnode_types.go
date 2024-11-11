@@ -37,6 +37,10 @@ type FullNodeSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
+	// StartingOrdinal specifies the initial ordinal number for pod naming
+	// +kubebuilder:validation:Minimum:=0
+	StartingOrdinal *int32 `json:"startingOrdinal,omitempty"`
+
 	// Number of replicas to create.
 	// Individual replicas have a consistent identity.
 	// +kubebuilder:validation:Minimum:=0
