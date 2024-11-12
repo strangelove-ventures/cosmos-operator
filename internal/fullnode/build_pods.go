@@ -18,7 +18,7 @@ func BuildPods(crd *cosmosv1.CosmosFullNode, cksums ConfigChecksums, startingOrd
 		pods    []diff.Resource[*corev1.Pod]
 	)
 	candidates := podCandidates(crd)
-	for i := startingOrdinal; i < crd.Spec.Replicas; i++ {
+	for i := startingOrdinal; i < crd.Spec.Replicas+startingOrdinal; i++ {
 		pod, err := builder.WithOrdinal(i).Build()
 		if err != nil {
 			return nil, err
