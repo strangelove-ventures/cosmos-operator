@@ -116,8 +116,8 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	startingOrdinal := int32(0)
-	if crd.Spec.StartingOrdinal != nil {
-		startingOrdinal = *crd.Spec.StartingOrdinal
+	if crd.Spec.Ordinal.Start != nil {
+		startingOrdinal = *crd.Spec.Ordinal.Start
 	}
 
 	reporter := kube.NewEventReporter(logger, r.recorder, crd)

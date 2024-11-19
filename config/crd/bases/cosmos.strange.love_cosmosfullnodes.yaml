@@ -555,6 +555,16 @@ spec:
                   Example: cosmos-1
                   Used for debugging.
                 type: object
+              ordinal:
+                description: Ordinal specifies the configuration for pod ordinal numbers
+                properties:
+                  start:
+                    description: Start specifies the initial ordinal number for pod
+                      naming
+                    format: int32
+                    minimum: 0
+                    type: integer
+                type: object
               podTemplate:
                 description: |-
                   Template applied to all pods.
@@ -5783,12 +5793,6 @@ spec:
                         type: string
                     type: object
                 type: object
-              startingOrdinal:
-                description: StartingOrdinal specifies the initial ordinal number
-                  for pod naming
-                format: int32
-                minimum: 0
-                type: integer
               strategy:
                 description: How to scale pods when performing an update.
                 properties:
