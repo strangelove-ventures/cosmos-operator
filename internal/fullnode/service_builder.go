@@ -32,7 +32,7 @@ func BuildServices(crd *cosmosv1.CosmosFullNode) []diff.Resource[*corev1.Service
 	maxExternal := lo.Clamp(max, 0, crd.Spec.Replicas)
 	p2ps := make([]diff.Resource[*corev1.Service], crd.Spec.Replicas)
 
-	for i := crd.Spec.Ordinal.Start; i < crd.Spec.Ordinal.Start+crd.Spec.Replicas; i++ {
+	for i := int32(0); i < crd.Spec.Replicas; i++ {
 		ordinal := i
 		var svc corev1.Service
 		svc.Name = p2pServiceName(crd, ordinal)

@@ -21,7 +21,7 @@ const nodeKeyFile = "node_key.json"
 // Returns an error if a new node key cannot be serialized. (Should never happen.)
 func BuildNodeKeySecrets(existing []*corev1.Secret, crd *cosmosv1.CosmosFullNode) ([]diff.Resource[*corev1.Secret], error) {
 	secrets := make([]diff.Resource[*corev1.Secret], crd.Spec.Replicas)
-	for i := crd.Spec.Ordinal.Start; i < crd.Spec.Ordinal.Start+crd.Spec.Replicas; i++ {
+	for i := int32(0); i < crd.Spec.Replicas; i++ {
 		var s corev1.Secret
 		s.Name = nodeKeySecretName(crd, i)
 		s.Namespace = crd.Namespace

@@ -110,7 +110,7 @@ func (c PeerCollector) Collect(ctx context.Context, crd *cosmosv1.CosmosFullNode
 	if crd.Spec.Service.ClusterDomain != nil {
 		clusterDomain = *crd.Spec.Service.ClusterDomain
 	}
-	for i := crd.Spec.Ordinal.Start; i < crd.Spec.Ordinal.Start+crd.Spec.Replicas; i++ {
+	for i := int32(0); i < crd.Spec.Replicas; i++ {
 		secretName := nodeKeySecretName(crd, i)
 		var secret corev1.Secret
 		// Hoping the caching layer kubebuilder prevents API errors or rate limits. Simplifies logic to use a Get here
