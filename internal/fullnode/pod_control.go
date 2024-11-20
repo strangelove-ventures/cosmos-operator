@@ -51,7 +51,6 @@ func (pc PodControl) Reconcile(
 	crd *cosmosv1.CosmosFullNode,
 	cksums ConfigChecksums,
 	syncInfo map[string]*cosmosv1.SyncInfoPodStatus,
-	startingOrdinal int32,
 ) (bool, kube.ReconcileError) {
 	var pods corev1.PodList
 	if err := pc.client.List(ctx, &pods,

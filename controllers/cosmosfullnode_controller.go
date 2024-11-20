@@ -174,7 +174,7 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	// Reconcile pods.
-	podRequeue, err := r.podControl.Reconcile(ctx, reporter, crd, configCksums, syncInfo, crd.Spec.Ordinal.Start)
+	podRequeue, err := r.podControl.Reconcile(ctx, reporter, crd, configCksums, syncInfo)
 	if err != nil {
 		errs.Append(err)
 	}

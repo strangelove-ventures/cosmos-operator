@@ -82,7 +82,7 @@ func TestPodControl_Reconcile(t *testing.T) {
 		}
 
 		control := NewPodControl(mClient, nil)
-		requeue, err := control.Reconcile(ctx, nopReporter, &crd, nil, syncInfo, 0)
+		requeue, err := control.Reconcile(ctx, nopReporter, &crd, nil, syncInfo)
 		require.NoError(t, err)
 		require.False(t, requeue)
 
@@ -108,7 +108,7 @@ func TestPodControl_Reconcile(t *testing.T) {
 		})
 
 		control := NewPodControl(mClient, nil)
-		requeue, err := control.Reconcile(ctx, nopReporter, &crd, nil, nil, 0)
+		requeue, err := control.Reconcile(ctx, nopReporter, &crd, nil, nil)
 		require.NoError(t, err)
 		require.True(t, requeue)
 
@@ -153,7 +153,7 @@ func TestPodControl_Reconcile(t *testing.T) {
 
 		// Trigger updates
 		crd.Spec.PodTemplate.Image = "new-image"
-		requeue, err := control.Reconcile(ctx, nopReporter, &crd, nil, syncInfo, 0)
+		requeue, err := control.Reconcile(ctx, nopReporter, &crd, nil, syncInfo)
 		require.NoError(t, err)
 		require.True(t, requeue)
 
@@ -167,7 +167,7 @@ func TestPodControl_Reconcile(t *testing.T) {
 			return kube.ComputeRollout(maxUnavail, desired, ready)
 		}
 
-		requeue, err = control.Reconcile(ctx, nopReporter, &crd, nil, syncInfo, 0)
+		requeue, err = control.Reconcile(ctx, nopReporter, &crd, nil, syncInfo)
 		require.NoError(t, err)
 
 		require.True(t, requeue)
@@ -191,7 +191,7 @@ func TestPodControl_Reconcile(t *testing.T) {
 			return kube.ComputeRollout(maxUnavail, desired, ready)
 		}
 
-		requeue, err = control.Reconcile(ctx, nopReporter, &crd, nil, syncInfo, 0)
+		requeue, err = control.Reconcile(ctx, nopReporter, &crd, nil, syncInfo)
 		require.NoError(t, err)
 		require.True(t, requeue)
 
@@ -267,7 +267,7 @@ func TestPodControl_Reconcile(t *testing.T) {
 
 		// Reconcile 1, should update 0 and 1
 
-		requeue, err := control.Reconcile(ctx, nopReporter, &crd, nil, syncInfo, 0)
+		requeue, err := control.Reconcile(ctx, nopReporter, &crd, nil, syncInfo)
 		require.NoError(t, err)
 
 		// only handled 2 updates, so should requeue.
@@ -284,7 +284,7 @@ func TestPodControl_Reconcile(t *testing.T) {
 			return kube.ComputeRollout(maxUnavail, desired, ready)
 		}
 
-		requeue, err = control.Reconcile(ctx, nopReporter, &crd, nil, syncInfo, 0)
+		requeue, err = control.Reconcile(ctx, nopReporter, &crd, nil, syncInfo)
 		require.NoError(t, err)
 
 		require.True(t, requeue)
@@ -310,7 +310,7 @@ func TestPodControl_Reconcile(t *testing.T) {
 			return kube.ComputeRollout(maxUnavail, desired, ready)
 		}
 
-		requeue, err = control.Reconcile(ctx, nopReporter, &crd, nil, syncInfo, 0)
+		requeue, err = control.Reconcile(ctx, nopReporter, &crd, nil, syncInfo)
 		require.NoError(t, err)
 
 		// no further updates yet, should requeue.
@@ -334,7 +334,7 @@ func TestPodControl_Reconcile(t *testing.T) {
 			return kube.ComputeRollout(maxUnavail, desired, ready)
 		}
 
-		requeue, err = control.Reconcile(ctx, nopReporter, &crd, nil, syncInfo, 0)
+		requeue, err = control.Reconcile(ctx, nopReporter, &crd, nil, syncInfo)
 		require.NoError(t, err)
 
 		// only handled 1 updates, so should requeue.
@@ -353,7 +353,7 @@ func TestPodControl_Reconcile(t *testing.T) {
 			return kube.ComputeRollout(maxUnavail, desired, ready)
 		}
 
-		requeue, err = control.Reconcile(ctx, nopReporter, &crd, nil, syncInfo, 0)
+		requeue, err = control.Reconcile(ctx, nopReporter, &crd, nil, syncInfo)
 		require.NoError(t, err)
 
 		require.True(t, requeue)
@@ -381,7 +381,7 @@ func TestPodControl_Reconcile(t *testing.T) {
 			return kube.ComputeRollout(maxUnavail, desired, ready)
 		}
 
-		requeue, err = control.Reconcile(ctx, nopReporter, &crd, nil, syncInfo, 0)
+		requeue, err = control.Reconcile(ctx, nopReporter, &crd, nil, syncInfo)
 		require.NoError(t, err)
 
 		// all updates are now handled, no longer need requeue.
@@ -458,7 +458,7 @@ func TestPodControl_Reconcile(t *testing.T) {
 			crd.Status.Height[pod.Name] = 100
 		}
 
-		requeue, err := control.Reconcile(ctx, nopReporter, &crd, nil, syncInfo, 0)
+		requeue, err := control.Reconcile(ctx, nopReporter, &crd, nil, syncInfo)
 		require.NoError(t, err)
 
 		// all updates are handled, so should not requeue
