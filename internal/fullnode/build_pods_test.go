@@ -30,13 +30,15 @@ func TestBuildPods(t *testing.T) {
 					Image: "busybox:latest",
 				},
 				InstanceOverrides: nil,
+				Ordinal: cosmosv1.Ordinal{
+					Start: 2,
+				},
 			},
 		}
 
 		cksums := make(ConfigChecksums)
-		startingOrdinal := int32(2)
 		for i := 0; i < int(crd.Spec.Replicas); i++ {
-			cksums[client.ObjectKey{Namespace: crd.Namespace, Name: fmt.Sprintf("agoric-%d", i+int(startingOrdinal))}] = strconv.Itoa(i + int(startingOrdinal))
+			cksums[client.ObjectKey{Namespace: crd.Namespace, Name: fmt.Sprintf("agoric-%d", i+int(crd.Spec.Ordinal.Start))}] = strconv.Itoa(i + int(crd.Spec.Ordinal.Start))
 		}
 
 		pods, err := BuildPods(crd, cksums)
@@ -44,7 +46,7 @@ func TestBuildPods(t *testing.T) {
 		require.Equal(t, 5, len(pods))
 
 		for i, r := range pods {
-			expectedOrdinal := startingOrdinal + int32(i)
+			expectedOrdinal := crd.Spec.Ordinal.Start + int32(i)
 			require.Equal(t, int64(expectedOrdinal), r.Ordinal(), i)
 			require.NotEmpty(t, r.Revision(), i)
 			require.Equal(t, strconv.Itoa(int(expectedOrdinal)), r.Object().Annotations["cosmos.strange.love/config-checksum"])
@@ -56,7 +58,7 @@ func TestBuildPods(t *testing.T) {
 		got := lo.Map(pods, func(pod diff.Resource[*corev1.Pod], _ int) string { return pod.Object().Name })
 		require.Equal(t, want, got)
 
-		pod, err := NewPodBuilder(crd).WithOrdinal(startingOrdinal).Build()
+		pod, err := NewPodBuilder(crd).WithOrdinal(crd.Spec.Ordinal.Start).Build()
 		require.NoError(t, err)
 		require.Equal(t, pod.Spec, pods[0].Object().Spec)
 	})
