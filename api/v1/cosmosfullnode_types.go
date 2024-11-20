@@ -36,7 +36,7 @@ const CosmosFullNodeController = "CosmosFullNode"
 type Ordinal struct {
 	// Start specifies the initial ordinal number for pod naming
 	// +kubebuilder:validation:Minimum:=0
-	Start *int32 `json:"start,omitempty"`
+	Start int32 `json:"start,omitempty"`
 }
 
 // FullNodeSpec defines the desired state of CosmosFullNode

@@ -39,7 +39,7 @@ func BuildPVCs(
 	}
 
 	var pvcs []diff.Resource[*corev1.PersistentVolumeClaim]
-	for i := int32(0); i < crd.Spec.Replicas; i++ {
+	for i := crd.Spec.Ordinal.Start; i < crd.Spec.Ordinal.Start+crd.Spec.Replicas; i++ {
 		if pvcDisabled(crd, i) {
 			continue
 		}

@@ -115,11 +115,6 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return stopResult, client.IgnoreNotFound(err)
 	}
 
-	startingOrdinal := int32(0)
-	if crd.Spec.Ordinal.Start != nil {
-		startingOrdinal = *crd.Spec.Ordinal.Start
-	}
-
 	reporter := kube.NewEventReporter(logger, r.recorder, crd)
 
 	fullnode.ResetStatus(crd)
@@ -179,7 +174,7 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	// Reconcile pods.
-	podRequeue, err := r.podControl.Reconcile(ctx, reporter, crd, configCksums, syncInfo, startingOrdinal)
+	podRequeue, err := r.podControl.Reconcile(ctx, reporter, crd, configCksums, syncInfo, crd.Spec.Ordinal.Start)
 	if err != nil {
 		errs.Append(err)
 	}
