@@ -51,7 +51,7 @@ func BuildPVCs(
 
 		var dataSource *corev1.TypedLocalObjectReference
 		var existingSize resource.Quantity
-		if ds, ok := dataSources[i]; ok && ds != nil {
+		if ds, ok := dataSources[i-crd.Spec.Ordinal.Start]; ok && ds != nil {
 			dataSource = ds.ref
 		} else {
 			for _, pvc := range currentPVCs {
