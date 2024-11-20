@@ -83,6 +83,9 @@ func TestBuildPods(t *testing.T) {
 					"agoric-6":  {DisableStrategy: ptr(cosmosv1.DisableAll)},
 					overridePod: {Image: overrideImage},
 				},
+				Ordinal: cosmosv1.Ordinal{
+					Start: 2,
+				},
 			},
 		}
 
@@ -119,6 +122,9 @@ func TestBuildPods(t *testing.T) {
 					"some.scheduled.snapshot.2":       {PodCandidate: "agoric-4"},
 					"some.scheduled.snapshot.ignored": {PodCandidate: "agoric-99"},
 				},
+			},
+			Ordinal: cosmosv1.Ordinal{
+				Start: 2,
 			},
 		}
 
