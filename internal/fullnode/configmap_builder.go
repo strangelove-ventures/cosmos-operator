@@ -26,12 +26,13 @@ const (
 func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, peers Peers) ([]diff.Resource[*corev1.ConfigMap], error) {
 	var (
 		buf = bufPool.Get().(*bytes.Buffer)
-		cms = make([]diff.Resource[*corev1.ConfigMap], crd.Spec.Replicas)
+		cms = make([]diff.Resource[*corev1.ConfigMap], 0, crd.Spec.Replicas)
 	)
 	defer bufPool.Put(buf)
 	defer buf.Reset()
+	startOrdinal := crd.Spec.Ordinal.Start
 
-	for i := int32(0); i < crd.Spec.Replicas; i++ {
+	for i := startOrdinal; i < startOrdinal+crd.Spec.Replicas; i++ {
 		data := make(map[string]string)
 		instance := instanceName(crd, i)
 		if err := addConfigToml(buf, data, crd, instance, peers); err != nil {
@@ -75,7 +76,7 @@ func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, peers Peers) ([]diff.Resource
 		)
 		cm.Data = data
 		kube.NormalizeMetadata(&cm.ObjectMeta)
-		cms[i] = diff.Adapt(&cm, i)
+		cms = append(cms, diff.Adapt(&cm, int(i-startOrdinal)))
 	}
 
 	return cms, nil
