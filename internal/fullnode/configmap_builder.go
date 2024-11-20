@@ -31,7 +31,7 @@ func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, peers Peers) ([]diff.Resource
 	defer bufPool.Put(buf)
 	defer buf.Reset()
 
-	for i := int32(0); i < crd.Spec.Replicas; i++ {
+	for i := crd.Spec.Ordinal.Start; i < crd.Spec.Ordinal.Start+crd.Spec.Replicas; i++ {
 		data := make(map[string]string)
 		instance := instanceName(crd, i)
 		if err := addConfigToml(buf, data, crd, instance, peers); err != nil {

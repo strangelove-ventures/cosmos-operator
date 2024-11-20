@@ -51,7 +51,7 @@ func (control PVCControl) Reconcile(ctx context.Context, reporter kube.Reporter,
 
 	dataSources := make(map[int32]*dataSource)
 	if len(currentPVCs) < int(crd.Spec.Replicas) {
-		for i := int32(0); i < crd.Spec.Replicas; i++ {
+		for i := crd.Spec.Ordinal.Start; i < crd.Spec.Ordinal.Start+crd.Spec.Replicas; i++ {
 			name := pvcName(crd, i)
 			found := false
 			for _, pvc := range currentPVCs {
