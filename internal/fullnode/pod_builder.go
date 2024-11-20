@@ -232,17 +232,13 @@ const (
 // ordered sequence. Pods have deterministic, consistent names similar to a StatefulSet instead of generated names.
 func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 	pod := b.pod.DeepCopy()
-
-	// Validate ordinal is within valid range based on start ordinal
-	startOrdinal := b.crd.Spec.Ordinal.Start
-	if ordinal < startOrdinal || ordinal >= (startOrdinal+b.crd.Spec.Replicas) {
-		return b
-	}
-
 	name := instanceName(b.crd, ordinal)
+
 	pod.Labels[kube.InstanceLabel] = name
+
 	pod.Name = name
 	pod.Spec.InitContainers = initContainers(b.crd, name)
+
 	pod.Spec.Hostname = pod.Name
 	pod.Spec.Subdomain = b.crd.Name
 
@@ -250,9 +246,7 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 		{
 			Name: volChainHome,
 			VolumeSource: corev1.VolumeSource{
-				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: pvcName(b.crd, ordinal),
-				},
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: pvcName(b.crd, ordinal)},
 			},
 		},
 		{
@@ -265,9 +259,7 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 			Name: volConfig,
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: instanceName(b.crd, ordinal),
-					},
+					LocalObjectReference: corev1.LocalObjectReference{Name: instanceName(b.crd, ordinal)},
 					Items: []corev1.KeyToPath{
 						{Key: configOverlayFile, Path: configOverlayFile},
 						{Key: appOverlayFile, Path: appOverlayFile},
@@ -294,11 +286,12 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 		},
 	}
 
+	// Mounts required by all containers.
 	mounts := []corev1.VolumeMount{
 		{Name: volChainHome, MountPath: ChainHomeDir(b.crd)},
 		{Name: volSystemTmp, MountPath: systemTmpDir},
 	}
-
+	// Additional mounts only needed for init containers.
 	for i := range pod.Spec.InitContainers {
 		pod.Spec.InitContainers[i].VolumeMounts = append(mounts, []corev1.VolumeMount{
 			{Name: volTmp, MountPath: tmpDir},
@@ -306,16 +299,14 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 		}...)
 	}
 
+	// At this point, guaranteed to have at least 2 containers.
 	pod.Spec.Containers[0].VolumeMounts = append(mounts, corev1.VolumeMount{
-		Name:      volNodeKey,
-		MountPath: path.Join(ChainHomeDir(b.crd), "config", nodeKeyFile),
-		SubPath:   nodeKeyFile,
+		Name: volNodeKey, MountPath: path.Join(ChainHomeDir(b.crd), "config", nodeKeyFile), SubPath: nodeKeyFile,
 	})
-
 	pod.Spec.Containers[1].VolumeMounts = []corev1.VolumeMount{
+		// The healthcheck sidecar needs access to the home directory so it can read disk usage.
 		{Name: volChainHome, MountPath: ChainHomeDir(b.crd), ReadOnly: true},
 	}
-
 	if len(pod.Spec.Containers) > 2 {
 		pod.Spec.Containers[2].VolumeMounts = mounts
 	}
