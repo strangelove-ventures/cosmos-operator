@@ -39,7 +39,7 @@ func TestBuildPods(t *testing.T) {
 			cksums[client.ObjectKey{Namespace: crd.Namespace, Name: fmt.Sprintf("agoric-%d", i+int(startingOrdinal))}] = strconv.Itoa(i + int(startingOrdinal))
 		}
 
-		pods, err := BuildPods(crd, cksums, startingOrdinal)
+		pods, err := BuildPods(crd, cksums)
 		require.NoError(t, err)
 		require.Equal(t, 5, len(pods))
 
@@ -84,8 +84,7 @@ func TestBuildPods(t *testing.T) {
 			},
 		}
 
-		startingOrdinal := int32(2)
-		pods, err := BuildPods(crd, nil, startingOrdinal)
+		pods, err := BuildPods(crd, nil)
 		require.NoError(t, err)
 		require.Equal(t, 4, len(pods))
 
@@ -121,8 +120,7 @@ func TestBuildPods(t *testing.T) {
 			},
 		}
 
-		startingOrdinal := int32(2)
-		pods, err := BuildPods(crd, nil, startingOrdinal)
+		pods, err := BuildPods(crd, nil)
 		require.NoError(t, err)
 		require.Equal(t, 4, len(pods))
 

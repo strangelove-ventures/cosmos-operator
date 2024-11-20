@@ -12,13 +12,13 @@ const (
 )
 
 // BuildPods creates the final state of pods given the crd.
-func BuildPods(crd *cosmosv1.CosmosFullNode, cksums ConfigChecksums, startingOrdinal int32) ([]diff.Resource[*corev1.Pod], error) {
+func BuildPods(crd *cosmosv1.CosmosFullNode, cksums ConfigChecksums) ([]diff.Resource[*corev1.Pod], error) {
 	var (
 		builder = NewPodBuilder(crd)
 		pods    []diff.Resource[*corev1.Pod]
 	)
 	candidates := podCandidates(crd)
-	for i := startingOrdinal; i < crd.Spec.Replicas+startingOrdinal; i++ {
+	for i := crd.Spec.Ordinal.Start; i < crd.Spec.Ordinal.Start+crd.Spec.Replicas; i++ {
 		pod, err := builder.WithOrdinal(i).Build()
 		if err != nil {
 			return nil, err

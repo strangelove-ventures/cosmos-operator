@@ -69,7 +69,7 @@ func TestPodControl_Reconcile(t *testing.T) {
 		crd.Namespace = namespace
 		crd.Spec.Replicas = 1
 
-		pods, err := BuildPods(&crd, nil, 0)
+		pods, err := BuildPods(&crd, nil)
 		require.NoError(t, err)
 		existing := diff.New(nil, pods).Creates()
 
@@ -130,7 +130,7 @@ func TestPodControl_Reconcile(t *testing.T) {
 			MaxUnavailable: ptr(intstr.FromInt(2)),
 		}
 
-		pods, err := BuildPods(&crd, nil, 0)
+		pods, err := BuildPods(&crd, nil)
 		require.NoError(t, err)
 
 		mClient := newMockPodClient(diff.New(nil, pods).Creates())
@@ -222,7 +222,7 @@ func TestPodControl_Reconcile(t *testing.T) {
 		}
 		crd.Status.Height = make(map[string]uint64)
 
-		pods, err := BuildPods(&crd, nil, 0)
+		pods, err := BuildPods(&crd, nil)
 		require.NoError(t, err)
 		existing := diff.New(nil, pods).Creates()
 
@@ -415,7 +415,7 @@ func TestPodControl_Reconcile(t *testing.T) {
 		}
 		crd.Status.Height = make(map[string]uint64)
 
-		pods, err := BuildPods(&crd, nil, 0)
+		pods, err := BuildPods(&crd, nil)
 		require.NoError(t, err)
 		existing := diff.New(nil, pods).Creates()
 
