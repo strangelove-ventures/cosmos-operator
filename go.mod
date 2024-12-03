@@ -8,19 +8,19 @@ require (
 	github.com/BurntSushi/toml v1.3.2
 	github.com/cosmos/cosmos-db v1.0.0
 	github.com/go-logr/logr v1.3.0
-	github.com/go-logr/zapr v1.2.4
+	github.com/go-logr/zapr v1.3.0
 	github.com/kubernetes-csi/external-snapshotter/client/v6 v6.1.0
 	github.com/peterbourgon/mergemap v0.0.1
 	github.com/pkg/profile v1.7.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/samber/lo v1.38.1
-	github.com/spf13/cobra v1.8.0
+	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.16.0
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.9.0
 	go.uber.org/goleak v1.2.1
 	go.uber.org/zap v1.26.0
 	golang.org/x/exp v0.0.0-20230817173708-d852ddb80c63
-	golang.org/x/sync v0.3.0
+	golang.org/x/sync v0.9.0
 	gopkg.in/inf.v0 v0.9.1
 	k8s.io/api v0.29.1
 	k8s.io/apimachinery v0.29.1
@@ -30,7 +30,7 @@ require (
 
 require (
 	cosmossdk.io/errors v1.0.0 // indirect
-	cosmossdk.io/math v1.1.2 // indirect
+	cosmossdk.io/math v1.4.0 // indirect
 	github.com/DataDog/zstd v1.5.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.3.2 // indirect
@@ -127,5 +127,5 @@ require (
 	k8s.io/utils v0.0.0-20230726121419-3b25d923346b // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
-	sigs.k8s.io/yaml v1.3.0 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
 )
