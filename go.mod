@@ -14,13 +14,13 @@ require (
 	github.com/pkg/profile v1.7.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/samber/lo v1.38.1
-	github.com/spf13/cobra v1.8.0
+	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.16.0
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.9.0
 	go.uber.org/goleak v1.2.1
 	go.uber.org/zap v1.26.0
 	golang.org/x/exp v0.0.0-20230817173708-d852ddb80c63
-	golang.org/x/sync v0.3.0
+	golang.org/x/sync v0.9.0
 	gopkg.in/inf.v0 v0.9.1
 	k8s.io/api v0.25.5
 	k8s.io/apimachinery v0.25.5
@@ -32,7 +32,7 @@ require (
 	cloud.google.com/go/compute v1.19.1 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	cosmossdk.io/errors v1.0.0 // indirect
-	cosmossdk.io/math v1.1.2 // indirect
+	cosmossdk.io/math v1.4.0 // indirect
 	github.com/Azure/go-autorest v14.2.0+incompatible // indirect
 	github.com/Azure/go-autorest/autorest v0.11.27 // indirect
 	github.com/Azure/go-autorest/autorest/adal v0.9.20 // indirect
@@ -136,5 +136,5 @@ require (
 	k8s.io/utils v0.0.0-20220728103510-ee6ede2d64ed // indirect
 	sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
-	sigs.k8s.io/yaml v1.3.0 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
 )
