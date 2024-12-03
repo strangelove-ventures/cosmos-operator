@@ -105,7 +105,7 @@ func NewPeerCollector(client Getter) *PeerCollector {
 // Collect peer information given the crd.
 func (c PeerCollector) Collect(ctx context.Context, crd *cosmosv1.CosmosFullNode) (Peers, kube.ReconcileError) {
 	peers := make(Peers)
-	startOrdinal := crd.Spec.Ordinal.Start
+	startOrdinal := crd.Spec.Ordinals.Start
 
 	clusterDomain := "cluster.local"
 	if crd.Spec.Service.ClusterDomain != nil {

@@ -33,7 +33,7 @@ const CosmosFullNodeController = "CosmosFullNode"
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
 // Ordinal specifies the configuration for pod ordinal numbers
-type Ordinal struct {
+type Ordinals struct {
 	// Start specifies the initial ordinal number for pod naming
 	// +kubebuilder:validation:Minimum:=0
 	Start int32 `json:"start,omitempty"`
@@ -45,7 +45,7 @@ type FullNodeSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Ordinal specifies the configuration for pod ordinal numbers
-	Ordinal Ordinal `json:"ordinal,omitempty"`
+	Ordinals Ordinals `json:"ordinal,omitempty"`
 
 	// Number of replicas to create.
 	// Individual replicas have a consistent identity.

@@ -30,7 +30,7 @@ func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, peers Peers) ([]diff.Resource
 	)
 	defer bufPool.Put(buf)
 	defer buf.Reset()
-	startOrdinal := crd.Spec.Ordinal.Start
+	startOrdinal := crd.Spec.Ordinals.Start
 
 	for i := startOrdinal; i < startOrdinal+crd.Spec.Replicas; i++ {
 		data := make(map[string]string)
