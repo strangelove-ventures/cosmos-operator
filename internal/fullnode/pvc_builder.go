@@ -39,16 +39,16 @@ func BuildPVCs(
 	}
 
 	var pvcs []diff.Resource[*corev1.PersistentVolumeClaim]
-	for i := int32(0); i < crd.Spec.Replicas; i++ {
-		ordinal := i + crd.Spec.Ordinals.Start
-		if pvcDisabled(crd, ordinal) {
+	for i := crd.Spec.Ordinals.Start; i < crd.Spec.Ordinals.Start+crd.Spec.Replicas; i++ {
+
+		if pvcDisabled(crd, i) {
 			continue
 		}
 
 		pvc := base.DeepCopy()
-		name := pvcName(crd, ordinal)
+		name := pvcName(crd, i)
 		pvc.Name = name
-		podName := instanceName(crd, ordinal)
+		podName := instanceName(crd, i)
 		pvc.Labels[kube.InstanceLabel] = podName
 
 		var dataSource *corev1.TypedLocalObjectReference

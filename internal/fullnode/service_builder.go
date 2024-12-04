@@ -31,18 +31,15 @@ func BuildServices(crd *cosmosv1.CosmosFullNode) []diff.Resource[*corev1.Service
 	}
 	maxExternal := lo.Clamp(max, 0, crd.Spec.Replicas)
 	p2ps := make([]diff.Resource[*corev1.Service], crd.Spec.Replicas)
-	startOrdinal := crd.Spec.Ordinals.Start
-
-	for i := int32(0); i < crd.Spec.Replicas; i++ {
-		ordinal := startOrdinal + i
+	for i := crd.Spec.Ordinals.Start; i < crd.Spec.Ordinals.Start+crd.Spec.Replicas; i++ {
 		var svc corev1.Service
-		svc.Name = p2pServiceName(crd, ordinal)
+		svc.Name = p2pServiceName(crd, i)
 		svc.Namespace = crd.Namespace
 		svc.Kind = "Service"
 		svc.APIVersion = "v1"
 
 		svc.Labels = defaultLabels(crd,
-			kube.InstanceLabel, instanceName(crd, ordinal),
+			kube.InstanceLabel, instanceName(crd, i),
 			kube.ComponentLabel, "p2p",
 		)
 		svc.Annotations = map[string]string{}
@@ -55,7 +52,7 @@ func BuildServices(crd *cosmosv1.CosmosFullNode) []diff.Resource[*corev1.Service
 				TargetPort: intstr.FromString("p2p"),
 			},
 		}
-		svc.Spec.Selector = map[string]string{kube.InstanceLabel: instanceName(crd, ordinal)}
+		svc.Spec.Selector = map[string]string{kube.InstanceLabel: instanceName(crd, i)}
 
 		if i < maxExternal {
 			preserveMergeInto(svc.Labels, crd.Spec.Service.P2PTemplate.Metadata.Labels)
