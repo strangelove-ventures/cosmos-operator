@@ -28,6 +28,7 @@ import (
 	"github.com/strangelove-ventures/cosmos-operator/internal/fullnode"
 	"github.com/strangelove-ventures/cosmos-operator/internal/healthcheck"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -42,6 +43,7 @@ type SelfHealingReconciler struct {
 	driftDetector   fullnode.DriftDetection
 	pvcAutoScaler   *fullnode.PVCAutoScaler
 	recorder        record.EventRecorder
+	stuckDetector   *fullnode.StuckPodDetection
 }
 
 func NewSelfHealing(
@@ -60,6 +62,9 @@ func NewSelfHealing(
 		recorder:        recorder,
 	}
 }
+
+//+kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch;delete
+//+kubebuilder:rbac:groups="",resources=pods/log,verbs=get
 
 // Reconcile reconciles only the self-healing spec in CosmosFullNode. If changes needed, this controller
 // updates a CosmosFullNode status subresource thus triggering another reconcile loop. The CosmosFullNode
@@ -85,6 +90,7 @@ func (r *SelfHealingReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	r.pvcAutoScale(ctx, reporter, crd)
 	r.mitigateHeightDrift(ctx, reporter, crd)
+	r.mitigateStuckPods(ctx, reporter, crd)
 
 	return ctrl.Result{RequeueAfter: 60 * time.Second}, nil
 }
@@ -120,21 +126,38 @@ func (r *SelfHealingReconciler) mitigateHeightDrift(ctx context.Context, reporte
 	}
 
 	pods := r.driftDetector.LaggingPods(ctx, crd)
-	var deleted int
-	for _, pod := range pods {
-		// CosmosFullNodeController will detect missing pod and re-create it.
-		if err := r.Delete(ctx, pod); kube.IgnoreNotFound(err) != nil {
-			reporter.Error(err, "Failed to delete pod", "pod", pod.Name)
-			reporter.RecordError("HeightDriftMitigationDeletePod", err)
-			continue
-		}
-		reporter.Info("Deleted pod for meeting height drift threshold", "pod", pod.Name)
-		deleted++
-	}
+	deleted := r.DeletePods(pods, "HeightDriftMitigationDeletePod", reporter, ctx)
 	if deleted > 0 {
 		msg := fmt.Sprintf("Height lagged behind by %d or more blocks; deleted pod(s)", crd.Spec.SelfHeal.HeightDriftMitigation.Threshold)
 		reporter.RecordInfo("HeightDriftMitigation", msg)
 	}
+}
+
+func (r *SelfHealingReconciler) mitigateStuckPods(ctx context.Context, reporter kube.Reporter, crd *cosmosv1.CosmosFullNode) {
+	if crd.Spec.SelfHeal.StuckPodMitigation == nil {
+		return
+	}
+
+	pods := r.stuckDetector.StuckPods(ctx, crd)
+	deleted := r.DeletePods(pods, "StuckPodMitigationDeletePod", reporter, ctx)
+	if deleted > 0 {
+		msg := fmt.Sprintf("Stuck for %d seconds; deleted pod(s)", crd.Spec.SelfHeal.StuckPodMitigation.Threshold)
+		reporter.RecordInfo("StuckPodMitigation", msg)
+	}
+}
+
+func (r *SelfHealingReconciler) DeletePods(pods []*v1.Pod, reason string, reporter kube.Reporter, ctx context.Context) int {
+	var deleted int
+	for _, pod := range pods {
+		if err := r.Delete(ctx, pod); kube.IgnoreNotFound(err) != nil {
+			reporter.Error(err, "Failed to delete pod", "pod", pod.Name)
+			reporter.RecordError(reason, err)
+			continue
+		}
+		reporter.Info("Deleted pod for ", reason, " pod:", pod.Name)
+		deleted++
+	}
+	return deleted
 }
 
 // SetupWithManager sets up the controller with the Manager.
