@@ -31,19 +31,21 @@ func BuildServices(crd *cosmosv1.CosmosFullNode) []diff.Resource[*corev1.Service
 	}
 	maxExternal := lo.Clamp(max, 0, crd.Spec.Replicas)
 	p2ps := make([]diff.Resource[*corev1.Service], crd.Spec.Replicas)
-	for i := crd.Spec.Ordinals.Start; i < crd.Spec.Ordinals.Start+crd.Spec.Replicas; i++ {
+	startOrdinal := crd.Spec.Ordinals.Start
+
+	for i := int32(0); i < crd.Spec.Replicas; i++ {
+		ordinal := startOrdinal + i
 		var svc corev1.Service
-		svc.Name = p2pServiceName(crd, i)
+		svc.Name = p2pServiceName(crd, ordinal)
 		svc.Namespace = crd.Namespace
 		svc.Kind = "Service"
 		svc.APIVersion = "v1"
 
 		svc.Labels = defaultLabels(crd,
-			kube.InstanceLabel, instanceName(crd, i),
+			kube.InstanceLabel, instanceName(crd, ordinal),
 			kube.ComponentLabel, "p2p",
 		)
 		svc.Annotations = map[string]string{}
-
 		svc.Spec.Ports = []corev1.ServicePort{
 			{
 				Name:       "p2p",
@@ -52,7 +54,7 @@ func BuildServices(crd *cosmosv1.CosmosFullNode) []diff.Resource[*corev1.Service
 				TargetPort: intstr.FromString("p2p"),
 			},
 		}
-		svc.Spec.Selector = map[string]string{kube.InstanceLabel: instanceName(crd, i)}
+		svc.Spec.Selector = map[string]string{kube.InstanceLabel: instanceName(crd, ordinal)}
 
 		if i < maxExternal {
 			preserveMergeInto(svc.Labels, crd.Spec.Service.P2PTemplate.Metadata.Labels)
@@ -63,15 +65,11 @@ func BuildServices(crd *cosmosv1.CosmosFullNode) []diff.Resource[*corev1.Service
 			svc.Spec.Type = corev1.ServiceTypeClusterIP
 			svc.Spec.ClusterIP = *valOrDefault(crd.Spec.Service.P2PTemplate.ClusterIP, ptr(""))
 		}
-
 		p2ps[i] = diff.Adapt(&svc, int(i))
 	}
-
 	rpc := rpcService(crd)
-
 	return append(p2ps, diff.Adapt(rpc, len(p2ps)))
 }
-
 func rpcService(crd *cosmosv1.CosmosFullNode) *corev1.Service {
 	var svc corev1.Service
 	svc.Name = rpcServiceName(crd)
@@ -82,7 +80,6 @@ func rpcService(crd *cosmosv1.CosmosFullNode) *corev1.Service {
 		kube.ComponentLabel, "rpc",
 	)
 	svc.Annotations = map[string]string{}
-
 	svc.Spec.Ports = []corev1.ServicePort{
 		{
 			Name:       "api",
@@ -115,15 +112,12 @@ func rpcService(crd *cosmosv1.CosmosFullNode) *corev1.Service {
 			TargetPort: intstr.FromString("grpc-web"),
 		},
 	}
-
 	svc.Spec.Selector = map[string]string{kube.NameLabel: appName(crd)}
 	svc.Spec.Type = corev1.ServiceTypeClusterIP
-
 	rpcSpec := crd.Spec.Service.RPCTemplate
 	preserveMergeInto(svc.Labels, rpcSpec.Metadata.Labels)
 	preserveMergeInto(svc.Annotations, rpcSpec.Metadata.Annotations)
 	kube.NormalizeMetadata(&svc.ObjectMeta)
-
 	if v := rpcSpec.ExternalTrafficPolicy; v != nil {
 		svc.Spec.ExternalTrafficPolicy = *v
 	}
@@ -133,14 +127,11 @@ func rpcService(crd *cosmosv1.CosmosFullNode) *corev1.Service {
 	if v := rpcSpec.ClusterIP; v != nil {
 		svc.Spec.ClusterIP = *v
 	}
-
 	return &svc
 }
-
 func p2pServiceName(crd *cosmosv1.CosmosFullNode, ordinal int32) string {
 	return fmt.Sprintf("%s-p2p-%d", appName(crd), ordinal)
 }
-
 func rpcServiceName(crd *cosmosv1.CosmosFullNode) string {
 	return fmt.Sprintf("%s-rpc", appName(crd))
 }
