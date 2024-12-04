@@ -555,7 +555,7 @@ spec:
                   Example: cosmos-1
                   Used for debugging.
                 type: object
-              ordinal:
+              ordinals:
                 description: Ordinal specifies the configuration for pod ordinal numbers
                 properties:
                   start:

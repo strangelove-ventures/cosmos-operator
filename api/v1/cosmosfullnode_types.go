@@ -49,7 +49,7 @@ type FullNodeSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Ordinal specifies the configuration for pod ordinal numbers
-	Ordinals Ordinals `json:"ordinal,omitempty"`
+	Ordinals Ordinals `json:"ordinals,omitempty"`
 
 	// Number of replicas to create.
 	// Individual replicas have a consistent identity.
