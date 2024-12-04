@@ -63,6 +63,58 @@ func TestBuildNodeKeySecrets(t *testing.T) {
 		}
 	})
 
+	t.Run("happy path with non 0 starting ordinal", func(t *testing.T) {
+		var crd cosmosv1.CosmosFullNode
+		crd.Namespace = "test-namespace"
+		crd.Name = "juno"
+		crd.Spec.Replicas = 3
+		crd.Spec.ChainSpec.Network = "mainnet"
+		crd.Spec.PodTemplate.Image = "ghcr.io/juno:v1.2.3"
+		// Start ordinal is 0 by default
+		crd.Spec.Ordinals.Start = 2
+
+		secrets, err := BuildNodeKeySecrets(nil, &crd)
+		require.NoError(t, err)
+		require.Equal(t, crd.Spec.Replicas, int32(len(secrets)))
+
+		for i, s := range secrets {
+			ordinal := crd.Spec.Ordinals.Start + int32(i)
+			require.Equal(t, crd.Spec.Ordinals.Start, crd.Spec.Ordinals.Start)
+			require.NotEmpty(t, s.Revision())
+
+			got := s.Object()
+			require.Equal(t, crd.Namespace, got.Namespace)
+			require.Equal(t, fmt.Sprintf("juno-node-key-%d", ordinal), got.Name)
+			require.Equal(t, "Secret", got.Kind)
+			require.Equal(t, "v1", got.APIVersion)
+
+			wantLabels := map[string]string{
+				"app.kubernetes.io/created-by": "cosmos-operator",
+				"app.kubernetes.io/component":  "CosmosFullNode",
+				"app.kubernetes.io/name":       "juno",
+				"app.kubernetes.io/instance":   fmt.Sprintf("%s-%d", crd.Name, ordinal),
+				"app.kubernetes.io/version":    "v1.2.3",
+				"cosmos.strange.love/network":  "mainnet",
+				"cosmos.strange.love/type":     "FullNode",
+			}
+			require.Equal(t, wantLabels, got.Labels)
+
+			require.Empty(t, got.Annotations)
+
+			require.True(t, *got.Immutable)
+			require.Equal(t, corev1.SecretTypeOpaque, got.Type)
+
+			nodeKey := got.Data["node_key.json"]
+			require.NotEmpty(t, nodeKey)
+
+			var gotJSON map[string]map[string]string
+			err = json.Unmarshal(nodeKey, &gotJSON)
+			require.NoError(t, err)
+			require.Equal(t, gotJSON["priv_key"]["type"], "tendermint/PrivKeyEd25519")
+			require.NotEmpty(t, gotJSON["priv_key"]["value"])
+		}
+	})
+
 	t.Run("with existing", func(t *testing.T) {
 		const namespace = "test-namespace"
 		var crd cosmosv1.CosmosFullNode

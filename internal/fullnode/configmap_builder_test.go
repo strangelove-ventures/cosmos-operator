@@ -42,7 +42,7 @@ func TestBuildConfigMaps(t *testing.T) {
 		crd.Namespace = "test"
 		crd.Spec.PodTemplate.Image = "agoric:v6.0.0"
 		crd.Spec.ChainSpec.Network = "testnet"
-		crd.Spec.Ordinals.Start = 0
+		//Default starting ordinal is 0
 
 		cms, err := BuildConfigMaps(&crd, nil)
 		require.NoError(t, err)
