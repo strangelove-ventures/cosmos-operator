@@ -7,20 +7,20 @@ require (
 	cosmossdk.io/store v1.0.0-rc.0
 	github.com/BurntSushi/toml v1.3.2
 	github.com/cosmos/cosmos-db v1.0.0
-	github.com/go-logr/logr v1.2.4
-	github.com/go-logr/zapr v1.2.4
+	github.com/go-logr/logr v1.3.0
+	github.com/go-logr/zapr v1.3.0
 	github.com/kubernetes-csi/external-snapshotter/client/v6 v6.1.0
 	github.com/peterbourgon/mergemap v0.0.1
 	github.com/pkg/profile v1.7.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/samber/lo v1.38.1
-	github.com/spf13/cobra v1.8.0
+	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.16.0
 	github.com/stretchr/testify v1.9.0
 	go.uber.org/goleak v1.2.1
 	go.uber.org/zap v1.26.0
 	golang.org/x/exp v0.0.0-20230817173708-d852ddb80c63
-	golang.org/x/sync v0.3.0
+	golang.org/x/sync v0.9.0
 	gopkg.in/inf.v0 v0.9.1
 	k8s.io/api v0.25.5
 	k8s.io/apimachinery v0.25.5
