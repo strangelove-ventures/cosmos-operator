@@ -31,16 +31,13 @@ func BuildServices(crd *cosmosv1.CosmosFullNode) []diff.Resource[*corev1.Service
 	}
 	maxExternal := lo.Clamp(max, 0, crd.Spec.Replicas)
 	p2ps := make([]diff.Resource[*corev1.Service], crd.Spec.Replicas)
-	startOrdinal := crd.Spec.Ordinals.Start
-
 	for i := int32(0); i < crd.Spec.Replicas; i++ {
-		ordinal := startOrdinal + i
+		ordinal := crd.Spec.Ordinals.Start + i
 		var svc corev1.Service
 		svc.Name = p2pServiceName(crd, ordinal)
 		svc.Namespace = crd.Namespace
 		svc.Kind = "Service"
 		svc.APIVersion = "v1"
-
 		svc.Labels = defaultLabels(crd,
 			kube.InstanceLabel, instanceName(crd, ordinal),
 			kube.ComponentLabel, "p2p",
@@ -55,7 +52,6 @@ func BuildServices(crd *cosmosv1.CosmosFullNode) []diff.Resource[*corev1.Service
 			},
 		}
 		svc.Spec.Selector = map[string]string{kube.InstanceLabel: instanceName(crd, ordinal)}
-
 		if i < maxExternal {
 			preserveMergeInto(svc.Labels, crd.Spec.Service.P2PTemplate.Metadata.Labels)
 			preserveMergeInto(svc.Annotations, crd.Spec.Service.P2PTemplate.Metadata.Annotations)
@@ -70,6 +66,7 @@ func BuildServices(crd *cosmosv1.CosmosFullNode) []diff.Resource[*corev1.Service
 	rpc := rpcService(crd)
 	return append(p2ps, diff.Adapt(rpc, len(p2ps)))
 }
+
 func rpcService(crd *cosmosv1.CosmosFullNode) *corev1.Service {
 	var svc corev1.Service
 	svc.Name = rpcServiceName(crd)
@@ -129,9 +126,11 @@ func rpcService(crd *cosmosv1.CosmosFullNode) *corev1.Service {
 	}
 	return &svc
 }
+
 func p2pServiceName(crd *cosmosv1.CosmosFullNode, ordinal int32) string {
 	return fmt.Sprintf("%s-p2p-%d", appName(crd), ordinal)
 }
+
 func rpcServiceName(crd *cosmosv1.CosmosFullNode) string {
 	return fmt.Sprintf("%s-rpc", appName(crd))
 }
