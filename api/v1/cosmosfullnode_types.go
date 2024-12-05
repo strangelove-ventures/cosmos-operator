@@ -32,7 +32,6 @@ const CosmosFullNodeController = "CosmosFullNode"
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// Ordinal specifies the configuration for pod ordinal numbers
 type Ordinals struct {
 	// start is the number representing the first replica's index. It may be used to number replicas from an alternate index (eg: 1-indexed) over the default 0-indexed names,
 	// or to orchestrate progressive movement of replicas from one CosmosFullnode spec to another. If set, replica indices will be in the range:
@@ -48,7 +47,8 @@ type FullNodeSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Ordinal specifies the configuration for pod ordinal numbers
+	// Ordinals controls the numbering of replica indices in a CosmosFullnode spec.
+	// The default ordinals behavior assigns a "0" index to the first replica and increments the index by one for each additional replica requested.
 	Ordinals Ordinals `json:"ordinals,omitempty"`
 
 	// Number of replicas to create.

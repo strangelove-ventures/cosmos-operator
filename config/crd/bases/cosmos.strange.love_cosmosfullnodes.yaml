@@ -556,7 +556,9 @@ spec:
                   Used for debugging.
                 type: object
               ordinals:
-                description: Ordinal specifies the configuration for pod ordinal numbers
+                description: |-
+                  Ordinals controls the numbering of replica indices in a CosmosFullnode spec.
+                  The default ordinals behavior assigns a "0" index to the first replica and increments the index by one for each additional replica requested.
                 properties:
                   start:
                     description: |-
