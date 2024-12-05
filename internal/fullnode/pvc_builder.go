@@ -39,7 +39,7 @@ func BuildPVCs(
 	}
 
 	var pvcs []diff.Resource[*corev1.PersistentVolumeClaim]
-	for i := int32(0); i < crd.Spec.Replicas; i++ {
+	for i := crd.Spec.Ordinals.Start; i < crd.Spec.Ordinals.Start+crd.Spec.Replicas; i++ {
 		if pvcDisabled(crd, i) {
 			continue
 		}
@@ -47,7 +47,8 @@ func BuildPVCs(
 		pvc := base.DeepCopy()
 		name := pvcName(crd, i)
 		pvc.Name = name
-		pvc.Labels[kube.InstanceLabel] = instanceName(crd, i)
+		podName := instanceName(crd, i)
+		pvc.Labels[kube.InstanceLabel] = podName
 
 		var dataSource *corev1.TypedLocalObjectReference
 		var existingSize resource.Quantity
@@ -65,7 +66,7 @@ func BuildPVCs(
 		}
 
 		tpl := crd.Spec.VolumeClaimTemplate
-		if override, ok := crd.Spec.InstanceOverrides[instanceName(crd, i)]; ok {
+		if override, ok := crd.Spec.InstanceOverrides[podName]; ok {
 			if overrideTpl := override.VolumeClaimTemplate; overrideTpl != nil {
 				tpl = *overrideTpl
 			}
@@ -73,7 +74,7 @@ func BuildPVCs(
 
 		pvc.Spec = corev1.PersistentVolumeClaimSpec{
 			AccessModes:      sliceOrDefault(tpl.AccessModes, defaultAccessModes),
-			Resources:        pvcResources(crd, name, dataSources[i], existingSize),
+			Resources:        pvcResources(crd, name, dataSources[i], existingSize, tpl.Resources),
 			StorageClassName: ptr(tpl.StorageClassName),
 			VolumeMode:       valOrDefault(tpl.VolumeMode, ptr(corev1.PersistentVolumeFilesystem)),
 		}
@@ -88,24 +89,14 @@ func BuildPVCs(
 	return pvcs
 }
 
-func pvcDisabled(crd *cosmosv1.CosmosFullNode, ordinal int32) bool {
-	name := instanceName(crd, ordinal)
-	disable := crd.Spec.InstanceOverrides[name].DisableStrategy
-	return disable != nil && *disable == cosmosv1.DisableAll
-}
-
-func pvcName(crd *cosmosv1.CosmosFullNode, ordinal int32) string {
-	name := fmt.Sprintf("pvc-%s-%d", appName(crd), ordinal)
-	return kube.ToName(name)
-}
-
 func pvcResources(
 	crd *cosmosv1.CosmosFullNode,
 	name string,
 	dataSource *dataSource,
 	existingSize resource.Quantity,
+	tplResources corev1.ResourceRequirements,
 ) corev1.ResourceRequirements {
-	var reqs = crd.Spec.VolumeClaimTemplate.Resources.DeepCopy()
+	reqs := tplResources.DeepCopy()
 
 	if dataSource != nil {
 		reqs.Requests[corev1.ResourceStorage] = dataSource.size
@@ -128,4 +119,14 @@ func pvcResources(
 	}
 
 	return *reqs
+}
+func pvcDisabled(crd *cosmosv1.CosmosFullNode, ordinal int32) bool {
+	name := instanceName(crd, ordinal)
+	disable := crd.Spec.InstanceOverrides[name].DisableStrategy
+	return disable != nil && *disable == cosmosv1.DisableAll
+}
+
+func pvcName(crd *cosmosv1.CosmosFullNode, ordinal int32) string {
+	name := fmt.Sprintf("pvc-%s-%d", appName(crd), ordinal)
+	return kube.ToName(name)
 }

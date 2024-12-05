@@ -42,16 +42,17 @@ func TestBuildConfigMaps(t *testing.T) {
 		crd.Namespace = "test"
 		crd.Spec.PodTemplate.Image = "agoric:v6.0.0"
 		crd.Spec.ChainSpec.Network = "testnet"
+		//Default starting ordinal is 0
 
 		cms, err := BuildConfigMaps(&crd, nil)
 		require.NoError(t, err)
-		require.Equal(t, 3, len(cms))
+		require.Equal(t, crd.Spec.Replicas, int32(len(cms)))
 
-		require.Equal(t, int64(0), cms[0].Ordinal())
+		require.Equal(t, crd.Spec.Ordinals.Start, int32(cms[0].Ordinal())+crd.Spec.Ordinals.Start)
 		require.NotEmpty(t, cms[0].Revision())
 
 		cm := cms[0].Object()
-		require.Equal(t, "agoric-0", cm.Name)
+		require.Equal(t, fmt.Sprintf("agoric-%d", crd.Spec.Ordinals.Start), cm.Name)
 		require.Equal(t, "test", cm.Namespace)
 		require.Nil(t, cm.Immutable)
 
@@ -59,7 +60,7 @@ func TestBuildConfigMaps(t *testing.T) {
 			"app.kubernetes.io/created-by": "cosmos-operator",
 			"app.kubernetes.io/component":  "CosmosFullNode",
 			"app.kubernetes.io/name":       "agoric",
-			"app.kubernetes.io/instance":   "agoric-0",
+			"app.kubernetes.io/instance":   fmt.Sprintf("%s-%d", crd.Name, crd.Spec.Ordinals.Start),
 			"app.kubernetes.io/version":    "v6.0.0",
 			"cosmos.strange.love/network":  "testnet",
 			"cosmos.strange.love/type":     "FullNode",
@@ -69,7 +70,54 @@ func TestBuildConfigMaps(t *testing.T) {
 		require.Equal(t, wantLabels, cm.Labels)
 
 		cm = cms[1].Object()
-		require.Equal(t, "agoric-1", cm.Name)
+		require.Equal(t, fmt.Sprintf("%s-%d", crd.Name, crd.Spec.Ordinals.Start+1), cm.Name)
+
+		require.NotEmpty(t, cms[0].Object().Data)
+		require.Equal(t, cms[0].Object().Data, cms[1].Object().Data)
+
+		crd.Spec.Type = cosmosv1.FullNode
+		cms2, err := BuildConfigMaps(&crd, nil)
+
+		require.NoError(t, err)
+		require.Equal(t, cms, cms2)
+	})
+
+	t.Run("happy path with non 0 starting ordinal", func(t *testing.T) {
+		crd := defaultCRD()
+		crd.Spec.Replicas = 3
+		crd.Name = "agoric"
+		crd.Namespace = "test"
+		crd.Spec.PodTemplate.Image = "agoric:v6.0.0"
+		crd.Spec.ChainSpec.Network = "testnet"
+		crd.Spec.Ordinals.Start = 2
+
+		cms, err := BuildConfigMaps(&crd, nil)
+		require.NoError(t, err)
+		require.Equal(t, crd.Spec.Replicas, int32(len(cms)))
+
+		require.Equal(t, crd.Spec.Ordinals.Start, int32(cms[0].Ordinal())+crd.Spec.Ordinals.Start)
+		require.NotEmpty(t, cms[0].Revision())
+
+		cm := cms[0].Object()
+		require.Equal(t, fmt.Sprintf("agoric-%d", crd.Spec.Ordinals.Start), cm.Name)
+		require.Equal(t, "test", cm.Namespace)
+		require.Nil(t, cm.Immutable)
+
+		wantLabels := map[string]string{
+			"app.kubernetes.io/created-by": "cosmos-operator",
+			"app.kubernetes.io/component":  "CosmosFullNode",
+			"app.kubernetes.io/name":       "agoric",
+			"app.kubernetes.io/instance":   fmt.Sprintf("%s-%d", crd.Name, crd.Spec.Ordinals.Start),
+			"app.kubernetes.io/version":    "v6.0.0",
+			"cosmos.strange.love/network":  "testnet",
+			"cosmos.strange.love/type":     "FullNode",
+		}
+		require.Empty(t, cm.Annotations)
+
+		require.Equal(t, wantLabels, cm.Labels)
+
+		cm = cms[1].Object()
+		require.Equal(t, fmt.Sprintf("%s-%d", crd.Name, crd.Spec.Ordinals.Start+1), cm.Name)
 
 		require.NotEmpty(t, cms[0].Object().Data)
 		require.Equal(t, cms[0].Object().Data, cms[1].Object().Data)

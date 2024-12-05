@@ -68,6 +68,58 @@ func TestBuildServices(t *testing.T) {
 		}
 	})
 
+	t.Run("p2p services", func(t *testing.T) {
+		crd := defaultCRD()
+		crd.Spec.Replicas = 3
+		crd.Name = "terra"
+		crd.Namespace = "test"
+		crd.Spec.ChainSpec.Network = "testnet"
+		crd.Spec.PodTemplate.Image = "terra:v6.0.0"
+		crd.Spec.Ordinals.Start = 2
+
+		svcs := BuildServices(&crd)
+
+		require.Equal(t, 4, len(svcs)) // 3 p2p services + 1 rpc service
+
+		for i := 0; i < int(crd.Spec.Replicas); i++ {
+			ordinal := crd.Spec.Ordinals.Start + int32(i)
+			p2p := svcs[i].Object()
+			require.Equal(t, fmt.Sprintf("terra-p2p-%d", ordinal), p2p.Name)
+			require.Equal(t, "test", p2p.Namespace)
+
+			wantLabels := map[string]string{
+				"app.kubernetes.io/created-by": "cosmos-operator",
+				"app.kubernetes.io/name":       "terra",
+				"app.kubernetes.io/component":  "p2p",
+				"app.kubernetes.io/version":    "v6.0.0",
+				"app.kubernetes.io/instance":   fmt.Sprintf("terra-%d", ordinal),
+				"cosmos.strange.love/network":  "testnet",
+				"cosmos.strange.love/type":     "FullNode",
+			}
+			require.Equal(t, wantLabels, p2p.Labels)
+
+			wantSpec := corev1.ServiceSpec{
+				Ports: []corev1.ServicePort{
+					{
+						Name:       "p2p",
+						Protocol:   corev1.ProtocolTCP,
+						Port:       26656,
+						TargetPort: intstr.FromString("p2p"),
+					},
+				},
+				Selector: map[string]string{"app.kubernetes.io/instance": fmt.Sprintf("terra-%d", ordinal)},
+				Type:     corev1.ServiceTypeClusterIP,
+			}
+			// By default, expose the first p2p service publicly.
+			if i == 0 {
+				wantSpec.Type = corev1.ServiceTypeLoadBalancer
+				wantSpec.ExternalTrafficPolicy = corev1.ServiceExternalTrafficPolicyTypeLocal
+			}
+
+			require.Equal(t, wantSpec, p2p.Spec)
+		}
+	})
+
 	t.Run("p2p max external addresses", func(t *testing.T) {
 		crd := defaultCRD()
 		crd.Spec.Replicas = 3
