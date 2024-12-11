@@ -25,7 +25,7 @@ ls -l $CONFIG_DIR/addrbook.json
 echo "Address book $ADDRBOOK_FILE downloaded"
 `
 
-// DownloadGenesisCommand returns a proper address book command for use in an init container.
+// DownloadAddrbookCommand returns a proper address book command for use in an init container.
 func DownloadAddrbookCommand(cfg cosmosv1.ChainSpec) (string, []string) {
 	args := []string{"-c"}
 	switch {
