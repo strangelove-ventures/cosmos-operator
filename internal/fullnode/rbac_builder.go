@@ -84,7 +84,7 @@ func BuildRoles(crd *cosmosv1.CosmosFullNode) []diff.Resource[*rbacv1.Role] {
 	return diffCr
 }
 
-// BuildRoles returns a list of role binding bindings given the crd.
+// BuildRoleBindings returns a list of role binding bindings given the crd.
 //
 // Creates a single role binding binding for the version check.
 func BuildRoleBindings(crd *cosmosv1.CosmosFullNode) []diff.Resource[*rbacv1.RoleBinding] {
