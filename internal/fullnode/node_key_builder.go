@@ -20,8 +20,10 @@ const nodeKeyFile = "node_key.json"
 // If the secret already has a node key, it is reused.
 // Returns an error if a new node key cannot be serialized. (Should never happen.)
 func BuildNodeKeySecrets(existing []*corev1.Secret, crd *cosmosv1.CosmosFullNode) ([]diff.Resource[*corev1.Secret], error) {
-	secrets := make([]diff.Resource[*corev1.Secret], crd.Spec.Replicas)
-	for i := int32(0); i < crd.Spec.Replicas; i++ {
+	secrets := make([]diff.Resource[*corev1.Secret], 0, crd.Spec.Replicas)
+	startOrdinal := crd.Spec.Ordinals.Start
+
+	for i := startOrdinal; i < startOrdinal+crd.Spec.Replicas; i++ {
 		var s corev1.Secret
 		s.Name = nodeKeySecretName(crd, i)
 		s.Namespace = crd.Namespace
@@ -52,7 +54,7 @@ func BuildNodeKeySecrets(existing []*corev1.Secret, crd *cosmosv1.CosmosFullNode
 			}
 		}
 
-		secrets[i] = diff.Adapt(&secret, i)
+		secrets = append(secrets, diff.Adapt(&secret, int(i-startOrdinal)))
 	}
 	return secrets, nil
 }

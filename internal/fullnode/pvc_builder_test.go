@@ -72,6 +72,68 @@ func TestBuildPVCs(t *testing.T) {
 		}
 	})
 
+	t.Run("happy path with non 0 starting ordinal", func(t *testing.T) {
+		crd := defaultCRD()
+		crd.Name = "juno"
+		crd.Spec.Replicas = 3
+		crd.Spec.VolumeClaimTemplate.StorageClassName = "test-storage-class"
+		crd.Spec.Ordinals.Start = 2
+
+		crd.Spec.InstanceOverrides = map[string]cosmosv1.InstanceOverridesSpec{
+			fmt.Sprintf("juno-%d", crd.Spec.Ordinals.Start): {},
+		}
+
+		initial := BuildPVCs(&crd, map[int32]*dataSource{}, nil)
+		require.Equal(t, crd.Spec.Replicas, int32(len(initial)))
+		for _, r := range initial {
+			require.Equal(t, crd.Spec.Ordinals.Start, crd.Spec.Ordinals.Start)
+			require.NotEmpty(t, r.Revision())
+		}
+
+		initialPVCs := lo.Map(initial, func(r diff.Resource[*corev1.PersistentVolumeClaim], _ int) *corev1.PersistentVolumeClaim {
+			return r.Object()
+		})
+
+		pvcs := lo.Map(BuildPVCs(&crd, map[int32]*dataSource{}, initialPVCs), func(r diff.Resource[*corev1.PersistentVolumeClaim], _ int) *corev1.PersistentVolumeClaim {
+			return r.Object()
+		})
+
+		require.Equal(t, crd.Spec.Replicas, int32(len(pvcs)))
+
+		wantNames := make([]string, crd.Spec.Replicas)
+		for i := range wantNames {
+			wantNames[i] = fmt.Sprintf("pvc-juno-%d", crd.Spec.Ordinals.Start+int32(i))
+		}
+
+		gotNames := lo.Map(pvcs, func(pvc *corev1.PersistentVolumeClaim, _ int) string { return pvc.Name })
+		require.Equal(t, wantNames, gotNames)
+
+		for i, got := range pvcs {
+			ordinal := crd.Spec.Ordinals.Start + int32(i)
+			require.Equal(t, crd.Namespace, got.Namespace)
+			require.Equal(t, "PersistentVolumeClaim", got.Kind)
+			require.Equal(t, "v1", got.APIVersion)
+
+			wantLabels := map[string]string{
+				"app.kubernetes.io/created-by": "cosmos-operator",
+				"app.kubernetes.io/component":  "CosmosFullNode",
+				"app.kubernetes.io/name":       "juno",
+				"app.kubernetes.io/instance":   fmt.Sprintf("juno-%d", ordinal),
+				"app.kubernetes.io/version":    "v1.2.3",
+				"cosmos.strange.love/network":  "mainnet",
+				"cosmos.strange.love/type":     "FullNode",
+			}
+			require.Equal(t, wantLabels, got.Labels)
+
+			require.Len(t, got.Spec.AccessModes, 1)
+			require.Equal(t, corev1.ReadWriteOnce, got.Spec.AccessModes[0])
+
+			require.Equal(t, crd.Spec.VolumeClaimTemplate.Resources, got.Spec.Resources)
+			require.Equal(t, "test-storage-class", *got.Spec.StorageClassName)
+			require.Equal(t, corev1.PersistentVolumeFilesystem, *got.Spec.VolumeMode)
+		}
+	})
+
 	t.Run("advanced configuration", func(t *testing.T) {
 		crd := defaultCRD()
 		crd.Spec.Replicas = 1
