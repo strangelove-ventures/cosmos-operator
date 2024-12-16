@@ -86,7 +86,7 @@ func BuildServices(crd *cosmosv1.CosmosFullNode) []diff.Resource[*corev1.Service
 
 			svc.Labels = defaultLabels(crd,
 				kube.InstanceLabel, instanceName(crd, ordinal),
-				kube.ComponentLabel, "sentry",
+				kube.ComponentLabel, "cosmos-sentry",
 			)
 			svc.Annotations = map[string]string{}
 
