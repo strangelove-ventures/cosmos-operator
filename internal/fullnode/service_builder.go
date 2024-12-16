@@ -184,7 +184,7 @@ func p2pServiceName(crd *cosmosv1.CosmosFullNode, ordinal int32) string {
 }
 
 func sentryServiceName(crd *cosmosv1.CosmosFullNode, ordinal int32) string {
-	return fmt.Sprintf("%s-sentry-%d", appName(crd), ordinal)
+	return fmt.Sprintf("%s-privval-%d", appName(crd), ordinal)
 }
 
 func rpcServiceName(crd *cosmosv1.CosmosFullNode) string {
