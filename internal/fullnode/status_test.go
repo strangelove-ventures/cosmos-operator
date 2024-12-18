@@ -65,9 +65,9 @@ func TestSyncInfoStatus(t *testing.T) {
 
 		return cosmos.StatusCollection{
 			// Purposefully out of order to test sorting.
-			{Pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "pod-0"}}, Status: notInSync, TS: ts},
-			{Pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "pod-1"}}, Status: inSync, TS: ts},
-			{Pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "pod-2"}}, Err: errors.New("some error"), TS: ts},
+			cosmos.StatusItem{Pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "pod-0"}}, Status: notInSync, TS: ts},
+			cosmos.StatusItem{Pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "pod-1"}}, Status: inSync, TS: ts},
+			cosmos.StatusItem{Pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "pod-2"}}, Err: errors.New("some error"), TS: ts},
 		}
 	}
 
