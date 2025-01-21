@@ -13,7 +13,7 @@ require (
 	github.com/peterbourgon/mergemap v0.0.1
 	github.com/pkg/profile v1.7.0
 	github.com/robfig/cron/v3 v3.0.1
-	github.com/samber/lo v1.38.1
+	github.com/samber/lo v1.47.0
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.16.0
 	github.com/stretchr/testify v1.9.0
