@@ -32,6 +32,8 @@ import (
 	"github.com/strangelove-ventures/cosmos-operator/internal/fullnode"
 	"github.com/strangelove-ventures/cosmos-operator/internal/version"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -139,8 +141,8 @@ func startManager(cmd *cobra.Command, args []string) error {
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
-		MetricsBindAddress:     metricsAddr,
-		Port:                   9443,
+		Metrics:                metricsserver.Options{BindAddress: metricsAddr},
+		WebhookServer:          webhook.NewServer(webhook.Options{Port: 9443}),
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "16e1bc09.strange.love",

@@ -95,12 +95,15 @@ func pvcResources(
 	dataSource *dataSource,
 	existingSize resource.Quantity,
 	tplResources corev1.ResourceRequirements,
-) corev1.ResourceRequirements {
+) corev1.VolumeResourceRequirements {
 	reqs := tplResources.DeepCopy()
 
 	if dataSource != nil {
 		reqs.Requests[corev1.ResourceStorage] = dataSource.size
-		return *reqs
+		return corev1.VolumeResourceRequirements{
+			Requests: reqs.Requests,
+			Limits:   reqs.Limits,
+		}
 	}
 
 	if autoScale := crd.Status.SelfHealing.PVCAutoScale; autoScale != nil {
@@ -118,7 +121,10 @@ func pvcResources(
 		reqs.Requests[corev1.ResourceStorage] = existingSize
 	}
 
-	return *reqs
+	return corev1.VolumeResourceRequirements{
+		Requests: reqs.Requests,
+		Limits:   reqs.Limits,
+	}
 }
 func pvcDisabled(crd *cosmosv1.CosmosFullNode, ordinal int32) bool {
 	name := instanceName(crd, ordinal)
