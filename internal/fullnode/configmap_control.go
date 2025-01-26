@@ -14,7 +14,7 @@ import (
 
 // ConfigMapControl creates or updates configmaps.
 type ConfigMapControl struct {
-	build  func(*cosmosv1.CosmosFullNode, Peers) ([]diff.Resource[*corev1.ConfigMap], error)
+	build  func([]*corev1.ConfigMap, *cosmosv1.CosmosFullNode, Peers) ([]diff.Resource[*corev1.ConfigMap], error)
 	client Client
 }
 
@@ -41,7 +41,7 @@ func (cmc ConfigMapControl) Reconcile(ctx context.Context, log kube.Logger, crd 
 
 	current := ptrSlice(cms.Items)
 
-	want, err := cmc.build(crd, peers)
+	want, err := cmc.build(current, crd, peers)
 	if err != nil {
 		return nil, kube.UnrecoverableError(err)
 	}

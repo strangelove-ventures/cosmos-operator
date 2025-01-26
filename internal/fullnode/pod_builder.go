@@ -263,6 +263,7 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 					Items: []corev1.KeyToPath{
 						{Key: configOverlayFile, Path: configOverlayFile},
 						{Key: appOverlayFile, Path: appOverlayFile},
+						{Key: nodeKeyFile, Path: nodeKeyFile},
 					},
 				},
 			},

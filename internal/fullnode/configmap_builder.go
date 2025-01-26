@@ -23,7 +23,7 @@ const (
 
 // BuildConfigMaps creates a ConfigMap with configuration to be mounted as files into containers.
 // Currently, the config.toml (for Comet) and app.toml (for the Cosmos SDK).
-func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, peers Peers) ([]diff.Resource[*corev1.ConfigMap], error) {
+func BuildConfigMaps(existing []*corev1.ConfigMap, crd *cosmosv1.CosmosFullNode, peers Peers) ([]diff.Resource[*corev1.ConfigMap], error) {
 	var (
 		buf = bufPool.Get().(*bytes.Buffer)
 		cms = make([]diff.Resource[*corev1.ConfigMap], 0, crd.Spec.Replicas)
@@ -65,6 +65,22 @@ func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, peers Peers) ([]diff.Resource
 			return nil, err
 		}
 		buf.Reset()
+
+		var c corev1.ConfigMap
+		c.Name = instanceName(crd, i)
+		c.Namespace = crd.Namespace
+		c = *kube.FindOrDefaultCopy(existing, &c)
+
+		// Only create the node key if it doesn't exist
+		if c.Data[nodeKeyFile] != "" {
+			data[nodeKeyFile] = c.Data[nodeKeyFile]
+		} else {
+			nk, err := randNodeKey()
+			if err != nil {
+				return nil, err
+			}
+			data[nodeKeyFile] = string(nk)
+		}
 
 		var cm corev1.ConfigMap
 		cm.Name = instanceName(crd, i)
@@ -252,5 +268,9 @@ func addAppToml(buf *bytes.Buffer, cmData map[string]string, app cosmosv1.SDKApp
 		return err
 	}
 	cmData[appOverlayFile] = buf.String()
+	return nil
+}
+
+func addNodeKey(buf *bytes.Buffer, cmData map[string]string, crd *cosmosv1.CosmosFullNode, instance string) error {
 	return nil
 }
