@@ -2,7 +2,12 @@ package fullnode
 
 import (
 	"bytes"
+	"crypto/ed25519"
+	"crypto/rand"
+	"crypto/sha256"
 	_ "embed"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -19,10 +24,11 @@ import (
 const (
 	configOverlayFile = "config-overlay.toml"
 	appOverlayFile    = "app-overlay.toml"
+	nodeKeyFile       = "node_key.json"
 )
 
 // BuildConfigMaps creates a ConfigMap with configuration to be mounted as files into containers.
-// Currently, the config.toml (for Comet) and app.toml (for the Cosmos SDK).
+// Currently, the config.toml (for Comet), app.toml (for the Cosmos SDK) and node_key.json.
 func BuildConfigMaps(existing []*corev1.ConfigMap, crd *cosmosv1.CosmosFullNode, peers Peers) ([]diff.Resource[*corev1.ConfigMap], error) {
 	var (
 		buf = bufPool.Get().(*bytes.Buffer)
@@ -271,6 +277,30 @@ func addAppToml(buf *bytes.Buffer, cmData map[string]string, app cosmosv1.SDKApp
 	return nil
 }
 
-func addNodeKey(buf *bytes.Buffer, cmData map[string]string, crd *cosmosv1.CosmosFullNode, instance string) error {
-	return nil
+type NodeKey struct {
+	PrivKey NodeKeyPrivKey `json:"priv_key"`
+}
+
+type NodeKeyPrivKey struct {
+	Type  string             `json:"type"`
+	Value ed25519.PrivateKey `json:"value"`
+}
+
+func (nk NodeKey) ID() string {
+	pub := nk.PrivKey.Value.Public()
+	hash := sha256.Sum256(pub.(ed25519.PublicKey))
+	return hex.EncodeToString(hash[:20])
+}
+
+func randNodeKey() ([]byte, error) {
+	_, pk, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate ed25519 node key: %w", err)
+	}
+	return json.Marshal(NodeKey{
+		PrivKey: NodeKeyPrivKey{
+			Type:  "tendermint/PrivKeyEd25519",
+			Value: pk,
+		},
+	})
 }

@@ -66,7 +66,7 @@ func TestConfigMapControl_Reconcile(t *testing.T) {
 	t.Run("build error", func(t *testing.T) {
 		var mClient mockConfigClient
 		control := NewConfigMapControl(&mClient)
-		control.build = func(crd *cosmosv1.CosmosFullNode, _ Peers) ([]diff.Resource[*corev1.ConfigMap], error) {
+		control.build = func(_ []*corev1.ConfigMap, crd *cosmosv1.CosmosFullNode, _ Peers) ([]diff.Resource[*corev1.ConfigMap], error) {
 			return nil, errors.New("boom")
 		}
 
