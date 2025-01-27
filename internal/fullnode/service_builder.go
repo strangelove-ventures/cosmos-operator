@@ -30,15 +30,20 @@ func BuildServices(crd *cosmosv1.CosmosFullNode) []diff.Resource[*corev1.Service
 		max = *v
 	}
 	maxExternal := lo.Clamp(max, 0, crd.Spec.Replicas)
-	svcs := make([]diff.Resource[*corev1.Service], func(nodeType cosmosv1.FullNodeType) int32 {
+
+	totalServices := func(nodeType cosmosv1.FullNodeType) int32 {
 		if nodeType == cosmosv1.Sentry {
-			return crd.Spec.Replicas * 2
+			return (crd.Spec.Replicas * 2) + 1 // p2p services + sentry services + rpc
 		}
-		return crd.Spec.Replicas
-	}(crd.Spec.Type))
+		return crd.Spec.Replicas + 1 // p2p services + rpc
+	}(crd.Spec.Type)
+
+	svcs := make([]diff.Resource[*corev1.Service], 0, totalServices)
+
+	// Add p2p services
 	startOrdinal := crd.Spec.Ordinals.Start
-	for i := startOrdinal; i < startOrdinal+crd.Spec.Replicas; i++ {
-		ordinal := crd.Spec.Ordinals.Start + i
+	for i := int32(0); i < crd.Spec.Replicas; i++ {
+		ordinal := startOrdinal + i
 		var svc corev1.Service
 		svc.Name = p2pServiceName(crd, ordinal)
 		svc.Namespace = crd.Namespace
@@ -67,12 +72,13 @@ func BuildServices(crd *cosmosv1.CosmosFullNode) []diff.Resource[*corev1.Service
 			svc.Spec.Type = corev1.ServiceTypeClusterIP
 			svc.Spec.ClusterIP = *valOrDefault(crd.Spec.Service.P2PTemplate.ClusterIP, ptr(""))
 		}
-		svcs[i] = diff.Adapt(&svc, int(i))
+		svcs = append(svcs, diff.Adapt(&svc, len(svcs)))
 	}
-	rpc := rpcService(crd)
+
+	// Add sentry services if needed
 	if crd.Spec.Type == cosmosv1.Sentry {
 		for i := int32(0); i < crd.Spec.Replicas; i++ {
-			ordinal := i
+			ordinal := startOrdinal + i // Fixed: Use startOrdinal here too
 			var svc corev1.Service
 			svc.Name = sentryServiceName(crd, ordinal)
 			svc.Namespace = crd.Namespace
@@ -87,7 +93,6 @@ func BuildServices(crd *cosmosv1.CosmosFullNode) []diff.Resource[*corev1.Service
 
 			svc.Spec.Ports = []corev1.ServicePort{
 				{
-					// https://github.com/strangelove-ventures/horcrux-proxy/blob/23a7d31806ce62481162a64adcca848fd879bc52/cmd/watcher.go#L162
 					Name:       "sentry-privval",
 					Protocol:   corev1.ProtocolTCP,
 					Port:       privvalPort,
@@ -99,16 +104,16 @@ func BuildServices(crd *cosmosv1.CosmosFullNode) []diff.Resource[*corev1.Service
 			preserveMergeInto(svc.Labels, crd.Spec.Service.P2PTemplate.Metadata.Labels)
 			preserveMergeInto(svc.Annotations, crd.Spec.Service.P2PTemplate.Metadata.Annotations)
 			svc.Spec.Type = corev1.ServiceTypeClusterIP
-
-			// If you run pod as sentry mode, it'll be unhealthy cause of no API from app.
-			// But to run cosmos app, horcrux-proxy should connect to pod even pod's status is unhealthy.
-			// therefore, you should allow this option.
 			svc.Spec.PublishNotReadyAddresses = true
 
-			svcs[i] = diff.Adapt(&svc, i)
+			svcs = append(svcs, diff.Adapt(&svc, len(svcs)))
 		}
 	}
-	return append(svcs, diff.Adapt(rpc, len(svcs)))
+
+	// Add RPC service
+	svcs = append(svcs, diff.Adapt(rpcService(crd), len(svcs)))
+
+	return svcs
 }
 
 func rpcService(crd *cosmosv1.CosmosFullNode) *corev1.Service {
