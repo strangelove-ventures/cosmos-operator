@@ -2,11 +2,7 @@ package fullnode
 
 import (
 	"bytes"
-	"crypto/ed25519"
-	"crypto/rand"
-	"crypto/sha256"
 	_ "embed"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -19,6 +15,7 @@ import (
 	"github.com/strangelove-ventures/cosmos-operator/internal/diff"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -29,7 +26,7 @@ const (
 
 // BuildConfigMaps creates a ConfigMap with configuration to be mounted as files into containers.
 // Currently, the config.toml (for Comet), app.toml (for the Cosmos SDK) and node_key.json.
-func BuildConfigMaps(existing []*corev1.ConfigMap, crd *cosmosv1.CosmosFullNode, peers Peers) ([]diff.Resource[*corev1.ConfigMap], error) {
+func BuildConfigMaps(existing []*corev1.ConfigMap, crd *cosmosv1.CosmosFullNode, peers Peers, nodeKeys NodeKeys) ([]diff.Resource[*corev1.ConfigMap], error) {
 	var (
 		buf = bufPool.Get().(*bytes.Buffer)
 		cms = make([]diff.Resource[*corev1.ConfigMap], 0, crd.Spec.Replicas)
@@ -72,21 +69,25 @@ func BuildConfigMaps(existing []*corev1.ConfigMap, crd *cosmosv1.CosmosFullNode,
 		}
 		buf.Reset()
 
-		var c corev1.ConfigMap
-		c.Name = instanceName(crd, i)
-		c.Namespace = crd.Namespace
-		c = *kube.FindOrDefaultCopy(existing, &c)
+		nodeKey, ok := nodeKeys[client.ObjectKey{Name: instanceName(crd, i), Namespace: crd.Namespace}]
 
-		// Only create the node key if it doesn't exist
-		if c.Data[nodeKeyFile] != "" {
-			data[nodeKeyFile] = c.Data[nodeKeyFile]
-		} else {
+		if !ok {
 			nk, err := randNodeKey()
 			if err != nil {
-				return nil, err
+				if err != nil {
+					return nil, kube.UnrecoverableError(fmt.Errorf("generate node key: %w", err))
+				}
 			}
-			data[nodeKeyFile] = string(nk)
+			nodeKey = *nk
 		}
+
+		nodeKeyVal, err := json.Marshal(nodeKey)
+
+		if err != nil {
+			return nil, kube.UnrecoverableError(fmt.Errorf("marshal node key: %w", err))
+		}
+
+		data[nodeKeyFile] = string(nodeKeyVal)
 
 		var cm corev1.ConfigMap
 		cm.Name = instanceName(crd, i)
@@ -275,32 +276,4 @@ func addAppToml(buf *bytes.Buffer, cmData map[string]string, app cosmosv1.SDKApp
 	}
 	cmData[appOverlayFile] = buf.String()
 	return nil
-}
-
-type NodeKey struct {
-	PrivKey NodeKeyPrivKey `json:"priv_key"`
-}
-
-type NodeKeyPrivKey struct {
-	Type  string             `json:"type"`
-	Value ed25519.PrivateKey `json:"value"`
-}
-
-func (nk NodeKey) ID() string {
-	pub := nk.PrivKey.Value.Public()
-	hash := sha256.Sum256(pub.(ed25519.PublicKey))
-	return hex.EncodeToString(hash[:20])
-}
-
-func randNodeKey() ([]byte, error) {
-	_, pk, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate ed25519 node key: %w", err)
-	}
-	return json.Marshal(NodeKey{
-		PrivKey: NodeKeyPrivKey{
-			Type:  "tendermint/PrivKeyEd25519",
-			Value: pk,
-		},
-	})
 }

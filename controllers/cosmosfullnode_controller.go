@@ -45,7 +45,7 @@ type CosmosFullNodeReconciler struct {
 
 	cacheController           *cosmos.CacheController
 	configMapControl          fullnode.ConfigMapControl
-	nodeKeyControl            fullnode.NodeKeyControl
+	nodeKeyCollector          *fullnode.NodeKeyCollector
 	peerCollector             *fullnode.PeerCollector
 	podControl                fullnode.PodControl
 	pvcControl                fullnode.PVCControl
@@ -69,7 +69,7 @@ func NewFullNode(
 
 		cacheController:           cacheController,
 		configMapControl:          fullnode.NewConfigMapControl(client),
-		nodeKeyControl:            fullnode.NewNodeKeyControl(client),
+		nodeKeyCollector:          fullnode.NewNodeKeyCollector(client),
 		peerCollector:             fullnode.NewPeerCollector(client),
 		podControl:                fullnode.NewPodControl(client, cacheController),
 		pvcControl:                fullnode.NewPVCControl(client),
@@ -136,21 +136,18 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		errs.Append(err)
 	}
 
-	// Reconcile Secrets.
-	err = r.nodeKeyControl.Reconcile(ctx, reporter, crd)
-	if err != nil {
-		errs.Append(err)
-	}
+	// Node keys are required for peers but created in config maps. Since config maps require peers, we need to resolve node keys first and pass them to both.
+	nodeKeys, err := r.nodeKeyCollector.Collect(ctx, crd)
 
 	// Find peer information that's used downstream.
-	peers, perr := r.peerCollector.Collect(ctx, crd)
+	peers, perr := r.peerCollector.Collect(ctx, crd, nodeKeys)
 	if perr != nil {
 		peers = peers.Default()
 		errs.Append(perr)
 	}
 
 	// Reconcile ConfigMaps.
-	configCksums, err := r.configMapControl.Reconcile(ctx, reporter, crd, peers)
+	configCksums, err := r.configMapControl.Reconcile(ctx, reporter, crd, peers, nodeKeys)
 	if err != nil {
 		errs.Append(err)
 	}

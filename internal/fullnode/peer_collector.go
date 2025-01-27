@@ -2,7 +2,6 @@ package fullnode
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net"
 	"sort"
@@ -103,7 +102,7 @@ func NewPeerCollector(client Getter) *PeerCollector {
 }
 
 // Collect peer information given the crd.
-func (c PeerCollector) Collect(ctx context.Context, crd *cosmosv1.CosmosFullNode) (Peers, kube.ReconcileError) {
+func (c PeerCollector) Collect(ctx context.Context, crd *cosmosv1.CosmosFullNode, nodeKeys NodeKeys) (Peers, kube.ReconcileError) {
 	peers := make(Peers)
 	startOrdinal := crd.Spec.Ordinals.Start
 
@@ -113,22 +112,17 @@ func (c PeerCollector) Collect(ctx context.Context, crd *cosmosv1.CosmosFullNode
 	}
 
 	for i := startOrdinal; i < startOrdinal+crd.Spec.Replicas; i++ {
-		secretName := nodeKeySecretName(crd, i)
-		var secret corev1.Secret
-		// Hoping the caching layer kubebuilder prevents API errors or rate limits. Simplifies logic to use a Get here
-		// vs. manually filtering through a List.
-		if err := c.client.Get(ctx, client.ObjectKey{Name: secretName, Namespace: crd.Namespace}, &secret); err != nil {
-			return nil, kube.TransientError(fmt.Errorf("get secret %s: %w", secretName, err))
+
+		nodeKey, ok := nodeKeys[c.objectKey(crd, i)]
+
+		if !ok {
+			return nil, kube.TransientError(fmt.Errorf("node key not found for %s", c.objectKey(crd, i)))
 		}
 
-		var nodeKey NodeKey
-		if err := json.Unmarshal(secret.Data[nodeKeyFile], &nodeKey); err != nil {
-			return nil, kube.UnrecoverableError(err)
-		}
 		svcName := p2pServiceName(crd, i)
 		peers[c.objectKey(crd, i)] = Peer{
 			NodeID:         nodeKey.ID(),
-			PrivateAddress: fmt.Sprintf("%s.%s.svc.%s:%d", svcName, secret.Namespace, clusterDomain, p2pPort),
+			PrivateAddress: fmt.Sprintf("%s.%s.svc.%s:%d", svcName, crd.Namespace, clusterDomain, p2pPort),
 		}
 		if err := c.addExternalAddress(ctx, peers, crd, i); err != nil {
 			return nil, kube.TransientError(err)
