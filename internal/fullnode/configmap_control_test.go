@@ -35,7 +35,7 @@ func TestConfigMapControl_Reconcile(t *testing.T) {
 		crd.Namespace = namespace
 		crd.Spec.ChainSpec.Network = "testnet"
 
-		cksums, err := control.Reconcile(ctx, nopReporter, &crd, nil)
+		cksums, err := control.Reconcile(ctx, nopReporter, &crd, nil, nil)
 		require.NoError(t, err)
 
 		require.Len(t, mClient.GotListOpts, 2)
@@ -66,12 +66,12 @@ func TestConfigMapControl_Reconcile(t *testing.T) {
 	t.Run("build error", func(t *testing.T) {
 		var mClient mockConfigClient
 		control := NewConfigMapControl(&mClient)
-		control.build = func(_ []*corev1.ConfigMap, crd *cosmosv1.CosmosFullNode, _ Peers) ([]diff.Resource[*corev1.ConfigMap], error) {
+		control.build = func(crd *cosmosv1.CosmosFullNode, _ Peers, _ NodeKeys) ([]diff.Resource[*corev1.ConfigMap], error) {
 			return nil, errors.New("boom")
 		}
 
 		crd := defaultCRD()
-		_, err := control.Reconcile(ctx, nopReporter, &crd, nil)
+		_, err := control.Reconcile(ctx, nopReporter, &crd, nil, nil)
 
 		require.Error(t, err)
 		require.EqualError(t, err, "boom")

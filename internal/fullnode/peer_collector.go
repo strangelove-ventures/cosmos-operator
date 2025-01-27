@@ -121,7 +121,7 @@ func (c PeerCollector) Collect(ctx context.Context, crd *cosmosv1.CosmosFullNode
 
 		svcName := p2pServiceName(crd, i)
 		peers[c.objectKey(crd, i)] = Peer{
-			NodeID:         nodeKey.ID(),
+			NodeID:         nodeKey.NodeKey.ID(),
 			PrivateAddress: fmt.Sprintf("%s.%s.svc.%s:%d", svcName, crd.Namespace, clusterDomain, p2pPort),
 		}
 		if err := c.addExternalAddress(ctx, peers, crd, i); err != nil {

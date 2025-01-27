@@ -43,8 +43,14 @@ func randNodeKey() (*NodeKey, error) {
 	}, nil
 }
 
+// NodeKeyRepresenter represents a NodeKey and its marshalled form. Since NodeKeys can be pulled from ConfigMaps, we store the marshalled form to avoid re-marshalling during ConfigMap creation.
+type NodeKeyRepresenter struct {
+	NodeKey           NodeKey
+	MarshalledNodeKey []byte
+}
+
 // Namespace maps an ObjectKey using the instance name to NodeKey.
-type NodeKeys map[client.ObjectKey]NodeKey
+type NodeKeys map[client.ObjectKey]NodeKeyRepresenter
 
 // NodeKeyCollector finds and collects node key information.
 type NodeKeyCollector struct {
@@ -79,9 +85,9 @@ func (c NodeKeyCollector) Collect(ctx context.Context, crd *cosmosv1.CosmosFullN
 		confMap = *kube.FindOrDefaultCopy(currentCms, &confMap)
 
 		nodeKey := &NodeKey{}
+		marshalledNodeKey := []byte{}
 		var err error
 
-		// TODO: Check if the node key already exists in the configmap for the given replica.
 		if confMap.Data[nodeKeyFile] != "" {
 			err := json.Unmarshal([]byte(confMap.Data[nodeKeyFile]), nodeKey)
 
@@ -89,14 +95,22 @@ func (c NodeKeyCollector) Collect(ctx context.Context, crd *cosmosv1.CosmosFullN
 				return nil, kube.UnrecoverableError(fmt.Errorf("unmarshal node key: %w", err))
 			}
 
+			// Store the exact value of the node key in the configmap to avoid non-deterministic JSON marshalling which can cause unnecessary updates.
+			marshalledNodeKey = []byte(confMap.Data[nodeKeyFile])
+
 		} else {
 			nodeKey, err = randNodeKey()
 			if err != nil {
 				return nil, kube.UnrecoverableError(fmt.Errorf("generate node key: %w", err))
 			}
+
+			marshalledNodeKey, err = json.Marshal(nodeKey)
 		}
 
-		nodeKeys[client.ObjectKey{Name: instanceName(crd, i), Namespace: crd.Namespace}] = *nodeKey
+		nodeKeys[client.ObjectKey{Name: instanceName(crd, i), Namespace: crd.Namespace}] = NodeKeyRepresenter{
+			NodeKey:           *nodeKey,
+			MarshalledNodeKey: marshalledNodeKey,
+		}
 	}
 	return nodeKeys, nil
 }

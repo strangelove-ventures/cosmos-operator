@@ -26,7 +26,7 @@ const (
 
 // BuildConfigMaps creates a ConfigMap with configuration to be mounted as files into containers.
 // Currently, the config.toml (for Comet), app.toml (for the Cosmos SDK) and node_key.json.
-func BuildConfigMaps(existing []*corev1.ConfigMap, crd *cosmosv1.CosmosFullNode, peers Peers, nodeKeys NodeKeys) ([]diff.Resource[*corev1.ConfigMap], error) {
+func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, peers Peers, nodeKeys NodeKeys) ([]diff.Resource[*corev1.ConfigMap], error) {
 	var (
 		buf = bufPool.Get().(*bytes.Buffer)
 		cms = make([]diff.Resource[*corev1.ConfigMap], 0, crd.Spec.Replicas)
@@ -70,7 +70,7 @@ func BuildConfigMaps(existing []*corev1.ConfigMap, crd *cosmosv1.CosmosFullNode,
 		buf.Reset()
 
 		nodeKey, ok := nodeKeys[client.ObjectKey{Name: instanceName(crd, i), Namespace: crd.Namespace}]
-
+		var nodeKeyValue string
 		if !ok {
 			nk, err := randNodeKey()
 			if err != nil {
@@ -78,16 +78,19 @@ func BuildConfigMaps(existing []*corev1.ConfigMap, crd *cosmosv1.CosmosFullNode,
 					return nil, kube.UnrecoverableError(fmt.Errorf("generate node key: %w", err))
 				}
 			}
-			nodeKey = *nk
+
+			marshalledNodeKey, err := json.Marshal(nk)
+
+			if err != nil {
+				return nil, kube.UnrecoverableError(fmt.Errorf("marshal node key: %w", err))
+			}
+
+			nodeKeyValue = string(marshalledNodeKey)
+		} else {
+			nodeKeyValue = string(nodeKey.MarshalledNodeKey)
 		}
 
-		nodeKeyVal, err := json.Marshal(nodeKey)
-
-		if err != nil {
-			return nil, kube.UnrecoverableError(fmt.Errorf("marshal node key: %w", err))
-		}
-
-		data[nodeKeyFile] = string(nodeKeyVal)
+		data[nodeKeyFile] = nodeKeyValue
 
 		var cm corev1.ConfigMap
 		cm.Name = instanceName(crd, i)
