@@ -74,9 +74,7 @@ func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, peers Peers, nodeKeys NodeKey
 		if !ok {
 			nk, err := randNodeKey()
 			if err != nil {
-				if err != nil {
-					return nil, kube.UnrecoverableError(fmt.Errorf("generate node key: %w", err))
-				}
+				return nil, kube.UnrecoverableError(fmt.Errorf("generate node key: %w", err))
 			}
 
 			marshalledNodeKey, err := json.Marshal(nk)
