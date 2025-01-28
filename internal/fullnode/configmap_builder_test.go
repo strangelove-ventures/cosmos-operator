@@ -2,6 +2,7 @@ package fullnode
 
 import (
 	"bytes"
+	"crypto/ed25519"
 	_ "embed"
 	"encoding/json"
 	"fmt"
@@ -549,13 +550,19 @@ func TestBuildConfigMaps(t *testing.T) {
 			crd.Name = "juno"
 			crd.Spec.Replicas = 3
 
-			var existing corev1.ConfigMap
-			existing.Name = "juno"
-			existing.Namespace = namespace
-			existing.Annotations = map[string]string{"foo": "bar"}
-			existing.Data = map[string]string{"node_key.json": "existing"}
+			var existingNodeKeys NodeKeys = map[client.ObjectKey]NodeKeyRepresenter{
+				{Namespace: namespace, Name: "juno-0"}: {
+					NodeKey: NodeKey{
+						PrivKey: NodeKeyPrivKey{
+							Type:  "tendermint/PrivKeyEd25519",
+							Value: ed25519.PrivateKey{},
+						},
+					},
+					MarshalledNodeKey: []byte("existing"),
+				},
+			}
 
-			got, err := BuildConfigMaps(&crd, nil, nil)
+			got, err := BuildConfigMaps(&crd, nil, existingNodeKeys)
 			require.NoError(t, err)
 			require.Equal(t, 3, len(got))
 
