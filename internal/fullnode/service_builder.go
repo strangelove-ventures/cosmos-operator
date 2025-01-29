@@ -15,15 +15,19 @@ const maxP2PServiceDefault = int32(1)
 
 // BuildServices returns a list of services given the crd.
 //
-// Creates a single RPC service, likely for use with an Ingress.
+// Creates services based on the node type:
+// - For regular nodes: Creates 1 RPC service and 1 p2p service per pod (replicas + 1 total)
+// - For sentry nodes: Creates 1 RPC service and 2 p2p services per pod (replicas * 2 + 1 total)
 //
-// Creates 1 p2p service per pod. P2P diverges from traditional web and kubernetes architecture which calls for a single
-// p2p service backed by multiple pods.
-// Pods may be in various states even with proper readiness probes.
-// Therefore, we do not want to confuse or disrupt peer exchange (PEX) within CometBFT.
-// If using a single p2p service, an outside peer discovering a pod out of sync it could be
-// interpreted as byzantine behavior if the peer previously connected to a pod that was in sync through the same
-// external address.
+// P2P services diverge from traditional web and kubernetes architecture which typically uses a single
+// service backed by multiple pods. This is necessary because:
+//  1. Pods may be in various states even with proper readiness probes
+//  2. We need to prevent confusion or disruption in peer exchange (PEX) within CometBFT
+//  3. Using a single p2p service could lead to misinterpreted byzantine behavior if an outside peer
+//     discovers a pod out of sync after previously connecting to a synced pod through the same address
+//
+// Services are created with either LoadBalancer (for external access) or ClusterIP type, controlled
+// by MaxP2PExternalAddresses setting.
 func BuildServices(crd *cosmosv1.CosmosFullNode) []diff.Resource[*corev1.Service] {
 	max := maxP2PServiceDefault
 	if v := crd.Spec.Service.MaxP2PExternalAddresses; v != nil {
