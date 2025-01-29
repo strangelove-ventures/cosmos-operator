@@ -33,14 +33,13 @@ func BuildServices(crd *cosmosv1.CosmosFullNode) []diff.Resource[*corev1.Service
 
 	totalServices := func(nodeType cosmosv1.FullNodeType) int32 {
 		if nodeType == cosmosv1.Sentry {
-			return (crd.Spec.Replicas * 2) + 1 // p2p services + sentry services + rpc
+			return (crd.Spec.Replicas * 2) + 1
 		}
-		return crd.Spec.Replicas + 1 // p2p services + rpc
+		return crd.Spec.Replicas + 1
 	}(crd.Spec.Type)
 
 	svcs := make([]diff.Resource[*corev1.Service], 0, totalServices)
 
-	// Add p2p services
 	startOrdinal := crd.Spec.Ordinals.Start
 	for i := int32(0); i < crd.Spec.Replicas; i++ {
 		ordinal := startOrdinal + i
@@ -78,7 +77,7 @@ func BuildServices(crd *cosmosv1.CosmosFullNode) []diff.Resource[*corev1.Service
 	// Add sentry services if needed
 	if crd.Spec.Type == cosmosv1.Sentry {
 		for i := int32(0); i < crd.Spec.Replicas; i++ {
-			ordinal := startOrdinal + i // Fixed: Use startOrdinal here too
+			ordinal := startOrdinal + i
 			var svc corev1.Service
 			svc.Name = sentryServiceName(crd, ordinal)
 			svc.Namespace = crd.Namespace
