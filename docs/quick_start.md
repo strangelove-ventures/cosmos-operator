@@ -4,7 +4,7 @@ This quick start guide creates a CosmosFullNode that runs as an RPC node for the
 
 ### Prerequisites
 
-You will need kuberentes nodes that can provide up to 32GB and 4CPU per replica. The following example
+You will need kubernetes nodes that can provide up to 32GB and 4CPU per replica. The following example
 deploys 2 replicas.
 
 ### Install the CRDs and deploy operator in your cluster
