@@ -34,13 +34,12 @@ func BuildServices(crd *cosmosv1.CosmosFullNode) []diff.Resource[*corev1.Service
 		max = *v
 	}
 	maxExternal := lo.Clamp(max, 0, crd.Spec.Replicas)
+	totalServices := crd.Spec.Replicas + 1
+	if crd.Spec.Type == cosmosv1.Sentry {
+		totalServices = (crd.Spec.Replicas * 2) + 1
+	}
 
-	totalServices := func(nodeType cosmosv1.FullNodeType) int32 {
-		if nodeType == cosmosv1.Sentry {
-			return (crd.Spec.Replicas * 2) + 1
-		}
-		return crd.Spec.Replicas + 1
-	}(crd.Spec.Type)
+	//replace anonymous function above with if else instead
 
 	svcs := make([]diff.Resource[*corev1.Service], 0, totalServices)
 
