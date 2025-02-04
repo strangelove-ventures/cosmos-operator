@@ -39,8 +39,6 @@ func BuildServices(crd *cosmosv1.CosmosFullNode) []diff.Resource[*corev1.Service
 		totalServices = (crd.Spec.Replicas * 2) + 1
 	}
 
-	//replace anonymous function above with if else instead
-
 	svcs := make([]diff.Resource[*corev1.Service], 0, totalServices)
 
 	startOrdinal := crd.Spec.Ordinals.Start
