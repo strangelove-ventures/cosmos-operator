@@ -116,7 +116,7 @@ func (c PeerCollector) Collect(ctx context.Context, crd *cosmosv1.CosmosFullNode
 		nodeKey, ok := nodeKeys[c.objectKey(crd, i)]
 
 		if !ok {
-			return nil, kube.TransientError(fmt.Errorf("node key not found for %s", c.objectKey(crd, i)))
+			return nil, kube.UnrecoverableError(fmt.Errorf("node key not found for %s", c.objectKey(crd, i)))
 		}
 
 		svcName := p2pServiceName(crd, i)

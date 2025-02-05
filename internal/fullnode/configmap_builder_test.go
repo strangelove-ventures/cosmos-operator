@@ -52,7 +52,10 @@ func TestBuildConfigMaps(t *testing.T) {
 		crd.Spec.ChainSpec.Network = "testnet"
 		//Default starting ordinal is 0
 
-		cms, err := BuildConfigMaps(&crd, nil, nil)
+		nodeKeys, err := getMockNodeKeysForCRD(crd, "")
+		require.NoError(t, err)
+
+		cms, err := BuildConfigMaps(&crd, nil, nodeKeys)
 		require.NoError(t, err)
 		require.Equal(t, crd.Spec.Replicas, int32(len(cms)))
 
@@ -89,7 +92,7 @@ func TestBuildConfigMaps(t *testing.T) {
 			require.Equal(t, cms0Data[key], cms1Data[key])
 		}
 
-		nodeKeys := NodeKeys{}
+		nodeKeysFromConfigMap := NodeKeys{}
 		for _, cmDiff := range cms {
 			currCm := cmDiff.Object()
 
@@ -97,11 +100,11 @@ func TestBuildConfigMaps(t *testing.T) {
 
 			require.NoError(t, err)
 
-			nodeKeys[client.ObjectKey{Name: currCm.Name, Namespace: currCm.Namespace}] = *nodeKey
+			nodeKeysFromConfigMap[client.ObjectKey{Name: currCm.Name, Namespace: currCm.Namespace}] = *nodeKey
 		}
 
 		crd.Spec.Type = cosmosv1.FullNode
-		cms2, err := BuildConfigMaps(&crd, nil, nodeKeys)
+		cms2, err := BuildConfigMaps(&crd, nil, nodeKeysFromConfigMap)
 
 		require.NoError(t, err)
 		require.Equal(t, cms, cms2)
@@ -116,7 +119,10 @@ func TestBuildConfigMaps(t *testing.T) {
 		crd.Spec.ChainSpec.Network = "testnet"
 		crd.Spec.Ordinals.Start = 2
 
-		cms, err := BuildConfigMaps(&crd, nil, nil)
+		nodeKeys, err := getMockNodeKeysForCRD(crd, "")
+		require.NoError(t, err)
+
+		cms, err := BuildConfigMaps(&crd, nil, nodeKeys)
 		require.NoError(t, err)
 		require.Equal(t, crd.Spec.Replicas, int32(len(cms)))
 
@@ -153,7 +159,7 @@ func TestBuildConfigMaps(t *testing.T) {
 			require.Equal(t, cm0Data[key], cm1Data[key])
 		}
 
-		nodeKeys := NodeKeys{}
+		nodeKeysFromConfigMap := NodeKeys{}
 		for _, cmDiff := range cms {
 			currCm := cmDiff.Object()
 
@@ -161,11 +167,11 @@ func TestBuildConfigMaps(t *testing.T) {
 
 			require.NoError(t, err)
 
-			nodeKeys[client.ObjectKey{Name: currCm.Name, Namespace: currCm.Namespace}] = *nodeKey
+			nodeKeysFromConfigMap[client.ObjectKey{Name: currCm.Name, Namespace: currCm.Namespace}] = *nodeKey
 		}
 
 		crd.Spec.Type = cosmosv1.FullNode
-		cms2, err := BuildConfigMaps(&crd, nil, nodeKeys)
+		cms2, err := BuildConfigMaps(&crd, nil, nodeKeysFromConfigMap)
 
 		require.NoError(t, err)
 		require.Equal(t, cms, cms2)
@@ -177,7 +183,10 @@ func TestBuildConfigMaps(t *testing.T) {
 		crd.Name = strings.Repeat("chain", 300)
 		crd.Spec.ChainSpec.Network = strings.Repeat("network", 300)
 
-		cms, err := BuildConfigMaps(&crd, nil, nil)
+		nodeKeys, err := getMockNodeKeysForCRD(crd, "")
+		require.NoError(t, err)
+
+		cms, err := BuildConfigMaps(&crd, nil, nodeKeys)
 		require.NoError(t, err)
 		require.NotEmpty(t, cms)
 
@@ -206,10 +215,13 @@ func TestBuildConfigMaps(t *testing.T) {
 			custom.Spec.ChainSpec.Comet.MaxInboundPeers = ptr(int32(5))
 			custom.Spec.ChainSpec.Comet.MaxOutboundPeers = ptr(int32(15))
 
+			nodeKeys, err := getMockNodeKeysForCRD(*custom, "")
+			require.NoError(t, err)
+
 			peers := Peers{
 				client.ObjectKey{Namespace: namespace, Name: "osmosis-0"}: {NodeID: "should not see me", PrivateAddress: "should not see me"},
 			}
-			cms, err := BuildConfigMaps(custom, peers, nil)
+			cms, err := BuildConfigMaps(custom, peers, nodeKeys)
 			require.NoError(t, err)
 
 			cm := cms[0].Object()
@@ -231,7 +243,10 @@ func TestBuildConfigMaps(t *testing.T) {
 		})
 
 		t.Run("defaults", func(t *testing.T) {
-			cms, err := BuildConfigMaps(&crd, nil, nil)
+			nodeKeys, err := getMockNodeKeysForCRD(crd, "")
+			require.NoError(t, err)
+
+			cms, err := BuildConfigMaps(&crd, nil, nodeKeys)
 			require.NoError(t, err)
 
 			cm := cms[0].Object()
@@ -259,7 +274,11 @@ func TestBuildConfigMaps(t *testing.T) {
 				client.ObjectKey{Namespace: namespace, Name: "osmosis-1"}: {NodeID: "1", PrivateAddress: "1.local:26656"},
 				client.ObjectKey{Namespace: namespace, Name: "osmosis-2"}: {NodeID: "2", PrivateAddress: "2.local:26656"},
 			}
-			cms, err := BuildConfigMaps(peerCRD, peers, nil)
+
+			nodeKeys, err := getMockNodeKeysForCRD(*peerCRD, "")
+			require.NoError(t, err)
+
+			cms, err := BuildConfigMaps(peerCRD, peers, nodeKeys)
 			require.NoError(t, err)
 			require.Len(t, cms, 3)
 
@@ -287,7 +306,11 @@ func TestBuildConfigMaps(t *testing.T) {
 		t.Run("validator sentry", func(t *testing.T) {
 			sentry := crd.DeepCopy()
 			sentry.Spec.Type = cosmosv1.Sentry
-			cms, err := BuildConfigMaps(sentry, nil, nil)
+
+			nodeKeys, err := getMockNodeKeysForCRD(*sentry, "")
+			require.NoError(t, err)
+
+			cms, err := BuildConfigMaps(sentry, nil, nodeKeys)
 			require.NoError(t, err)
 
 			cm := cms[0].Object()
@@ -329,7 +352,11 @@ func TestBuildConfigMaps(t *testing.T) {
 			peers := Peers{
 				client.ObjectKey{Name: "osmosis-0", Namespace: namespace}: {ExternalAddress: "should not see me"},
 			}
-			cms, err := BuildConfigMaps(overrides, peers, nil)
+
+			nodeKeys, err := getMockNodeKeysForCRD(*overrides, "")
+			require.NoError(t, err)
+
+			cms, err := BuildConfigMaps(overrides, peers, nodeKeys)
 			require.NoError(t, err)
 
 			cm := cms[0].Object()
@@ -364,7 +391,11 @@ func TestBuildConfigMaps(t *testing.T) {
 			p2pCrd := crd.DeepCopy()
 			p2pCrd.Namespace = namespace
 			p2pCrd.Spec.Replicas = 3
-			cms, err := BuildConfigMaps(p2pCrd, peers, nil)
+
+			nodeKeys, err := getMockNodeKeysForCRD(*p2pCrd, "")
+			require.NoError(t, err)
+
+			cms, err := BuildConfigMaps(p2pCrd, peers, nodeKeys)
 			require.NoError(t, err)
 
 			require.Equal(t, 3, len(cms))
@@ -386,7 +417,11 @@ func TestBuildConfigMaps(t *testing.T) {
 		t.Run("invalid toml", func(t *testing.T) {
 			malformed := crd.DeepCopy()
 			malformed.Spec.ChainSpec.Comet.TomlOverrides = ptr(`invalid_toml = should be invalid`)
-			_, err := BuildConfigMaps(malformed, nil, nil)
+
+			nodeKeys, err := getMockNodeKeysForCRD(*malformed, "")
+			require.NoError(t, err)
+
+			_, err = BuildConfigMaps(malformed, nil, nodeKeys)
 
 			require.Error(t, err)
 			require.Contains(t, err.Error(), "invalid toml in comet overrides")
@@ -413,7 +448,10 @@ func TestBuildConfigMaps(t *testing.T) {
 				MinRetainBlocks: ptr(uint32(271500)),
 			}
 
-			cms, err := BuildConfigMaps(custom, nil, nil)
+			nodeKeys, err := getMockNodeKeysForCRD(*custom, "")
+			require.NoError(t, err)
+
+			cms, err := BuildConfigMaps(custom, nil, nodeKeys)
 			require.NoError(t, err)
 
 			cm := cms[0].Object()
@@ -435,7 +473,10 @@ func TestBuildConfigMaps(t *testing.T) {
 		})
 
 		t.Run("defaults", func(t *testing.T) {
-			cms, err := BuildConfigMaps(&crd, nil, nil)
+			nodeKeys, err := getMockNodeKeysForCRD(crd, "")
+			require.NoError(t, err)
+
+			cms, err := BuildConfigMaps(&crd, nil, nodeKeys)
 			require.NoError(t, err)
 
 			cm := cms[0].Object()
@@ -464,7 +505,10 @@ func TestBuildConfigMaps(t *testing.T) {
 	enable = false
 	new-field = "test"
 	`)
-			cms, err := BuildConfigMaps(overrides, nil, nil)
+			nodeKeys, err := getMockNodeKeysForCRD(*overrides, "")
+			require.NoError(t, err)
+
+			cms, err := BuildConfigMaps(overrides, nil, nodeKeys)
 			require.NoError(t, err)
 
 			cm := cms[0].Object()
@@ -494,7 +538,11 @@ func TestBuildConfigMaps(t *testing.T) {
 			overrides.Spec.InstanceOverrides["osmosis-1"] = cosmosv1.InstanceOverridesSpec{
 				ExternalAddress: &overrideAddr1,
 			}
-			cms, err := BuildConfigMaps(overrides, nil, nil)
+
+			nodeKeys, err := getMockNodeKeysForCRD(*overrides, "")
+			require.NoError(t, err)
+
+			cms, err := BuildConfigMaps(overrides, nil, nodeKeys)
 			require.NoError(t, err)
 
 			var config map[string]any
@@ -513,7 +561,11 @@ func TestBuildConfigMaps(t *testing.T) {
 		t.Run("invalid toml", func(t *testing.T) {
 			malformed := crd.DeepCopy()
 			malformed.Spec.ChainSpec.App.TomlOverrides = ptr(`invalid_toml = should be invalid`)
-			_, err := BuildConfigMaps(malformed, nil, nil)
+
+			nodeKeys, err := getMockNodeKeysForCRD(*malformed, "")
+			require.NoError(t, err)
+
+			_, err = BuildConfigMaps(malformed, nil, nodeKeys)
 
 			require.Error(t, err)
 			require.Contains(t, err.Error(), "invalid toml in app overrides")
@@ -527,7 +579,10 @@ func TestBuildConfigMaps(t *testing.T) {
 		t.Run("happy path", func(t *testing.T) {
 			custom := crd.DeepCopy()
 
-			cms, err := BuildConfigMaps(custom, nil, nil)
+			nodeKeys, err := getMockNodeKeysForCRD(*custom, "")
+			require.NoError(t, err)
+
+			cms, err := BuildConfigMaps(custom, nil, nodeKeys)
 			require.NoError(t, err)
 
 			cm := cms[0].Object()
@@ -560,6 +615,24 @@ func TestBuildConfigMaps(t *testing.T) {
 					},
 					MarshalledNodeKey: []byte("existing"),
 				},
+				{Namespace: namespace, Name: "juno-1"}: {
+					NodeKey: NodeKey{
+						PrivKey: NodeKeyPrivKey{
+							Type:  "tendermint/PrivKeyEd25519",
+							Value: ed25519.PrivateKey{},
+						},
+					},
+					MarshalledNodeKey: []byte("existing"),
+				},
+				{Namespace: namespace, Name: "juno-2"}: {
+					NodeKey: NodeKey{
+						PrivKey: NodeKeyPrivKey{
+							Type:  "tendermint/PrivKeyEd25519",
+							Value: ed25519.PrivateKey{},
+						},
+					},
+					MarshalledNodeKey: []byte("existing"),
+				},
 			}
 
 			got, err := BuildConfigMaps(&crd, nil, existingNodeKeys)
@@ -572,7 +645,10 @@ func TestBuildConfigMaps(t *testing.T) {
 	})
 
 	test.HasTypeLabel(t, func(crd cosmosv1.CosmosFullNode) []map[string]string {
-		cms, _ := BuildConfigMaps(&crd, nil, nil)
+		nodeKeys, err := getMockNodeKeysForCRD(crd, "")
+		require.NoError(t, err)
+
+		cms, _ := BuildConfigMaps(&crd, nil, nodeKeys)
 		labels := make([]map[string]string, 0)
 		for _, cm := range cms {
 			labels = append(labels, cm.Object().Labels)

@@ -3,7 +3,6 @@ package fullnode
 import (
 	"bytes"
 	_ "embed"
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -70,23 +69,12 @@ func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, peers Peers, nodeKeys NodeKey
 		buf.Reset()
 
 		nodeKey, ok := nodeKeys[client.ObjectKey{Name: instanceName(crd, i), Namespace: crd.Namespace}]
-		var nodeKeyValue string
+
 		if !ok {
-			nk, err := randNodeKey()
-			if err != nil {
-				return nil, kube.UnrecoverableError(fmt.Errorf("generate node key: %w", err))
-			}
-
-			marshalledNodeKey, err := json.Marshal(nk)
-
-			if err != nil {
-				return nil, kube.UnrecoverableError(fmt.Errorf("marshal node key: %w", err))
-			}
-
-			nodeKeyValue = string(marshalledNodeKey)
-		} else {
-			nodeKeyValue = string(nodeKey.MarshalledNodeKey)
+			return nil, kube.UnrecoverableError(fmt.Errorf("node key not found for %s", instanceName(crd, i)))
 		}
+
+		nodeKeyValue := string(nodeKey.MarshalledNodeKey)
 
 		data[nodeKeyFile] = nodeKeyValue
 

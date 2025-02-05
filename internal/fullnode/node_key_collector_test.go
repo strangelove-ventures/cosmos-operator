@@ -2,6 +2,7 @@ package fullnode
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
@@ -73,4 +74,33 @@ func TestNodeKeyCollector_Collect(t *testing.T) {
 		require.Equal(t, nodeKey1, string(nodeKeys[client.ObjectKey{Name: "dydx-0", Namespace: namespace}].MarshalledNodeKey))
 		require.Equal(t, nodeKey2, string(nodeKeys[client.ObjectKey{Name: "dydx-1", Namespace: namespace}].MarshalledNodeKey))
 	})
+}
+
+type nodeKeyMockConfigClient = mockClient[*corev1.ConfigMap]
+
+var defaultMockNodeKeyData = `{"priv_key":{"type":"tendermint/PrivKeyEd25519","value":"HBX8VFQ4OdWfOwIOR7jj0af8mVHik5iGW9o1xnn4vRltk1HmwQS2LLGrMPVS2LIUO9BUqmZ1Pjt+qM8x0ibHxQ=="}}`
+
+func getMockNodeKeysForCRD(crd cosmosv1.CosmosFullNode, mockNodeKeyData string) (NodeKeys, error) {
+	var nodeKey = mockNodeKeyData
+
+	if nodeKey == "" {
+		nodeKey = defaultMockNodeKeyData
+	}
+
+	configMapItems := []corev1.ConfigMap{}
+
+	for i := crd.Spec.Ordinals.Start; i < crd.Spec.Ordinals.Start+crd.Spec.Replicas; i++ {
+		configMapItems = append(configMapItems, corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-%d", crd.Name, i), Namespace: crd.Namespace},
+			Data:       map[string]string{nodeKeyFile: nodeKey},
+		})
+	}
+
+	var mClient nodeKeyMockConfigClient
+	mClient.ObjectList = corev1.ConfigMapList{Items: configMapItems}
+
+	collector := NewNodeKeyCollector(&mClient)
+	ctx := context.Background()
+
+	return collector.Collect(ctx, &crd)
 }
