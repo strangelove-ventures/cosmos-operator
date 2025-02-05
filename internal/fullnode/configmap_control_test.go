@@ -35,7 +35,10 @@ func TestConfigMapControl_Reconcile(t *testing.T) {
 		crd.Namespace = namespace
 		crd.Spec.ChainSpec.Network = "testnet"
 
-		cksums, err := control.Reconcile(ctx, nopReporter, &crd, nil, nil)
+		nodeKeys, err := getMockNodeKeysForCRD(crd, "")
+		require.NoError(t, err)
+
+		cksums, err := control.Reconcile(ctx, nopReporter, &crd, nil, nodeKeys)
 		require.NoError(t, err)
 
 		require.Len(t, mClient.GotListOpts, 2)
@@ -71,7 +74,11 @@ func TestConfigMapControl_Reconcile(t *testing.T) {
 		}
 
 		crd := defaultCRD()
-		_, err := control.Reconcile(ctx, nopReporter, &crd, nil, nil)
+
+		nodeKeys, nErr := getMockNodeKeysForCRD(crd, "")
+		require.NoError(t, nErr)
+
+		_, err := control.Reconcile(ctx, nopReporter, &crd, nil, nodeKeys)
 
 		require.Error(t, err)
 		require.EqualError(t, err, "boom")
