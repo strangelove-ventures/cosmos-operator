@@ -138,6 +138,9 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	// Node keys are required for peers but created in config maps. Since config maps require peers, we need to resolve node keys first and pass them to both.
 	nodeKeys, err := r.nodeKeyCollector.Collect(ctx, crd)
+	if err != nil {
+		errs.Append(err)
+	}
 
 	// Find peer information that's used downstream.
 	peers, perr := r.peerCollector.Collect(ctx, crd, nodeKeys)

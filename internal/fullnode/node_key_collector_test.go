@@ -24,8 +24,7 @@ func TestNodeKeyCollector_Collect(t *testing.T) {
 
 	type mockConfigClient = mockClient[*corev1.ConfigMap]
 
-	t.Run("happy path - non-existant node keys in old config maps", func(t *testing.T) {
-
+	t.Run("happy path - non-existent node keys in old config maps", func(t *testing.T) {
 		var mClient mockConfigClient
 		mClient.ObjectList = corev1.ConfigMapList{Items: []corev1.ConfigMap{}}
 
@@ -41,11 +40,9 @@ func TestNodeKeyCollector_Collect(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Len(t, nodeKeys, 2)
-
 	})
 
 	t.Run("happy path - existing node keys in old config maps", func(t *testing.T) {
-
 		var mClient mockConfigClient
 		mClient.ObjectList = corev1.ConfigMapList{Items: []corev1.ConfigMap{
 			{
@@ -71,8 +68,8 @@ func TestNodeKeyCollector_Collect(t *testing.T) {
 
 		require.Len(t, nodeKeys, 2)
 
-		require.Equal(t, nodeKey1, string(nodeKeys[client.ObjectKey{Name: "dydx-0", Namespace: namespace}].MarshalledNodeKey))
-		require.Equal(t, nodeKey2, string(nodeKeys[client.ObjectKey{Name: "dydx-1", Namespace: namespace}].MarshalledNodeKey))
+		require.Equal(t, nodeKey1, string(nodeKeys[client.ObjectKey{Name: "dydx-0", Namespace: namespace}].MarshaledNodeKey))
+		require.Equal(t, nodeKey2, string(nodeKeys[client.ObjectKey{Name: "dydx-1", Namespace: namespace}].MarshaledNodeKey))
 	})
 }
 

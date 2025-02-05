@@ -96,9 +96,9 @@ func TestBuildConfigMaps(t *testing.T) {
 		for _, cmDiff := range cms {
 			currCm := cmDiff.Object()
 
-			nodeKey, err := getNodeKeyFromConfigMap(currCm)
+			nodeKey, nErr := getNodeKeyFromConfigMap(currCm)
 
-			require.NoError(t, err)
+			require.NoError(t, nErr)
 
 			nodeKeysFromConfigMap[client.ObjectKey{Name: currCm.Name, Namespace: currCm.Namespace}] = *nodeKey
 		}
@@ -163,9 +163,9 @@ func TestBuildConfigMaps(t *testing.T) {
 		for _, cmDiff := range cms {
 			currCm := cmDiff.Object()
 
-			nodeKey, err := getNodeKeyFromConfigMap(currCm)
+			nodeKey, nErr := getNodeKeyFromConfigMap(currCm)
 
-			require.NoError(t, err)
+			require.NoError(t, nErr)
 
 			nodeKeysFromConfigMap[client.ObjectKey{Name: currCm.Name, Namespace: currCm.Namespace}] = *nodeKey
 		}
@@ -613,7 +613,7 @@ func TestBuildConfigMaps(t *testing.T) {
 							Value: ed25519.PrivateKey{},
 						},
 					},
-					MarshalledNodeKey: []byte("existing"),
+					MarshaledNodeKey: []byte("existing"),
 				},
 				{Namespace: namespace, Name: "juno-1"}: {
 					NodeKey: NodeKey{
@@ -622,7 +622,7 @@ func TestBuildConfigMaps(t *testing.T) {
 							Value: ed25519.PrivateKey{},
 						},
 					},
-					MarshalledNodeKey: []byte("existing"),
+					MarshaledNodeKey: []byte("existing"),
 				},
 				{Namespace: namespace, Name: "juno-2"}: {
 					NodeKey: NodeKey{
@@ -631,7 +631,7 @@ func TestBuildConfigMaps(t *testing.T) {
 							Value: ed25519.PrivateKey{},
 						},
 					},
-					MarshalledNodeKey: []byte("existing"),
+					MarshaledNodeKey: []byte("existing"),
 				},
 			}
 
@@ -658,7 +658,6 @@ func TestBuildConfigMaps(t *testing.T) {
 }
 
 func getNodeKeyFromConfigMap(cm *corev1.ConfigMap) (*NodeKeyRepresenter, error) {
-
 	nodeKey := NodeKey{}
 
 	nodeKeyData := []byte(cm.Data[nodeKeyFile])
@@ -669,7 +668,7 @@ func getNodeKeyFromConfigMap(cm *corev1.ConfigMap) (*NodeKeyRepresenter, error) 
 	}
 
 	return &NodeKeyRepresenter{
-		NodeKey:           nodeKey,
-		MarshalledNodeKey: nodeKeyData,
+		NodeKey:          nodeKey,
+		MarshaledNodeKey: nodeKeyData,
 	}, nil
 }

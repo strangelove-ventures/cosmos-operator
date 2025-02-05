@@ -112,7 +112,6 @@ func (c PeerCollector) Collect(ctx context.Context, crd *cosmosv1.CosmosFullNode
 	}
 
 	for i := startOrdinal; i < startOrdinal+crd.Spec.Replicas; i++ {
-
 		nodeKey, ok := nodeKeys[c.objectKey(crd, i)]
 
 		if !ok {

@@ -74,7 +74,7 @@ func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, peers Peers, nodeKeys NodeKey
 			return nil, kube.UnrecoverableError(fmt.Errorf("node key not found for %s", instanceName(crd, i)))
 		}
 
-		nodeKeyValue := string(nodeKey.MarshalledNodeKey)
+		nodeKeyValue := string(nodeKey.MarshaledNodeKey)
 
 		data[nodeKeyFile] = nodeKeyValue
 
