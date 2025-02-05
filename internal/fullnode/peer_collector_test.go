@@ -9,7 +9,6 @@ import (
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -35,10 +34,7 @@ func TestPeerCollector_Collect(t *testing.T) {
 	ctx := context.Background()
 	const (
 		namespace = "strangelove"
-		nodeKey   = `{"priv_key":{"type":"tendermint/PrivKeyEd25519","value":"HBX8VFQ4OdWfOwIOR7jj0af8mVHik5iGW9o1xnn4vRltk1HmwQS2LLGrMPVS2LIUO9BUqmZ1Pjt+qM8x0ibHxQ=="}}`
 	)
-
-	type mockConfigClient = mockClient[*corev1.ConfigMap]
 
 	t.Run("happy path - private addresses", func(t *testing.T) {
 		var crd cosmosv1.CosmosFullNode
@@ -46,19 +42,7 @@ func TestPeerCollector_Collect(t *testing.T) {
 		crd.Namespace = namespace
 		crd.Spec.Replicas = 2
 
-		var mClient mockConfigClient
-		mClient.ObjectList = corev1.ConfigMapList{Items: []corev1.ConfigMap{
-			{
-				ObjectMeta: metav1.ObjectMeta{Name: "dydx-0", Namespace: namespace},
-				Data:       map[string]string{nodeKeyFile: nodeKey},
-			},
-			{
-				ObjectMeta: metav1.ObjectMeta{Name: "dydx-1", Namespace: namespace},
-				Data:       map[string]string{nodeKeyFile: nodeKey},
-			},
-		}}
-		nodeKeyCollector := NewNodeKeyCollector(&mClient)
-		nodeKeys, err := nodeKeyCollector.Collect(ctx, &crd)
+		nodeKeys, err := getMockNodeKeysForCRD(crd, "")
 		require.NoError(t, err)
 
 		var (
@@ -109,23 +93,7 @@ func TestPeerCollector_Collect(t *testing.T) {
 		crd.Namespace = namespace
 		crd.Spec.Replicas = 3
 
-		var mClient mockConfigClient
-		mClient.ObjectList = corev1.ConfigMapList{Items: []corev1.ConfigMap{
-			{
-				ObjectMeta: metav1.ObjectMeta{Name: "dydx-0", Namespace: namespace},
-				Data:       map[string]string{nodeKeyFile: nodeKey},
-			},
-			{
-				ObjectMeta: metav1.ObjectMeta{Name: "dydx-1", Namespace: namespace},
-				Data:       map[string]string{nodeKeyFile: nodeKey},
-			},
-			{
-				ObjectMeta: metav1.ObjectMeta{Name: "dydx-2", Namespace: namespace},
-				Data:       map[string]string{nodeKeyFile: nodeKey},
-			},
-		}}
-		nodeKeyCollector := NewNodeKeyCollector(&mClient)
-		nodeKeys, err := nodeKeyCollector.Collect(ctx, &crd)
+		nodeKeys, err := getMockNodeKeysForCRD(crd, "")
 		require.NoError(t, err)
 
 		getter := mockGetter(func(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
@@ -179,19 +147,7 @@ func TestPeerCollector_Collect(t *testing.T) {
 		crd.Spec.Replicas = 2
 		crd.Spec.Ordinals.Start = 2
 
-		var mClient mockConfigClient
-		mClient.ObjectList = corev1.ConfigMapList{Items: []corev1.ConfigMap{
-			{
-				ObjectMeta: metav1.ObjectMeta{Name: "dydx-2", Namespace: namespace},
-				Data:       map[string]string{nodeKeyFile: nodeKey},
-			},
-			{
-				ObjectMeta: metav1.ObjectMeta{Name: "dydx-3", Namespace: namespace},
-				Data:       map[string]string{nodeKeyFile: nodeKey},
-			},
-		}}
-		nodeKeyCollector := NewNodeKeyCollector(&mClient)
-		nodeKeys, err := nodeKeyCollector.Collect(ctx, &crd)
+		nodeKeys, err := getMockNodeKeysForCRD(crd, "")
 		require.NoError(t, err)
 
 		var (
@@ -243,23 +199,7 @@ func TestPeerCollector_Collect(t *testing.T) {
 		crd.Spec.Replicas = 3
 		crd.Spec.Ordinals.Start = 0
 
-		var mClient mockConfigClient
-		mClient.ObjectList = corev1.ConfigMapList{Items: []corev1.ConfigMap{
-			{
-				ObjectMeta: metav1.ObjectMeta{Name: "dydx-0", Namespace: namespace},
-				Data:       map[string]string{nodeKeyFile: nodeKey},
-			},
-			{
-				ObjectMeta: metav1.ObjectMeta{Name: "dydx-1", Namespace: namespace},
-				Data:       map[string]string{nodeKeyFile: nodeKey},
-			},
-			{
-				ObjectMeta: metav1.ObjectMeta{Name: "dydx-2", Namespace: namespace},
-				Data:       map[string]string{nodeKeyFile: nodeKey},
-			},
-		}}
-		nodeKeyCollector := NewNodeKeyCollector(&mClient)
-		nodeKeys, err := nodeKeyCollector.Collect(ctx, &crd)
+		nodeKeys, err := getMockNodeKeysForCRD(crd, "")
 		require.NoError(t, err)
 
 		getter := mockGetter(func(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
@@ -312,10 +252,7 @@ func TestPeerCollector_Collect(t *testing.T) {
 		var crd cosmosv1.CosmosFullNode
 		crd.Spec.Replicas = 0
 
-		var mClient mockConfigClient
-		mClient.ObjectList = corev1.ConfigMapList{Items: []corev1.ConfigMap{}}
-		nodeKeyCollector := NewNodeKeyCollector(&mClient)
-		nodeKeys, err := nodeKeyCollector.Collect(ctx, &crd)
+		nodeKeys, err := getMockNodeKeysForCRD(crd, "")
 		require.NoError(t, err)
 
 		collector := NewPeerCollector(panicGetter)
@@ -329,18 +266,15 @@ func TestPeerCollector_Collect(t *testing.T) {
 		crd.Name = "dydx"
 		crd.Spec.Replicas = 1
 
-		var mClient mockConfigClient
-		mClient.ObjectList = corev1.ConfigMapList{Items: []corev1.ConfigMap{}}
-		nodeKeyCollector := NewNodeKeyCollector(&mClient)
-		nodeKeys, err := nodeKeyCollector.Collect(ctx, &crd)
-		require.NoError(t, err)
+		nodeKeys, nErr := getMockNodeKeysForCRD(crd, "")
+		require.NoError(t, nErr)
 
 		getter := mockGetter(func(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
 			return errors.New("boom")
 		})
 
 		collector := NewPeerCollector(getter)
-		_, err = collector.Collect(ctx, &crd, nodeKeys)
+		_, err := collector.Collect(ctx, &crd, nodeKeys)
 
 		require.Error(t, err)
 		require.EqualError(t, err, "get server dydx-p2p-0: boom")
