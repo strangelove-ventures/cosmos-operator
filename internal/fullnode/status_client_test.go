@@ -8,6 +8,9 @@ import (
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -25,7 +28,37 @@ func (t *threadUnsafeClient) Update(ctx context.Context, obj client.Object, opts
 	return nil
 }
 
-func (t *threadUnsafeClient) Status() client.StatusWriter { return t }
+func (t *threadUnsafeClient) Status() client.StatusWriter {
+	return &threadUnsafeStatusWriter{client: t}
+}
+
+type threadUnsafeStatusWriter struct {
+	client *threadUnsafeClient
+}
+
+func (t *threadUnsafeStatusWriter) Create(ctx context.Context, obj client.Object, subResource client.Object, opts ...client.SubResourceCreateOption) error {
+	return nil
+}
+
+func (t *threadUnsafeStatusWriter) Update(ctx context.Context, obj client.Object, opts ...client.SubResourceUpdateOption) error {
+	return t.client.Update(ctx, obj)
+}
+
+func (t *threadUnsafeStatusWriter) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.SubResourcePatchOption) error {
+	return nil
+}
+
+func (t *threadUnsafeClient) GroupVersionKindFor(obj runtime.Object) (schema.GroupVersionKind, error) {
+	return schema.GroupVersionKind{}, nil
+}
+
+func (t *threadUnsafeClient) RESTMapper() meta.RESTMapper {
+	return nil
+}
+
+func (t *threadUnsafeClient) Scheme() *runtime.Scheme {
+	return nil
+}
 
 func TestStatusClient_SyncUpdate(t *testing.T) {
 	type mClient = mockClient[*cosmosv1.CosmosFullNode]

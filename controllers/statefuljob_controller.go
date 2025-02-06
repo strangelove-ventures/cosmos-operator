@@ -35,7 +35,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 var errMissingVolSnapCRD = errors.New("cluster does not have VolumeSnapshot CRDs installed")
@@ -200,11 +199,12 @@ func (r *StatefulJobReconciler) updateStatus(ctx context.Context, crd *cosmosalp
 
 // SetupWithManager sets up the controller with the Manager. IndexVolumeSnapshots should be called first.
 func (r *StatefulJobReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
-	cbuilder := ctrl.NewControllerManagedBy(mgr).For(&cosmosalpha.StatefulJob{})
+	cbuilder := ctrl.NewControllerManagedBy(mgr).
+		For(&cosmosalpha.StatefulJob{})
 
-	// Watch for delete events for jobs.
+	// The builder automatically wraps &batchv1.Job{} in source.Kind(...)
 	cbuilder.Watches(
-		&source.Kind{Type: &batchv1.Job{}},
+		&batchv1.Job{},
 		&handler.EnqueueRequestForObject{},
 		builder.WithPredicates(
 			statefuljob.LabelSelectorPredicate(),

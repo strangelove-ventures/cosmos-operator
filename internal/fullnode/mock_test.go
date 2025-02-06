@@ -11,6 +11,7 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -38,6 +39,10 @@ type mockClient[T client.Object] struct {
 	LastUpdateObject T
 	UpdateCount      int
 	UpdateErr        error
+}
+
+type mockStatusWriter[T client.Object] struct {
+	client *mockClient[T]
 }
 
 func (m *mockClient[T]) Get(ctx context.Context, key client.ObjectKey, obj client.Object, _ ...client.GetOption) error {
@@ -135,8 +140,8 @@ func (m *mockClient[T]) Update(ctx context.Context, obj client.Object, opts ...c
 	if ctx == nil {
 		panic("nil context")
 	}
-	m.UpdateCount++
 	m.LastUpdateObject = obj.(T)
+	m.UpdateCount++
 	return m.UpdateErr
 }
 
@@ -147,9 +152,9 @@ func (m *mockClient[T]) Patch(ctx context.Context, obj client.Object, patch clie
 	if ctx == nil {
 		panic("nil context")
 	}
-	m.PatchCount++
-	m.LastPatchObject = obj
+	m.LastPatchObject = obj.(T)
 	m.LastPatch = patch
+	m.PatchCount++
 	return nil
 }
 
@@ -169,9 +174,37 @@ func (m *mockClient[T]) Scheme() *runtime.Scheme {
 }
 
 func (m *mockClient[T]) Status() client.StatusWriter {
-	return m
+	return &mockStatusWriter[T]{client: m}
 }
 
 func (m *mockClient[T]) RESTMapper() meta.RESTMapper {
 	panic("implement me")
+}
+
+func (w *mockStatusWriter[T]) Create(ctx context.Context, obj client.Object, subResource client.Object, opts ...client.SubResourceCreateOption) error {
+	panic("implement me")
+}
+
+func (w *mockStatusWriter[T]) Update(ctx context.Context, obj client.Object, opts ...client.SubResourceUpdateOption) error {
+	panic("implement me")
+}
+
+func (w *mockStatusWriter[T]) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.SubResourcePatchOption) error {
+	panic("implement me")
+}
+
+func (m *mockClient[T]) GroupVersionKindFor(obj runtime.Object) (schema.GroupVersionKind, error) {
+	return schema.GroupVersionKind{
+		Group:   "cosmos.strange.love",
+		Version: "v1",
+		Kind:    "CosmosFullNode",
+	}, nil
+}
+
+func (m *mockClient[T]) IsObjectNamespaced(obj runtime.Object) (bool, error) {
+	return true, nil
+}
+
+func (m *mockClient[T]) SubResource(subResource string) client.SubResourceClient {
+	return nil
 }
