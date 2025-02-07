@@ -93,7 +93,6 @@ var (
 // Generate RBAC roles to watch and update resources. IMPORTANT!!!! All resource names must be lowercase or cluster role will not work.
 //+kubebuilder:rbac:groups="",resources=pods;persistentvolumeclaims;services;serviceaccounts;configmaps,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups="rbac.authorization.k8s.io",resources=roles;rolebindings,verbs=get;list;watch;create;update;patch;delete;bind;escalate
-//+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch
 //+kubebuilder:rbac:groups="",resources=events,verbs=create;update;patch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
