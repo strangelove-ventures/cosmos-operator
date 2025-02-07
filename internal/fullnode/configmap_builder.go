@@ -14,16 +14,18 @@ import (
 	"github.com/strangelove-ventures/cosmos-operator/internal/diff"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
 	configOverlayFile = "config-overlay.toml"
 	appOverlayFile    = "app-overlay.toml"
+	nodeKeyFile       = "node_key.json"
 )
 
 // BuildConfigMaps creates a ConfigMap with configuration to be mounted as files into containers.
-// Currently, the config.toml (for Comet) and app.toml (for the Cosmos SDK).
-func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, peers Peers) ([]diff.Resource[*corev1.ConfigMap], error) {
+// Currently, the config.toml (for Comet), app.toml (for the Cosmos SDK) and node_key.json.
+func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, peers Peers, nodeKeys NodeKeys) ([]diff.Resource[*corev1.ConfigMap], error) {
 	var (
 		buf = bufPool.Get().(*bytes.Buffer)
 		cms = make([]diff.Resource[*corev1.ConfigMap], 0, crd.Spec.Replicas)
@@ -65,6 +67,16 @@ func BuildConfigMaps(crd *cosmosv1.CosmosFullNode, peers Peers) ([]diff.Resource
 			return nil, err
 		}
 		buf.Reset()
+
+		nodeKey, ok := nodeKeys[client.ObjectKey{Name: instanceName(crd, i), Namespace: crd.Namespace}]
+
+		if !ok {
+			return nil, kube.UnrecoverableError(fmt.Errorf("node key not found for %s", instanceName(crd, i)))
+		}
+
+		nodeKeyValue := string(nodeKey.MarshaledNodeKey)
+
+		data[nodeKeyFile] = nodeKeyValue
 
 		var cm corev1.ConfigMap
 		cm.Name = instanceName(crd, i)
