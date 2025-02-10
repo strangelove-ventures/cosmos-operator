@@ -1,10 +1,10 @@
 # Use RocksDB base image
 FROM ghcr.io/strangelove-ventures/rocksdb:v7.10.2 AS rocksdb
 
-# Use Alpine-based Go image for lightweight build
+# Use lightweight Go Alpine image
 FROM --platform=$BUILDPLATFORM golang:1.23-alpine AS builder
 
-# Install required dependencies
+# Install dependencies
 RUN apk add --update --no-cache \
     gcc \
     musl-dev \
@@ -30,18 +30,13 @@ ARG BUILDARCH
 # Install cross-compilers if needed
 RUN if [ "${TARGETARCH}" = "arm64" ] && [ "${BUILDARCH}" != "arm64" ]; then \
         wget -q -O - https://musl.cc/aarch64-linux-musl-cross.tgz | tar -xz --strip-components 1 -C /usr; \
+        which aarch64-linux-musl-gcc || echo "Cross compiler missing"; \
     elif [ "${TARGETARCH}" = "amd64" ] && [ "${BUILDARCH}" != "amd64" ]; then \
         wget -q -O - https://musl.cc/x86_64-linux-musl-cross.tgz | tar -xz --strip-components 1 -C /usr; \
+        which x86_64-linux-musl-gcc || echo "Cross compiler missing"; \
     fi
 
-# Verify correct compiler installation
-RUN if [ "${TARGETARCH}" = "arm64" ] && [ "${BUILDARCH}" != "arm64" ]; then \
-        ls /usr/bin | grep aarch64-linux-musl-gcc; \
-    elif [ "${TARGETARCH}" = "amd64" ] && [ "${BUILDARCH}" != "amd64" ]; then \
-        ls /usr/bin | grep x86_64-linux-musl-gcc; \
-    fi
-
-# Install static versions of required libraries
+# Install static libraries
 RUN apk add --update --no-cache \
     snappy-static \
     zlib-static \
@@ -49,19 +44,19 @@ RUN apk add --update --no-cache \
     lz4-static \
     zstd-static
 
-# Copy RocksDB headers and static libraries
+# Copy RocksDB headers and static library
 COPY --from=rocksdb /rocksdb /rocksdb
 
-# Set working directory
+# Set workspace
 WORKDIR /workspace
 
 # Copy Go module files
 COPY go.mod go.sum ./
 
-# Download dependencies to cache before copying full source
+# Download dependencies
 RUN go mod download
 
-# Copy all Go source files
+# Copy source files
 COPY . .
 
 # Define build arguments
@@ -76,15 +71,15 @@ RUN set -eux; \
         export CC=x86_64-linux-musl-gcc CXX=x86_64-linux-musl-g++; \
     fi; \
     export GOOS=linux GOARCH=${TARGETARCH} CGO_ENABLED=1; \
-    export LDFLAGS="-linkmode external -extldflags '-static'"; \
-    export CGO_CFLAGS="-I/rocksdb/include"; \
-    export CGO_LDFLAGS="-L/rocksdb -L/usr/lib -L/lib -lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy -llz4 -lzstd"; \
+    export LDFLAGS="-s -w -extldflags '-static'"; \
+    export CGO_CFLAGS="-I/rocksdb/include -I/usr/include"; \
+    export CGO_LDFLAGS="-L/rocksdb -L/usr/lib -L/lib -lrocksdb -lzstd -lstdc++ -lm -lz -lbz2 -lsnappy -llz4"; \
     go build -v -x -tags 'rocksdb pebbledb' -ldflags "-X github.com/strangelove-ventures/cosmos-operator/internal/version.version=$VERSION $LDFLAGS" -o manager
 
-# Verify the built binary
+# Verify built binary
 RUN file manager && ldd manager || true
 
-# Build final minimal container
+# Build minimal final container
 FROM scratch
 
 LABEL org.opencontainers.image.source=https://github.com/strangelove-ventures/cosmos-operator
