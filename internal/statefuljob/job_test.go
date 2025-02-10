@@ -87,8 +87,8 @@ func TestBuildJobs(t *testing.T) {
 		got := jobs[0]
 
 		require.Len(t, got.Spec.Template.Spec.Volumes, 3)
-		gotVol, err := lo.Last(got.Spec.Template.Spec.Volumes)
-		require.NoError(t, err)
+		gotVol, ok := lo.Last(got.Spec.Template.Spec.Volumes)
+		require.True(t, ok, "Expected to find at least one volume")
 		require.Equal(t, "snapshot", gotVol.Name)
 		require.Equal(t, "cosmoshub", gotVol.VolumeSource.PersistentVolumeClaim.ClaimName)
 	})

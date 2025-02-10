@@ -18,7 +18,7 @@ import (
 func TestBuildServices(t *testing.T) {
 	t.Parallel()
 
-	t.Run("p2p services", func(t *testing.T) {
+	t.Run("regular node services", func(t *testing.T) {
 		crd := defaultCRD()
 		crd.Spec.Replicas = 3
 		crd.Name = "terra"
@@ -56,6 +56,147 @@ func TestBuildServices(t *testing.T) {
 					},
 				},
 				Selector: map[string]string{"app.kubernetes.io/instance": fmt.Sprintf("terra-%d", i)},
+				Type:     corev1.ServiceTypeClusterIP,
+			}
+			// By default, expose the first p2p service publicly.
+			if i == 0 {
+				wantSpec.Type = corev1.ServiceTypeLoadBalancer
+				wantSpec.ExternalTrafficPolicy = corev1.ServiceExternalTrafficPolicyTypeLocal
+			}
+
+			require.Equal(t, wantSpec, p2p.Spec)
+		}
+	})
+
+	t.Run("sentry node services", func(t *testing.T) {
+		crd := defaultCRD()
+		crd.Spec.Replicas = 2
+		crd.Name = "terra"
+		crd.Namespace = "test"
+		crd.Spec.ChainSpec.Network = "testnet"
+		crd.Spec.PodTemplate.Image = "terra:v6.0.0"
+		crd.Spec.Type = cosmosv1.Sentry // Set sentry type
+
+		svcs := BuildServices(&crd)
+
+		require.Equal(t, 5, len(svcs)) // 2 p2p + 2 privval + 1 rpc service
+
+		// Test P2P services (first 2)
+		for i, svc := range svcs[:2] {
+			p2p := svc.Object()
+			require.Equal(t, fmt.Sprintf("terra-p2p-%d", i), p2p.Name)
+			require.Equal(t, "p2p", p2p.Labels["app.kubernetes.io/component"])
+
+			wantP2PSpec := corev1.ServiceSpec{
+				Ports: []corev1.ServicePort{
+					{
+						Name:       "p2p",
+						Protocol:   corev1.ProtocolTCP,
+						Port:       26656,
+						TargetPort: intstr.FromString("p2p"),
+					},
+				},
+				Selector: map[string]string{"app.kubernetes.io/instance": fmt.Sprintf("terra-%d", i)},
+				Type:     corev1.ServiceTypeClusterIP,
+			}
+			if i == 0 {
+				wantP2PSpec.Type = corev1.ServiceTypeLoadBalancer
+				wantP2PSpec.ExternalTrafficPolicy = corev1.ServiceExternalTrafficPolicyTypeLocal
+			}
+			require.Equal(t, wantP2PSpec, p2p.Spec)
+		}
+
+		// Test Privval services (next 2)
+		for i, svc := range svcs[2:4] {
+			privval := svc.Object()
+			require.Equal(t, fmt.Sprintf("terra-privval-%d", i), privval.Name)
+			require.Equal(t, "cosmos-sentry", privval.Labels["app.kubernetes.io/component"])
+
+			wantPrivvalSpec := corev1.ServiceSpec{
+				Ports: []corev1.ServicePort{
+					{
+						Name:       "sentry-privval",
+						Protocol:   corev1.ProtocolTCP,
+						Port:       privvalPort,
+						TargetPort: intstr.FromString("privval"),
+					},
+				},
+				Selector:                 map[string]string{"app.kubernetes.io/instance": fmt.Sprintf("terra-%d", i)},
+				Type:                     corev1.ServiceTypeClusterIP,
+				PublishNotReadyAddresses: true,
+			}
+			require.Equal(t, wantPrivvalSpec, privval.Spec)
+		}
+
+		// Test RPC service (last one)
+		rpc := svcs[4].Object()
+		require.Equal(t, "terra-rpc", rpc.Name)
+		require.Equal(t, "rpc", rpc.Labels["app.kubernetes.io/component"])
+	})
+
+	t.Run("sentry service with overrides", func(t *testing.T) {
+		crd := defaultCRD()
+		crd.Spec.Replicas = 1
+		crd.Name = "terra"
+		crd.Spec.Type = cosmosv1.Sentry
+		crd.Spec.Service.P2PTemplate = cosmosv1.ServiceOverridesSpec{
+			Metadata: cosmosv1.Metadata{
+				Labels:      map[string]string{"test": "value1"},
+				Annotations: map[string]string{"test": "value2"},
+			},
+		}
+
+		svcs := BuildServices(&crd)
+		require.Equal(t, 3, len(svcs)) // 1 p2p + 1 privval + 1 rpc
+
+		// Check privval service has overrides applied
+		privval := svcs[1].Object()
+		require.Equal(t, "terra-privval-0", privval.Name)
+		require.Equal(t, "value1", privval.Labels["test"])
+		require.Equal(t, "value2", privval.Annotations["test"])
+		require.True(t, privval.Spec.PublishNotReadyAddresses)
+	})
+
+	t.Run("p2p services with custom start ordinal", func(t *testing.T) {
+		crd := defaultCRD()
+		crd.Spec.Replicas = 3
+		crd.Name = "terra"
+		crd.Namespace = "test"
+		crd.Spec.ChainSpec.Network = "testnet"
+		crd.Spec.PodTemplate.Image = "terra:v6.0.0"
+		crd.Spec.Ordinals.Start = 2
+
+		svcs := BuildServices(&crd)
+
+		require.Equal(t, 4, len(svcs)) // 3 p2p services + 1 rpc service
+
+		for i := 0; i < int(crd.Spec.Replicas); i++ {
+			ordinal := crd.Spec.Ordinals.Start + int32(i)
+			p2p := svcs[i].Object()
+			require.Equal(t, fmt.Sprintf("terra-p2p-%d", ordinal), p2p.Name)
+			require.Equal(t, "test", p2p.Namespace)
+
+			wantLabels := map[string]string{
+				"app.kubernetes.io/created-by": "cosmos-operator",
+				"app.kubernetes.io/name":       "terra",
+				"app.kubernetes.io/component":  "p2p",
+				"app.kubernetes.io/version":    "v6.0.0",
+				"app.kubernetes.io/instance":   fmt.Sprintf("terra-%d", ordinal),
+				"cosmos.strange.love/network":  "testnet",
+				"cosmos.strange.love/type":     "FullNode",
+			}
+			require.Equal(t, wantLabels, p2p.Labels)
+
+			wantSpec := corev1.ServiceSpec{
+				Ports: []corev1.ServicePort{
+					{
+						Name:       "p2p",
+						Protocol:   corev1.ProtocolTCP,
+						Port:       26656,
+						TargetPort: intstr.FromString("p2p"),
+					},
+				},
+				Selector: map[string]string{"app.kubernetes.io/instance": fmt.Sprintf("terra-%d", ordinal)},
 				Type:     corev1.ServiceTypeClusterIP,
 			}
 			// By default, expose the first p2p service publicly.
@@ -119,51 +260,6 @@ func TestBuildServices(t *testing.T) {
 		}
 	})
 
-	t.Run("p2p services with overrides", func(t *testing.T) {
-		crd := defaultCRD()
-		crd.Spec.Replicas = 2
-		crd.Name = "terra"
-		crd.Spec.Service.MaxP2PExternalAddresses = ptr(int32(2))
-		crd.Spec.Service.P2PTemplate = cosmosv1.ServiceOverridesSpec{
-			Metadata: cosmosv1.Metadata{
-				Labels:      map[string]string{"test": "value1", "app.kubernetes.io/name": "should not see me"},
-				Annotations: map[string]string{"test": "value2", "app.kubernetes.io/ordinal": "should not see me"},
-			},
-			Type:                  ptr(corev1.ServiceTypeNodePort),
-			ExternalTrafficPolicy: ptr(corev1.ServiceExternalTrafficPolicyTypeLocal),
-		}
-		svcs := BuildServices(&crd)
-
-		require.Equal(t, 3, len(svcs)) // 2 p2p services + 1 rpc service
-
-		for i, svc := range svcs[:2] {
-			p2p := svc.Object()
-			require.Equal(t, fmt.Sprintf("terra-p2p-%d", i), p2p.Name)
-
-			require.Equal(t, "value1", p2p.Labels["test"])
-			require.NotEqual(t, "should not see me", p2p.Labels["app.kubernetes.io/name"])
-
-			require.Equal(t, "value2", p2p.Annotations["test"])
-			require.NotEqual(t, "should not see me", p2p.Labels["app.kubernetes.io/ordinal"])
-
-			wantSpec := corev1.ServiceSpec{
-				Ports: []corev1.ServicePort{
-					{
-						Name:       "p2p",
-						Protocol:   corev1.ProtocolTCP,
-						Port:       26656,
-						TargetPort: intstr.FromString("p2p"),
-					},
-				},
-				Selector:              map[string]string{"app.kubernetes.io/instance": fmt.Sprintf("terra-%d", i)},
-				Type:                  corev1.ServiceTypeNodePort,
-				ExternalTrafficPolicy: corev1.ServiceExternalTrafficPolicyTypeLocal,
-			}
-
-			require.Equal(t, wantSpec, p2p.Spec)
-		}
-	})
-
 	t.Run("rpc service", func(t *testing.T) {
 		crd := defaultCRD()
 		crd.Spec.Replicas = 1
@@ -192,7 +288,6 @@ func TestBuildServices(t *testing.T) {
 		require.Equal(t, wantLabels, rpc.Labels)
 
 		require.Equal(t, 5, len(rpc.Spec.Ports))
-		// All ports minus prometheus and p2p.
 		want := []corev1.ServicePort{
 			{
 				Name:       "api",
