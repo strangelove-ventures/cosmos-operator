@@ -106,7 +106,7 @@ func TestPodBuilder(t *testing.T) {
 		crd := defaultCRD()
 		crd.Spec.InstanceOverrides = map[string]cosmosv1.InstanceOverridesSpec{
 			"osmosis-5": {
-				NodeSelector: map[string]string{"node-role": "test-pod-80"},
+				NodeSelector: map[string]string{"kubernetes.io/hostname": "worker-1"},
 			},
 		}
 
@@ -116,7 +116,7 @@ func TestPodBuilder(t *testing.T) {
 
 		// Verify that nodeSelector was applied from InstanceOverrides
 		require.NotNil(t, pod.Spec.NodeSelector)
-		require.Equal(t, "test-pod-80", pod.Spec.NodeSelector["node-role"])
+		require.Equal(t, "worker-1", pod.Spec.NodeSelector["kubernetes.io/hostname"])
 	})
 
 	t.Run("happy path - ports", func(t *testing.T) {
