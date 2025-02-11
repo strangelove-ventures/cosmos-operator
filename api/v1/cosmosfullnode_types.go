@@ -107,6 +107,18 @@ type FullNodeSpec struct {
 	// complexity of the CosmosFullNodeController.
 	// +optional
 	SelfHeal *SelfHealSpec `json:"selfHeal"`
+
+	// NamespaceSelector allows filtering which namespaces the operator should watch
+	// +optional
+	NamespaceSelector *metav1.LabelSelector `json:"namespaceSelector,omitempty"`
+
+	// AllowNamespaces is a list of namespaces to explicitly include for management
+	// +optional
+	AllowNamespaces []string `json:"allowNamespaces,omitempty"`
+
+	// DenyNamespaces is a list of namespaces to explicitly exclude from management
+	// +optional
+	DenyNamespaces []string `json:"denyNamespaces,omitempty"`
 }
 
 type FullNodeType string

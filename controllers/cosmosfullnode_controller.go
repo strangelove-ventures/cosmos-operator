@@ -26,6 +26,9 @@ import (
 	"github.com/strangelove-ventures/cosmos-operator/internal/fullnode"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -55,6 +58,9 @@ type CosmosFullNodeReconciler struct {
 	serviceAccountControl     fullnode.ServiceAccountControl
 	clusterRoleControl        fullnode.RoleControl
 	clusterRoleBindingControl fullnode.RoleBindingControl
+	NamespaceSelector         *metav1.LabelSelector
+	AllowNamespaces           []string
+	DenyNamespaces            []string
 }
 
 // NewFullNode returns a valid CosmosFullNode controller.
@@ -113,6 +119,12 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		// No need to explicitly delete resources. Kube GC does so automatically because we set the controller reference
 		// for each resource.
 		return stopResult, client.IgnoreNotFound(err)
+	}
+
+	//Namespace filtering logic
+	if !r.isNamespaceAllowed(crd.Spec, req.Namespace) {
+		logger.V(1).Info("Skipping reconciliation for namespace", "namespace", req.Namespace)
+		return ctrl.Result{}, nil
 	}
 
 	reporter := kube.NewEventReporter(logger, r.recorder, crd)
@@ -207,6 +219,38 @@ func (r *CosmosFullNodeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	crd.Status.Phase = cosmosv1.FullNodePhaseCompete
 	// Requeue to constantly poll consensus state.
 	return ctrl.Result{RequeueAfter: 60 * time.Second}, nil
+}
+
+func (r *CosmosFullNodeReconciler) isNamespaceAllowed(spec cosmosv1.FullNodeSpec, namespace string) bool {
+	// Check DenyNamespaces
+	for _, ns := range spec.DenyNamespaces {
+		if ns == namespace {
+			return false
+		}
+	}
+
+	// Check AllowNamespaces
+	if len(spec.AllowNamespaces) > 0 {
+		for _, ns := range spec.AllowNamespaces {
+			if ns == namespace {
+				return true
+			}
+		}
+		return false
+	}
+
+	// Check NamespaceSelector
+	if spec.NamespaceSelector != nil {
+		// Implement label selector logic here
+		// This would require fetching the Namespace object and checking its labels
+		ns := &corev1.Namespace{}
+		if err := r.Get(context.TODO(), types.NamespacedName{Name: namespace}, ns); err != nil {
+			return false
+		}
+		return labels.SelectorFromSet(spec.NamespaceSelector.MatchLabels).Matches(labels.Set(ns.Labels))
+	}
+
+	return true
 }
 
 func (r *CosmosFullNodeReconciler) resultWithErr(crd *cosmosv1.CosmosFullNode, err kube.ReconcileError) (ctrl.Result, kube.ReconcileError) {
