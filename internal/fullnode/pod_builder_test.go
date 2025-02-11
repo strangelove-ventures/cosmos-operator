@@ -363,8 +363,8 @@ func TestPodBuilder(t *testing.T) {
 
 		// Node key
 		require.Equal(t, "vol-node-key", vols[4].Name)
-		require.Equal(t, "osmosis-node-key-5", vols[4].Secret.SecretName)
-		require.Equal(t, []corev1.KeyToPath{{Key: "node_key.json", Path: "node_key.json"}}, vols[4].Secret.Items)
+		require.Equal(t, "osmosis-5", vols[4].ConfigMap.Name)
+		require.Equal(t, []corev1.KeyToPath{{Key: "node_key.json", Path: "node_key.json"}}, vols[4].ConfigMap.Items)
 
 		require.Equal(t, len(pod.Spec.Containers), 2)
 
