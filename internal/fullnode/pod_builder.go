@@ -196,7 +196,6 @@ func (b PodBuilder) Build() (*corev1.Pod, error) {
 		}
 		var vrs *cosmosv1.ChainVersion
 		for _, v := range b.crd.Spec.ChainSpec.Versions {
-			v := v
 			if instanceHeight < v.UpgradeHeight {
 				break
 			}
@@ -213,6 +212,9 @@ func (b PodBuilder) Build() (*corev1.Pod, error) {
 		}
 		if o.Image != "" {
 			setChainContainerImage(pod, o.Image)
+		}
+		if o.NodeSelector != nil {
+			pod.Spec.NodeSelector = o.NodeSelector
 		}
 	}
 

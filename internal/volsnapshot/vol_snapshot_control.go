@@ -162,7 +162,6 @@ func (control VolumeSnapshotControl) DeleteOldSnapshots(ctx context.Context, log
 
 	var merr error
 	for _, vs := range toDelete {
-		vs := vs
 		log.Info("Deleting volume snapshot", "volumeSnapshotName", vs.Name, "limit", limit)
 		if err := control.client.Delete(ctx, &vs); kube.IgnoreNotFound(err) != nil {
 			merr = errors.Join(merr, fmt.Errorf("delete %s: %w", vs.Name, err))
