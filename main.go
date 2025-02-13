@@ -122,18 +122,17 @@ func rootCmd() *cobra.Command {
 }
 
 func startManager(cmd *cobra.Command, args []string) error {
-	go func() {
-		setupLog.Info("Serving pprof endpoints at localhost:6060/debug/pprof")
-		if err := http.ListenAndServe("localhost:6060", nil); err != nil {
-			setupLog.Error(err, "Pprof server exited with error")
-		}
-	}()
-
 	logger := opcmd.ZapLogger(logLevel, logFormat)
 	defer func() { _ = logger.Sync() }()
 	ctrl.SetLogger(zapr.NewLogger(logger))
 
 	if profileMode != "" {
+		go func() {
+			setupLog.Info("Serving pprof endpoints at localhost:6060/debug/pprof")
+			if err := http.ListenAndServe("localhost:6060", nil); err != nil {
+				setupLog.Error(err, "Pprof server exited with error")
+			}
+		}()
 		defer profile.Start(profileOpts(profileMode)...).Stop()
 	}
 

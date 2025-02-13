@@ -37,7 +37,6 @@ func (coll StatusCollector) Collect(ctx context.Context, pods []corev1.Pod) Stat
 	statuses := make(StatusCollection, len(pods))
 
 	for i := range pods {
-		i := i
 		eg.Go(func() error {
 			pod := pods[i]
 			statuses[i].TS = now
