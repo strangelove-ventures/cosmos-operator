@@ -61,7 +61,6 @@ func (c DiskUsageCollector) CollectDiskUsage(ctx context.Context, crd *cosmosv1.
 	)
 
 	for i := range pods.Items {
-		i := i
 		eg.Go(func() error {
 			pod := pods.Items[i]
 			cctx, cancel := context.WithTimeout(ctx, 10*time.Second)
