@@ -34,7 +34,6 @@ func TestPeerCollector_Collect(t *testing.T) {
 	ctx := context.Background()
 	const (
 		namespace = "strangelove"
-		nodeKey   = `{"priv_key":{"type":"tendermint/PrivKeyEd25519","value":"HBX8VFQ4OdWfOwIOR7jj0af8mVHik5iGW9o1xnn4vRltk1HmwQS2LLGrMPVS2LIUO9BUqmZ1Pjt+qM8x0ibHxQ=="}}`
 	)
 
 	t.Run("happy path - private addresses", func(t *testing.T) {
@@ -42,10 +41,9 @@ func TestPeerCollector_Collect(t *testing.T) {
 		crd.Name = "dydx"
 		crd.Namespace = namespace
 		crd.Spec.Replicas = 2
-		res, err := BuildNodeKeySecrets(nil, &crd)
+
+		nodeKeys, err := getMockNodeKeysForCRD(crd, "")
 		require.NoError(t, err)
-		secret := res[0].Object()
-		secret.Data[nodeKeyFile] = []byte(nodeKey)
 
 		var (
 			getCount int
@@ -55,8 +53,6 @@ func TestPeerCollector_Collect(t *testing.T) {
 			objKeys = append(objKeys, key)
 			getCount++
 			switch ref := obj.(type) {
-			case *corev1.Secret:
-				*ref = *secret
 			case *corev1.Service:
 				*ref = corev1.Service{}
 			}
@@ -64,16 +60,14 @@ func TestPeerCollector_Collect(t *testing.T) {
 		})
 
 		collector := NewPeerCollector(getter)
-		peers, err := collector.Collect(ctx, &crd)
+		peers, err := collector.Collect(ctx, &crd, nodeKeys)
 		require.NoError(t, err)
 		require.Len(t, peers, 2)
 
-		require.Equal(t, 4, getCount) // 2 secrets + 2 services
+		require.Equal(t, 2, getCount) // 2 services
 
 		wantKeys := []client.ObjectKey{
-			{Name: "dydx-node-key-0", Namespace: namespace},
 			{Name: "dydx-p2p-0", Namespace: namespace},
-			{Name: "dydx-node-key-1", Namespace: namespace},
 			{Name: "dydx-p2p-1", Namespace: namespace},
 		}
 		require.Equal(t, wantKeys, objKeys)
@@ -98,15 +92,12 @@ func TestPeerCollector_Collect(t *testing.T) {
 		crd.Name = "dydx"
 		crd.Namespace = namespace
 		crd.Spec.Replicas = 3
-		res, err := BuildNodeKeySecrets(nil, &crd)
+
+		nodeKeys, err := getMockNodeKeysForCRD(crd, "")
 		require.NoError(t, err)
-		secret := res[0].Object()
-		secret.Data[nodeKeyFile] = []byte(nodeKey)
 
 		getter := mockGetter(func(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
 			switch ref := obj.(type) {
-			case *corev1.Secret:
-				*ref = *secret
 			case *corev1.Service:
 				var svc corev1.Service
 				switch key.Name {
@@ -125,7 +116,7 @@ func TestPeerCollector_Collect(t *testing.T) {
 		})
 
 		collector := NewPeerCollector(getter)
-		peers, err := collector.Collect(ctx, &crd)
+		peers, err := collector.Collect(ctx, &crd, nodeKeys)
 		require.NoError(t, err)
 		require.Len(t, peers, 3)
 
@@ -156,11 +147,8 @@ func TestPeerCollector_Collect(t *testing.T) {
 		crd.Spec.Replicas = 2
 		crd.Spec.Ordinals.Start = 2
 
-		res, err := BuildNodeKeySecrets(nil, &crd)
+		nodeKeys, err := getMockNodeKeysForCRD(crd, "")
 		require.NoError(t, err)
-		require.Equal(t, crd.Spec.Replicas, int32(len(res)))
-		secret := res[0].Object()
-		secret.Data[nodeKeyFile] = []byte(nodeKey)
 
 		var (
 			getCount int
@@ -170,8 +158,6 @@ func TestPeerCollector_Collect(t *testing.T) {
 			objKeys = append(objKeys, key)
 			getCount++
 			switch ref := obj.(type) {
-			case *corev1.Secret:
-				*ref = *secret
 			case *corev1.Service:
 				*ref = corev1.Service{}
 			}
@@ -179,16 +165,14 @@ func TestPeerCollector_Collect(t *testing.T) {
 		})
 
 		collector := NewPeerCollector(getter)
-		peers, err := collector.Collect(ctx, &crd)
+		peers, err := collector.Collect(ctx, &crd, nodeKeys)
 		require.NoError(t, err)
 		require.Len(t, peers, 2)
 
-		require.Equal(t, 4, getCount) // 2 secrets + 2 services
+		require.Equal(t, 2, getCount) // 2 services
 
 		wantKeys := []client.ObjectKey{
-			{Name: fmt.Sprintf("dydx-node-key-%d", crd.Spec.Ordinals.Start), Namespace: namespace},
 			{Name: fmt.Sprintf("dydx-p2p-%d", crd.Spec.Ordinals.Start), Namespace: namespace},
-			{Name: fmt.Sprintf("dydx-node-key-%d", crd.Spec.Ordinals.Start+1), Namespace: namespace},
 			{Name: fmt.Sprintf("dydx-p2p-%d", crd.Spec.Ordinals.Start+1), Namespace: namespace},
 		}
 		require.Equal(t, wantKeys, objKeys)
@@ -215,16 +199,11 @@ func TestPeerCollector_Collect(t *testing.T) {
 		crd.Spec.Replicas = 3
 		crd.Spec.Ordinals.Start = 0
 
-		res, err := BuildNodeKeySecrets(nil, &crd)
+		nodeKeys, err := getMockNodeKeysForCRD(crd, "")
 		require.NoError(t, err)
-		require.Equal(t, crd.Spec.Replicas, int32(len(res)))
-		secret := res[0].Object()
-		secret.Data[nodeKeyFile] = []byte(nodeKey)
 
 		getter := mockGetter(func(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
 			switch ref := obj.(type) {
-			case *corev1.Secret:
-				*ref = *secret
 			case *corev1.Service:
 				var svc corev1.Service
 				switch key.Name {
@@ -243,7 +222,7 @@ func TestPeerCollector_Collect(t *testing.T) {
 		})
 
 		collector := NewPeerCollector(getter)
-		peers, err := collector.Collect(ctx, &crd)
+		peers, err := collector.Collect(ctx, &crd, nodeKeys)
 		require.NoError(t, err)
 		require.Len(t, peers, 3)
 
@@ -273,49 +252,32 @@ func TestPeerCollector_Collect(t *testing.T) {
 		var crd cosmosv1.CosmosFullNode
 		crd.Spec.Replicas = 0
 
+		nodeKeys, err := getMockNodeKeysForCRD(crd, "")
+		require.NoError(t, err)
+
 		collector := NewPeerCollector(panicGetter)
-		peers, err := collector.Collect(ctx, &crd)
+		peers, err := collector.Collect(ctx, &crd, nodeKeys)
 		require.NoError(t, err)
 		require.Len(t, peers, 0)
 	})
 
 	t.Run("get error", func(t *testing.T) {
+		var crd cosmosv1.CosmosFullNode
+		crd.Name = "dydx"
+		crd.Spec.Replicas = 1
+
+		nodeKeys, nErr := getMockNodeKeysForCRD(crd, "")
+		require.NoError(t, nErr)
+
 		getter := mockGetter(func(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
 			return errors.New("boom")
 		})
 
 		collector := NewPeerCollector(getter)
-		var crd cosmosv1.CosmosFullNode
-		crd.Name = "dydx"
-		crd.Spec.Replicas = 1
-		_, err := collector.Collect(ctx, &crd)
+		_, err := collector.Collect(ctx, &crd, nodeKeys)
 
 		require.Error(t, err)
-		require.EqualError(t, err, "get secret dydx-node-key-0: boom")
+		require.EqualError(t, err, "get server dydx-p2p-0: boom")
 		require.True(t, err.IsTransient())
-	})
-
-	t.Run("invalid node key", func(t *testing.T) {
-		getter := mockGetter(func(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
-			switch ref := obj.(type) {
-			case *corev1.Secret:
-				var secret corev1.Secret
-				secret.Data = map[string][]byte{nodeKeyFile: []byte("invalid")}
-				*ref = secret
-			case *corev1.Service:
-				panic("should not be called")
-			}
-			return nil
-		})
-
-		var crd cosmosv1.CosmosFullNode
-		crd.Name = "dydx"
-		crd.Spec.Replicas = 1
-		collector := NewPeerCollector(getter)
-		_, err := collector.Collect(ctx, &crd)
-
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "invalid character")
-		require.False(t, err.IsTransient())
 	})
 }

@@ -196,7 +196,6 @@ func (b PodBuilder) Build() (*corev1.Pod, error) {
 		}
 		var vrs *cosmosv1.ChainVersion
 		for _, v := range b.crd.Spec.ChainSpec.Versions {
-			v := v
 			if instanceHeight < v.UpgradeHeight {
 				break
 			}
@@ -214,6 +213,9 @@ func (b PodBuilder) Build() (*corev1.Pod, error) {
 		if o.Image != "" {
 			setChainContainerImage(pod, o.Image)
 		}
+		if o.NodeSelector != nil {
+			pod.Spec.NodeSelector = o.NodeSelector
+		}
 	}
 
 	kube.NormalizeMetadata(&pod.ObjectMeta)
@@ -223,9 +225,9 @@ func (b PodBuilder) Build() (*corev1.Pod, error) {
 const (
 	volChainHome = "vol-chain-home" // Stores live chain data and config files.
 	volTmp       = "vol-tmp"        // Stores temporary config files for manipulation later.
-	volConfig    = "vol-config"     // Items from ConfigMap.
+	volConfig    = "vol-config"     // Overlay items from ConfigMap.
 	volSystemTmp = "vol-system-tmp" // Necessary for statesync or else you may see the error: ERR State sync failed err="failed to create chunk queue: unable to create temp dir for state sync chunks: stat /tmp: no such file or directory" module=statesync
-	volNodeKey   = "vol-node-key"   // Secret containing the node key.
+	volNodeKey   = "vol-node-key"   // Config map containing the node key.
 )
 
 // WithOrdinal updates adds name and other metadata to the pod using "ordinal" which is the pod's
@@ -276,8 +278,8 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 		{
 			Name: volNodeKey,
 			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: nodeKeySecretName(b.crd, ordinal),
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{Name: instanceName(b.crd, ordinal)},
 					Items: []corev1.KeyToPath{
 						{Key: nodeKeyFile, Path: nodeKeyFile},
 					},
