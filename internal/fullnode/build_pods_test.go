@@ -8,6 +8,7 @@ import (
 	"github.com/samber/lo"
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/internal/diff"
+	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -102,8 +103,10 @@ func TestBuildPods(t *testing.T) {
 			image := pod.Object().Spec.Containers[0].Image
 			if pod.Object().Name == overridePod {
 				require.Equal(t, overrideImage, image)
+				require.Equal(t, kube.ParseImageVersion(overrideImage), pod.Object().Labels[kube.VersionLabel])
 			} else {
 				require.Equal(t, image, image)
+				require.Equal(t, kube.ParseImageVersion(image), pod.Object().Labels[kube.VersionLabel])
 			}
 		}
 	})
@@ -216,8 +219,10 @@ func TestBuildPods(t *testing.T) {
 			image := pod.Object().Spec.Containers[0].Image
 			if pod.Object().Name == overridePod {
 				require.Equal(t, overrideImage, image)
+				require.Equal(t, kube.ParseImageVersion(overrideImage), pod.Object().Labels[kube.VersionLabel])
 			} else {
 				require.Equal(t, image, image)
+				require.Equal(t, kube.ParseImageVersion(image), pod.Object().Labels[kube.VersionLabel])
 			}
 		}
 	})
