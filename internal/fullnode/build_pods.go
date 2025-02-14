@@ -3,6 +3,7 @@ package fullnode
 import (
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/internal/diff"
+	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -56,6 +57,10 @@ func BuildPods(crd *cosmosv1.CosmosFullNode, cksums ConfigChecksums) ([]diff.Res
 		}
 	}
 	return pods, nil
+}
+
+func updatePodVersionLabel(pod *corev1.Pod, img string) {
+	pod.Labels[kube.VersionLabel] = kube.ParseImageVersion(img)
 }
 
 func setVersionedImages(pod *corev1.Pod, v *cosmosv1.ChainVersion) {
