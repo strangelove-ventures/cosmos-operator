@@ -22,6 +22,7 @@ package v1
 
 import (
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -310,6 +311,21 @@ func (in *FullNodeSpec) DeepCopyInto(out *FullNodeSpec) {
 		in, out := &in.SelfHeal, &out.SelfHeal
 		*out = new(SelfHealSpec)
 		(*in).DeepCopyInto(*out)
+	}
+	if in.NamespaceSelector != nil {
+		in, out := &in.NamespaceSelector, &out.NamespaceSelector
+		*out = new(metav1.LabelSelector)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.AllowNamespaces != nil {
+		in, out := &in.AllowNamespaces, &out.AllowNamespaces
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
+	if in.DenyNamespaces != nil {
+		in, out := &in.DenyNamespaces, &out.DenyNamespaces
+		*out = make([]string, len(*in))
+		copy(*out, *in)
 	}
 }
 
