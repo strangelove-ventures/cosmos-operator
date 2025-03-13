@@ -1,5 +1,5 @@
 # See rocksdb/README.md for instructions to update rocksdb version
-FROM ghcr.io/vimystic/rocksdb:v9.8.4 AS rocksdb
+FROM ghcr.io/strangelove-ventures/rocksdb:v9.8.4 AS rocksdb
 
 FROM --platform=$BUILDPLATFORM golang:1.23-alpine AS builder
 
@@ -41,8 +41,7 @@ RUN set -eux;\
     zstd-static\
     --allow-untrusted
 
-# Install RocksDB headers and libraries
-# Copy directly from the rocksdb image, maintaining the structure that grocksdb expects
+# Install RocksDB headers and static library
 COPY --from=rocksdb /rocksdb /rocksdb
 
 WORKDIR /workspace
@@ -73,7 +72,7 @@ RUN set -eux;\
             CGO_ENABLED=1 \
             LDFLAGS='-linkmode external -extldflags "-static"' \
             CGO_CFLAGS="-I/rocksdb/include" \
-            CGO_LDFLAGS="-L/rocksdb/lib -L/usr/lib -L/lib -lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy -llz4 -lzstd";\
+            CGO_LDFLAGS="-L/rocksdb -L/usr/lib -L/lib -lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy -llz4 -lzstd";\
     go build -tags 'rocksdb pebbledb' -ldflags "-X github.com/strangelove-ventures/cosmos-operator/internal/version.version=$VERSION $LDFLAGS" -a -o manager .
 
 # Build final image from scratch
