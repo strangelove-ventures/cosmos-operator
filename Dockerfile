@@ -48,8 +48,6 @@ WORKDIR /workspace
 # Copy the Go Modules manifests
 COPY go.mod go.mod
 COPY go.sum go.sum
-# cache deps before building and copying source so that we don't need to re-download as much
-# and so that source changes don't invalidate our downloaded layer
 RUN go mod download
 
 # Copy the go source
@@ -62,7 +60,7 @@ COPY internal/ internal/
 ARG VERSION
 
 RUN set -eux;\
-    if [ "${TARGETARCH}" = "arm64" ] && [ "${BUILDARCH}" != "arm64" ]; then\
+    if [ "${TARGETARCH}" = "arm64" ]; then\
         export CC=aarch64-linux-musl-gcc CXX=aarch64-linux-musl-g++;\
         export GOOS=linux \
                GOARCH=$TARGETARCH \
