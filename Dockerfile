@@ -41,12 +41,8 @@ RUN set -eux;\
     zstd-static\
     --allow-untrusted
 
-# Install RocksDB headers and libraries in both locations for maximum compatibility
-# Copy to structured directories
-COPY --from=rocksdb /usr/local/include /rocksdb/include
-COPY --from=rocksdb /usr/local/lib /rocksdb/lib
-
-# Also copy to original expected location
+# Install RocksDB headers and libraries
+# Copy directly from the rocksdb image, maintaining the structure that grocksdb expects
 COPY --from=rocksdb /rocksdb /rocksdb
 
 WORKDIR /workspace
