@@ -41,7 +41,12 @@ RUN set -eux;\
     zstd-static\
     --allow-untrusted
 
-# Install RocksDB headers and static library
+# Install RocksDB headers and libraries in both locations for maximum compatibility
+# Copy to structured directories
+COPY --from=rocksdb /usr/local/include /rocksdb/include
+COPY --from=rocksdb /usr/local/lib /rocksdb/lib
+
+# Also copy to original expected location
 COPY --from=rocksdb /rocksdb /rocksdb
 
 WORKDIR /workspace
@@ -72,7 +77,7 @@ RUN set -eux;\
             CGO_ENABLED=1 \
             LDFLAGS='-linkmode external -extldflags "-static"' \
             CGO_CFLAGS="-I/rocksdb/include" \
-            CGO_LDFLAGS="-L/rocksdb -L/usr/lib -L/lib -lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy -llz4 -lzstd";\
+            CGO_LDFLAGS="-L/rocksdb/lib -L/usr/lib -L/lib -lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy -llz4 -lzstd";\
     go build -tags 'rocksdb pebbledb' -ldflags "-X github.com/strangelove-ventures/cosmos-operator/internal/version.version=$VERSION $LDFLAGS" -a -o manager .
 
 # Build final image from scratch
