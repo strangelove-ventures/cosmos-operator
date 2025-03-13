@@ -1,5 +1,5 @@
 # See rocksdb/README.md for instructions to update rocksdb version
-FROM ghcr.io/vimystic/rocksdb:v8.1.1 AS rocksdb
+FROM ghcr.io/vimystic/rocksdb:v7.4.4 AS rocksdb
 
 FROM --platform=$BUILDPLATFORM golang:1.23-alpine AS builder
 
