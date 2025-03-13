@@ -48,6 +48,8 @@ WORKDIR /workspace
 # Copy the Go Modules manifests
 COPY go.mod go.mod
 COPY go.sum go.sum
+# cache deps before building and copying source so that we don't need to re-download as much
+# and so that source changes don't invalidate our downloaded layer
 RUN go mod download
 
 # Copy the go source
@@ -60,25 +62,18 @@ COPY internal/ internal/
 ARG VERSION
 
 RUN set -eux;\
-    if [ "${TARGETARCH}" = "arm64" ]; then\
+    if [ "${TARGETARCH}" = "arm64" ] && [ "${BUILDARCH}" != "arm64" ]; then\
         export CC=aarch64-linux-musl-gcc CXX=aarch64-linux-musl-g++;\
-        export GOOS=linux \
-               GOARCH=$TARGETARCH \
-               CGO_ENABLED=1 \
-               LDFLAGS='-linkmode external -extldflags "-static"';\
-        go build -tags 'pebbledb' -ldflags "-X github.com/strangelove-ventures/cosmos-operator/internal/version.version=$VERSION $LDFLAGS" -a -o manager .;\
-    else\
-        if [ "${TARGETARCH}" = "amd64" ] && [ "${BUILDARCH}" != "amd64" ]; then\
-            export CC=x86_64-linux-musl-gcc CXX=x86_64-linux-musl-g++;\
-        fi;\
-        export GOOS=linux \
-               GOARCH=$TARGETARCH \
-               CGO_ENABLED=1 \
-               LDFLAGS='-linkmode external -extldflags "-static"' \
-               CGO_CFLAGS="-I/rocksdb/include" \
-               CGO_LDFLAGS="-L/rocksdb -L/usr/lib -L/lib -lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy -llz4 -lzstd";\
-        go build -tags 'rocksdb pebbledb' -ldflags "-X github.com/strangelove-ventures/cosmos-operator/internal/version.version=$VERSION $LDFLAGS" -a -o manager .;\
-    fi
+    elif [ "${TARGETARCH}" = "amd64" ] && [ "${BUILDARCH}" != "amd64" ]; then\
+        export CC=x86_64-linux-musl-gcc CXX=x86_64-linux-musl-g++;\
+    fi;\
+    export  GOOS=linux \
+            GOARCH=$TARGETARCH \
+            CGO_ENABLED=1 \
+            LDFLAGS='-linkmode external -extldflags "-static"' \
+            CGO_CFLAGS="-I/rocksdb/include" \
+            CGO_LDFLAGS="-L/rocksdb -L/usr/lib -L/lib -lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy -llz4 -lzstd";\
+    go build -tags 'rocksdb pebbledb' -ldflags "-X github.com/strangelove-ventures/cosmos-operator/internal/version.version=$VERSION $LDFLAGS" -a -o manager .
 
 # Build final image from scratch
 FROM scratch
