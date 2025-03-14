@@ -11,8 +11,22 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+type mockStatusWriter[T client.Object] struct {
+	client *mockClient[T]
+}
+
+func (m *mockClient[T]) GroupVersionKindFor(obj runtime.Object) (schema.GroupVersionKind, error) {
+	// Return a simple GroupVersionKind for testing purposes
+	return schema.GroupVersionKind{
+		Group:   "cosmos.strange.love",
+		Version: "v1",
+		Kind:    "CosmosFullNode",
+	}, nil
+}
 
 type mockClient[T client.Object] struct {
 	mu sync.Mutex
@@ -128,31 +142,6 @@ func (m *mockClient[T]) Delete(ctx context.Context, obj client.Object, opts ...c
 	return nil
 }
 
-func (m *mockClient[T]) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	if ctx == nil {
-		panic("nil context")
-	}
-	m.UpdateCount++
-	m.LastUpdateObject = obj.(T)
-	return m.UpdateErr
-}
-
-func (m *mockClient[T]) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	if ctx == nil {
-		panic("nil context")
-	}
-	m.PatchCount++
-	m.LastPatchObject = obj
-	m.LastPatch = patch
-	return nil
-}
-
 func (m *mockClient[T]) DeleteAllOf(ctx context.Context, obj client.Object, opts ...client.DeleteAllOfOption) error {
 	panic("implement me")
 }
@@ -168,10 +157,84 @@ func (m *mockClient[T]) Scheme() *runtime.Scheme {
 	return scheme
 }
 
-func (m *mockClient[T]) Status() client.StatusWriter {
-	return m
-}
-
 func (m *mockClient[T]) RESTMapper() meta.RESTMapper {
 	panic("implement me")
+}
+
+// Update implements client.StatusWriter interface
+func (m *mockStatusWriter[T]) Update(ctx context.Context, obj client.Object, opts ...client.SubResourceUpdateOption) error {
+	if ctx == nil {
+		panic("nil context")
+	}
+	m.client.mu.Lock()
+	defer m.client.mu.Unlock()
+
+	m.client.UpdateCount++
+	m.client.LastUpdateObject = obj.(T)
+	return m.client.UpdateErr
+}
+
+func (m *mockClient[T]) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if ctx == nil {
+		panic("nil context")
+	}
+	m.PatchCount++
+	m.LastPatchObject = obj
+	m.LastPatch = patch
+	return nil
+}
+
+// Patch implements client.StatusWriter interface
+func (m *mockStatusWriter[T]) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.SubResourcePatchOption) error {
+	if ctx == nil {
+		panic("nil context")
+	}
+	m.client.mu.Lock()
+	defer m.client.mu.Unlock()
+
+	m.client.PatchCount++
+	m.client.LastPatchObject = obj
+	m.client.LastPatch = patch
+	return nil
+}
+
+// Add this method to your mockStatusWriter implementation
+func (m *mockStatusWriter[T]) Create(ctx context.Context, obj client.Object, subResource client.Object, opts ...client.SubResourceCreateOption) error {
+	if ctx == nil {
+		panic("nil context")
+	}
+	m.client.mu.Lock()
+	defer m.client.mu.Unlock()
+
+	m.client.CreateCount++
+	m.client.LastCreateObject = obj.(T)
+	m.client.CreatedObjects = append(m.client.CreatedObjects, obj.(T))
+	return nil
+}
+
+func (m *mockClient[T]) Status() client.StatusWriter {
+	return &mockStatusWriter[T]{client: m}
+}
+
+func (m *mockClient[T]) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if ctx == nil {
+		panic("nil context")
+	}
+	m.UpdateCount++
+	m.LastUpdateObject = obj.(T)
+	return m.UpdateErr
+}
+
+func (m *mockClient[T]) IsObjectNamespaced(obj runtime.Object) (bool, error) {
+	return true, nil
+}
+
+func (m *mockClient[T]) SubResource(subResource string) client.SubResourceClient {
+	return nil
 }
