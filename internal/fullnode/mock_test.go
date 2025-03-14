@@ -19,6 +19,15 @@ type mockStatusWriter[T client.Object] struct {
 	client *mockClient[T]
 }
 
+func (m *mockClient[T]) GroupVersionKindFor(obj runtime.Object) (schema.GroupVersionKind, error) {
+	// Return a simple GroupVersionKind for testing purposes
+	return schema.GroupVersionKind{
+		Group:   "cosmos.strange.love",
+		Version: "v1",
+		Kind:    "CosmosFullNode",
+	}, nil
+}
+
 type mockClient[T client.Object] struct {
 	mu sync.Mutex
 
@@ -222,11 +231,10 @@ func (m *mockClient[T]) Update(ctx context.Context, obj client.Object, opts ...c
 	return m.UpdateErr
 }
 
-func (m *mockClient[T]) GroupVersionKindFor(obj client.Object) (schema.GroupVersionKind, error) {
-	// Return a simple GroupVersionKind for testing purposes
-	return schema.GroupVersionKind{
-		Group:   "cosmos.strange.love",
-		Version: "v1",
-		Kind:    "CosmosFullNode",
-	}, nil
+func (m *mockClient[T]) IsObjectNamespaced(obj runtime.Object) (bool, error) {
+	return true, nil
+}
+
+func (m *mockClient[T]) SubResource(subResource string) client.SubResourceClient {
+	return nil
 }

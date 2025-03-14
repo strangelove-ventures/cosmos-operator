@@ -36,7 +36,7 @@ linters:
     - bodyclose
     - depguard
     - errcheck
-    - exportloopref
+    - copyloopvar
     - goimports
     - goprintffuncname
     - gosimple
