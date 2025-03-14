@@ -9,6 +9,7 @@ import (
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
 	"github.com/strangelove-ventures/cosmos-operator/internal/diff"
 	"github.com/stretchr/testify/require"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -55,6 +56,7 @@ func TestBuildPods(t *testing.T) {
 		want := lo.Map([]int{2, 3, 4, 5, 6}, func(i int, _ int) string {
 			return fmt.Sprintf("agoric-%d", i)
 		})
+		_ = &corev1.Pod{}
 		got := lo.Map(pods, func(pod diff.Resource[*corev1.Pod], _ int) string { return pod.Object().Name })
 		require.Equal(t, want, got)
 

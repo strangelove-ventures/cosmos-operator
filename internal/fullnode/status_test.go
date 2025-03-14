@@ -2,7 +2,7 @@ package fullnode
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -63,12 +63,23 @@ func TestSyncInfoStatus(t *testing.T) {
 		var inSync cosmos.CometStatus
 		inSync.Result.SyncInfo.LatestBlockHeight = "10000"
 
-		return cosmos.StatusCollection{
-			// Purposefully out of order to test sorting.
-			{Pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "pod-0"}}, Status: notInSync, TS: ts},
-			{Pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "pod-1"}}, Status: inSync, TS: ts},
-			{Pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "pod-2"}}, Err: errors.New("some error"), TS: ts},
-		}
+		// Create the collection and access it directly
+		collection := make(cosmos.StatusCollection, 3)
+
+		// Fill in the details for each entry
+		collection[0].Pod = &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "pod-0"}}
+		collection[0].Status = notInSync
+		collection[0].TS = ts
+
+		collection[1].Pod = &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "pod-1"}}
+		collection[1].Status = inSync
+		collection[1].TS = ts
+
+		collection[2].Pod = &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "pod-2"}}
+		collection[2].Err = fmt.Errorf("some error")
+		collection[2].TS = ts
+
+		return collection
 	}
 
 	wantTS := metav1.NewTime(ts)
