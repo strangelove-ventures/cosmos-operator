@@ -95,12 +95,19 @@ func pvcResources(
 	dataSource *dataSource,
 	existingSize resource.Quantity,
 	tplResources corev1.ResourceRequirements,
-) corev1.ResourceRequirements {
-	reqs := tplResources.DeepCopy()
+) corev1.VolumeResourceRequirements {
+	// Create a new VolumeResourceRequirements with the same values
+	result := corev1.VolumeResourceRequirements{
+		Limits:   tplResources.Limits,
+		Requests: tplResources.Requests,
+	}
 
 	if dataSource != nil {
-		reqs.Requests[corev1.ResourceStorage] = dataSource.size
-		return *reqs
+		if result.Requests == nil {
+			result.Requests = corev1.ResourceList{}
+		}
+		result.Requests[corev1.ResourceStorage] = dataSource.size
+		return result
 	}
 
 	if autoScale := crd.Status.SelfHealing.PVCAutoScale; autoScale != nil {
@@ -108,18 +115,22 @@ func pvcResources(
 			requestedSize := status.RequestedSize.DeepCopy()
 			newSize := requestedSize.AsDec()
 			sizeWithPadding := resource.NewDecimalQuantity(*newSize.Mul(newSize, inf.NewDec(snapshotGrowthFactor, 2)), resource.DecimalSI)
-			if sizeWithPadding.Cmp(reqs.Requests[corev1.ResourceStorage]) > 0 {
-				reqs.Requests[corev1.ResourceStorage] = *sizeWithPadding
+			if result.Requests == nil {
+				result.Requests = corev1.ResourceList{}
+			}
+			if sizeWithPadding.Cmp(result.Requests[corev1.ResourceStorage]) > 0 {
+				result.Requests[corev1.ResourceStorage] = *sizeWithPadding
 			}
 		}
 	}
 
-	if existingSize.Cmp(reqs.Requests[corev1.ResourceStorage]) > 0 {
-		reqs.Requests[corev1.ResourceStorage] = existingSize
+	if result.Requests != nil && existingSize.Cmp(result.Requests[corev1.ResourceStorage]) > 0 {
+		result.Requests[corev1.ResourceStorage] = existingSize
 	}
 
-	return *reqs
+	return result
 }
+
 func pvcDisabled(crd *cosmosv1.CosmosFullNode, ordinal int32) bool {
 	name := instanceName(crd, ordinal)
 	disable := crd.Spec.InstanceOverrides[name].DisableStrategy

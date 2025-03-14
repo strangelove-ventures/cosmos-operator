@@ -35,7 +35,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 var errMissingVolSnapCRD = errors.New("cluster does not have VolumeSnapshot CRDs installed")
@@ -203,9 +202,20 @@ func (r *StatefulJobReconciler) SetupWithManager(ctx context.Context, mgr ctrl.M
 	cbuilder := ctrl.NewControllerManagedBy(mgr).For(&cosmosalpha.StatefulJob{})
 
 	// Watch for delete events for jobs.
-	cbuilder.Watches(
-		&source.Kind{Type: &batchv1.Job{}},
-		&handler.EnqueueRequestForObject{},
+	// Updated to use the controller-runtime v0.20.3 API
+	cbuilder = cbuilder.Watches(
+		&batchv1.Job{},
+		handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []ctrl.Request {
+			// This is equivalent to EnqueueRequestForObject but using the new API
+			return []ctrl.Request{
+				{
+					NamespacedName: client.ObjectKey{
+						Name:      obj.GetName(),
+						Namespace: obj.GetNamespace(),
+					},
+				},
+			}
+		}),
 		builder.WithPredicates(
 			statefuljob.LabelSelectorPredicate(),
 			statefuljob.DeletePredicate(),
