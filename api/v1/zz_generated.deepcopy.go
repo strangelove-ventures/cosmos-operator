@@ -775,7 +775,7 @@ func (in *ServiceOverridesSpec) DeepCopyInto(out *ServiceOverridesSpec) {
 	}
 	if in.ExternalTrafficPolicy != nil {
 		in, out := &in.ExternalTrafficPolicy, &out.ExternalTrafficPolicy
-		*out = new(corev1.ServiceExternalTrafficPolicyType)
+		*out = new(corev1.ServiceExternalTrafficPolicy)
 		**out = **in
 	}
 }

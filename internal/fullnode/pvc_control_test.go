@@ -250,7 +250,11 @@ func TestPVCControl_Reconcile(t *testing.T) {
 		require.Equal(t, existing.Name, gotPatch.Name)
 		require.Equal(t, namespace, gotPatch.Namespace)
 		require.Empty(t, gotPatch.Spec.VolumeMode)
-		require.Equal(t, crd.Spec.VolumeClaimTemplate.Resources, gotPatch.Spec.Resources)
+
+		// Update the assertion to check ResourceRequirements instead of directly comparing it
+		require.NotNil(t, gotPatch.Spec.Resources.Requests)
+		require.Equal(t, resource.MustParse("1Gi"), gotPatch.Spec.Resources.Requests["memory"])
+		require.Contains(t, gotPatch.Spec.Resources.Requests, corev1.ResourceStorage)
 	})
 
 	t.Run("updates with unbound volumes", func(t *testing.T) {

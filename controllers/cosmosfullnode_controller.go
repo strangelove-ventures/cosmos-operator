@@ -34,7 +34,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 const controllerOwnerField = ".metadata.controller"
@@ -309,24 +308,42 @@ func (r *CosmosFullNodeReconciler) SetupWithManager(ctx context.Context, mgr ctr
 		return fmt.Errorf("service index field %s: %w", controllerOwnerField, err)
 	}
 
-	cbuilder := ctrl.NewControllerManagedBy(mgr).For(&cosmosv1.CosmosFullNode{})
-
-	// Watch for delete events for certain resources.
-	for _, kind := range []*source.Kind{
-		{Type: &corev1.Pod{}},
-		{Type: &corev1.PersistentVolumeClaim{}},
-		{Type: &corev1.ConfigMap{}},
-		{Type: &corev1.Service{}},
-		{Type: &corev1.Secret{}},
-	} {
-		cbuilder.Watches(
-			kind,
-			&handler.EnqueueRequestForOwner{OwnerType: &cosmosv1.CosmosFullNode{}, IsController: true},
-			builder.WithPredicates(&predicate.Funcs{
-				DeleteFunc: func(_ event.DeleteEvent) bool { return true },
-			}),
-		)
+	// Create delete-only predicate
+	deleteOnly := predicate.Funcs{
+		CreateFunc:  func(event.CreateEvent) bool { return false },
+		UpdateFunc:  func(event.UpdateEvent) bool { return false },
+		DeleteFunc:  func(event.DeleteEvent) bool { return true },
+		GenericFunc: func(event.GenericEvent) bool { return false },
 	}
 
-	return cbuilder.Complete(r)
+	// Building the controller with For first
+	return ctrl.NewControllerManagedBy(mgr).
+		For(&cosmosv1.CosmosFullNode{}).
+		// Add watch for each resource type with filter
+		Watches(
+			&corev1.Pod{},
+			handler.EnqueueRequestForOwner(mgr.GetScheme(), mgr.GetRESTMapper(), &cosmosv1.CosmosFullNode{}),
+			builder.WithPredicates(deleteOnly),
+		).
+		Watches(
+			&corev1.PersistentVolumeClaim{},
+			handler.EnqueueRequestForOwner(mgr.GetScheme(), mgr.GetRESTMapper(), &cosmosv1.CosmosFullNode{}),
+			builder.WithPredicates(deleteOnly),
+		).
+		Watches(
+			&corev1.ConfigMap{},
+			handler.EnqueueRequestForOwner(mgr.GetScheme(), mgr.GetRESTMapper(), &cosmosv1.CosmosFullNode{}),
+			builder.WithPredicates(deleteOnly),
+		).
+		Watches(
+			&corev1.Service{},
+			handler.EnqueueRequestForOwner(mgr.GetScheme(), mgr.GetRESTMapper(), &cosmosv1.CosmosFullNode{}),
+			builder.WithPredicates(deleteOnly),
+		).
+		Watches(
+			&corev1.Secret{},
+			handler.EnqueueRequestForOwner(mgr.GetScheme(), mgr.GetRESTMapper(), &cosmosv1.CosmosFullNode{}),
+			builder.WithPredicates(deleteOnly),
+		).
+		Complete(r)
 }

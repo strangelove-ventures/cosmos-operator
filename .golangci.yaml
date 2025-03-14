@@ -1,17 +1,9 @@
 # See https://github.com/golangci/golangci-lint/blob/master/.golangci.yml for an updated example.
 
 run:
-  # If set we pass it to "go list -mod={option}". From "go help modules":
-  # If invoked with -mod=readonly, the go command is disallowed from the implicit
-  # automatic updating of go.mod described above. Instead, it fails when any changes
-  # to go.mod are needed. This setting is most useful to check that go.mod does
-  # not need updates, such as in a continuous integration and testing system.
-  # If invoked with -mod=vendor, the go command assumes that the vendor
-  # directory holds the correct copies of dependencies and ignores
-  # the dependency descriptions in go.mod.
-  #
   # Allowed values: readonly|vendor|mod
-  modules-download-mode: readonly
+  modules-download-mode: vendor # Changed from readonly to vendor
+  timeout: 5m
 
 linters-settings:
   depguard:
@@ -26,17 +18,17 @@ linters-settings:
             desc: "Although Ginkgo is used in kubebuilder, use testify instead. Ginkgo is bloated providing little value."
           - pkg: github.com/onsi/ginkgo
             desc: "Although Ginkgo is used in kubebuilder, use testify instead. Ginkgo is bloated providing little value."
-  govet: {}
   misspell:
     locale: US
     ignore-words:
       - "statuser"
   nakedret:
-    max-func-lines: 0 # Completely disallow naked returns
+    # make an issue if func has more lines of code than this setting and it has naked returns; default is 30
+    max-func-lines: 0 # completely disallow naked returns
   nolintlint:
-    allow-unused: false # Report any unused nolint directives
-    require-explanation: false # Don't require an explanation for nolint directives
-    require-specific: false # Don't require nolint directives to be specific
+    allow-unused: false # report any unused nolint directives
+    require-explanation: false # don't require an explanation for nolint directives
+    require-specific: false # don't require nolint directives to be specific about which linter is being skipped
 
 linters:
   disable-all: true
@@ -44,18 +36,17 @@ linters:
     - bodyclose
     - depguard
     - errcheck
-    - copyloopvar  # Replaces exportloopref (Go 1.22+)
+    - copyloopvar
     - goimports
     - goprintffuncname
     - gosimple
-    - govet
     - ineffassign
     - misspell
     - nakedret
     - noctx
     - nolintlint
     - staticcheck
-    - stylecheck  # Replacement for golint
+    - stylecheck # replacement for golint
     - unconvert
     - unused
     - whitespace

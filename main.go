@@ -31,7 +31,7 @@ import (
 	"github.com/strangelove-ventures/cosmos-operator/internal/cosmos"
 	"github.com/strangelove-ventures/cosmos-operator/internal/fullnode"
 	"github.com/strangelove-ventures/cosmos-operator/internal/version"
-	"sigs.k8s.io/controller-runtime/pkg/healthz"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -47,6 +47,8 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -136,13 +138,14 @@ func startManager(cmd *cobra.Command, args []string) error {
 		defer profile.Start(profileOpts(profileMode)...).Stop()
 	}
 
+	// For controller-runtime v0.20.3
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
-		MetricsBindAddress:     metricsAddr,
-		Port:                   9443,
 		HealthProbeBindAddress: probeAddr,
+		WebhookServer:          webhook.NewServer(webhook.Options{Port: 9443}),
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "16e1bc09.strange.love",
+		Metrics:                metricsserver.Options{BindAddress: metricsAddr},
 		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
 		// when the Manager ends. This requires the binary to immediately end when the
 		// Manager is stopped, otherwise, this setting is unsafe. Setting this significantly

@@ -11,6 +11,22 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+type threadUnsafeStatusWriter struct {
+	client *threadUnsafeClient
+}
+
+func (t *threadUnsafeStatusWriter) Update(ctx context.Context, obj client.Object, opts ...client.SubResourceUpdateOption) error {
+	return t.client.Update(ctx, obj)
+}
+
+func (t *threadUnsafeStatusWriter) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.SubResourcePatchOption) error {
+	return nil
+}
+
+func (t *threadUnsafeStatusWriter) Create(ctx context.Context, obj client.Object, subResource client.Object, opts ...client.SubResourceCreateOption) error {
+	return nil
+}
+
 type threadUnsafeClient struct {
 	client.Client
 	UpdateCount int
@@ -25,7 +41,13 @@ func (t *threadUnsafeClient) Update(ctx context.Context, obj client.Object, opts
 	return nil
 }
 
-func (t *threadUnsafeClient) Status() client.StatusWriter { return t }
+func (t *threadUnsafeClient) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
+	return nil
+}
+
+func (t *threadUnsafeClient) Status() client.StatusWriter {
+	return &threadUnsafeStatusWriter{client: t}
+}
 
 func TestStatusClient_SyncUpdate(t *testing.T) {
 	type mClient = mockClient[*cosmosv1.CosmosFullNode]
