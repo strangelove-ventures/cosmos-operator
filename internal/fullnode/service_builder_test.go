@@ -324,6 +324,44 @@ func TestBuildServices(t *testing.T) {
 		require.Equal(t, want, rpc.Spec.Ports)
 	})
 
+	t.Run("rpc service - evmChain", func(t *testing.T) {
+		crd := defaultCRD()
+		crd.Spec.Replicas = 1
+		crd.Name = "evmos"
+		crd.Spec.ChainSpec.EvmChain = true
+		svcs := BuildServices(&crd)
+
+		require.Equal(t, 2, len(svcs)) // Includes single p2p service
+
+		rpc := svcs[1].Object()
+		require.Equal(t, "evmos-rpc", rpc.Name)
+		require.Equal(t, 8, len(rpc.Spec.Ports))
+
+		// Check EVM ports are present
+		evmPorts := rpc.Spec.Ports[5:] // Last 3 ports should be EVM ports
+		want := []corev1.ServicePort{
+			{
+				Name:       "evm-rpc",
+				Protocol:   corev1.ProtocolTCP,
+				Port:       8545,
+				TargetPort: intstr.FromString("evm-rpc"),
+			},
+			{
+				Name:       "evm-ws",
+				Protocol:   corev1.ProtocolTCP,
+				Port:       8546,
+				TargetPort: intstr.FromString("evm-ws"),
+			},
+			{
+				Name:       "evm-prom",
+				Protocol:   corev1.ProtocolTCP,
+				Port:       6065,
+				TargetPort: intstr.FromString("evm-prom"),
+			},
+		}
+		require.Equal(t, want, evmPorts)
+	})
+
 	t.Run("rpc service with overrides", func(t *testing.T) {
 		crd := defaultCRD()
 		crd.Spec.Replicas = 0

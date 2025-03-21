@@ -158,6 +158,30 @@ func rpcService(crd *cosmosv1.CosmosFullNode) *corev1.Service {
 			TargetPort: intstr.FromString("grpc-web"),
 		},
 	}
+
+	if crd.Spec.ChainSpec.EvmChain {
+		svc.Spec.Ports = append(svc.Spec.Ports,
+			corev1.ServicePort{
+				Name:       "evm-rpc",
+				Protocol:   corev1.ProtocolTCP,
+				Port:       evmRPCPort,
+				TargetPort: intstr.FromString("evm-rpc"),
+			},
+			corev1.ServicePort{
+				Name:       "evm-ws",
+				Protocol:   corev1.ProtocolTCP,
+				Port:       evmWsPort,
+				TargetPort: intstr.FromString("evm-ws"),
+			},
+			corev1.ServicePort{
+				Name:       "evm-prom",
+				Protocol:   corev1.ProtocolTCP,
+				Port:       evmPromPort,
+				TargetPort: intstr.FromString("evm-prom"),
+			},
+		)
+	}
+
 	svc.Spec.Selector = map[string]string{kube.NameLabel: appName(crd)}
 	svc.Spec.Type = corev1.ServiceTypeClusterIP
 	rpcSpec := crd.Spec.Service.RPCTemplate

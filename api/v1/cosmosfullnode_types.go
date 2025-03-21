@@ -512,6 +512,11 @@ type ChainSpec struct {
 	// +optional
 	GenesisScript *string `json:"genesisScript"`
 
+	// evmChain indicates if the chain supports EVM functionality.
+	// When true, exposes ports 8545 (EVM-RPC), 8546 (WS-RPC), and (EVM-PROM)6065.
+	// +optional
+	EvmChain bool `json:"evmChain,omitempty"`
+
 	// Skip x/crisis invariants check on startup.
 	// +optional
 	SkipInvariants bool `json:"skipInvariants"`

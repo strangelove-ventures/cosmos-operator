@@ -249,6 +249,11 @@ spec:
                       options: goleveldb, rocksdb, pebbledb
                       Defaults to goleveldb.
                     type: string
+                  evmChain:
+                    description: |-
+                      evmChain indicates if the chain supports EVM functionality.
+                      When true, exposes ports 8545 (EVM-RPC), 8546 (WS-RPC), and (EVM-PROM)6065.
+                    type: boolean
                   genesisScript:
                     description: |-
                       Specify shell (sh) script commands to properly download and save the genesis file.
