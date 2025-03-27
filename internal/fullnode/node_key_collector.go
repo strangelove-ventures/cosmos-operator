@@ -13,6 +13,7 @@ import (
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 type NodeKey struct {
@@ -65,6 +66,7 @@ func NewNodeKeyCollector(client Client) *NodeKeyCollector {
 
 // Collect node key information given the crd.
 func (c NodeKeyCollector) Collect(ctx context.Context, crd *cosmosv1.CosmosFullNode) (NodeKeys, kube.ReconcileError) {
+	logger := log.FromContext(ctx)
 	nodeKeys := make(NodeKeys)
 
 	var cms corev1.ConfigMapList
@@ -77,35 +79,43 @@ func (c NodeKeyCollector) Collect(ctx context.Context, crd *cosmosv1.CosmosFullN
 
 	currentCms := ptrSlice(cms.Items)
 
+	logger.Info("Collecting node keys", "start", crd.Spec.Ordinals.Start, "replicas", crd.Spec.Replicas)
+
 	for i := crd.Spec.Ordinals.Start; i < crd.Spec.Ordinals.Start+crd.Spec.Replicas; i++ {
 		var confMap corev1.ConfigMap
 		confMap.Name = instanceName(crd, i)
 		confMap.Namespace = crd.Namespace
 		confMap = *kube.FindOrDefaultCopy(currentCms, &confMap)
 
+		nodeKeyContent := confMap.Data[nodeKeyFile]
+
+		logger.Info("Collecting node key", "ordinal", i, "configmap", confMap.Name, "nodeKeyContent", nodeKeyContent)
+
 		var nodeKey NodeKey
 		var marshaledNodeKey []byte
 
-		if confMap.Data[nodeKeyFile] != "" {
-			err := json.Unmarshal([]byte(confMap.Data[nodeKeyFile]), &nodeKey)
-
+		if nodeKeyContent != "" {
+			err := json.Unmarshal([]byte(nodeKeyContent), &nodeKey)
 			if err != nil {
 				return nil, kube.UnrecoverableError(fmt.Errorf("unmarshal node key: %w", err))
 			}
 
 			// Store the exact value of the node key in the configmap to avoid non-deterministic JSON marshaling which can cause unnecessary updates.
-			marshaledNodeKey = []byte(confMap.Data[nodeKeyFile])
+			marshaledNodeKey = []byte(nodeKeyContent)
+
+			logger.Info("Found node key", "ordinal", i, "unmarshaled", nodeKey)
 		} else {
-			nodeKey, err := randNodeKey()
+			rNodeKey, err := randNodeKey()
 			if err != nil {
 				return nil, kube.UnrecoverableError(fmt.Errorf("generate node key: %w", err))
 			}
+			nodeKey = *rNodeKey
 
 			marshaledNodeKey, err = json.Marshal(nodeKey)
-
 			if err != nil {
 				return nil, kube.UnrecoverableError(fmt.Errorf("marshal node key: %w", err))
 			}
+			logger.Info("Did not find node key, generating", "ordinal", i, "marshalled", string(marshaledNodeKey))
 		}
 
 		nodeKeys[client.ObjectKey{Name: instanceName(crd, i), Namespace: crd.Namespace}] = NodeKeyRepresenter{
