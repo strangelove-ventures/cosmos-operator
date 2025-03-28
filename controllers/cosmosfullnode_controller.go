@@ -287,17 +287,6 @@ func (r *CosmosFullNodeReconciler) SetupWithManager(ctx context.Context, mgr ctr
 		return fmt.Errorf("configmap index field %s: %w", controllerOwnerField, err)
 	}
 
-	// Index Secrets.
-	err = mgr.GetFieldIndexer().IndexField(
-		ctx,
-		&corev1.Secret{},
-		controllerOwnerField,
-		kube.IndexOwner[*corev1.Secret](cosmosv1.CosmosFullNodeController),
-	)
-	if err != nil {
-		return fmt.Errorf("secret index field %s: %w", controllerOwnerField, err)
-	}
-
 	// Index Services.
 	err = mgr.GetFieldIndexer().IndexField(
 		ctx,
@@ -317,7 +306,6 @@ func (r *CosmosFullNodeReconciler) SetupWithManager(ctx context.Context, mgr ctr
 		{Type: &corev1.PersistentVolumeClaim{}},
 		{Type: &corev1.ConfigMap{}},
 		{Type: &corev1.Service{}},
-		{Type: &corev1.Secret{}},
 	} {
 		cbuilder.Watches(
 			kind,

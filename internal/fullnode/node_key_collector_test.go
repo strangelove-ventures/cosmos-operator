@@ -2,6 +2,9 @@ package fullnode
 
 import (
 	"context"
+	"crypto/ed25519"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"testing"
 
@@ -100,4 +103,126 @@ func getMockNodeKeysForCRD(crd cosmosv1.CosmosFullNode, mockNodeKeyData string) 
 	ctx := context.Background()
 
 	return collector.Collect(ctx, &crd)
+}
+
+func TestNodeKeyCollector_InvalidJSON(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	const (
+		namespace      = "strangelove"
+		invalidNodeKey = `{"priv_key":{"type":"tendermint/PrivKeyEd25519","value": INVALID JSON}}`
+	)
+
+	var mClient nodeKeyMockConfigClient
+	mClient.ObjectList = corev1.ConfigMapList{Items: []corev1.ConfigMap{
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: "dydx-0", Namespace: namespace},
+			Data:       map[string]string{nodeKeyFile: invalidNodeKey},
+		},
+	}}
+
+	var crd cosmosv1.CosmosFullNode
+	crd.Name = "dydx"
+	crd.Namespace = namespace
+	crd.Spec.Replicas = 1
+
+	collector := NewNodeKeyCollector(&mClient)
+
+	_, err := collector.Collect(ctx, &crd)
+
+	require.Error(t, err)
+}
+
+func TestNodeKeyCollector_NonZeroOrdinals(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	const (
+		namespace = "strangelove"
+		nodeKey1  = `{"priv_key":{"type":"tendermint/PrivKeyEd25519","value":"HBX8VFQ4OdWfOwIOR7jj0af8mVHik5iGW9o1xnn4vRltk1HmwQS2LLGrMPVS2LIUO9BUqmZ1Pjt+qM8x0ibHxQ=="}}`
+	)
+
+	var mClient nodeKeyMockConfigClient
+	mClient.ObjectList = corev1.ConfigMapList{Items: []corev1.ConfigMap{
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: "dydx-5", Namespace: namespace},
+			Data:       map[string]string{nodeKeyFile: nodeKey1},
+		},
+	}}
+
+	var crd cosmosv1.CosmosFullNode
+	crd.Name = "dydx"
+	crd.Namespace = namespace
+	crd.Spec.Replicas = 2
+	crd.Spec.Ordinals.Start = 5
+
+	collector := NewNodeKeyCollector(&mClient)
+
+	nodeKeys, err := collector.Collect(ctx, &crd)
+
+	require.NoError(t, err)
+	require.Len(t, nodeKeys, 2)
+	require.Contains(t, nodeKeys, client.ObjectKey{Name: "dydx-5", Namespace: namespace})
+	require.Contains(t, nodeKeys, client.ObjectKey{Name: "dydx-6", Namespace: namespace})
+}
+
+func TestNodeKey_ID(t *testing.T) {
+	t.Parallel()
+
+	// Create a known node key with fixed private key for testing
+	privateKey := ed25519.PrivateKey([]byte("test-private-key-for-deterministic-id-generation"))
+	nodeKey := NodeKey{
+		PrivKey: NodeKeyPrivKey{
+			Type:  "tendermint/PrivKeyEd25519",
+			Value: privateKey,
+		},
+	}
+
+	// Calculate expected ID manually
+	pub := privateKey.Public()
+	hash := sha256.Sum256(pub.(ed25519.PublicKey))
+	expectedID := hex.EncodeToString(hash[:20])
+
+	actualID := nodeKey.ID()
+
+	require.Equal(t, expectedID, actualID)
+}
+
+func TestNodeKeyCollector_DecreaseReplicas(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	const namespace = "strangelove"
+
+	var mClient nodeKeyMockConfigClient
+	mClient.ObjectList = corev1.ConfigMapList{Items: []corev1.ConfigMap{
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: "dydx-0", Namespace: namespace},
+			Data:       map[string]string{nodeKeyFile: `{"priv_key":{"type":"tendermint/PrivKeyEd25519","value":"key1"}}`},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: "dydx-1", Namespace: namespace},
+			Data:       map[string]string{nodeKeyFile: `{"priv_key":{"type":"tendermint/PrivKeyEd25519","value":"key2"}}`},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: "dydx-2", Namespace: namespace},
+			Data:       map[string]string{nodeKeyFile: `{"priv_key":{"type":"tendermint/PrivKeyEd25519","value":"key3"}}`},
+		},
+	}}
+
+	var crd cosmosv1.CosmosFullNode
+	crd.Name = "dydx"
+	crd.Namespace = namespace
+	crd.Spec.Replicas = 2 // Reduced from 3 to 2
+
+	collector := NewNodeKeyCollector(&mClient)
+
+	nodeKeys, err := collector.Collect(ctx, &crd)
+
+	require.NoError(t, err)
+	require.Len(t, nodeKeys, 2)
+	require.Contains(t, nodeKeys, client.ObjectKey{Name: "dydx-0", Namespace: namespace})
+	require.Contains(t, nodeKeys, client.ObjectKey{Name: "dydx-1", Namespace: namespace})
+	require.NotContains(t, nodeKeys, client.ObjectKey{Name: "dydx-2", Namespace: namespace})
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 type NodeKey struct {
@@ -65,6 +66,7 @@ func NewNodeKeyCollector(client Client) *NodeKeyCollector {
 
 // Collect node key information given the crd.
 func (c NodeKeyCollector) Collect(ctx context.Context, crd *cosmosv1.CosmosFullNode) (NodeKeys, kube.ReconcileError) {
+	logger := log.FromContext(ctx)
 	nodeKeys := make(NodeKeys)
 
 	var cms corev1.ConfigMapList
@@ -83,29 +85,31 @@ func (c NodeKeyCollector) Collect(ctx context.Context, crd *cosmosv1.CosmosFullN
 		confMap.Namespace = crd.Namespace
 		confMap = *kube.FindOrDefaultCopy(currentCms, &confMap)
 
+		nodeKeyContent := confMap.Data[nodeKeyFile]
+
 		var nodeKey NodeKey
 		var marshaledNodeKey []byte
 
-		if confMap.Data[nodeKeyFile] != "" {
-			err := json.Unmarshal([]byte(confMap.Data[nodeKeyFile]), &nodeKey)
-
+		if nodeKeyContent != "" {
+			err := json.Unmarshal([]byte(nodeKeyContent), &nodeKey)
 			if err != nil {
 				return nil, kube.UnrecoverableError(fmt.Errorf("unmarshal node key: %w", err))
 			}
 
 			// Store the exact value of the node key in the configmap to avoid non-deterministic JSON marshaling which can cause unnecessary updates.
-			marshaledNodeKey = []byte(confMap.Data[nodeKeyFile])
+			marshaledNodeKey = []byte(nodeKeyContent)
 		} else {
-			nodeKey, err := randNodeKey()
+			rNodeKey, err := randNodeKey()
 			if err != nil {
 				return nil, kube.UnrecoverableError(fmt.Errorf("generate node key: %w", err))
 			}
+			nodeKey = *rNodeKey
 
 			marshaledNodeKey, err = json.Marshal(nodeKey)
-
 			if err != nil {
 				return nil, kube.UnrecoverableError(fmt.Errorf("marshal node key: %w", err))
 			}
+			logger.Info("Generating new node key", "ordinal", i)
 		}
 
 		nodeKeys[client.ObjectKey{Name: instanceName(crd, i), Namespace: crd.Namespace}] = NodeKeyRepresenter{
