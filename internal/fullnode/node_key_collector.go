@@ -79,8 +79,6 @@ func (c NodeKeyCollector) Collect(ctx context.Context, crd *cosmosv1.CosmosFullN
 
 	currentCms := ptrSlice(cms.Items)
 
-	logger.Info("Collecting node keys", "start", crd.Spec.Ordinals.Start, "replicas", crd.Spec.Replicas)
-
 	for i := crd.Spec.Ordinals.Start; i < crd.Spec.Ordinals.Start+crd.Spec.Replicas; i++ {
 		var confMap corev1.ConfigMap
 		confMap.Name = instanceName(crd, i)
@@ -88,8 +86,6 @@ func (c NodeKeyCollector) Collect(ctx context.Context, crd *cosmosv1.CosmosFullN
 		confMap = *kube.FindOrDefaultCopy(currentCms, &confMap)
 
 		nodeKeyContent := confMap.Data[nodeKeyFile]
-
-		logger.Info("Collecting node key", "ordinal", i, "configmap", confMap.Name, "nodeKeyContent", nodeKeyContent)
 
 		var nodeKey NodeKey
 		var marshaledNodeKey []byte
@@ -102,8 +98,6 @@ func (c NodeKeyCollector) Collect(ctx context.Context, crd *cosmosv1.CosmosFullN
 
 			// Store the exact value of the node key in the configmap to avoid non-deterministic JSON marshaling which can cause unnecessary updates.
 			marshaledNodeKey = []byte(nodeKeyContent)
-
-			logger.Info("Found node key", "ordinal", i, "unmarshaled", nodeKey)
 		} else {
 			rNodeKey, err := randNodeKey()
 			if err != nil {
@@ -115,7 +109,7 @@ func (c NodeKeyCollector) Collect(ctx context.Context, crd *cosmosv1.CosmosFullN
 			if err != nil {
 				return nil, kube.UnrecoverableError(fmt.Errorf("marshal node key: %w", err))
 			}
-			logger.Info("Did not find node key, generating", "ordinal", i, "marshalled", string(marshaledNodeKey))
+			logger.Info("Generating new node key", "ordinal", i)
 		}
 
 		nodeKeys[client.ObjectKey{Name: instanceName(crd, i), Namespace: crd.Namespace}] = NodeKeyRepresenter{
