@@ -30,6 +30,9 @@ func defaultLabels(crd *cosmosv1.CosmosFullNode, kvPairs ...string) map[string]s
 		networkLabel:         crd.Spec.ChainSpec.Network,
 		typeLabel:            string(nodeType),
 	}
+	for k, v := range crd.Labels {
+		labels[k] = v
+	}
 	for i := 0; i < len(kvPairs); i += 2 {
 		labels[kvPairs[i]] = kvPairs[i+1]
 	}

@@ -227,7 +227,6 @@ const (
 	volTmp       = "vol-tmp"        // Stores temporary config files for manipulation later.
 	volConfig    = "vol-config"     // Overlay items from ConfigMap.
 	volSystemTmp = "vol-system-tmp" // Necessary for statesync or else you may see the error: ERR State sync failed err="failed to create chunk queue: unable to create temp dir for state sync chunks: stat /tmp: no such file or directory" module=statesync
-	volNodeKey   = "vol-node-key"   // Config map containing the node key.
 )
 
 // WithOrdinal updates adds name and other metadata to the pod using "ordinal" which is the pod's
@@ -265,6 +264,7 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 					Items: []corev1.KeyToPath{
 						{Key: configOverlayFile, Path: configOverlayFile},
 						{Key: appOverlayFile, Path: appOverlayFile},
+						{Key: nodeKeyFile, Path: nodeKeyFile},
 					},
 				},
 			},
@@ -273,17 +273,6 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 			Name: volSystemTmp,
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
-		},
-		{
-			Name: volNodeKey,
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{Name: instanceName(b.crd, ordinal)},
-					Items: []corev1.KeyToPath{
-						{Key: nodeKeyFile, Path: nodeKeyFile},
-					},
-				},
 			},
 		},
 	}
@@ -302,9 +291,7 @@ func (b PodBuilder) WithOrdinal(ordinal int32) PodBuilder {
 	}
 
 	// At this point, guaranteed to have at least 2 containers.
-	pod.Spec.Containers[0].VolumeMounts = append(mounts, corev1.VolumeMount{
-		Name: volNodeKey, MountPath: path.Join(ChainHomeDir(b.crd), "config", nodeKeyFile), SubPath: nodeKeyFile,
-	})
+	pod.Spec.Containers[0].VolumeMounts = mounts
 	pod.Spec.Containers[1].VolumeMounts = []corev1.VolumeMount{
 		// The healthcheck sidecar needs access to the home directory so it can read disk usage.
 		{Name: volChainHome, MountPath: ChainHomeDir(b.crd), ReadOnly: true},
@@ -430,6 +417,7 @@ OVERLAY_DIR="$HOME/.config"
 # The node key is a secret mounted into the main "node" container, so we do not need this one.
 echo "Removing node key from chain's init subcommand..."
 rm -rf "$CONFIG_DIR/node_key.json"
+cp "$OVERLAY_DIR/node_key.json" "$CONFIG_DIR/node_key.json"
 
 echo "Merging config..."
 set -x

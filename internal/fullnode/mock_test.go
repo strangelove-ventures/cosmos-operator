@@ -89,8 +89,6 @@ func (m *mockClient[T]) List(ctx context.Context, list client.ObjectList, opts .
 		*ref = m.ObjectList.(corev1.ServiceList)
 	case *corev1.ConfigMapList:
 		*ref = m.ObjectList.(corev1.ConfigMapList)
-	case *corev1.SecretList:
-		*ref = m.ObjectList.(corev1.SecretList)
 	case *corev1.ServiceAccountList:
 		*ref = m.ObjectList.(corev1.ServiceAccountList)
 	case *rbacv1.RoleList:
