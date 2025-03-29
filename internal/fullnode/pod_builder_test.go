@@ -165,6 +165,33 @@ func TestPodBuilder(t *testing.T) {
 		require.Zero(t, got.HostPort)
 	})
 
+	t.Run("ports - evmChain", func(t *testing.T) {
+		crd := defaultCRD()
+		crd.Spec.ChainSpec.EvmChain = true
+
+		pod, err := NewPodBuilder(&crd).Build()
+		require.NoError(t, err)
+		ports := pod.Spec.Containers[0].Ports
+
+		require.Equal(t, 10, len(ports))
+
+		evmPorts := ports[7:] // Last 3 ports should be EVM ports
+		for i, tt := range []struct {
+			Name string
+			Port int32
+		}{
+			{"evm-rpc", 8545},
+			{"evm-ws", 8546},
+			{"evm-prom", 6065},
+		} {
+			port := evmPorts[i]
+			require.Equal(t, tt.Name, port.Name)
+			require.Equal(t, corev1.ProtocolTCP, port.Protocol)
+			require.Equal(t, tt.Port, port.ContainerPort)
+			require.Zero(t, port.HostPort)
+		}
+	})
+
 	t.Run("happy path - optional fields", func(t *testing.T) {
 		optCrd := defaultCRD()
 

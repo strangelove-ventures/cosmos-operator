@@ -7,6 +7,9 @@ import (
 
 const (
 	apiPort     = 1317
+	evmRPCPort  = 8545
+	evmWsPort   = 8546
+	evmPromPort = 6065
 	grpcPort    = 9090
 	grpcWebPort = 9091
 	p2pPort     = 26656
@@ -16,16 +19,22 @@ const (
 	rpcPort     = 26657
 )
 
-func buildPorts(nodeType cosmosv1.FullNodeType) []corev1.ContainerPort {
+func buildPorts(nodeType cosmosv1.FullNodeType, evmChain bool) []corev1.ContainerPort {
+	ports := defaultPorts[:]
+
+	if evmChain {
+		ports = append(ports, defaultEVMPorts[:]...)
+	}
+
 	switch nodeType {
 	case cosmosv1.Sentry:
-		return append(defaultPorts[:], corev1.ContainerPort{
+		return append(ports, corev1.ContainerPort{
 			Name:          "privval",
 			ContainerPort: privvalPort,
 			Protocol:      corev1.ProtocolTCP,
 		})
 	default:
-		return defaultPorts[:]
+		return ports
 	}
 }
 
@@ -64,5 +73,23 @@ var defaultPorts = [...]corev1.ContainerPort{
 		Name:          "grpc-web",
 		Protocol:      corev1.ProtocolTCP,
 		ContainerPort: grpcWebPort,
+	},
+}
+
+var defaultEVMPorts = [...]corev1.ContainerPort{
+	{
+		Name:          "evm-rpc",
+		ContainerPort: evmRPCPort,
+		Protocol:      corev1.ProtocolTCP,
+	},
+	{
+		Name:          "evm-ws",
+		ContainerPort: evmWsPort,
+		Protocol:      corev1.ProtocolTCP,
+	},
+	{
+		Name:          "evm-prom",
+		ContainerPort: evmPromPort,
+		Protocol:      corev1.ProtocolTCP,
 	},
 }
