@@ -163,6 +163,7 @@ func rpcService(crd *cosmosv1.CosmosFullNode) *corev1.Service {
 	rpcSpec := crd.Spec.Service.RPCTemplate
 	preserveMergeInto(svc.Labels, rpcSpec.Metadata.Labels)
 	preserveMergeInto(svc.Annotations, rpcSpec.Metadata.Annotations)
+	svc.Spec.Ports = append(svc.Spec.Ports, rpcSpec.Ports...)
 	kube.NormalizeMetadata(&svc.ObjectMeta)
 	if v := rpcSpec.ExternalTrafficPolicy; v != nil {
 		svc.Spec.ExternalTrafficPolicy = *v

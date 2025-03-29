@@ -768,6 +768,10 @@ type ServiceOverridesSpec struct {
 	// +optional
 	ClusterIP *string `json:"clusterIP"`
 
+	// List of additional ports to expose from the service.
+	// +optional
+	Ports []corev1.ServicePort `json:"ports"`
+
 	// Sets endpoint and routing behavior.
 	// See: https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/#caveats-and-limitations-when-preserving-source-ips
 	// If not set, defaults to "Cluster".
