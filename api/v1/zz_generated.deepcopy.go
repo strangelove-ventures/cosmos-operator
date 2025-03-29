@@ -773,6 +773,13 @@ func (in *ServiceOverridesSpec) DeepCopyInto(out *ServiceOverridesSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.Ports != nil {
+		in, out := &in.Ports, &out.Ports
+		*out = make([]corev1.ServicePort, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	if in.ExternalTrafficPolicy != nil {
 		in, out := &in.ExternalTrafficPolicy, &out.ExternalTrafficPolicy
 		*out = new(corev1.ServiceExternalTrafficPolicyType)
