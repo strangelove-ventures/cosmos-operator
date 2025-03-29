@@ -82,6 +82,7 @@ var (
 	profileMode          string
 	logLevel             string
 	logFormat            string
+	namespaceRegex       string
 )
 
 func rootCmd() *cobra.Command {
@@ -101,6 +102,7 @@ func rootCmd() *cobra.Command {
 	root.Flags().StringVar(&profileMode, "profile", "", "Enable profiling and save profile to working dir. (Must be one of 'cpu', or 'mem'.)")
 	root.Flags().StringVar(&logLevel, "log-level", "info", "Logging level one of 'error', 'info', 'debug'")
 	root.Flags().StringVar(&logFormat, "log-format", "console", "Logging format one of 'console' or 'json'")
+	root.Flags().StringVar(&namespaceRegex, "namespace", "*", "Regex pattern for namespaces to watch")
 
 	if err := viper.BindPFlags(root.Flags()); err != nil {
 		panic(err)
@@ -158,6 +160,10 @@ func startManager(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("unable to start manager: %w", err)
 	}
+
+	fmt.Println("Manager started")
+	//Example Print.
+	fmt.Println("Port: ", mgr.GetWebhookServer().Port)
 
 	ctx := cmd.Context()
 
