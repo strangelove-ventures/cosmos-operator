@@ -25,6 +25,10 @@ func NewRoleControl(client Client) RoleControl {
 
 // Reconcile creates or updates roles.
 func (sc RoleControl) Reconcile(ctx context.Context, log kube.Logger, crd *cosmosv1.CosmosFullNode) kube.ReconcileError {
+	if crd.Spec.ServiceAccountName != "" {
+		return nil
+	}
+
 	var crs rbacv1.RoleList
 	if err := sc.client.List(ctx, &crs,
 		client.InNamespace(crd.Namespace),

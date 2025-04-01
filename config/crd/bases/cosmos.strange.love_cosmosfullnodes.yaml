@@ -5891,6 +5891,10 @@ spec:
                         type: string
                     type: object
                 type: object
+              serviceAccountName:
+                description: If set, the pod will use the specified service account.
+                  If not set, pods will create and use an isolated service account.
+                type: string
               strategy:
                 description: How to scale pods when performing an update.
                 properties:
