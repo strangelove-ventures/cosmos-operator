@@ -1,6 +1,7 @@
 module github.com/strangelove-ventures/cosmos-operator
 
 go 1.23.2
+toolchain go1.24.1
 
 require (
 	cosmossdk.io/log v1.2.1
@@ -20,7 +21,7 @@ require (
 	go.uber.org/goleak v1.3.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9
-	golang.org/x/sync v0.11.0
+	golang.org/x/sync v0.12.0
 	gopkg.in/inf.v0 v0.9.1
 	k8s.io/api v0.25.5
 	k8s.io/apimachinery v0.25.5
