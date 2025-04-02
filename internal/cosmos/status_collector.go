@@ -47,7 +47,19 @@ func (coll StatusCollector) Collect(ctx context.Context, pods []corev1.Pod) Stat
 				statuses[i].Err = errors.New("pod has no IP")
 				return nil
 			}
-			host := fmt.Sprintf("http://%s:26657", ip)
+			var rpcPort int32 = 26657
+			for _, c := range pod.Spec.Containers {
+				if c.Name == "node" {
+					for _, p := range c.Ports {
+						if p.Name == "rpc" {
+							rpcPort = p.ContainerPort
+							break
+						}
+					}
+					break
+				}
+			}
+			host := fmt.Sprintf("http://%s:%d", ip, rpcPort)
 			cctx, cancel := context.WithTimeout(ctx, coll.timeout)
 			defer cancel()
 			resp, err := coll.comet.Status(cctx, host)

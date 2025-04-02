@@ -84,7 +84,7 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 					Command:         []string{startCmd},
 					Args:            startArgs,
 					Env:             envVars(crd),
-					Ports:           buildPorts(crd.Spec.Type),
+					Ports:           buildPorts(crd),
 					Resources:       tpl.Resources,
 					ReadinessProbe:  probes[0],
 					ImagePullPolicy: tpl.ImagePullPolicy,
@@ -96,7 +96,7 @@ func NewPodBuilder(crd *cosmosv1.CosmosFullNode) PodBuilder {
 					// Available images: https://github.com/orgs/strangelove-ventures/packages?repo_name=cosmos-operator
 					// IMPORTANT: Must use v0.6.2 or later.
 					Image:   "ghcr.io/strangelove-ventures/cosmos-operator:" + version.DockerTag(),
-					Command: []string{"/manager", "healthcheck"},
+					Command: []string{"/manager", "healthcheck", "--rpc-host", fmt.Sprintf("http://localhost:%d", crd.Spec.ChainSpec.Comet.RPCPort())},
 					Ports:   []corev1.ContainerPort{{ContainerPort: healthCheckPort, Protocol: corev1.ProtocolTCP}},
 					Resources: corev1.ResourceRequirements{
 						Requests: corev1.ResourceList{
@@ -148,7 +148,7 @@ func podReadinessProbes(crd *cosmosv1.CosmosFullNode) []*corev1.Probe {
 		ProbeHandler: corev1.ProbeHandler{
 			HTTPGet: &corev1.HTTPGetAction{
 				Path:   "/health",
-				Port:   intstr.FromInt(rpcPort),
+				Port:   intstr.FromInt(int(crd.Spec.ChainSpec.Comet.RPCPort())),
 				Scheme: corev1.URISchemeHTTP,
 			},
 		},

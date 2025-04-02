@@ -17,6 +17,9 @@ limitations under the License.
 package v1
 
 import (
+	"strconv"
+	"strings"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -596,6 +599,14 @@ type ChainVersion struct {
 
 // CometConfig configures the config.toml.
 type CometConfig struct {
+	// RPC listen address. Defaults to tcp://0.0.0.0:26657
+	// +optional
+	RPCListenAddress string `json:"rpcListenAddress"`
+
+	// P2P listen address. Defaults to tcp://0.0.0.0:26656
+	// +optional
+	P2PListenAddress string `json:"p2pListenAddress"`
+
 	// Comma delimited list of p2p nodes in <ID>@<IP>:<PORT> format to keep persistent p2p connections.
 	// +kubebuilder:validation:MinLength:=1
 	// +optional
@@ -640,6 +651,39 @@ type CometConfig struct {
 	// and unconditional_peer_ids. Use the dedicated fields for these values which will merge values.
 	// +optional
 	TomlOverrides *string `json:"overrides"`
+}
+
+const (
+	defaultRPCPort = 26657
+	defaultP2PPort = 26656
+)
+
+func (c CometConfig) RPCPort() int32 {
+	if c.RPCListenAddress == "" {
+		return defaultRPCPort
+	}
+	portSplit := strings.Split(c.RPCListenAddress, ":")
+
+	port, err := strconv.ParseInt(portSplit[len(portSplit)-1], 10, 32)
+	if err != nil {
+		return defaultRPCPort
+	}
+
+	return int32(port)
+}
+
+func (c CometConfig) P2PPort() int32 {
+	if c.P2PListenAddress == "" {
+		return defaultP2PPort
+	}
+	portSplit := strings.Split(c.P2PListenAddress, ":")
+
+	port, err := strconv.ParseInt(portSplit[len(portSplit)-1], 10, 32)
+	if err != nil {
+		return defaultP2PPort
+	}
+
+	return int32(port)
 }
 
 // SDKAppConfig configures the cosmos sdk application app.toml.
