@@ -16,6 +16,7 @@ import (
 
 // Peer contains information about a peer.
 type Peer struct {
+	P2PPort         int32
 	NodeID          string
 	PrivateAddress  string // Only the private address my-service.namespace.svc.cluster.local:<port>
 	ExternalAddress string // Only the address <external-ip-or-hostname>:<port>. Not all peers will be external.
@@ -31,7 +32,7 @@ func (peer Peer) PrivatePeer() string {
 // ExternalPeer returns the full external address of the peer in the format <node_id>@<external_address>:<port>.
 func (peer Peer) ExternalPeer() string {
 	if peer.ExternalAddress == "" {
-		return peer.NodeID + "@" + net.JoinHostPort("0.0.0.0", strconv.Itoa(p2pPort))
+		return peer.NodeID + "@" + net.JoinHostPort("0.0.0.0", strconv.Itoa(int(peer.P2PPort)))
 	}
 	return peer.NodeID + "@" + peer.ExternalAddress
 }
@@ -119,7 +120,9 @@ func (c PeerCollector) Collect(ctx context.Context, crd *cosmosv1.CosmosFullNode
 		}
 
 		svcName := p2pServiceName(crd, i)
+		p2pPort := int32(crd.Spec.ChainSpec.Comet.P2PPort())
 		peers[c.objectKey(crd, i)] = Peer{
+			P2PPort:        p2pPort,
 			NodeID:         nodeKey.NodeKey.ID(),
 			PrivateAddress: fmt.Sprintf("%s.%s.svc.%s:%d", svcName, crd.Namespace, clusterDomain, p2pPort),
 		}
@@ -159,7 +162,7 @@ func (c PeerCollector) addExternalAddress(ctx context.Context, peers Peers, crd 
 	lb := ingress[0]
 	host := lo.Ternary(lb.IP != "", lb.IP, lb.Hostname)
 	if host != "" {
-		info.ExternalAddress = net.JoinHostPort(host, strconv.Itoa(p2pPort))
+		info.ExternalAddress = net.JoinHostPort(host, strconv.Itoa(crd.Spec.ChainSpec.Comet.P2PPort()))
 	}
 	return nil
 }

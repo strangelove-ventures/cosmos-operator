@@ -194,12 +194,21 @@ func addConfigToml(buf *bytes.Buffer, cmData map[string]string, crd *cosmosv1.Co
 
 	base["p2p"] = p2p
 
-	if v := comet.CorsAllowedOrigins; v != nil {
-		base["rpc"] = decodedToml{
-			"cors_allowed_origins": v,
-			"cors-allowed-origins": v,
-		}
+	var rpcLaddr = "tcp://0.0.0.0:26657"
+	if comet.RPCListenAddress != "" {
+		rpcLaddr = comet.RPCListenAddress
 	}
+
+	rpc := decodedToml{
+		"laddr": rpcLaddr,
+	}
+
+	if v := comet.CorsAllowedOrigins; v != nil {
+		rpc["cors_allowed_origins"] = v
+		rpc["cors-allowed-origins"] = v
+	}
+
+	base["rpc"] = rpc
 
 	dst := defaultComet()
 

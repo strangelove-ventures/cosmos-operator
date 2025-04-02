@@ -222,6 +222,9 @@ spec:
                           WARNING: Overriding may clobber some values that the operator sets such as persistent_peers, private_peer_ids,
                           and unconditional_peer_ids. Use the dedicated fields for these values which will merge values.
                         type: string
+                      p2pListenAddress:
+                        description: P2P listen address. Defaults to tcp://0.0.0.0:26656
+                        type: string
                       peers:
                         description: Comma delimited list of p2p nodes in <ID>@<IP>:<PORT>
                           format to keep persistent p2p connections.
@@ -230,6 +233,9 @@ spec:
                       privatePeerIDs:
                         description: Comma delimited list of node/peer IDs to keep
                           private (will not be gossiped to other peers)
+                        type: string
+                      rpcListenAddress:
+                        description: RPC listen address. Defaults to tcp://0.0.0.0:26657
                         type: string
                       seeds:
                         description: Comma delimited list of p2p seed nodes in <ID>@<IP>:<PORT>
