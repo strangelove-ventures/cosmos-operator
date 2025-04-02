@@ -555,7 +555,7 @@ func buildAdditionalPod(
 	podSpec cosmosv1.AdditionalPodSpec,
 ) (*corev1.Pod, error) {
 	// Create a unique name for the additional pod
-	name := fmt.Sprintf("%s-%s", instanceName(crd, ordinal), podSpec.Name)
+	name := fmt.Sprintf("%s-%d", podSpec.Name, ordinal)
 
 	pod := &corev1.Pod{
 		TypeMeta: metav1.TypeMeta{
@@ -576,7 +576,7 @@ func buildAdditionalPod(
 	preserveMergeInto(pod.Annotations, podSpec.Metadata.Annotations)
 
 	pod.Labels[kube.InstanceLabel] = name
-	pod.Labels[kube.AdditionalPodLabel] = "true"
+	pod.Labels[kube.BelongsToLabel] = instanceName(crd, ordinal)
 
 	// Handle instance overrides if needed
 	if o, ok := crd.Spec.InstanceOverrides[name]; ok {

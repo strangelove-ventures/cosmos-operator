@@ -45,6 +45,8 @@ func NewPodControl(client Client, cacheInvalidator CacheInvalidator) PodControl 
 
 // Reconcile is the control loop for pods. The bool return value, if true, indicates the controller should requeue
 // the request.
+// Reconcile is the control loop for pods. The bool return value, if true, indicates the controller should requeue
+// the request.
 func (pc PodControl) Reconcile(
 	ctx context.Context,
 	reporter kube.Reporter,
@@ -65,6 +67,16 @@ func (pc PodControl) Reconcile(
 		return false, kube.UnrecoverableError(fmt.Errorf("build pods: %w", err))
 	}
 	diffed := diff.New(ptrSlice(pods.Items), wantPods)
+
+	// Group additional pods by their main pod (replica)
+	additionalPodsByReplica := make(map[string][]*corev1.Pod)
+	for _, pod := range pods.Items {
+		_, isAdditional := pod.Labels[kube.BelongsToLabel]
+		if isAdditional && pod.Labels[kube.InstanceLabel] != "" {
+			replicaName := pod.Labels[kube.InstanceLabel]
+			additionalPodsByReplica[replicaName] = append(additionalPodsByReplica[replicaName], pod.DeepCopy())
+		}
+	}
 
 	for _, pod := range diffed.Creates() {
 		reporter.Info("Creating pod", "name", pod.Name)
@@ -87,13 +99,29 @@ func (pc PodControl) Reconcile(
 		}
 	}()
 
+	// Handle main pod deletions and their associated additional pods
 	for _, pod := range diffed.Deletes() {
-		reporter.Info("Deleting pod", "name", pod.Name)
+		_, isAdditional := pod.Labels[kube.BelongsToLabel]
+
+		reporter.Info("Deleting pod", "name", pod.Name, "isMainPod", !isAdditional)
+
 		if err := pc.client.Delete(ctx, pod, client.PropagationPolicy(metav1.DeletePropagationForeground)); kube.IgnoreNotFound(err) != nil {
 			return true, kube.TransientError(fmt.Errorf("delete pod %q: %w", pod.Name, err))
 		}
+
 		delete(syncInfo, pod.Name)
 		invalidateCache = append(invalidateCache, pod.Name)
+
+		// If this is a main pod, also delete all its additional pods
+		if !isAdditional {
+			for _, additionalPod := range additionalPodsByReplica[pod.Name] {
+				reporter.Info("Deleting associated additional pod", "mainPod", pod.Name, "additionalPod", additionalPod.Name)
+				if err := pc.client.Delete(ctx, additionalPod, client.PropagationPolicy(metav1.DeletePropagationForeground)); kube.IgnoreNotFound(err) != nil {
+					return true, kube.TransientError(fmt.Errorf("delete associated additional pod %q: %w", additionalPod.Name, err))
+				}
+				invalidateCache = append(invalidateCache, additionalPod.Name)
+			}
+		}
 	}
 
 	if len(diffed.Creates())+len(diffed.Deletes()) > 0 {
@@ -104,57 +132,78 @@ func (pc PodControl) Reconcile(
 	diffedUpdates := diffed.Updates()
 	if len(diffedUpdates) > 0 {
 		var (
-			updatedPods      = 0
-			rpcReachablePods = 0
-			inSyncPods       = 0
-			otherUpdates     = []*corev1.Pod{}
+			updatedPods            = 0
+			rpcReachablePods       = 0
+			inSyncPods             = 0
+			mainPodsToUpdate       = []*corev1.Pod{}
+			additionalPodsToUpdate = make(map[string][]*corev1.Pod) // Map of main pod name -> additional pods to update
 		)
 
+		// Group updates by main pods and additional pods
+		for _, update := range diffedUpdates {
+			_, isAdditional := update.Labels[kube.BelongsToLabel]
+
+			if isAdditional {
+				if replicaName := update.Labels[kube.InstanceLabel]; replicaName != "" {
+					additionalPodsToUpdate[replicaName] = append(additionalPodsToUpdate[replicaName], update)
+				}
+			} else {
+				mainPodsToUpdate = append(mainPodsToUpdate, update)
+			}
+		}
+
+		// Process main pods and track sync status
 		for _, existing := range pods.Items {
-			podName := existing.Name
-
-			isAdditionalPod := existing.Labels[kube.AdditionalPodLabel] == "true"
-
-			if existing.DeletionTimestamp != nil {
-				// Pod is being deleted, so we skip it.
+			_, isAdditional := existing.Labels[kube.BelongsToLabel]
+			if isAdditional || existing.DeletionTimestamp != nil {
+				// Skip additional pods and pods being deleted
 				continue
 			}
 
+			podName := existing.Name
+
+			// Check pod sync status for rollout calculation (only for main pods)
 			var rpcReachable bool
-			var totalMainPods = 0
-			if !isAdditionalPod {
-				totalMainPods++
-				if ps, ok := syncInfo[podName]; ok {
-					if ps.InSync != nil && *ps.InSync {
-						inSyncPods++
-					}
-					rpcReachable = ps.Error == nil
-					if rpcReachable {
-						rpcReachablePods++
-					}
+			if ps, ok := syncInfo[podName]; ok {
+				if ps.InSync != nil && *ps.InSync {
+					inSyncPods++
+				}
+				rpcReachable = ps.Error == nil
+				if rpcReachable {
+					rpcReachablePods++
 				}
 			}
-			for _, update := range diffedUpdates {
+
+			// Find if this pod needs an update
+			for i, update := range mainPodsToUpdate {
 				if podName == update.Name {
 					if existing.Spec.Containers[0].Image != update.Spec.Containers[0].Image {
-						// awaiting upgrade
+						// awaiting version upgrade
 						if !rpcReachable {
 							updatedPods++
-							reporter.Info("Deleting pod for version upgrade", "name", podName)
-							// Because we should watch for deletes, we get a re-queued request, detect pod is missing, and re-create it.
+							reporter.Info("Deleting main pod for version upgrade", "name", podName)
+
+							// Delete the main pod
 							if err := pc.client.Delete(ctx, update, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
 								return true, kube.TransientError(fmt.Errorf("upgrade pod version %q: %w", podName, err))
 							}
-							if !isAdditionalPod {
-								syncInfo[podName].InSync = nil
-								syncInfo[podName].Error = ptr("version upgrade in progress")
-								invalidateCache = append(invalidateCache, podName)
+
+							syncInfo[podName].InSync = nil
+							syncInfo[podName].Error = ptr("version upgrade in progress")
+							invalidateCache = append(invalidateCache, podName)
+
+							// Delete all associated additional pods
+							for _, additionalPod := range additionalPodsToUpdate[podName] {
+								reporter.Info("Deleting additional pod for version upgrade", "name", additionalPod.Name, "mainPod", podName)
+								if err := pc.client.Delete(ctx, additionalPod, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
+									return true, kube.TransientError(fmt.Errorf("upgrade additional pod version %q: %w", additionalPod.Name, err))
+								}
 							}
-						} else {
-							otherUpdates = append(otherUpdates, update)
+
+							// Remove this main pod from the list to avoid processing it again
+							mainPodsToUpdate = append(mainPodsToUpdate[:i], mainPodsToUpdate[i+1:]...)
+							break
 						}
-					} else {
-						otherUpdates = append(otherUpdates, update)
 					}
 					break
 				}
@@ -170,8 +219,8 @@ func (pc PodControl) Reconcile(
 
 		numUpdates := pc.computeRollout(crd.Spec.RolloutStrategy.MaxUnavailable, int(crd.Spec.Replicas), ready)
 
-		if updatedPods == len(diffedUpdates) {
-			// All pods are updated.
+		if updatedPods == len(mainPodsToUpdate) {
+			// All main pods are updated.
 			return false, nil
 		}
 
@@ -180,34 +229,43 @@ func (pc PodControl) Reconcile(
 			return true, nil
 		}
 
-		for _, pod := range otherUpdates {
+		// Update remaining main pods along with their additional pods
+		for _, pod := range mainPodsToUpdate {
+			if updatedPods >= numUpdates {
+				// Done for this round
+				break
+			}
+
 			podName := pod.Name
 			reporter.Info("Deleting pod for update", "name", podName)
-			// Because we should watch for deletes, we get a re-queued request, detect pod is missing, and re-create it.
+
+			// Delete the main pod
 			if err := pc.client.Delete(ctx, pod, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
 				return true, kube.TransientError(fmt.Errorf("update pod %q: %w", podName, err))
 			}
-			isAdditionalPod := pod.Labels[kube.AdditionalPodLabel] == "true"
-			if !isAdditionalPod {
-				syncInfo[podName].InSync = nil
-				syncInfo[podName].Error = ptr("update in progress")
-				invalidateCache = append(invalidateCache, podName)
 
-				updatedPods++
-				if updatedPods >= numUpdates {
-					// done for this round
-					break
+			syncInfo[podName].InSync = nil
+			syncInfo[podName].Error = ptr("update in progress")
+			invalidateCache = append(invalidateCache, podName)
+
+			// Delete all associated additional pods
+			for _, additionalPod := range additionalPodsToUpdate[podName] {
+				reporter.Info("Deleting additional pod for update", "name", additionalPod.Name, "mainPod", podName)
+				if err := pc.client.Delete(ctx, additionalPod, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
+					return true, kube.TransientError(fmt.Errorf("update additional pod %q: %w", additionalPod.Name, err))
 				}
 			}
+
+			updatedPods++
 		}
 
-		if len(diffedUpdates) == updatedPods {
-			// All pods are updated.
-			return false, nil
+		if updatedPods < len(mainPodsToUpdate) {
+			// Not all main pods are updated yet.
+			return true, nil
 		}
 
-		// Signal requeue.
-		return true, nil
+		// Finished, all pods updated
+		return false, nil
 	}
 
 	// Finished, pod state matches CRD.
