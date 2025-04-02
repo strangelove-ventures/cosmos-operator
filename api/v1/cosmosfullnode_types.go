@@ -75,6 +75,12 @@ type FullNodeSpec struct {
 	// Creates 1 pod per replica.
 	PodTemplate PodSpec `json:"podTemplate"`
 
+	// Additional pod specs to apply per replica.
+	// This is useful for adding additional pods to the deployment
+	// that need to be versioned alongside the main pod.
+	// +optional
+	AdditionalVersionedPods []AdditionalPodSpec `json:"additionalVersionedPods"`
+
 	// How to scale pods when performing an update.
 	// +optional
 	RolloutStrategy RolloutStrategy `json:"strategy"`
@@ -319,6 +325,18 @@ type PodSpec struct {
 	// at the cost of maintainability.
 	// +optional
 	Containers []corev1.Container `json:"containers"`
+}
+
+type AdditionalPodSpec struct {
+	// Name of the additional pod.
+	// +kubebuilder:validation:MinLength:=1
+	Name string `json:"name"`
+
+	// Metadata applied to the additional pod.
+	// +optional
+	Metadata Metadata `json:"metadata"`
+
+	corev1.PodSpec `json:",inline"`
 }
 
 type FullNodeProbeStrategy string

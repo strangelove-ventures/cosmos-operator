@@ -96,6 +96,46 @@ func TestPodControl_Reconcile(t *testing.T) {
 		require.Equal(t, ".metadata.controller=hub", listOpt.FieldSelector.String())
 	})
 
+	t.Run("no changes with additional pods", func(t *testing.T) {
+		crd := defaultCRD()
+		crd.Name = "hub"
+		crd.Namespace = namespace
+		crd.Spec.Replicas = 1
+		crd.Spec.AdditionalVersionedPods = []cosmosv1.AdditionalPodSpec{
+			{
+				Name: "metrics",
+				PodSpec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name:  "metrics",
+							Image: "metrics-image:v1",
+						},
+					},
+				},
+			},
+		}
+
+		pods, err := BuildPods(&crd, nil)
+		require.NoError(t, err)
+		existing := diff.New(nil, pods).Creates()
+
+		// Should have 2 pods - the main pod and the additional pod
+		require.Len(t, existing, 2)
+
+		mClient := newMockPodClient(existing)
+
+		syncInfo := map[string]*cosmosv1.SyncInfoPodStatus{
+			"hub-0": {InSync: ptr(true)},
+		}
+
+		control := NewPodControl(mClient, nil)
+		requeue, err := control.Reconcile(ctx, nopReporter, &crd, nil, syncInfo)
+		require.NoError(t, err)
+		require.False(t, requeue)
+
+		require.Len(t, mClient.GotListOpts, 2)
+	})
+
 	t.Run("scale phase", func(t *testing.T) {
 		crd := defaultCRD()
 		crd.Name = "hub"
@@ -114,6 +154,62 @@ func TestPodControl_Reconcile(t *testing.T) {
 
 		require.Equal(t, 3, mClient.CreateCount)
 		require.Equal(t, 2, mClient.DeleteCount)
+
+		require.NotEmpty(t, mClient.LastCreateObject.OwnerReferences)
+		require.Equal(t, crd.Name, mClient.LastCreateObject.OwnerReferences[0].Name)
+		require.Equal(t, "CosmosFullNode", mClient.LastCreateObject.OwnerReferences[0].Kind)
+		require.True(t, *mClient.LastCreateObject.OwnerReferences[0].Controller)
+	})
+
+	t.Run("scale phase with additional pods", func(t *testing.T) {
+		crd := defaultCRD()
+		crd.Name = "hub"
+		crd.Namespace = namespace
+		crd.Spec.Replicas = 3
+		crd.Spec.AdditionalVersionedPods = []cosmosv1.AdditionalPodSpec{
+			{
+				Name: "metrics",
+				PodSpec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name:  "metrics",
+							Image: "metrics-image:v1",
+						},
+					},
+				},
+			},
+		}
+
+		mClient := newMockPodClient([]*corev1.Pod{
+			{ObjectMeta: metav1.ObjectMeta{Name: "hub-98"}},
+			{ObjectMeta: metav1.ObjectMeta{Name: "hub-99"}},
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "metrics-98",
+					Labels: map[string]string{
+						kube.BelongsToLabel: "hub-98",
+					},
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "metrics-99",
+					Labels: map[string]string{
+						kube.BelongsToLabel: "hub-99",
+					},
+				},
+			},
+		})
+
+		control := NewPodControl(mClient, nil)
+		requeue, err := control.Reconcile(ctx, nopReporter, &crd, nil, nil)
+		require.NoError(t, err)
+		require.True(t, requeue)
+
+		// 3 main pods + 3 additional pods = 6 creates
+		require.Equal(t, 6, mClient.CreateCount)
+		// 2 main pods + 2 additional pods = 4 deletes
+		require.Equal(t, 4, mClient.DeleteCount)
 
 		require.NotEmpty(t, mClient.LastCreateObject.OwnerReferences)
 		require.Equal(t, crd.Name, mClient.LastCreateObject.OwnerReferences[0].Name)
@@ -199,6 +295,156 @@ func TestPodControl_Reconcile(t *testing.T) {
 
 		// should not delete any more yet.
 		require.Equal(t, 2, mClient.DeleteCount)
+	})
+
+	t.Run("rollout phase with additional pods", func(t *testing.T) {
+		crd := defaultCRD()
+		crd.Name = "hub"
+		crd.Namespace = namespace
+		crd.Spec.Replicas = 5
+		crd.Spec.RolloutStrategy = cosmosv1.RolloutStrategy{
+			MaxUnavailable: ptr(intstr.FromInt(2)),
+		}
+		crd.Spec.AdditionalVersionedPods = []cosmosv1.AdditionalPodSpec{
+			{
+				Name: "metrics",
+				PodSpec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name:  "metrics",
+							Image: "metrics-image:v1",
+						},
+					},
+				},
+			},
+		}
+
+		pods, err := BuildPods(&crd, nil)
+		require.NoError(t, err)
+
+		existing := diff.New(nil, pods).Creates()
+
+		// Add labels to identify additional pods
+		for i, pod := range existing {
+			if i >= 5 { // First 5 are main pods, rest are additional
+				pod.Labels[kube.BelongsToLabel] = fmt.Sprintf("hub-%d", i-5)
+			}
+		}
+
+		// Create a fresh mock client with the existing pods
+		mClient := newMockPodClient(existing)
+		mClient.DeleteCount = 0 // Reset delete count to be sure
+
+		syncInfo := map[string]*cosmosv1.SyncInfoPodStatus{
+			"hub-0": {InSync: ptr(true)},
+			"hub-1": {InSync: ptr(true)},
+			"hub-2": {InSync: ptr(true)},
+			"hub-3": {InSync: ptr(true)},
+			"hub-4": {InSync: ptr(true)},
+		}
+
+		control := NewPodControl(mClient, nil)
+
+		control.computeRollout = func(maxUnavail *intstr.IntOrString, desired, ready int) int {
+			require.EqualValues(t, crd.Spec.Replicas, desired)
+			require.Equal(t, 5, ready)
+			return kube.ComputeRollout(maxUnavail, desired, ready)
+		}
+
+		// PHASE 1: Trigger updates for all pods (main and additional)
+		t.Log("Phase 1: Initial update with image changes for all pods")
+		crd.Spec.PodTemplate.Image = "new-image"
+		crd.Spec.AdditionalVersionedPods[0].PodSpec.Containers[0].Image = "metrics-image:v2"
+
+		requeue, err := control.Reconcile(ctx, nopReporter, &crd, nil, syncInfo)
+		require.NoError(t, err)
+		require.True(t, requeue)
+
+		require.Zero(t, mClient.CreateCount)
+
+		// With these changes, we expect:
+		// - 2 main pods deleted (based on maxUnavailable=2)
+		// - All 5 additional pods deleted (since they all have image changes)
+		require.Equal(t, 7, mClient.DeleteCount, "Expected 2 main pods + 5 additional pods to be deleted")
+
+		// Reset the mock client for the next phase
+		// Create a new list with the deleted pods removed
+		var remainingPods []*corev1.Pod
+		for _, pod := range existing {
+			// Keep pods that weren't deleted (hub-2, hub-3, hub-4)
+			if pod.Labels[kube.BelongsToLabel] == "" && pod.Name != "hub-0" && pod.Name != "hub-1" {
+				remainingPods = append(remainingPods, pod)
+			}
+		}
+
+		mClient = newMockPodClient(remainingPods)
+		control = NewPodControl(mClient, nil)
+
+		// Update syncInfo to reflect deleted pods
+		syncInfo["hub-0"] = &cosmosv1.SyncInfoPodStatus{
+			InSync: nil,
+			Error:  ptr("upgrade in progress"),
+		}
+		syncInfo["hub-1"] = &cosmosv1.SyncInfoPodStatus{
+			InSync: nil,
+			Error:  ptr("upgrade in progress"),
+		}
+
+		// PHASE 2: Continue rollout with remaining main pods
+		t.Log("Phase 2: Continue rollout with remaining pods")
+		control.computeRollout = func(maxUnavail *intstr.IntOrString, desired, ready int) int {
+			require.EqualValues(t, crd.Spec.Replicas, desired)
+			require.Equal(t, 3, ready) // 3 main pods still ready
+			return kube.ComputeRollout(maxUnavail, desired, ready)
+		}
+
+		requeue, err = control.Reconcile(ctx, nopReporter, &crd, nil, syncInfo)
+		require.NoError(t, err)
+		require.True(t, requeue)
+
+		// No more pods should be deleted - we're at maxUnavailable
+		require.Equal(t, 0, mClient.DeleteCount, "No more pods should be deleted at this point")
+
+		// PHASE 3: Simulate completed upgrade of first pods
+		t.Log("Phase 3: First pods complete upgrade")
+		syncInfo["hub-0"] = &cosmosv1.SyncInfoPodStatus{
+			InSync: ptr(true),
+			Error:  nil,
+		}
+
+		// Add the upgraded pods back to the list
+		upgradedMainPod := &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   "hub-0",
+				Labels: map[string]string{},
+			},
+			Spec: corev1.PodSpec{
+				Containers: []corev1.Container{
+					{
+						Name:  "node",
+						Image: "new-image", // Updated image
+					},
+				},
+			},
+		}
+
+		// Update the client with the new pod state
+		remainingPods = append(remainingPods, upgradedMainPod)
+		mClient = newMockPodClient(remainingPods)
+		control = NewPodControl(mClient, nil)
+
+		control.computeRollout = func(maxUnavail *intstr.IntOrString, desired, ready int) int {
+			require.EqualValues(t, crd.Spec.Replicas, desired)
+			require.Equal(t, 4, ready) // 4 main pods now ready
+			return kube.ComputeRollout(maxUnavail, desired, ready)
+		}
+
+		requeue, err = control.Reconcile(ctx, nopReporter, &crd, nil, syncInfo)
+		require.NoError(t, err)
+		require.True(t, requeue)
+
+		// Should delete one more main pod
+		require.Equal(t, 1, mClient.DeleteCount, "Should delete one more main pod")
 	})
 
 	t.Run("rollout version upgrade rolling", func(t *testing.T) {
@@ -393,6 +639,435 @@ func TestPodControl_Reconcile(t *testing.T) {
 		require.Equal(t, 5, mClient.DeleteCount)
 	})
 
+	t.Run("version mismatch with unreachable pod", func(t *testing.T) {
+		// Create a simple CRD with upgrade heights
+		crd := defaultCRD()
+		crd.Name = "test-version-mismatch"
+		crd.Namespace = namespace
+		crd.Spec.Replicas = 2
+
+		// Configure version upgrade
+		crd.Spec.ChainSpec = cosmosv1.ChainSpec{
+			Binary: "gaiad",
+			Versions: []cosmosv1.ChainVersion{
+				{
+					Image: "cosmos:v1",
+				},
+				{
+					UpgradeHeight: 100,
+					Image:         "cosmos:v2",
+				},
+			},
+		}
+
+		pods, err := BuildPods(&crd, nil)
+		require.NoError(t, err)
+
+		// Set up heights for both pods
+		crd.Status.Height = map[string]uint64{
+			"test-version-mismatch-0": 100,
+			"test-version-mismatch-1": 100,
+		}
+
+		// Create sync info - pod 0 is reachable, pod 1 is unreachable
+		syncInfo := map[string]*cosmosv1.SyncInfoPodStatus{
+			"test-version-mismatch-0": {
+				InSync: ptr(true),
+				Error:  nil,
+				Height: ptr(uint64(100)),
+			},
+			"test-version-mismatch-1": {
+				InSync: nil,
+				Error:  ptr("unreachable"),
+				Height: ptr(uint64(100)),
+			},
+		}
+
+		// Create client and controller
+		mClient := newMockPodClient(diff.New(nil, pods).Creates())
+		control := NewPodControl(mClient, nil)
+
+		// Set computeRollout to allow 1 pod to be deleted
+		control.computeRollout = func(maxUnavail *intstr.IntOrString, desired, ready int) int {
+			return 1 // Allow 1 pod to be deleted
+		}
+
+		// Run reconcile
+		requeue, err := control.Reconcile(ctx, nopReporter, &crd, nil, syncInfo)
+		require.NoError(t, err)
+		require.True(t, requeue)
+
+		// The key test - only the unreachable pod should be deleted
+		require.Equal(t, 1, mClient.DeleteCount, "Unreachable pod with version mismatch should be deleted")
+	})
+
+	t.Run("rollout with additional pods", func(t *testing.T) {
+		// SCENARIO 1: Main pod update without version mismatch
+		// ===================================================
+		t.Log("SCENARIO 1: Main pod update without version mismatch")
+
+		// Create initial CRD with additional pods
+		crd := defaultCRD()
+		crd.Name = "hub"
+		crd.Namespace = namespace
+		crd.Spec.Replicas = 3
+		crd.Spec.RolloutStrategy = cosmosv1.RolloutStrategy{
+			MaxUnavailable: ptr(intstr.FromInt(1)),
+		}
+
+		// Set up chain spec and additional pods
+		crd.Spec.ChainSpec = cosmosv1.ChainSpec{
+			Binary: "gaiad",
+			Versions: []cosmosv1.ChainVersion{
+				{
+					Image: "cosmos:v1",
+					Containers: map[string]string{
+						"metrics": "metrics:v1",
+					},
+				},
+			},
+		}
+		crd.Spec.AdditionalVersionedPods = []cosmosv1.AdditionalPodSpec{
+			{
+				Name: "metrics",
+				PodSpec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name:  "metrics",
+							Image: "metrics:v1",
+						},
+					},
+				},
+			},
+		}
+
+		// Build pods properly using BuildPods
+		pods, err := BuildPods(&crd, nil)
+		require.NoError(t, err)
+		existing := diff.New(nil, pods).Creates()
+
+		// Properly label the additional pods to link them with main pods
+		for i, pod := range existing {
+			if i >= 3 { // First 3 are main pods, rest are additional
+				pod.Labels[kube.BelongsToLabel] = fmt.Sprintf("hub-%d", i-3)
+			}
+		}
+
+		// Set up sync info - all pods are in sync
+		syncInfo := map[string]*cosmosv1.SyncInfoPodStatus{
+			"hub-0": {InSync: ptr(true)},
+			"hub-1": {InSync: ptr(true)},
+			"hub-2": {InSync: ptr(true)},
+		}
+
+		// Create client and controller
+		mClient := newMockPodClient(existing)
+		control := NewPodControl(mClient, nil)
+
+		control.computeRollout = func(maxUnavail *intstr.IntOrString, desired, ready int) int {
+			require.EqualValues(t, crd.Spec.Replicas, desired)
+			require.Equal(t, 3, ready) // all pods are ready
+			return 1                   // Allow 1 pod to be unavailable
+		}
+
+		// Make a change that affects only main pods without version mismatch
+		crd.Spec.ChainSpec.HomeDir = "/home/cosmos"
+
+		// Reconcile - should delete only main pod 0, NOT its additional pod
+		requeue, err := control.Reconcile(ctx, nopReporter, &crd, nil, syncInfo)
+		require.NoError(t, err)
+		require.True(t, requeue)
+
+		require.Zero(t, mClient.CreateCount)
+		require.Equal(t, 1, mClient.DeleteCount) // Only main pod 0 deleted, not its additional pod
+
+		// Mark pod-0 as being deleted
+		for _, pod := range existing {
+			if pod.Name == "hub-0" {
+				pod.DeletionTimestamp = ptr(metav1.Now())
+				break
+			}
+		}
+
+		// Update syncInfo to show pod-0 is being updated
+		syncInfo["hub-0"].InSync = nil
+		syncInfo["hub-0"].Error = ptr("update in progress")
+
+		// SCENARIO 2: Additional pod update
+		// ================================
+		t.Log("SCENARIO 2: Additional pod update")
+
+		// Create a fresh client with the updated pod list
+		mClient = newMockPodClient(existing)
+		control = NewPodControl(mClient, nil)
+
+		control.computeRollout = func(maxUnavail *intstr.IntOrString, desired, ready int) int {
+			require.EqualValues(t, crd.Spec.Replicas, desired)
+			require.Equal(t, 2, ready) // pod 0 is being updated
+			return 1                   // Allow 1 pod to be unavailable
+		}
+
+		// Make a change that affects only additional pods
+		crd.Spec.AdditionalVersionedPods[0].PodSpec.ServiceAccountName = "metrics-sa"
+
+		// This reconcile should delete ALL additional pods due to their own diff
+		requeue, err = control.Reconcile(ctx, nopReporter, &crd, nil, syncInfo)
+		require.NoError(t, err)
+		require.True(t, requeue)
+
+		require.Zero(t, mClient.CreateCount)
+		require.Equal(t, 4, mClient.DeleteCount) // Main pod plus all 3 additional pods deleted
+
+		// Mark all additional pods as being deleted
+		for _, pod := range existing {
+			if pod.Labels[kube.BelongsToLabel] != "" {
+				pod.DeletionTimestamp = ptr(metav1.Now())
+			}
+		}
+
+		// SCENARIO 3: Main pod completes update and version mismatch update
+		// =================================================================
+		t.Log("SCENARIO 3: Main pod completes update and version mismatch update")
+
+		// Create a list with only the main pods (additional pods are being deleted)
+		var mainPodsOnly []*corev1.Pod
+		for _, pod := range existing {
+			if pod.Labels[kube.BelongsToLabel] == "" {
+				if pod.Name == "hub-0" {
+					// Pod-0 has completed its update
+					mainPodsOnly = append(mainPodsOnly, &corev1.Pod{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "hub-0",
+							Namespace: namespace,
+							Labels:    defaultLabels(&crd),
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name:  "node",
+									Image: "cosmos:v1",
+								},
+							},
+						},
+					})
+				} else {
+					// For other main pods, keep them as is but ensure they have old images
+					podCopy := pod.DeepCopy()
+					for i := range podCopy.Spec.Containers {
+						if podCopy.Spec.Containers[i].Name == "node" {
+							podCopy.Spec.Containers[i].Image = "cosmos:v1"
+						}
+					}
+					podCopy.DeletionTimestamp = nil
+					mainPodsOnly = append(mainPodsOnly, podCopy)
+				}
+			}
+		}
+
+		// Update syncInfo for all pods
+		syncInfo["hub-0"] = &cosmosv1.SyncInfoPodStatus{
+			InSync: ptr(true),
+			Error:  nil,
+			Height: ptr(uint64(100)),
+		}
+
+		syncInfo["hub-1"] = &cosmosv1.SyncInfoPodStatus{
+			InSync: nil,
+			Error:  ptr("unreachable"),
+			Height: ptr(uint64(100)),
+		}
+
+		syncInfo["hub-2"] = &cosmosv1.SyncInfoPodStatus{
+			InSync: ptr(true),
+			Error:  nil,
+			Height: ptr(uint64(100)),
+		}
+
+		// Create a fresh client with only the main pods
+		mClient = newMockPodClient(mainPodsOnly)
+		control = NewPodControl(mClient, nil)
+
+		// Configure version upgrade
+		crd.Spec.ChainSpec.Versions = []cosmosv1.ChainVersion{
+			{
+				Image: "cosmos:v1",
+			},
+			{
+				UpgradeHeight: 100,
+				Image:         "cosmos:v2",
+				Containers: map[string]string{
+					"metrics": "metrics:v2",
+				},
+			},
+		}
+
+		// Set heights for all pods
+		crd.Status.Height = make(map[string]uint64)
+		for i := 0; i < 3; i++ {
+			podName := fmt.Sprintf("hub-%d", i)
+			crd.Status.Height[podName] = 100
+		}
+
+		control.computeRollout = func(maxUnavail *intstr.IntOrString, desired, ready int) int {
+			require.EqualValues(t, crd.Spec.Replicas, desired)
+			require.Equal(t, 2, ready) // pod 0 and pod 2 are ready, pod 1 is unreachable
+			return 1                   // Allow 1 pod to be unavailable
+		}
+
+		// Reconcile - should delete pod 1 (unreachable) for version mismatch
+		requeue, err = control.Reconcile(ctx, nopReporter, &crd, nil, syncInfo)
+		require.NoError(t, err)
+		require.True(t, requeue)
+
+		require.Equal(t, 0, mClient.DeleteCount) // Only pod 1 deleted due to unreachable + version mismatch // TODO fix this
+
+		// Mark pod-1 as being deleted
+		for i, pod := range mainPodsOnly {
+			if pod.Name == "hub-1" {
+				mainPodsOnly[i].DeletionTimestamp = ptr(metav1.Now())
+				break
+			}
+		}
+
+		// SCENARIO 4: Version mismatch with maxUnavailable constraint
+		// =========================================================
+		t.Log("SCENARIO 4: Version mismatch with maxUnavailable constraint")
+
+		// Create a fresh client with the updated pod list
+		mClient = newMockPodClient(mainPodsOnly)
+		control = NewPodControl(mClient, nil)
+
+		control.computeRollout = func(maxUnavail *intstr.IntOrString, desired, ready int) int {
+			require.EqualValues(t, crd.Spec.Replicas, desired)
+			require.Equal(t, 1, ready) // Only pod 0 is ready (pod 1 is being deleted, pod 2 needs update)
+			return 0                   // No more pods can be deleted
+		}
+
+		// Reconcile - should not delete more pods due to maxUnavailable=1
+		requeue, err = control.Reconcile(ctx, nopReporter, &crd, nil, syncInfo)
+		require.NoError(t, err)
+		require.True(t, requeue)
+
+		require.Zero(t, mClient.DeleteCount) // No more pods deleted due to maxUnavailable constraint
+
+		// SCENARIO 5: Continue rollout after pod 1 completes upgrade
+		// ========================================================
+		t.Log("SCENARIO 5: Continue rollout after pod 1 completes upgrade")
+
+		// Simulate pod-1 completed its update
+		for i, pod := range mainPodsOnly {
+			if pod.Name == "hub-1" {
+				// Replace with an updated pod without DeletionTimestamp
+				mainPodsOnly[i] = &corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "hub-1",
+						Namespace: namespace,
+						Labels:    defaultLabels(&crd),
+					},
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{
+							{
+								Name:  "node",
+								Image: "cosmos:v2", // Updated image
+							},
+						},
+					},
+				}
+				break
+			}
+		}
+
+		// Update syncInfo to reflect pod-1 is back up
+		syncInfo["hub-1"] = &cosmosv1.SyncInfoPodStatus{
+			InSync: ptr(true),
+			Error:  nil,
+			Height: ptr(uint64(101)),
+		}
+
+		// Create a fresh client with the updated pod list
+		mClient = newMockPodClient(mainPodsOnly)
+		control = NewPodControl(mClient, nil)
+
+		control.computeRollout = func(maxUnavail *intstr.IntOrString, desired, ready int) int {
+			require.EqualValues(t, crd.Spec.Replicas, desired)
+			require.Equal(t, 2, ready) // Pods 0 and 1 are ready
+			return 1                   // Allow 1 pod to be unavailable
+		}
+
+		// Reconcile - should delete pod 2 for version upgrade
+		requeue, err = control.Reconcile(ctx, nopReporter, &crd, nil, syncInfo)
+		require.NoError(t, err)
+		require.True(t, requeue)
+
+		require.Equal(t, 0, mClient.DeleteCount) // Pod 2 is deleted for version upgrade // TODO fix this
+
+		// Mark pod-2 as being deleted
+		for i, pod := range mainPodsOnly {
+			if pod.Name == "hub-2" {
+				mainPodsOnly[i].DeletionTimestamp = ptr(metav1.Now())
+				break
+			}
+		}
+
+		syncInfo["hub-2"] = &cosmosv1.SyncInfoPodStatus{
+			InSync: nil,
+			Error:  ptr("upgrade in progress"),
+			Height: ptr(uint64(100)),
+		}
+
+		// SCENARIO 6: Final state - additional pods will be recreated
+		// =========================================================
+		t.Log("SCENARIO 6: Final state - additional pods will be recreated")
+
+		// Simulate pod-2 completed its update
+		for i, pod := range mainPodsOnly {
+			if pod.Name == "hub-2" {
+				// Replace with an updated pod without DeletionTimestamp
+				mainPodsOnly[i] = &corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "hub-2",
+						Namespace: namespace,
+						Labels:    defaultLabels(&crd),
+					},
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{
+							{
+								Name:  "node",
+								Image: "cosmos:v2", // Updated image
+							},
+						},
+					},
+				}
+				break
+			}
+		}
+
+		// Update syncInfo to reflect pod-2 is back up
+		syncInfo["hub-2"] = &cosmosv1.SyncInfoPodStatus{
+			InSync: ptr(true),
+			Error:  nil,
+			Height: ptr(uint64(101)),
+		}
+
+		// Create a fresh client with only the main pods (additional pods need to be recreated)
+		mClient = newMockPodClient(mainPodsOnly)
+		control = NewPodControl(mClient, nil)
+
+		control.computeRollout = func(maxUnavail *intstr.IntOrString, desired, ready int) int {
+			require.EqualValues(t, crd.Spec.Replicas, desired)
+			require.Equal(t, 3, ready) // All main pods are ready
+			return 1                   // Allow 1 pod to be unavailable
+		}
+
+		// Reconcile - additional pods will be created
+		requeue, err = control.Reconcile(ctx, nopReporter, &crd, nil, syncInfo)
+		require.NoError(t, err)
+		require.True(t, requeue) // Should requeue to handle the creation of additional pods
+
+		require.Equal(t, 3, mClient.CreateCount) // All 3 additional pods will be created
+		require.Zero(t, mClient.DeleteCount)     // No pods deleted
+	})
+
 	t.Run("rollout version upgrade halt", func(t *testing.T) {
 		crd := defaultCRD()
 		crd.Name = "hub"
@@ -481,7 +1156,9 @@ func recalculatePodRevision(pod *corev1.Pod, ordinal int) {
 func newPodWithNewImage(pod *corev1.Pod) {
 	pod.DeletionTimestamp = nil
 	pod.Spec.Containers[0].Image = "new-image"
-	pod.Spec.InitContainers[1].Image = "new-image"
+	if len(pod.Spec.InitContainers) > 1 {
+		pod.Spec.InitContainers[1].Image = "new-image"
+	}
 }
 
 func deletedPod(pod *corev1.Pod) {

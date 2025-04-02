@@ -108,28 +108,55 @@ ifndef ignore-not-found
 endif
 
 .PHONY: install
-install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
-	$(KUSTOMIZE) build config/crd | kubectl apply -f -
+install: manifests kustomize ## Install CRDs, RBAC, and Deployment into the K8s cluster specified in ~/.kube/config.
+	mkdir output
+	$(KUSTOMIZE) build config/default -o output
+	go run tools/minify-crd.go -v -o output
+	cd output && kubectl apply -f .
+	rm -rf output
+
+install-crds: manifests kustomize ## Install CRDs only into the K8s cluster specified in ~/.kube/config.
+	mkdir output
+	$(KUSTOMIZE) build config/crd -o output
+	go run tools/minify-crd.go -v -o output
+	cd output && kubectl apply -f .
+	rm -rf output
 
 .PHONY: uninstall
 uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
-	$(KUSTOMIZE) build config/crd | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
+	mkdir output
+	$(KUSTOMIZE) build config/default -o output
+	go run tools/minify-crd.go -v -o output
+	cd output &&kubectl delete --ignore-not-found=$(ignore-not-found) -f .
+	rm -rf output
 
 .PHONY: deploy-prerelease
 deploy-prerelease: install docker-prerelease ## Install CRDs, build docker image, and deploy a prerelease controller to the K8s cluster specified in ~/.kube/config.
 	cd config/manager && $(KUSTOMIZE) edit set image controller=$(PRE_IMG)
-	$(KUSTOMIZE) build config/default | kubectl apply -f -
+	mkdir output
+	$(KUSTOMIZE) build config/default -o output
+	go run tools/minify-crd.go -v -o output
+	cd output && kubectl apply -f .
+	rm -rf output
 	@#Hack to reset tag to avoid git thrashing.
 	@cd config/manager && $(KUSTOMIZE) edit set image controller=ghcr.io/strangelove-ventures/cosmos-operator:latest
 
 .PHONY: deploy
 deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
-	$(KUSTOMIZE) build config/default | kubectl apply -f -
+	mkdir output
+	$(KUSTOMIZE) build config/default -o output
+	go run tools/minify-crd.go -v -o output
+	cd output && kubectl apply -f .
+	rm -rf output
 
 .PHONY: undeploy
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
-	$(KUSTOMIZE) build config/default | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
+	mkdir output
+	$(KUSTOMIZE) build config/default -o output
+	go run tools/minify-crd.go -v -o output
+	cd output && kubectl delete --ignore-not-found=$(ignore-not-found) -f .
+	rm -rf output
 
 ##@ Build Dependencies
 

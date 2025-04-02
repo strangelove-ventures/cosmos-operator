@@ -202,7 +202,7 @@ func (b PodBuilder) Build() (*corev1.Pod, error) {
 			vrs = &v
 		}
 		if vrs != nil {
-			setChainContainerImages(pod, vrs)
+			setVersionedImages(pod, vrs)
 		}
 	}
 
@@ -547,4 +547,72 @@ func PVCName(pod *corev1.Pod) string {
 		return ""
 	}
 	return found.PersistentVolumeClaim.ClaimName
+}
+
+func buildAdditionalPod(
+	crd *cosmosv1.CosmosFullNode,
+	ordinal int32,
+	podSpec cosmosv1.AdditionalPodSpec,
+) (*corev1.Pod, error) {
+	// Create a unique name for the additional pod
+	name := fmt.Sprintf("%s-%d", podSpec.Name, ordinal)
+
+	pod := &corev1.Pod{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Pod",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace:   crd.Namespace,
+			Name:        name,
+			Labels:      defaultLabels(crd),
+			Annotations: make(map[string]string),
+		},
+		Spec: podSpec.PodSpec,
+	}
+
+	// Apply common labels and annotations
+	preserveMergeInto(pod.Labels, podSpec.Metadata.Labels)
+	preserveMergeInto(pod.Annotations, podSpec.Metadata.Annotations)
+
+	belongsTo := instanceName(crd, ordinal)
+
+	pod.Labels[kube.InstanceLabel] = name
+	pod.Labels[kube.BelongsToLabel] = belongsTo
+
+	if len(crd.Spec.ChainSpec.Versions) > 0 {
+		instanceHeight := uint64(0)
+		if height, ok := crd.Status.Height[belongsTo]; ok {
+			instanceHeight = height
+		}
+		var vrs *cosmosv1.ChainVersion
+		for _, v := range crd.Spec.ChainSpec.Versions {
+			if instanceHeight < v.UpgradeHeight {
+				break
+			}
+			vrs = &v
+		}
+		if vrs != nil {
+			setVersionedImages(pod, vrs)
+		}
+	}
+
+	// Handle instance overrides if needed
+	if o, ok := crd.Spec.InstanceOverrides[name]; ok {
+		if o.DisableStrategy != nil {
+			return nil, nil
+		}
+		if o.Image != "" {
+			if len(pod.Spec.Containers) == 0 {
+				return nil, fmt.Errorf("no containers in pod %q", name)
+			}
+			pod.Spec.Containers[0].Image = o.Image
+		}
+		if o.NodeSelector != nil {
+			pod.Spec.NodeSelector = o.NodeSelector
+		}
+	}
+
+	kube.NormalizeMetadata(&pod.ObjectMeta)
+	return pod, nil
 }

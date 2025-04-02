@@ -35,10 +35,30 @@ func BuildPods(crd *cosmosv1.CosmosFullNode, cksums ConfigChecksums) ([]diff.Res
 		pod.Annotations[configChecksumAnnotation] = cksums[client.ObjectKeyFromObject(pod)]
 		pods = append(pods, diff.Adapt(pod, i))
 	}
+
+	for i := crd.Spec.Ordinals.Start; i < crd.Spec.Ordinals.Start+crd.Spec.Replicas; i++ {
+		// Build any additional versioned pods for this ordinal
+		for podIdx, additionalPodSpec := range crd.Spec.AdditionalVersionedPods {
+			additionalPod, err := buildAdditionalPod(crd, i, additionalPodSpec)
+			if err != nil {
+				return nil, err
+			}
+
+			if additionalPod == nil {
+				continue
+			}
+
+			// Use a unique identifier for the additional pod (combining ordinal with pod index)
+			// This ensures stability in the diff algorithm
+			podOrdinal := i*100 + int32(podIdx) + 1000 // Add offset to ensure uniqueness
+			additionalPod.Annotations[configChecksumAnnotation] = cksums[client.ObjectKeyFromObject(additionalPod)]
+			pods = append(pods, diff.Adapt(additionalPod, podOrdinal))
+		}
+	}
 	return pods, nil
 }
 
-func setChainContainerImages(pod *corev1.Pod, v *cosmosv1.ChainVersion) {
+func setVersionedImages(pod *corev1.Pod, v *cosmosv1.ChainVersion) {
 	setChainContainerImage(pod, v.Image)
 
 	for name, image := range v.InitContainers {
