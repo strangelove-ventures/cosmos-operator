@@ -43,6 +43,9 @@ func defaultCRD() cosmosv1.CosmosFullNode {
 				},
 			},
 		},
+		Status: cosmosv1.FullNodeStatus{
+			Height: make(map[string]uint64),
+		},
 	}
 }
 
