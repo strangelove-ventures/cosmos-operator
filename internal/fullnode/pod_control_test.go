@@ -3,8 +3,6 @@ package fullnode
 import (
 	"context"
 	"fmt"
-	"strconv"
-	"strings"
 	"testing"
 
 	cosmosv1 "github.com/strangelove-ventures/cosmos-operator/api/v1"
@@ -47,18 +45,6 @@ func (c *mockPodClient) upgradePods(
 	c.setPods(existing)
 }
 
-func (c *mockPodClient) upgradeAdditionalPods(
-	t *testing.T,
-	mainPodName string,
-	additionalNames ...string,
-) {
-	existing := ptrSlice(c.ObjectList.(corev1.PodList).Items)
-	for _, name := range additionalNames {
-		updateAdditionalPod(t, mainPodName, name, existing, newPodWithNewImage, true)
-	}
-	c.setPods(existing)
-}
-
 func (c *mockPodClient) deletePods(
 	t *testing.T,
 	crdName string,
@@ -67,18 +53,6 @@ func (c *mockPodClient) deletePods(
 	existing := ptrSlice(c.ObjectList.(corev1.PodList).Items)
 	for _, ordinal := range ordinals {
 		updatePod(t, crdName, ordinal, existing, deletedPod, false)
-	}
-	c.setPods(existing)
-}
-
-func (c *mockPodClient) deleteAdditionalPods(
-	t *testing.T,
-	mainPodName string,
-	additionalNames ...string,
-) {
-	existing := ptrSlice(c.ObjectList.(corev1.PodList).Items)
-	for _, name := range additionalNames {
-		updateAdditionalPod(t, mainPodName, name, existing, deletedPod, false)
 	}
 	c.setPods(existing)
 }
@@ -837,24 +811,4 @@ func updatePod(t *testing.T, crdName string, ordinal int, pods []*corev1.Pod, up
 	}
 
 	require.FailNow(t, "pod not found", podName)
-}
-
-func updateAdditionalPod(t *testing.T, mainPodName string, additionalName string, pods []*corev1.Pod, updateFn func(pod *corev1.Pod), recalc bool) {
-	for _, pod := range pods {
-		if pod.Name == additionalName && pod.Labels[kube.BelongsToLabel] == mainPodName {
-			updateFn(pod)
-			if recalc {
-				// Use an ordinal based on the main pod for revision calculation
-				parts := strings.Split(mainPodName, "-")
-				if len(parts) > 1 {
-					ordinal, err := strconv.Atoi(parts[len(parts)-1])
-					require.NoError(t, err)
-					recalculatePodRevision(pod, ordinal+1000) // Use offset to avoid collision with main pods
-				}
-			}
-			return
-		}
-	}
-
-	require.FailNow(t, "additional pod not found", additionalName)
 }
