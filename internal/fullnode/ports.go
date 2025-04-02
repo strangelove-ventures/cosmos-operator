@@ -54,12 +54,12 @@ func ports(crd *cosmosv1.CosmosFullNode) []corev1.ContainerPort {
 		{
 			Name:          "p2p",
 			Protocol:      corev1.ProtocolTCP,
-			ContainerPort: int32(crd.Spec.ChainSpec.Comet.P2PPort()),
+			ContainerPort: crd.Spec.ChainSpec.Comet.P2PPort(),
 		},
 		{
 			Name:          "rpc",
 			Protocol:      corev1.ProtocolTCP,
-			ContainerPort: int32(crd.Spec.ChainSpec.Comet.RPCPort()),
+			ContainerPort: crd.Spec.ChainSpec.Comet.RPCPort(),
 		},
 		{
 			Name:          "grpc-web",
@@ -67,5 +67,4 @@ func ports(crd *cosmosv1.CosmosFullNode) []corev1.ContainerPort {
 			ContainerPort: grpcWebPort,
 		},
 	}
-
 }

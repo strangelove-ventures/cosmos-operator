@@ -299,7 +299,7 @@ func TestPodBuilder(t *testing.T) {
 		healthContainer := pod.Spec.Containers[1]
 		require.Equal(t, "healthcheck", healthContainer.Name)
 		require.Equal(t, "ghcr.io/strangelove-ventures/cosmos-operator:latest", healthContainer.Image)
-		require.Equal(t, []string{"/manager", "healthcheck"}, healthContainer.Command)
+		require.Equal(t, []string{"/manager", "healthcheck", "--rpc-host", "http://localhost:26657"}, healthContainer.Command)
 		require.Empty(t, healthContainer.Args)
 		require.Empty(t, healthContainer.ImagePullPolicy)
 		require.NotEmpty(t, healthContainer.Resources)
