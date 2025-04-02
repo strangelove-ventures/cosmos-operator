@@ -192,6 +192,10 @@ func addConfigToml(buf *bytes.Buffer, cmData map[string]string, crd *cosmosv1.Co
 		}
 	}
 
+	if comet.P2PListenAddress != "" {
+		p2p["laddr"] = comet.P2PListenAddress
+	}
+
 	base["p2p"] = p2p
 
 	var rpcLaddr = "tcp://0.0.0.0:26657"
