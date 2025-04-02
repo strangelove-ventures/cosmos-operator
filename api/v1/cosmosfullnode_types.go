@@ -334,7 +334,7 @@ type AdditionalPodSpec struct {
 
 	// Metadata applied to the additional pod.
 	// +optional
-	Metadata metav1.ObjectMeta `json:"metadata"`
+	Metadata Metadata `json:"metadata"`
 
 	corev1.PodSpec `json:",inline"`
 }

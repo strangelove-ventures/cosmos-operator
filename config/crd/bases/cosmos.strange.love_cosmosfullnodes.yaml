@@ -4707,6 +4707,21 @@ spec:
                       type: array
                     metadata:
                       description: Metadata applied to the additional pod.
+                      properties:
+                        annotations:
+                          additionalProperties:
+                            type: string
+                          description: |-
+                            Annotations are added to a resource. If there is a collision between annotations the Operator creates, the Operator
+                            annotations take precedence.
+                          type: object
+                        labels:
+                          additionalProperties:
+                            type: string
+                          description: |-
+                            Labels are added to a resource. If there is a collision between labels the Operator creates, the Operator
+                            labels take precedence.
+                          type: object
                       type: object
                     name:
                       description: Name of the additional pod.
