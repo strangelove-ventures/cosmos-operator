@@ -148,7 +148,7 @@ func podReadinessProbes(crd *cosmosv1.CosmosFullNode) []*corev1.Probe {
 		ProbeHandler: corev1.ProbeHandler{
 			HTTPGet: &corev1.HTTPGetAction{
 				Path:   "/health",
-				Port:   intstr.FromInt(crd.Spec.ChainSpec.Comet.RPCPort()),
+				Port:   intstr.FromInt(int(crd.Spec.ChainSpec.Comet.RPCPort())),
 				Scheme: corev1.URISchemeHTTP,
 			},
 		},

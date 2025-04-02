@@ -162,7 +162,7 @@ func (c PeerCollector) addExternalAddress(ctx context.Context, peers Peers, crd 
 	lb := ingress[0]
 	host := lo.Ternary(lb.IP != "", lb.IP, lb.Hostname)
 	if host != "" {
-		info.ExternalAddress = net.JoinHostPort(host, strconv.Itoa(crd.Spec.ChainSpec.Comet.P2PPort()))
+		info.ExternalAddress = net.JoinHostPort(host, strconv.FormatInt(int64(crd.Spec.ChainSpec.Comet.P2PPort()), 10))
 	}
 	return nil
 }

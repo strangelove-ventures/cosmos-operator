@@ -658,34 +658,32 @@ const (
 	defaultP2PPort = 26656
 )
 
-func (c CometConfig) RPCPort() int {
+func (c CometConfig) RPCPort() int32 {
 	if c.RPCListenAddress == "" {
 		return defaultRPCPort
 	}
 	portSplit := strings.Split(c.RPCListenAddress, ":")
-	if len(portSplit) != 2 {
-		return defaultRPCPort
-	}
-	port, err := strconv.Atoi(portSplit[len(portSplit)-1])
+
+	port, err := strconv.ParseInt(portSplit[len(portSplit)-1], 10, 32)
 	if err != nil {
 		return defaultRPCPort
 	}
-	return port
+
+	return int32(port)
 }
 
-func (c CometConfig) P2PPort() int {
+func (c CometConfig) P2PPort() int32 {
 	if c.P2PListenAddress == "" {
 		return defaultP2PPort
 	}
 	portSplit := strings.Split(c.P2PListenAddress, ":")
-	if len(portSplit) != 2 {
-		return defaultP2PPort
-	}
-	port, err := strconv.Atoi(portSplit[len(portSplit)-1])
+
+	port, err := strconv.ParseInt(portSplit[len(portSplit)-1], 10, 32)
 	if err != nil {
 		return defaultP2PPort
 	}
-	return port
+
+	return int32(port)
 }
 
 // SDKAppConfig configures the cosmos sdk application app.toml.

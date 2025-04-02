@@ -147,6 +147,36 @@ func TestPodBuilder(t *testing.T) {
 		}
 	})
 
+	t.Run("override ports", func(t *testing.T) {
+		crd := defaultCRD()
+		crd.Spec.ChainSpec.Comet.RPCListenAddress = "tcp://0.0.0.0:27147"
+		crd.Spec.ChainSpec.Comet.P2PListenAddress = "tcp://0.0.0.0:27146"
+		pod, err := NewPodBuilder(&crd).Build()
+		require.NoError(t, err)
+		ports := pod.Spec.Containers[0].Ports
+
+		require.Equal(t, 7, len(ports))
+
+		for i, tt := range []struct {
+			Name string
+			Port int32
+		}{
+			{"api", 1317},
+			{"rosetta", 8080},
+			{"grpc", 9090},
+			{"prometheus", 26660},
+			{"p2p", 27146},
+			{"rpc", 27147},
+			{"grpc-web", 9091},
+		} {
+			port := ports[i]
+			require.Equal(t, tt.Name, port.Name, tt)
+			require.Equal(t, corev1.ProtocolTCP, port.Protocol)
+			require.Equal(t, tt.Port, port.ContainerPort)
+			require.Zero(t, port.HostPort)
+		}
+	})
+
 	t.Run("ports - sentry", func(t *testing.T) {
 		crd := defaultCRD()
 		crd.Spec.Type = cosmosv1.Sentry
