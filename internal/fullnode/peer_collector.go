@@ -120,7 +120,7 @@ func (c PeerCollector) Collect(ctx context.Context, crd *cosmosv1.CosmosFullNode
 		}
 
 		svcName := p2pServiceName(crd, i)
-		p2pPort := int32(crd.Spec.ChainSpec.Comet.P2PPort())
+		p2pPort := crd.Spec.ChainSpec.Comet.P2PPort()
 		peers[c.objectKey(crd, i)] = Peer{
 			P2PPort:        p2pPort,
 			NodeID:         nodeKey.NodeKey.ID(),
