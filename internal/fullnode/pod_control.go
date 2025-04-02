@@ -113,19 +113,25 @@ func (pc PodControl) Reconcile(
 		for _, existing := range pods.Items {
 			podName := existing.Name
 
+			isAdditionalPod := existing.Labels[kube.AdditionalPodLabel] == "true"
+
 			if existing.DeletionTimestamp != nil {
 				// Pod is being deleted, so we skip it.
 				continue
 			}
 
 			var rpcReachable bool
-			if ps, ok := syncInfo[podName]; ok {
-				if ps.InSync != nil && *ps.InSync {
-					inSyncPods++
-				}
-				rpcReachable = ps.Error == nil
-				if rpcReachable {
-					rpcReachablePods++
+			var totalMainPods = 0
+			if !isAdditionalPod {
+				totalMainPods++
+				if ps, ok := syncInfo[podName]; ok {
+					if ps.InSync != nil && *ps.InSync {
+						inSyncPods++
+					}
+					rpcReachable = ps.Error == nil
+					if rpcReachable {
+						rpcReachablePods++
+					}
 				}
 			}
 			for _, update := range diffedUpdates {
@@ -139,9 +145,11 @@ func (pc PodControl) Reconcile(
 							if err := pc.client.Delete(ctx, update, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
 								return true, kube.TransientError(fmt.Errorf("upgrade pod version %q: %w", podName, err))
 							}
-							syncInfo[podName].InSync = nil
-							syncInfo[podName].Error = ptr("version upgrade in progress")
-							invalidateCache = append(invalidateCache, podName)
+							if !isAdditionalPod {
+								syncInfo[podName].InSync = nil
+								syncInfo[podName].Error = ptr("version upgrade in progress")
+								invalidateCache = append(invalidateCache, podName)
+							}
 						} else {
 							otherUpdates = append(otherUpdates, update)
 						}
@@ -179,13 +187,17 @@ func (pc PodControl) Reconcile(
 			if err := pc.client.Delete(ctx, pod, client.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
 				return true, kube.TransientError(fmt.Errorf("update pod %q: %w", podName, err))
 			}
-			syncInfo[podName].InSync = nil
-			syncInfo[podName].Error = ptr("update in progress")
-			invalidateCache = append(invalidateCache, podName)
-			updatedPods++
-			if updatedPods >= numUpdates {
-				// done for this round
-				break
+			isAdditionalPod := pod.Labels[kube.AdditionalPodLabel] == "true"
+			if !isAdditionalPod {
+				syncInfo[podName].InSync = nil
+				syncInfo[podName].Error = ptr("update in progress")
+				invalidateCache = append(invalidateCache, podName)
+
+				updatedPods++
+				if updatedPods >= numUpdates {
+					// done for this round
+					break
+				}
 			}
 		}
 
