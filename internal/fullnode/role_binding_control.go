@@ -25,6 +25,10 @@ func NewRoleBindingControl(client Client) RoleBindingControl {
 
 // Reconcile creates or updates role bindings.
 func (sc RoleBindingControl) Reconcile(ctx context.Context, log kube.Logger, crd *cosmosv1.CosmosFullNode) kube.ReconcileError {
+	if crd.Spec.ServiceAccountName != "" {
+		return nil
+	}
+
 	var crs rbacv1.RoleBindingList
 	if err := sc.client.List(ctx, &crs,
 		client.InNamespace(crd.Namespace),

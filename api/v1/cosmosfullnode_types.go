@@ -107,6 +107,10 @@ type FullNodeSpec struct {
 	// complexity of the CosmosFullNodeController.
 	// +optional
 	SelfHeal *SelfHealSpec `json:"selfHeal"`
+
+	// If set, the pod will use the specified service account. If not set, pods will create and use an isolated service account.
+	// +optional
+	ServiceAccountName string `json:"serviceAccountName"`
 }
 
 type FullNodeType string

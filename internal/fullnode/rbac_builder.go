@@ -10,6 +10,9 @@ import (
 )
 
 func serviceAccountName(crd *cosmosv1.CosmosFullNode) string {
+	if crd.Spec.ServiceAccountName != "" {
+		return crd.Spec.ServiceAccountName
+	}
 	return crd.Name + "-vc-sa"
 }
 
@@ -25,6 +28,10 @@ func roleBindingName(crd *cosmosv1.CosmosFullNode) string {
 //
 // Creates a single service account for the version check.
 func BuildServiceAccounts(crd *cosmosv1.CosmosFullNode) []diff.Resource[*corev1.ServiceAccount] {
+	if crd.Spec.ServiceAccountName != "" {
+		return nil
+	}
+
 	diffSa := make([]diff.Resource[*corev1.ServiceAccount], 1)
 	sa := corev1.ServiceAccount{
 		TypeMeta: v1.TypeMeta{

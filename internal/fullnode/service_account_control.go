@@ -25,6 +25,10 @@ func NewServiceAccountControl(client Client) ServiceAccountControl {
 
 // Reconcile creates or updates service accounts.
 func (sc ServiceAccountControl) Reconcile(ctx context.Context, log kube.Logger, crd *cosmosv1.CosmosFullNode) kube.ReconcileError {
+	if crd.Spec.ServiceAccountName != "" {
+		return nil
+	}
+
 	var sas corev1.ServiceAccountList
 	if err := sc.client.List(ctx, &sas,
 		client.InNamespace(crd.Namespace),
