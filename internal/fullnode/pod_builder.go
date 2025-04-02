@@ -575,8 +575,27 @@ func buildAdditionalPod(
 	preserveMergeInto(pod.Labels, podSpec.Metadata.Labels)
 	preserveMergeInto(pod.Annotations, podSpec.Metadata.Annotations)
 
+	belongsTo := instanceName(crd, ordinal)
+
 	pod.Labels[kube.InstanceLabel] = name
-	pod.Labels[kube.BelongsToLabel] = instanceName(crd, ordinal)
+	pod.Labels[kube.BelongsToLabel] = belongsTo
+
+	if len(crd.Spec.ChainSpec.Versions) > 0 {
+		instanceHeight := uint64(0)
+		if height, ok := crd.Status.Height[belongsTo]; ok {
+			instanceHeight = height
+		}
+		var vrs *cosmosv1.ChainVersion
+		for _, v := range crd.Spec.ChainSpec.Versions {
+			if instanceHeight < v.UpgradeHeight {
+				break
+			}
+			vrs = &v
+		}
+		if vrs != nil {
+			setVersionedImages(pod, vrs)
+		}
+	}
 
 	// Handle instance overrides if needed
 	if o, ok := crd.Spec.InstanceOverrides[name]; ok {
