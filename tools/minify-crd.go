@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -204,7 +205,7 @@ func processCRDFile(filePath string, verbose, overwrite bool) (FileInfo, error) 
 	descriptionCount := 0
 	if len(crd.Spec.Versions) > 0 && crd.Spec.Versions[0].Schema.OpenAPIV3Schema != nil {
 		// Remove descriptions recursively
-		removeDescriptions(crd.Spec.Versions[0].Schema.OpenAPIV3Schema, &descriptionCount)
+		removeDescriptions(crd.Spec.Versions[0].Schema.OpenAPIV3Schema, &descriptionCount, false)
 	}
 
 	result.DescriptionCount = descriptionCount
@@ -232,25 +233,31 @@ func processCRDFile(filePath string, verbose, overwrite bool) (FileInfo, error) 
 }
 
 // removeDescriptions recursively removes all description fields from the schema
-func removeDescriptions(node interface{}, count *int) {
+func removeDescriptions(node interface{}, count *int, shouldDelete bool) {
 	// Handle map types (objects)
 	if obj, ok := node.(map[string]interface{}); ok {
 		// Remove description if it exists
-		if _, exists := obj["description"]; exists {
-			delete(obj, "description")
-			*count++
+		if shouldDelete {
+			if _, exists := obj["description"]; exists {
+				delete(obj, "description")
+				*count++
+			}
 		}
 
 		// Process all child elements
-		for _, value := range obj {
-			removeDescriptions(value, count)
+		for key, value := range obj {
+			removeDescriptions(value, count, shouldDelete || shouldDeleteAllRecursiveDescriptions(key))
 		}
 	}
 
 	// Handle slice types (arrays)
 	if arr, ok := node.([]interface{}); ok {
 		for _, item := range arr {
-			removeDescriptions(item, count)
+			removeDescriptions(item, count, shouldDelete)
 		}
 	}
+}
+
+func shouldDeleteAllRecursiveDescriptions(key string) bool {
+	return slices.Contains([]string{"initContainers", "containers", "volumes"}, key)
 }
