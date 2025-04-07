@@ -42,6 +42,7 @@ help: ## Display this help.
 .PHONY: manifests
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+	go run tools/minify-crd.go -v -o config/crd/bases/cosmos.strange.love_cosmosfullnodes.yaml
 
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
@@ -108,55 +109,28 @@ ifndef ignore-not-found
 endif
 
 .PHONY: install
-install: manifests kustomize ## Install CRDs, RBAC, and Deployment into the K8s cluster specified in ~/.kube/config.
-	mkdir output
-	$(KUSTOMIZE) build config/default -o output
-	go run tools/minify-crd.go -v -o output
-	cd output && kubectl apply -f .
-	rm -rf output
-
-install-crds: manifests kustomize ## Install CRDs only into the K8s cluster specified in ~/.kube/config.
-	mkdir output
-	$(KUSTOMIZE) build config/crd -o output
-	go run tools/minify-crd.go -v -o output
-	cd output && kubectl apply -f .
-	rm -rf output
+install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
+	$(KUSTOMIZE) build config/crd | kubectl apply -f -
 
 .PHONY: uninstall
 uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
-	mkdir output
-	$(KUSTOMIZE) build config/default -o output
-	go run tools/minify-crd.go -v -o output
-	cd output &&kubectl delete --ignore-not-found=$(ignore-not-found) -f .
-	rm -rf output
+	$(KUSTOMIZE) build config/crd | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
 
 .PHONY: deploy-prerelease
 deploy-prerelease: install docker-prerelease ## Install CRDs, build docker image, and deploy a prerelease controller to the K8s cluster specified in ~/.kube/config.
 	cd config/manager && $(KUSTOMIZE) edit set image controller=$(PRE_IMG)
-	mkdir output
-	$(KUSTOMIZE) build config/default -o output
-	go run tools/minify-crd.go -v -o output
-	cd output && kubectl apply -f .
-	rm -rf output
+	$(KUSTOMIZE) build config/default | kubectl apply -f -
 	@#Hack to reset tag to avoid git thrashing.
 	@cd config/manager && $(KUSTOMIZE) edit set image controller=ghcr.io/strangelove-ventures/cosmos-operator:latest
 
 .PHONY: deploy
 deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
-	mkdir output
-	$(KUSTOMIZE) build config/default -o output
-	go run tools/minify-crd.go -v -o output
-	cd output && kubectl apply -f .
-	rm -rf output
+	$(KUSTOMIZE) build config/default | kubectl apply -f -
 
 .PHONY: undeploy
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
-	mkdir output
-	$(KUSTOMIZE) build config/default -o output
-	go run tools/minify-crd.go -v -o output
-	cd output && kubectl delete --ignore-not-found=$(ignore-not-found) -f .
-	rm -rf output
+	$(KUSTOMIZE) build config/default | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
 
 ##@ Build Dependencies
 
