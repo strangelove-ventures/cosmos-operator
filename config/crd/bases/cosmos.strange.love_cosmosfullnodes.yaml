@@ -3379,6 +3379,11 @@ spec:
                                                 One of Never, PreemptLowerPriority.
                                                 Defaults to PreemptLowerPriority if unset.
                                             type: string
+                                        preferSameNode:
+                                            description: |-
+                                                Whether to prefer the same node as the main pod for the additional pod.
+                                                This is useful for pods that are not part of the main pod's deployment, but should still be co-located.
+                                            type: boolean
                                         priority:
                                             description: |-
                                                 The priority value. Various system components use this field to find the

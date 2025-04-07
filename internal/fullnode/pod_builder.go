@@ -560,6 +560,8 @@ func buildAdditionalPod(
 	labels := defaultLabels(crd)
 	labels[kube.NameLabel] = appName(crd) + "-" + podSpec.Name
 
+	belongsTo := instanceName(crd, ordinal)
+
 	pod := &corev1.Pod{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Pod",
@@ -574,11 +576,29 @@ func buildAdditionalPod(
 		Spec: podSpec.PodSpec,
 	}
 
+	if podSpec.PreferSameNode {
+		pod.Spec.Affinity = &corev1.Affinity{
+			PodAffinity: &corev1.PodAffinity{
+				PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{
+					{
+						Weight: 100,
+						PodAffinityTerm: corev1.PodAffinityTerm{
+							LabelSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									kube.InstanceLabel: belongsTo,
+								},
+							},
+							TopologyKey: "kubernetes.io/hostname",
+						},
+					},
+				},
+			},
+		}
+	}
+
 	// Apply common labels and annotations
 	preserveMergeInto(pod.Labels, podSpec.Metadata.Labels)
 	preserveMergeInto(pod.Annotations, podSpec.Metadata.Annotations)
-
-	belongsTo := instanceName(crd, ordinal)
 
 	pod.Labels[kube.InstanceLabel] = name
 	pod.Labels[kube.BelongsToLabel] = belongsTo

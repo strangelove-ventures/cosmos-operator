@@ -337,6 +337,11 @@ type AdditionalPodSpec struct {
 	Metadata Metadata `json:"metadata"`
 
 	corev1.PodSpec `json:",inline"`
+
+	// Whether to prefer the same node as the main pod for the additional pod.
+	// This is useful for pods that are not part of the main pod's deployment, but should still be co-located.
+	// +optional
+	PreferSameNode bool `json:"preferSameNode,omitempty"`
 }
 
 type FullNodeProbeStrategy string
