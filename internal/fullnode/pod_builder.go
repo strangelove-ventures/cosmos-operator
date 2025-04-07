@@ -557,6 +557,9 @@ func buildAdditionalPod(
 	// Create a unique name for the additional pod
 	name := fmt.Sprintf("%s-%d", podSpec.Name, ordinal)
 
+	labels := defaultLabels(crd)
+	labels[kube.NameLabel] = appName(crd) + "-" + podSpec.Name
+
 	pod := &corev1.Pod{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Pod",
@@ -565,7 +568,7 @@ func buildAdditionalPod(
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:   crd.Namespace,
 			Name:        name,
-			Labels:      defaultLabels(crd),
+			Labels:      labels,
 			Annotations: make(map[string]string),
 		},
 		Spec: podSpec.PodSpec,
