@@ -4887,6 +4887,15 @@ spec:
                                                 setHaltHeight:
                                                     description: Determines if the node should forcefully halt at the upgrade height.
                                                     type: boolean
+                                                upgradeDelaySeconds:
+                                                    description: |-
+                                                        Number of seconds to wait after reaching upgrade height before replacing the pod.
+                                                        This allows the old binary to handle the upgrade height block properly before shutting down.
+                                                        Particularly important for upgrades using StoreLoader that need to generate upgrade-info.json.
+                                                        If not set, defaults to 5.
+                                                    format: int32
+                                                    minimum: 0
+                                                    type: integer
                                             required:
                                                 - height
                                                 - image

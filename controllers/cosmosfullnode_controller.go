@@ -234,14 +234,50 @@ func (r *CosmosFullNodeReconciler) updateStatus(
 		status.StatusMessage = crd.Status.StatusMessage
 		status.Peers = crd.Status.Peers
 		status.SyncInfo = syncInfo
+		var delaySeconds uint32
+		var delayTriggered bool
+		var delayForPod string
+		var delayForHeight uint64
 		for k, v := range syncInfo {
 			if v.Height != nil && *v.Height > 0 {
 				if status.Height == nil {
 					status.Height = make(map[string]uint64)
 				}
 				status.Height[k] = *v.Height + 1 // we want the block that is going through consensus, not the committed one.
+
+				if len(crd.Spec.ChainSpec.Versions) > 0 {
+					for _, version := range crd.Spec.ChainSpec.Versions {
+						if version.UpgradeHeight == status.Height[k] {
+							if !delayTriggered {
+								// default version.UpgradeDelaySeconds to 5s if not set
+								if version.UpgradeDelaySeconds == nil {
+									version.UpgradeDelaySeconds = ptr(uint32(5))
+								}
+
+								delaySeconds = *version.UpgradeDelaySeconds
+								delayTriggered = true
+								delayForPod = k
+								delayForHeight = status.Height[k]
+							}
+						}
+					}
+				}
 			}
 		}
+
+		// Apply the delay only once, which allows the node to properly dump the required upgrade-info.json
+		if delayTriggered {
+			logger := log.FromContext(ctx)
+			logger.Info("Delaying status update for upgrade",
+				"seconds", delaySeconds,
+				"pod", delayForPod,
+				"upgradeHeight", delayForHeight,
+				"crd", crd.Name,
+				"namespace", crd.Namespace,
+			)
+			time.Sleep(time.Duration(delaySeconds) * time.Second)
+		}
+
 		if status.SelfHealing.PVCAutoScale != nil {
 			for _, k := range pvcStatusChanges.Deleted {
 				delete(status.SelfHealing.PVCAutoScale, k)

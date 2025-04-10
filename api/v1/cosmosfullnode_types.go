@@ -618,6 +618,14 @@ type ChainVersion struct {
 	// Determines if the node should forcefully halt at the upgrade height.
 	// +optional
 	SetHaltHeight bool `json:"setHaltHeight,omitempty"`
+
+	// Number of seconds to wait after reaching upgrade height before replacing the pod.
+	// This allows the old binary to handle the upgrade height block properly before shutting down.
+	// Particularly important for upgrades using StoreLoader that need to generate upgrade-info.json.
+	// If not set, defaults to 5.
+	// +kubebuilder:validation:Minimum:=0
+	// +optional
+	UpgradeDelaySeconds *uint32 `json:"upgradeDelaySeconds"`
 }
 
 // CometConfig configures the config.toml.
