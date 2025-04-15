@@ -5,6 +5,7 @@ package version
 // Used for docker image.
 // See Dockerfile, Makefile, and .github/workflows/release.yaml.
 var version = ""
+var image = ""
 
 // DockerTag returns the version of the build or "latest" if unknown.
 func DockerTag() string {
@@ -20,4 +21,12 @@ func AppVersion() string {
 		return "(devel)"
 	}
 	return version
+}
+
+// Image returns the image name of the build.
+func Image() string {
+	if image == "" {
+		return "ghcr.io/strangelove-ventures/cosmos-operator"
+	}
+	return image
 }

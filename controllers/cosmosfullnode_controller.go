@@ -26,6 +26,7 @@ import (
 	"github.com/strangelove-ventures/cosmos-operator/internal/fullnode"
 	"github.com/strangelove-ventures/cosmos-operator/internal/kube"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -234,14 +235,18 @@ func (r *CosmosFullNodeReconciler) updateStatus(
 		status.StatusMessage = crd.Status.StatusMessage
 		status.Peers = crd.Status.Peers
 		status.SyncInfo = syncInfo
+		status.UpgradeDelay = crd.Status.UpgradeDelay
 		for k, v := range syncInfo {
 			if v.Height != nil && *v.Height > 0 {
 				if status.Height == nil {
 					status.Height = make(map[string]uint64)
 				}
 				status.Height[k] = *v.Height + 1 // we want the block that is going through consensus, not the committed one.
+
+				r.processVersionUpgradesDelay(ctx, crd, status, k, v)
 			}
 		}
+
 		if status.SelfHealing.PVCAutoScale != nil {
 			for _, k := range pvcStatusChanges.Deleted {
 				delete(status.SelfHealing.PVCAutoScale, k)
@@ -249,6 +254,54 @@ func (r *CosmosFullNodeReconciler) updateStatus(
 		}
 	}); err != nil {
 		log.FromContext(ctx).Error(err, "Failed to patch status")
+	}
+}
+
+// processVersionUpgradesDelay handles the logic for tracking upgrade heights and delays
+func (r *CosmosFullNodeReconciler) processVersionUpgradesDelay(
+	ctx context.Context,
+	crd *cosmosv1.CosmosFullNode,
+	status *cosmosv1.FullNodeStatus,
+	podName string,
+	podStatus *cosmosv1.SyncInfoPodStatus,
+) {
+	// Skip if no versions specified in chain spec
+	if len(crd.Spec.ChainSpec.Versions) == 0 {
+		return
+	}
+
+	// Initialize upgrade delay map if needed
+	if status.UpgradeDelay == nil {
+		status.UpgradeDelay = make(map[string]*cosmosv1.UpgradeDelayInfo)
+	}
+
+	// Check if current height matches any upgrade height
+	for _, version := range crd.Spec.ChainSpec.Versions {
+		if version.UpgradeHeight != status.Height[podName] || version.UpgradeDelaySeconds == nil {
+			continue
+		}
+
+		// Initialize or update upgrade delay info
+		delay := status.UpgradeDelay[podName]
+		if delay == nil || delay.Height != version.UpgradeHeight {
+			delay = &cosmosv1.UpgradeDelayInfo{
+				Height:    version.UpgradeHeight,
+				Timestamp: metav1.NewTime(podStatus.Timestamp.Add(time.Duration(*version.UpgradeDelaySeconds) * time.Second)),
+			}
+			status.UpgradeDelay[podName] = delay
+		}
+
+		// Fall back to upgrade height - 1 if we haven't passed the delay time
+		if delay.Height == status.Height[podName] && podStatus.Timestamp.Before(&delay.Timestamp) {
+			status.Height[podName] = *podStatus.Height
+			log.FromContext(ctx).Info(
+				"Applying upgrade delay",
+				"pod", podName,
+				"upgradeDelayTimestamp", delay.Timestamp,
+				"upgradeDelayHeight", delay.Height,
+				"syncInfoTimestamp", podStatus.Timestamp,
+			)
+		}
 	}
 }
 
