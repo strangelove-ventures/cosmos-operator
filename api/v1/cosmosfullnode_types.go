@@ -170,6 +170,16 @@ type FullNodeStatus struct {
 	// Latest Height information. collected when node starts up and when RPC is successfully queried.
 	// +optional
 	Height map[string]uint64 `json:"height,omitempty"`
+
+	// Show the UpgradeDelay for each pod.
+	UpgradeDelay map[string]*UpgradeDelayInfo `json:"upgradeDelay,omitempty"`
+}
+
+type UpgradeDelayInfo struct {
+	// When the upgrade delay was set. FullNodeStatus.Height for pod should be updated only when consensus information was fetched pass this time.
+	Timestamp metav1.Time `json:"timestamp"`
+	// The height of the upgrade.
+	Height uint64 `json:"height"`
 }
 
 type SyncInfoPodStatus struct {
@@ -622,7 +632,6 @@ type ChainVersion struct {
 	// Number of seconds to wait after reaching upgrade height before replacing the pod.
 	// This allows the old binary to handle the upgrade height block properly before shutting down.
 	// Particularly important for upgrades using StoreLoader that need to generate upgrade-info.json.
-	// If not set, defaults to 5.
 	// +kubebuilder:validation:Minimum:=0
 	// +optional
 	UpgradeDelaySeconds *uint32 `json:"upgradeDelaySeconds"`
