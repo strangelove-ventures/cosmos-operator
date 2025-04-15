@@ -172,6 +172,7 @@ type FullNodeStatus struct {
 	Height map[string]uint64 `json:"height,omitempty"`
 
 	// Show the UpgradeDelay for each pod.
+	// +optional
 	UpgradeDelay map[string]*UpgradeDelayInfo `json:"upgradeDelay,omitempty"`
 }
 
