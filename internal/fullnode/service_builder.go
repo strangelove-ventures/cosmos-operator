@@ -58,7 +58,7 @@ func BuildServices(crd *cosmosv1.CosmosFullNode) []diff.Resource[*corev1.Service
 			{
 				Name:       "p2p",
 				Protocol:   corev1.ProtocolTCP,
-				Port:       p2pPort,
+				Port:       crd.Spec.ChainSpec.Comet.P2PPort(),
 				TargetPort: intstr.FromString("p2p"),
 			},
 		}
@@ -148,7 +148,7 @@ func rpcService(crd *cosmosv1.CosmosFullNode) *corev1.Service {
 		{
 			Name:       "rpc",
 			Protocol:   corev1.ProtocolTCP,
-			Port:       rpcPort,
+			Port:       crd.Spec.ChainSpec.Comet.RPCPort(),
 			TargetPort: intstr.FromString("rpc"),
 		},
 		{
