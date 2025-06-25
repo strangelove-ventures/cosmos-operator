@@ -4887,6 +4887,14 @@ spec:
                                                 setHaltHeight:
                                                     description: Determines if the node should forcefully halt at the upgrade height.
                                                     type: boolean
+                                                upgradeDelaySeconds:
+                                                    description: |-
+                                                        Number of seconds to wait after reaching upgrade height before replacing the pod.
+                                                        This allows the old binary to handle the upgrade height block properly before shutting down.
+                                                        Particularly important for upgrades using StoreLoader that need to generate upgrade-info.json.
+                                                    format: int32
+                                                    minimum: 0
+                                                    type: integer
                                             required:
                                                 - height
                                                 - image
@@ -8470,6 +8478,23 @@ spec:
                                         - timestamp
                                     type: object
                                 description: Current sync information. Collected every 60s.
+                                type: object
+                            upgradeDelay:
+                                additionalProperties:
+                                    properties:
+                                        height:
+                                            description: The height of the upgrade.
+                                            format: int64
+                                            type: integer
+                                        timestamp:
+                                            description: When the upgrade delay was set. FullNodeStatus.Height for pod should be updated only when consensus information was fetched pass this time.
+                                            format: date-time
+                                            type: string
+                                    required:
+                                        - height
+                                        - timestamp
+                                    type: object
+                                description: Show the UpgradeDelay for each pod.
                                 type: object
                         required:
                             - observedGeneration
