@@ -51,7 +51,7 @@ func TestBuildServices(t *testing.T) {
 					{
 						Name:       "p2p",
 						Protocol:   corev1.ProtocolTCP,
-						Port:       26656,
+						Port:       crd.Spec.ChainSpec.Comet.P2PPort(),
 						TargetPort: intstr.FromString("p2p"),
 					},
 				},
@@ -92,7 +92,7 @@ func TestBuildServices(t *testing.T) {
 					{
 						Name:       "p2p",
 						Protocol:   corev1.ProtocolTCP,
-						Port:       26656,
+						Port:       crd.Spec.ChainSpec.Comet.P2PPort(),
 						TargetPort: intstr.FromString("p2p"),
 					},
 				},
@@ -192,7 +192,7 @@ func TestBuildServices(t *testing.T) {
 					{
 						Name:       "p2p",
 						Protocol:   corev1.ProtocolTCP,
-						Port:       26656,
+						Port:       crd.Spec.ChainSpec.Comet.P2PPort(),
 						TargetPort: intstr.FromString("p2p"),
 					},
 				},
@@ -310,7 +310,7 @@ func TestBuildServices(t *testing.T) {
 			{
 				Name:       "rpc",
 				Protocol:   corev1.ProtocolTCP,
-				Port:       26657,
+				Port:       crd.Spec.ChainSpec.Comet.RPCPort(),
 				TargetPort: intstr.FromString("rpc"),
 			},
 			{
