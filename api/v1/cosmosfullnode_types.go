@@ -75,6 +75,18 @@ type FullNodeSpec struct {
 	// Creates 1 pod per replica.
 	PodTemplate PodSpec `json:"podTemplate"`
 
+	// Pre-configured NodeKeys for each replica.
+	// Each string should be a base64-encoded ed25519 private key (64 bytes when decoded).
+	// The array index corresponds to the replica ordinal (accounting for spec.ordinals.start).
+	// For example, if ordinals.start=2 and replicas=3, then:
+	// - nodeKeys[0] applies to replica with ordinal 2
+	// - nodeKeys[1] applies to replica with ordinal 3
+	// - nodeKeys[2] applies to replica with ordinal 4
+	// If the array has fewer elements than replicas, missing keys will be auto-generated.
+	// If not set or empty, the operator generates a random ed25519 key for each replica.
+	// +optional
+	NodeKeys []string `json:"nodeKeys"`
+
 	// Additional pod specs to apply per replica.
 	// This is useful for adding additional pods to the deployment
 	// that need to be versioned alongside the main pod.

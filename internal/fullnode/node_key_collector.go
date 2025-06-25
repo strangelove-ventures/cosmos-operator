@@ -5,6 +5,7 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -29,6 +30,27 @@ func (nk NodeKey) ID() string {
 	pub := nk.PrivKey.Value.Public()
 	hash := sha256.Sum256(pub.(ed25519.PublicKey))
 	return hex.EncodeToString(hash[:20])
+}
+
+// base64StrToNodeKey converts a base64-encoded ed25519 private key string into a NodeKey structure.
+func base64StrToNodeKey(s string) (*NodeKey, error) {
+	keyBytes, err := base64.StdEncoding.DecodeString(s)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode base64 string: %w", err)
+	}
+
+	if len(keyBytes) != ed25519.PrivateKeySize {
+		return nil, fmt.Errorf("invalid key size: expected %d bytes, got %d", ed25519.PrivateKeySize, len(keyBytes))
+	}
+
+	pk := ed25519.PrivateKey(keyBytes)
+
+	return &NodeKey{
+		PrivKey: NodeKeyPrivKey{
+			Type:  "tendermint/PrivKeyEd25519",
+			Value: pk,
+		},
+	}, nil
 }
 
 func randNodeKey() (*NodeKey, error) {
@@ -62,6 +84,10 @@ func NewNodeKeyCollector(client Client) *NodeKeyCollector {
 	return &NodeKeyCollector{
 		client: client,
 	}
+}
+
+func hasNodeKeyAtIndex(nodeKeys []string, index int32) bool {
+	return nodeKeys != nil && int(index) < len(nodeKeys) && nodeKeys[index] != ""
 }
 
 // Collect node key information given the crd.
@@ -98,6 +124,16 @@ func (c NodeKeyCollector) Collect(ctx context.Context, crd *cosmosv1.CosmosFullN
 
 			// Store the exact value of the node key in the configmap to avoid non-deterministic JSON marshaling which can cause unnecessary updates.
 			marshaledNodeKey = []byte(nodeKeyContent)
+		} else if hasNodeKeyAtIndex(crd.Spec.NodeKeys, i-crd.Spec.Ordinals.Start) {
+			rNodeKey, err := base64StrToNodeKey(crd.Spec.NodeKeys[i-crd.Spec.Ordinals.Start])
+			if err != nil {
+				return nil, kube.UnrecoverableError(fmt.Errorf("invalid node key: %w", err))
+			}
+			nodeKey = *rNodeKey
+			marshaledNodeKey, err = json.Marshal(nodeKey)
+			if err != nil {
+				return nil, kube.UnrecoverableError(fmt.Errorf("marshal node key: %w", err))
+			}
 		} else {
 			rNodeKey, err := randNodeKey()
 			if err != nil {

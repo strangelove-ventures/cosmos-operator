@@ -308,6 +308,11 @@ func (in *FullNodeSpec) DeepCopyInto(out *FullNodeSpec) {
 	out.Ordinals = in.Ordinals
 	in.ChainSpec.DeepCopyInto(&out.ChainSpec)
 	in.PodTemplate.DeepCopyInto(&out.PodTemplate)
+	if in.NodeKeys != nil {
+		in, out := &in.NodeKeys, &out.NodeKeys
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.AdditionalVersionedPods != nil {
 		in, out := &in.AdditionalVersionedPods, &out.AdditionalVersionedPods
 		*out = make([]AdditionalPodSpec, len(*in))
