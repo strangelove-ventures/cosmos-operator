@@ -714,6 +714,8 @@ gaiad start --home /home/operator/cosmos`
 		require.Equal(t, "chain-init", pod0.Spec.InitContainers[1].Name)
 		require.Equal(t, "image:v1.0.0", pod0.Spec.InitContainers[1].Image)
 
+		require.Equal(t, "v1.0.0", pod0.Labels[kube.VersionLabel])
+
 		pod1, err := builder.WithOrdinal(1).Build()
 		require.NoError(t, err)
 
@@ -724,6 +726,8 @@ gaiad start --home /home/operator/cosmos`
 
 		require.Equal(t, "chain-init", pod1.Spec.InitContainers[1].Name)
 		require.Equal(t, "image:v2.0.0", pod1.Spec.InitContainers[1].Image)
+
+		require.Equal(t, "v2.0.0", pod1.Labels[kube.VersionLabel])
 
 		pod2, err := builder.WithOrdinal(2).Build()
 		require.NoError(t, err)
@@ -742,6 +746,8 @@ gaiad start --home /home/operator/cosmos`
 		require.Equal(t, "new-init", pod2.Spec.InitContainers[2].Name)
 		require.Equal(t, "new-init:v3.0.0", pod2.Spec.InitContainers[2].Image)
 
+		require.Equal(t, "v3.0.0", pod2.Labels[kube.VersionLabel])
+
 		crd.Status.Height["osmosis-2"] = 400
 		pod2, err = builder.WithOrdinal(2).Build()
 		require.NoError(t, err)
@@ -759,6 +765,8 @@ gaiad start --home /home/operator/cosmos`
 
 		require.Equal(t, "new-init", pod2.Spec.InitContainers[2].Name)
 		require.Equal(t, "new-init:latest", pod2.Spec.InitContainers[2].Image)
+
+		require.Equal(t, "v4.0.0", pod2.Labels[kube.VersionLabel])
 	})
 }
 
