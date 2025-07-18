@@ -39,9 +39,6 @@ func ComputeRollout(maxUnavail *intstr.IntOrString, desired, ready int) int {
 		return 0
 	}
 
-	target := unavail - (desired - ready)
-	if target > desired {
-		target = desired
-	}
+	target := min(unavail-(desired-ready), desired)
 	return target
 }
